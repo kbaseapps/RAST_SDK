@@ -1,0 +1,52 @@
+#!/usr/bin/env perl
+
+use strict;
+
+use Carp;
+use File::Basename;
+use Cwd 'abs_path';
+
+my $dest = $ENV{TARGET} || "/kb/runtime";
+my $parallel = 4;
+
+if (@ARGV)
+{
+    $dest = shift;
+    print STDERR "Overriding destination to $dest\n";
+}
+
+-d $dest || mkdir $dest;
+
+my $blast_url = "ftp://ftp.ncbi.nlm.nih.gov/blast/executables/release/2.2.26/ncbi.tar.gz";
+my $blast_tar = "ncbi.tar.gz";
+
+if (! -s $blast_tar)
+{
+    system("curl", "-o", $blast_tar, "-L", $blast_url);
+}
+
+run("rm", "-rf", "ncbi");
+run("tar", "xzfp", $blast_tar);
+run("perl", "-pi.bak", "-e", "s/HAVE_MAC=1/HAVE_MAC=0/", "ncbi/make/makedis.csh");
+run("./ncbi/make/makedis.csh");
+for my $f (<ncbi/bin/*>)
+{
+    my $base = basename($f);
+    next if $base =~ /cgi$/;
+    next if $base =~ /^demo/;
+    next if $base =~ /^test/;
+
+    run("cp", $f, "$dest/bin/$base");
+}
+
+sub run
+{
+    my(@cmd) = @_;
+    print "\n@cmd\n";
+    my $rc = system(@cmd);
+    if ($rc != 0)
+    {
+	die "Command failed with rc=$rc: @cmd\n";
+    }
+}
+

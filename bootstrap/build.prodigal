@@ -1,0 +1,35 @@
+#!/usr/bin/env perl
+
+use strict;
+
+use Carp;
+use File::Basename;
+use Cwd 'abs_path';
+
+my $dest = $ENV{TARGET} || "/kb/runtime";
+my $parallel = 4;
+
+if (@ARGV)
+{
+    $dest = shift;
+    print STDERR "Overriding destination to $dest\n";
+}
+
+-d $dest || mkdir $dest;
+
+my $vers = "2.6.1";
+
+my $prodigal_dir = "Prodigal-$vers";
+my $prodigal_tar = "v$vers.tar.gz";
+my $prodigal_url = "https://github.com/hyattpd/Prodigal/archive/$prodigal_tar";
+
+if (! -s $prodigal_tar)
+{
+    system("curl", "-o", $prodigal_tar, "-L", $prodigal_url);
+}
+
+system("rm", "-rf", $prodigal_dir);
+system("tar", "xzfp", $prodigal_tar);
+chdir($prodigal_dir);
+system("make");
+system("cp", "prodigal", "$dest/bin/prodigal");
