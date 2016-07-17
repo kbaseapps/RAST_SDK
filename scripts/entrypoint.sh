@@ -20,10 +20,10 @@ elif [ "${1}" = "init" ] ; then
   cd /data
   mkdir kmer
   cd kmer
-  /kb/deployment/services/kmer_annotation_figfam/bin/kmer-figfam-update-data Release70
-  cd ..
-  curl ftp://ftp.theseed.org/KmerClassification/Data.may1.tgz|tar xzf -
-  touch __READY__
+  curl -X GET https://ci.kbase.us/services/shock-api/node/a4d6c083-af46-4f1d-aea8-e3c4d4a1598b?download --user kbasetest:@Suite525|tar xzf -
+  if [ -d Data.2 ]
+  	touch __READY__
+  fi
 elif [ "${1}" = "bash" ] ; then
   bash
 elif [ "${1}" = "report" ] ; then
