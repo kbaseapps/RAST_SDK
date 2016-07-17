@@ -21,7 +21,7 @@ elif [ "${1}" = "init" ] ; then
   mkdir kmer
   cd kmer
   curl -X GET https://ci.kbase.us/services/shock-api/node/a4d6c083-af46-4f1d-aea8-e3c4d4a1598b?download --user kbasetest:@Suite525|tar xzf -
-  if [ -d Data.2 ]
+  if [ -d Data.2 ] ; then
   	touch __READY__
   fi
 elif [ "${1}" = "bash" ] ; then
