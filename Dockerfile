@@ -42,7 +42,7 @@ RUN mkdir /data && \
     mkdir /data/Data.may1 && \
     mkdir /data/kmer
 
-RUN sed -i 's/->port/->port, Passive=>1/' /kb/deployment/plbin/kmer-figfam-update-data.pl
+#RUN sed -i 's/->port/->port, Passive=>1/' /kb/deployment/plbin/kmer-figfam-update-data.pl
                                                            
 # -----------------------------------------
 
