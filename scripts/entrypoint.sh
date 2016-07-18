@@ -22,6 +22,7 @@ elif [ "${1}" = "init" ] ; then
   cd kmer
   curl http://bioseed.mcs.anl.gov/~chenry/kmer.tgz|tar xzf -
   if [ -d Data.2 ] ; then
+  	cd ..
   	touch __READY__
   fi
 elif [ "${1}" = "bash" ] ; then
