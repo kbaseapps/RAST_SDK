@@ -1,4 +1,4 @@
-package kbga::gawrapper;
+package RAST_SDK::gawrapper;
 
 use strict;
 use warnings;
