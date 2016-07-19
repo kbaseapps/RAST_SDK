@@ -202,9 +202,9 @@ sub annotate {
   		"resolve_overlapping_features_parameters" => {}
   	});
   }
-  if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)  {
-  	push(@{$workflow->{stages}},{name => "find_close_neighbors"});
-  }
+  #if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)  {
+  #	push(@{$workflow->{stages}},{name => "find_close_neighbors"});
+  #}
   if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)  {
   	push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
   }
