@@ -248,11 +248,11 @@ sub annotate {
   #Building a hash of standardized seed function strings
   my $funchash = {};
   foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
-  	my $rolename = lc($funchash->{term_hash}->{$term}->{name});
+  	my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
 	$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
 	$rolename =~ s/\s//g;
 	$rolename =~ s/\#.*$//g;
-  	$funchash->{$rolename} = $term;
+  	$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
   }  
   if (defined($genome->{features})) {
   	for (my $i=0; $i < @{$genome->{features}}; $i++) {
@@ -336,9 +336,9 @@ sub annotate {
   	data => $genome,
   	provenance => [{
   		"time" => DateTime->now()->datetime()."+0000",
-  		service_ver => $gaserv->version(),
+  		service_ver => $version,
   		service => "genome_annotation",
-  		method => "annotate_ws_contigset.pl",
+  		method => $annofunc,
   		method_params => [$parameters],
   		input_ws_objects => [],
   		resolved_ws_objects => [],
