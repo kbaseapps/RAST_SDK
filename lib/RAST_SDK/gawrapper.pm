@@ -54,7 +54,7 @@ sub annotate {
   	$input->{workspace} = $parameters->{workspace};
   }
   my $annofunc = "Annotate Microbial Genome";
-  my $version = 1;
+  my $version = "1";
   my $timestamp = DateTime->now()->datetime();
   my $inputgenome;
   my $contigsetref;
