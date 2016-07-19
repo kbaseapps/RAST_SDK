@@ -178,16 +178,16 @@ sub annotate {
            }
   	});
   }
-  if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)  {
-  	$simflag = 1;
-  	push(@{$workflow->{stages}},{
-  		name => "annotate_proteins_kmer_v1",
-  		 "kmer_v1_parameters" => {
-              "dataset_name" => "Release70",
-              "annotate_hypothetical_only" => $v1flag
-           }
-  	});
-  }
+  #if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)  {
+  #	$simflag = 1;
+  #	push(@{$workflow->{stages}},{
+  #		name => "annotate_proteins_kmer_v1",
+  #		 "kmer_v1_parameters" => {
+  #            "dataset_name" => "Release70",
+  #            "annotate_hypothetical_only" => $v1flag
+  #         }
+  #	});
+  #}
   if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)  {
   	push(@{$workflow->{stages}},{
   		name => "annotate_proteins_similarity",
