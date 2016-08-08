@@ -21,21 +21,447 @@ use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
 use Config::IniFiles;
 use Data::Dumper;
-########################################################################
-# Authors: Shane Canon, Christopher Henry
-# Date: 11/14/2016
-# Contact email: chenry@mcs.anl.gov
-# Development location: Mathematics and Computer Science Division, Argonne National Lab
-########################################################################
 use warnings;
 use JSON::XS;
 use DateTime;
 use Digest::MD5;
+use Data::Dumper;
 use Getopt::Long;
-use Bio::KBase::GenomeAnnotation::Client;
-use RAST_SDK::gawrapper;
-use Bio::KBase::workspace::ScriptHelpers qw(get_ws_client workspace workspaceURL parseObjectMeta parseWorkspaceMeta printObjectMeta);
+use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 
+#Initialization function for call
+sub util_initialize_call {
+	my ($self,$params,$ctx) = @_;
+	print("Starting ".$ctx->method()." method.\n");
+	delete($self->{_kbase_store});
+	Bio::KBase::ObjectAPI::utilities::elaspedtime();
+	Bio::KBase::ObjectAPI::config::username($ctx->user_id());
+	Bio::KBase::ObjectAPI::config::token($ctx->token());
+	Bio::KBase::ObjectAPI::config::method($ctx->method());
+	Bio::KBase::ObjectAPI::config::provenance($ctx->provenance());
+	$self->{_wsclient} = new Bio::KBase::workspace::Client(Bio::KBase::ObjectAPI::config::workspace_url(),token => $ctx->token());
+	$self->util_timestamp(DateTime->now()->datetime());
+	return $params;
+}
+
+sub util_version {
+	my ($self) = @_;
+	return "1";
+}
+
+sub util_timestamp {
+	my ($self,$input) = @_;
+	if (defined($input)) {
+		$self->{_timestamp} = $input;
+	}
+	return $self->{_timestamp};
+}
+
+sub util_ws_client {
+	my ($self,$input) = @_;
+	return $self->{_wsclient};
+}
+
+sub util_configure_ws_id {
+	my ($self,$ws,$id) = @_;
+	my $input = {};
+ 	if ($ws =~ m/^\d+$/) {
+ 		$input->{wsid} = $ws;
+	} else {
+		$input->{workspace} = $ws;
+	}
+	if ($id =~ m/^\d+$/) {
+		$input->{objid} = $id;
+	} else {
+		$input->{name} = $id;
+	}
+	return $input;
+}
+
+sub util_get_object_info {
+	my ($self,$ws,$id) = @_;
+	my $info_array = $self->util_ws_client()->get_object_info([
+		$self->util_configure_ws_id($ws,$id)
+	],0);
+	return $info_array->[0];
+}
+
+sub util_get_object {
+	my ($self,$ws,$id) = @_;
+	my $output = $self->util_ws_client()->get_object_info([
+		$self->util_configure_ws_id($ws,$id)
+	],0);
+	return $output->[0]->{data};
+}
+
+sub util_get_genome {
+	my ($self,$workspace,$genomeid) = @_;
+	my $info = $self->util_get_object_info($workspace,$genomeid);
+	my $obj;
+	if ($info->[2] =~ /GenomeAnnotation/) {
+		my $output = Bio::KBase::ObjectAPI::utilities::runexecutable(Bio::KBase::ObjectAPI::config::all_params()->{"Data_API_script_directory"}.'get_genome.py "'.Bio::KBase::ObjectAPI::config::workspace_url().'" "'.Bio::KBase::ObjectAPI::config::shock_url().'" "'.Bio::KBase::ObjectAPI::config::all_params()->{"handle-service"}.'" "'.Bio::KBase::ObjectAPI::config::token().'" "'.$info->[6]."/".$info->[0]."/".$info->[4].'" "'.$info->[1].'" 1');
+		my $last = pop(@{$output});
+		if ($last !~ m/SUCCESS/) {
+			Bio::KBase::ObjectAPI::utilities->error("Genome failed to load!");
+		}
+		$obj = Bio::KBase::ObjectAPI::utilities::FROMJSON(pop(@{$output}));
+		$obj->{_kbasetype} = "GenomeAnnotation";
+	} else {
+		$obj = $self->util_get_object($workspace,$genomeid);
+		$obj->{_kbasetype} = "Genome";
+	}
+	$obj->{_reference} = $info->[6]."/".$info->[0]."/".$info->[4];
+	return $obj;
+}
+
+sub util_get_contigs {
+	my ($self,$workspace,$objid,$contigref) = @_;
+	my $info = $self->util_get_object_info($workspace,$objid);
+	my $obj;
+	if ($info->[2] =~ /GenomeAnnotation/ || $info->[2] =~ /GenomeAssembly/) {
+		my $output = Bio::KBase::ObjectAPI::utilities::runexecutable(Bio::KBase::ObjectAPI::config::all_params()->{"Data_API_script_directory"}.'get_contigset.py "'.Bio::KBase::ObjectAPI::config::workspace_url().'" "'.Bio::KBase::ObjectAPI::config::shock_url().'" "'.Bio::KBase::ObjectAPI::config::all_params()->{"handle-service"}.'" "'.Bio::KBase::ObjectAPI::config::token().'" "'.$info->[6]."/".$info->[0]."/".$info->[4].'" "'.$info->[1].'"');
+		my $last = pop(@{$output});
+		if ($last !~ m/SUCCESS/) {
+			Bio::KBase::ObjectAPI::utilities->error("Contigs failed to load!");
+		}
+		$obj = Bio::KBase::ObjectAPI::utilities::FROMJSON(pop(@{$output}));
+		my $sortedcontigs = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
+		my $str = "";
+		for (my $i=0; $i < @{$sortedcontigs}; $i++) {
+			if (length($str) > 0) {
+				$str .= ";";
+			}
+			$str .= $sortedcontigs->[$i]->{sequence};
+
+		}
+		$obj->{md5} = Digest::MD5::md5_hex($str);
+		$obj->{_kbasetype} = "Assembly";
+	} else {
+		$obj = $self->util_get_object($workspace,$objid);
+		$obj->{_kbasetype} = "ContigSet";
+	}
+	$obj->{_reference} = $info->[6]."/".$info->[0]."/".$info->[4];
+	return $obj;
+}
+
+sub annotate {
+	my ($self,$parameters) = @_;	
+	my $oldfunchash = {};
+	#Creating default genome object
+	my $inputgenome = {
+  		id => $parameters->{output_genome},
+  		genetic_code => $parameters->{genetic_code},
+  		scientific_name => $parameters->{scientific_name},
+  		domain => $parameters->{domain},
+  		contigs => [],
+  		features => []
+  	};
+  	my $contigobj;
+	if (defined($parameters->{input_genome})) {
+		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
+		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+			if (lc($inputgenome->{features}->[$i]->{type}) eq "cds" || lc($inputgenome->{features}->[$i]->{type}) eq "peg") {
+				$oldfunchash->{$inputgenome->{features}->[$i]->{id}} = $inputgenome->{features}->[$i]->{function};
+				$inputgenome->{features}->[$i]->{function} = "hypothetical protein";
+			}
+		}
+		if (defined($inputgenome->{contigset_ref}) && $inputgenome->{contigset_ref} =~ m/^([^\/]+)\/([^\/]+)/) {
+			$contigobj = $self->util_get_contigs($1,$2);
+		} elsif (defined($inputgenome->{assembly_ref}) && $inputgenome->{assembly_ref} =~ m/^([^\/]+)\/([^\/]+)/) {
+			$contigobj = $self->util_get_contigs($1,$2);
+		} elsif (defined($inputgenome->{contigobj})) {
+			$contigobj = $inputgenome->{contigobj};
+			delete $inputgenome->{contigobj};
+		}
+		$parameters->{genetic_code} = $inputgenome->{genetic_code};
+		$parameters->{domain} = $inputgenome->{domain};
+		$parameters->{scientific_name} = $inputgenome->{scientific_name};
+	} elsif (defined($parameters->{input_contigset})) {
+		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});
+	} else {
+		Bio::KBase::ObjectAPI::utilities->error("Neither contigs nor genome specified!");
+	}
+	if (defined($contigobj)) {
+		if (defined($contigobj->{contigs})) {
+			$inputgenome->{contigs} = $contigobj->{contigs};
+		}
+		if ($contigobj->{_kbasetype} eq "ContigSet") {
+			$inputgenome->{contigset_ref} = $contigobj->{_reference};
+		} else {
+			$inputgenome->{assembly_ref} = $contigobj->{_reference};
+		}
+	}
+	
+  	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+  	my $workflow = {stages => []};
+	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_selenoproteins"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
+		push(@{$workflow->{stages}},{
+			name => "call_features_repeat_region_SEED",
+			"repeat_region_SEED_parameters" => {
+							"min_identity" => "95",
+							"min_length" => "100"
+					 }
+		});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
+		push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
+		push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_features_crispr"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
+		$inputgenome->{features} = [];
+		push(@{$workflow->{stages}},{
+			name => "call_features_CDS_glimmer3",
+			"glimmer3_parameters" => {
+							"min_training_len" => "2000"
+					 }
+		});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
+		$inputgenome->{features} = [];
+		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
+		$inputgenome->{features} = [];
+		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
+		if (!defined($contigobj)) {
+			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+		}
+	}
+	my $v1flag = 0;
+	my $simflag = 0;
+	if (defined($parameters->{annotate_proteins_kmer_v2}) && $parameters->{annotate_proteins_kmer_v2} == 1)	{
+		$v1flag = 1;
+		$simflag = 1;
+		push(@{$workflow->{stages}},{
+			name => "annotate_proteins_kmer_v2",
+			"kmer_v2_parameters" => {
+							"min_hits" => "5",
+							"annotate_hypothetical_only" => 1
+					 }
+		});
+	}
+	#if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
+	#	$simflag = 1;
+	#	push(@{$workflow->{stages}},{
+	#		name => "annotate_proteins_kmer_v1",
+	#		 "kmer_v1_parameters" => {
+	#						"dataset_name" => "Release70",
+	#						"annotate_hypothetical_only" => $v1flag
+	#				 }
+	#	});
+	#}
+	if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)	{
+		push(@{$workflow->{stages}},{
+			name => "annotate_proteins_similarity",
+			"similarity_parameters" => {
+							"annotate_hypothetical_only" => $simflag
+					 }
+		});
+	}
+	if (defined($parameters->{resolve_overlapping_features}) && $parameters->{resolve_overlapping_features} == 1)	{
+		push(@{$workflow->{stages}},{
+			name => "resolve_overlapping_features",
+			"resolve_overlapping_features_parameters" => {}
+		});
+	}
+	#if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)	{
+	#	push(@{$workflow->{stages}},{name => "find_close_neighbors"});
+	#}
+	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
+		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+	}
+	
+	my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	delete $genome->{contigs};
+	delete $genome->{feature_creation_event};
+	delete $genome->{analysis_events};
+	$genome->{genetic_code} = $genome->{genetic_code}+0;
+	$genome->{gc_content} = 0.5;
+	$genome->{id} = $parameters->{output_genome};
+	if (!defined($genome->{source})) {
+		$genome->{source} = "KBase";
+		$genome->{source_id} = $parameters->{output_genome};
+	}
+	if (defined($genome->{gc})) {
+		$genome->{gc_content} = $genome->{gc}+0;
+		delete $genome->{gc};
+	}
+	if ( defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
+		$genome->{num_contigs} = @{$contigobj->{contigs}};
+		$genome->{md5} = $contigobj->{md5};
+	}
+	#Getting the seed ontology dictionary
+	my $output = $self->util_ws_client()->get_objects([{
+		workspace => "KBaseOntology",
+		name => "seed_subsystem_ontology"
+	}]);
+	#Building a hash of standardized seed function strings
+	my $funchash = {};
+	foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
+		my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
+	$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+	$rolename =~ s/\s//g;
+	$rolename =~ s/\#.*$//g;
+		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
+	}	
+	if (defined($genome->{features})) {
+		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			my $ftr = $genome->{features}->[$i];
+			if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
+				if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
+					$ftr->{function} = $oldfunchash->{$ftr->{id}};
+				}
+			}
+			if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
+				my $function = $ftr->{function};
+				my $array = [split(/\#/,$function)];
+				$function = shift(@{$array});
+			$function =~ s/\s+$//;
+			$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
+			for (my $j=0;$j < @{$array}; $j++) {
+				my $rolename = lc($array->[$j]);
+				$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+				$rolename =~ s/\s//g;
+				$rolename =~ s/\#.*$//g;
+				if (defined($funchash->{$rolename})) {
+					if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
+						$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
+							 evidence => [],
+							 id => $funchash->{$rolename}->{id},
+							 term_name => $funchash->{$rolename}->{name},
+							 ontology_ref => $output->[0]->{info}->[6]."/".$output->[0]->{info}->[0]."/".$output->[0]->{info}->[4],
+							 term_lineage => [],
+						};
+					}
+					my $found = 0;
+					for (my $k=0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
+						if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::ObjectAPI::config::method()) {
+							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = $self->util_timestamp();
+							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+							$found = 1;
+							last;
+						}
+					}
+					if ($found == 0) {
+						push(@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},{
+							method => Bio::KBase::ObjectAPI::config::method(),
+							method_version => $self->util_version(),
+							timestamp => $self->util_timestamp()
+						});
+					}
+				}
+			}
+			}
+			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
+				$ftr->{type} = $1;
+			}
+			if (defined($ftr->{protein_translation})) {
+				$ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
+				$ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
+			}
+			if (defined($ftr->{dna_sequence})) {
+				$ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
+			}
+			if (defined($ftr->{quality}->{weighted_hit_count})) {
+				$ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
+			}
+			if (defined($ftr->{quality}->{hit_count})) {
+				$ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
+			}
+			if (defined($ftr->{annotations})) {
+				delete $ftr->{annotations};
+			}
+			if (defined($ftr->{location})) {
+				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
+				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+			}
+			delete $ftr->{feature_creation_event};
+		}
+	}
+
+	my $object = {
+		type => "KBaseGenomes.Genome",
+		data => $genome,
+		provenance => [{
+			"time" => DateTime->now()->datetime()."+0000",
+			service_ver => $self->util_version(),
+			service => "genome_annotation",
+			method => Bio::KBase::ObjectAPI::config::method(),
+			method_params => [$parameters],
+			input_ws_objects => [],
+			resolved_ws_objects => [],
+			intermediate_incoming => [],
+			intermediate_outgoing => []
+		}],
+	};
+	if ($parameters->{output_genome} =~ m/^\d+$/) {
+		$object->{objid} = $parameters->{output_genome};
+	} else {
+		$object->{name} = $parameters->{output_genome};
+	}
+	my $input = {
+		objects => [$object],
+	};
+	if ($parameters->{workspace} =~ m/^\d+$/) {
+		 $input->{id} = $parameters->{workspace};
+	} else {
+		 $input->{workspace} = $parameters->{workspace};
+	}
+	return $self->util_ws_client()->save_objects($input);
+}
 #END_HEADER
 
 sub new
@@ -45,14 +471,10 @@ sub new
     };
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
-
-    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $cfg = Config::IniFiles->new(-file=>$config_file);
-    my $wsInstance = $cfg->val('RAST_SDK','workspace-url');
-    die "no workspace-url defined" unless $wsInstance;
-
-    $self->{'workspace-url'} = $wsInstance;
-
+	Bio::KBase::ObjectAPI::config::load_config({
+		service => "RAST_SDK"
+	},['workspace-url'],{});
+	Bio::KBase::ObjectAPI::logging::set_handler($self);
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
@@ -127,8 +549,9 @@ sub annotate_genome
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($return);
     #BEGIN annotate_genome
-    RAST_SDK::gawrapper::annotate($self->{'workspace-url'}, $ctx->token,$params);
-    $return={'workspace'=>'blah','id'=>'1'};
+    $self->util_initialize_call($params,$ctx);
+    my $output = $self->annotate($params);
+    $return = {'workspace'=>$output->[7],'id'=>$output->[1]};
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
