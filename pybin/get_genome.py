@@ -4,6 +4,7 @@
 
 import sys
 import json
+import re
 import doekbase.data_api
 from doekbase.data_api.annotation.genome_annotation.api import GenomeAnnotationAPI , GenomeAnnotationClientAPI
 from doekbase.data_api.sequence.assembly.api import AssemblyAPI , AssemblyClientAPI
@@ -132,18 +133,22 @@ try:
 	success = 1
 except Exception, e:
 	success = 0
-	
+
+prot = ga.get_proteins();
+
 if success == 1:
 	for ftrid in features.keys():
 		ftrdata = features[ftrid]
 		if 'feature_type' in ftrdata.keys():
 			newfeature = {'id' : ftrid,'type' : ftrdata['feature_type'],'function' : "Unknown",'location' : []}
+			array = ftrid.split("_");
+			protid = 'protein_'+array[1];
+			if array[0] == 'CDS' and protid in prot.keys():
+				newfeature['protein_translation'] = prot[protid]['protein_amino_acid_sequence']
 			if 'feature_ontology_terms' in ftrdata.keys():
 				newfeature['ontology_terms'] = ftrdata['feature_ontology_terms']
 			if 'feature_function' in ftrdata.keys():
 				newfeature['function'] = ftrdata['feature_function']
-			if 'feature_protein_translation' in ftrdata.keys():
-				newfeature['protein_translation'] = ftrdata['feature_protein_translation']
 			if 'feature_dna_sequence' in ftrdata.keys():
 				newfeature['dna_sequence'] = ftrdata['feature_dna_sequence']
 			if 'feature_locations' in ftrdata.keys():
@@ -157,6 +162,8 @@ if success == 1:
 			if 'feature_dna_sequence_length' in ftrdata.keys():
 				newfeature['dna_sequence_length'] = ftrdata['feature_dna_sequence_length']		
 			gto['features'].append(newfeature);
+
+#print json.dumps(prot, ensure_ascii=False)
 
 print json.dumps(gto, ensure_ascii=False)
 print "SUCCESS"
