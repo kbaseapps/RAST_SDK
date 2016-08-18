@@ -59,6 +59,11 @@ sub util_timestamp {
 	return $self->{_timestamp};
 }
 
+sub util_log {
+	my($self,$message) = @_;
+	print $message."\n";
+}
+
 sub util_ws_client {
 	my ($self,$input) = @_;
 	return $self->{_wsclient};
