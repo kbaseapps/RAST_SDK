@@ -96,7 +96,7 @@ sub util_get_object_info {
 
 sub util_get_object {
 	my ($self,$ws,$id) = @_;
-	my $output = $self->util_ws_client()->get_object_info([
+	my $output = $self->util_ws_client()->get_objects([
 		$self->util_configure_ws_id($ws,$id)
 	],0);
 	print "Getting object: ".$ws."/".$id."\n";
