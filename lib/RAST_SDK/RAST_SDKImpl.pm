@@ -37,7 +37,7 @@ sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
 	print("Starting ".$ctx->method()." method.\n");
 	delete($self->{_kbase_store});
-	Bio::KBase::ObjectAPI::utilities::elaspedtime();
+	Bio::KBase::ObjectAPI::utilities::elapsedtime();
 	Bio::KBase::ObjectAPI::config::username($ctx->user_id());
 	Bio::KBase::ObjectAPI::config::token($ctx->token());
 	Bio::KBase::ObjectAPI::config::method($ctx->method());
