@@ -21,6 +21,7 @@ use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
 use Bio::KBase::ObjectAPI::utilities;
 use Bio::KBase::ObjectAPI::config;
+use Bio::KBase::ObjectAPI::logging;
 use Config::IniFiles;
 use Data::Dumper;
 use warnings;
