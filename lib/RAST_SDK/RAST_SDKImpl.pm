@@ -19,6 +19,7 @@ This wraps genome_annotation which is based off of the SEED annotations.
 #BEGIN_HEADER
 use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
+use Bio::KBase::ObjectAPI::utilities;
 use Bio::KBase::ObjectAPI::config;
 use Config::IniFiles;
 use Data::Dumper;
