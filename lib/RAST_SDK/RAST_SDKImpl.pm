@@ -31,10 +31,12 @@ use Digest::MD5;
 use Data::Dumper;
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
+use Bio::KBase::GenomeAnnotation::Service;
 
 #Initialization function for call
 sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
+	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
 	print("Starting ".$ctx->method()." method.\n");
 	delete($self->{_kbase_store});
 	Bio::KBase::ObjectAPI::utilities::elapsedtime();
