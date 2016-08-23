@@ -6,8 +6,8 @@ import sys
 import json
 import re
 import doekbase.data_api
-from doekbase.data_api.annotation.genome_annotation.api import GenomeAnnotationAPI , GenomeAnnotationClientAPI
-from doekbase.data_api.sequence.assembly.api import AssemblyAPI , AssemblyClientAPI
+from doekbase.data_api.annotation.genome_annotation.api import GenomeAnnotationAPI
+from doekbase.data_api.sequence.assembly.api import AssemblyAPI
 
 ga = GenomeAnnotationAPI({
 	'workspace_service_url' : sys.argv[1],
