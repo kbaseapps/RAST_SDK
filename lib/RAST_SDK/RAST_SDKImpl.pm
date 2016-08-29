@@ -375,52 +375,6 @@ sub annotate {
 	}	
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
-				if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
-					$ftr->{function} = $oldfunchash->{$ftr->{id}};
-				}
-			}
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
-				my $function = $ftr->{function};
-				my $array = [split(/\#/,$function)];
-				$function = shift(@{$array});
-			$function =~ s/\s+$//;
-			$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
-			for (my $j=0;$j < @{$array}; $j++) {
-				my $rolename = lc($array->[$j]);
-				$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-				$rolename =~ s/\s//g;
-				$rolename =~ s/\#.*$//g;
-				if (defined($funchash->{$rolename})) {
-					if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
-						$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
-							 evidence => [],
-							 id => $funchash->{$rolename}->{id},
-							 term_name => $funchash->{$rolename}->{name},
-							 ontology_ref => $output->[0]->{info}->[6]."/".$output->[0]->{info}->[0]."/".$output->[0]->{info}->[4],
-							 term_lineage => [],
-						};
-					}
-					my $found = 0;
-					for (my $k=0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-						if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::ObjectAPI::config::method()) {
-							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = $self->util_timestamp();
-							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
-							$found = 1;
-							last;
-						}
-					}
-					if ($found == 0) {
-						push(@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},{
-							method => Bio::KBase::ObjectAPI::config::method(),
-							method_version => $self->util_version(),
-							timestamp => $self->util_timestamp()
-						});
-					}
-				}
-			}
-			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
 				$ftr->{type} = $1;
 			}
@@ -445,9 +399,74 @@ sub annotate {
 				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
 			}
 			delete $ftr->{feature_creation_event};
+			my $ftr = $genome->{features}->[$i];
+			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($genome->{features}->[$j]->{protein_translation})) {
+				for (my $j=0; $j < @{$genome->{features}}; $j++) {
+					if ($i ne $j) {
+						if ($ftr->{location}->[0]->[0] ne $genome->{features}->[$j]->{location}->[0]->[0]) {
+							if ($ftr->{location}->[0]->[1] ne $genome->{features}->[$j]->{location}->[0]->[1]) {
+								if ($ftr->{location}->[0]->[2] ne $genome->{features}->[$j]->{location}->[0]->[2]) {
+									if ($ftr->{location}->[0]->[3] ne $genome->{features}->[$j]->{location}->[0]->[3]) {
+										if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
+											$genome->{features}->[$j]->{function} = $ftr->{function};
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			my $ftr = $genome->{features}->[$i];
+			if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
+				if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
+					$ftr->{function} = $oldfunchash->{$ftr->{id}};
+				}
+			}
+			if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
+				my $function = $ftr->{function};
+				my $array = [split(/\#/,$function)];
+				$function = shift(@{$array});
+				$function =~ s/\s+$//;
+				$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
+				for (my $j=0;$j < @{$array}; $j++) {
+					my $rolename = lc($array->[$j]);
+					$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+					$rolename =~ s/\s//g;
+					$rolename =~ s/\#.*$//g;
+					if (defined($funchash->{$rolename})) {
+						if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
+							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
+								 evidence => [],
+								 id => $funchash->{$rolename}->{id},
+								 term_name => $funchash->{$rolename}->{name},
+								 ontology_ref => $output->[0]->{info}->[6]."/".$output->[0]->{info}->[0]."/".$output->[0]->{info}->[4],
+								 term_lineage => [],
+							};
+						}
+						my $found = 0;
+						for (my $k=0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
+							if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::ObjectAPI::config::method()) {
+								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = $self->util_timestamp();
+								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+								$found = 1;
+								last;
+							}
+						}
+						if ($found == 0) {
+							push(@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},{
+								method => Bio::KBase::ObjectAPI::config::method(),
+								method_version => $self->util_version(),
+								timestamp => $self->util_timestamp()
+							});
+						}
+					}
+				}
+			}
 		}
 	}
-
 	my $object = {
 		type => "KBaseGenomes.Genome",
 		data => $genome,
