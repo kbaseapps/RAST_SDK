@@ -143,7 +143,9 @@ if success == 1:
 		if 'feature_type' in ftrdata.keys():
 			newfeature = {'id' : ftrid,'type' : ftrdata['feature_type'],'function' : "Unknown",'location' : []}
 			array = ftrid.split("_");
-			protid = 'protein_'+array[1];
+			protid = ftrid;
+			if array[0] == 'CDS' and protid not in prot.keys():
+				protid = 'protein_'+array[1];
 			if array[0] == 'CDS' and protid in prot.keys():
 				newfeature['protein_translation'] = prot[protid]['protein_amino_acid_sequence']
 			if 'feature_ontology_terms' in ftrdata.keys():
