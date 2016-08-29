@@ -340,15 +340,20 @@ sub annotate {
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
 	$genome->{genetic_code} = $genome->{genetic_code}+0;
-	$genome->{gc_content} = 0.5;
 	$genome->{id} = $parameters->{output_genome};
 	if (!defined($genome->{source})) {
 		$genome->{source} = "KBase";
 		$genome->{source_id} = $parameters->{output_genome};
 	}
+	if (defined($inputgenome->{gc_content})) {
+		$genome->{gc_content} = $inputgenome->{gc_content};
+	}
 	if (defined($genome->{gc})) {
 		$genome->{gc_content} = $genome->{gc}+0;
 		delete $genome->{gc};
+	}
+	if (!defined($genome->{gc_content})) {
+		$genome->{gc_content} = 0.5;
 	}
 	if ( defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
 		$genome->{num_contigs} = @{$contigobj->{contigs}};
