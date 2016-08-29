@@ -74,6 +74,7 @@ if success == 1:
 		'source' : 'KBase',
 		'source_id' : sys.argv[6],
 		'md5' : "",
+		'_reference' : ga.get_assembly(1),
 		'type' : "Genome",
 		'contigs' : []
 	};
