@@ -375,6 +375,7 @@ sub annotate {
 	}	
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			my $ftr = $genome->{features}->[$i];
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
 				$ftr->{type} = $1;
 			}
@@ -399,7 +400,6 @@ sub annotate {
 				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
 			}
 			delete $ftr->{feature_creation_event};
-			my $ftr = $genome->{features}->[$i];
 			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($genome->{features}->[$j]->{protein_translation})) {
 				for (my $j=0; $j < @{$genome->{features}}; $j++) {
 					if ($i ne $j) {
