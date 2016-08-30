@@ -404,9 +404,9 @@ sub annotate {
 				for (my $j=0; $j < @{$genome->{features}}; $j++) {
 					if ($i ne $j) {
 						if ($ftr->{location}->[0]->[0] ne $genome->{features}->[$j]->{location}->[0]->[0]) {
-							if ($ftr->{location}->[0]->[1] ne $genome->{features}->[$j]->{location}->[0]->[1]) {
+							if ($ftr->{location}->[0]->[1] == $genome->{features}->[$j]->{location}->[0]->[1]) {
 								if ($ftr->{location}->[0]->[2] ne $genome->{features}->[$j]->{location}->[0]->[2]) {
-									if ($ftr->{location}->[0]->[3] ne $genome->{features}->[$j]->{location}->[0]->[3]) {
+									if ($ftr->{location}->[0]->[3] == $genome->{features}->[$j]->{location}->[0]->[3]) {
 										if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
 											$genome->{features}->[$j]->{function} = $ftr->{function};
 										}
