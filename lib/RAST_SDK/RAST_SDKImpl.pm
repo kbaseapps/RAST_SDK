@@ -212,7 +212,7 @@ sub annotate {
 		}
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
-		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
+		#push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
 		if (!defined($contigobj)) {
 			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
 		}
