@@ -196,8 +196,8 @@ sub annotate {
 		if (defined($contigobj->{contigs})) {
 			$inputgenome->{contigs} = $contigobj->{contigs};
 			for (my $i=0; $i < @{$inputgenome->{contigs}}; $i++) {
-				$inputgenome->{contigs}->{dna} = $inputgenome->{contigs}->{sequence};
-				delete $inputgenome->{contigs}->{sequence};
+				$inputgenome->{contigs}->[$i]->{dna} = $inputgenome->{contigs}->[$i]->{sequence};
+				delete $inputgenome->{contigs}->[$i]->{sequence};
 			}
 		}
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
