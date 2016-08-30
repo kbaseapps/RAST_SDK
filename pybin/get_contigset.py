@@ -5,7 +5,7 @@
 import sys
 import json
 import doekbase.data_api
-from doekbase.data_api.sequence.assembly.api import AssemblyAPI , AssemblyClientAPI
+from doekbase.data_api.sequence.assembly.api import AssemblyAPI
 
 assemb = AssemblyAPI({
 	'workspace_service_url' : sys.argv[1],
