@@ -195,6 +195,10 @@ sub annotate {
 	if (defined($contigobj)) {
 		if (defined($contigobj->{contigs})) {
 			$inputgenome->{contigs} = $contigobj->{contigs};
+			for (my $i=0; $i < @{$inputgenome->{contigs}}; $i++) {
+				$inputgenome->{contigs}->{dna} = $inputgenome->{contigs}->{sequence};
+				delete $inputgenome->{contigs}->{sequence};
+			}
 		}
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
 			$inputgenome->{contigset_ref} = $contigobj->{_reference};
@@ -212,7 +216,7 @@ sub annotate {
 		}
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
-		#push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
+		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
 		if (!defined($contigobj)) {
 			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
 		}
