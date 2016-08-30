@@ -400,7 +400,7 @@ sub annotate {
 				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
 			}
 			delete $ftr->{feature_creation_event};
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($genome->{features}->[$j]->{protein_translation})) {
+			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
 				for (my $j=0; $j < @{$genome->{features}}; $j++) {
 					if ($i ne $j) {
 						if ($ftr->{location}->[0]->[0] ne $genome->{features}->[$j]->{location}->[0]->[0]) {
