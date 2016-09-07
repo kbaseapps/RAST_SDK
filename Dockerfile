@@ -56,6 +56,7 @@ RUN cd /kb/dev_container/modules && \
 #RUN sed -i 's/capture_stderr/tee_stderr/' /kb/deployment/lib/Bio/KBase/GenomeAnnotation/GenomeAnnotationImpl.pm
 
 RUN \
+    cpanm install Set::IntervalTree && \
     cd /kb/deployment/services/kmer_annotation_figfam/ && \
     sed 's|$KB_TOP/deployment.cfg|/kb/module/deploy.cfg|' -i ./start_service  && \
     sed 's/8/1/' -i ./start_service 
