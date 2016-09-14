@@ -31,8 +31,6 @@ compile:
 	chmod +x $(SCRIPTS_DIR)/entrypoint.sh
 
 build-executable-script:
-	cp pybin/get_contigset.py $(TARGET)/pybin/
-	cp pybin/get_genome.py $(TARGET)/pybin/
 	mkdir -p $(LBIN_DIR)
 	echo '#!/bin/bash' > $(LBIN_DIR)/$(EXECUTABLE_SCRIPT_NAME)
 	echo 'script_dir=$$(dirname "$$(readlink -f "$$0")")' >> $(LBIN_DIR)/$(EXECUTABLE_SCRIPT_NAME)

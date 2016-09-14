@@ -20,7 +20,6 @@ This wraps genome_annotation which is based off of the SEED annotations.
 use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
 use Bio::KBase::ObjectAPI::utilities;
-use Bio::KBase::ObjectAPI::config;
 use Bio::KBase::ObjectAPI::logging;
 use Config::IniFiles;
 use Data::Dumper;
@@ -30,6 +29,9 @@ use DateTime;
 use Digest::MD5;
 use Data::Dumper;
 use Getopt::Long;
+use Bio::KBase::ObjectAPI::config;
+use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
+use AssemblyUtil::AssemblyUtilClient;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 
@@ -38,13 +40,13 @@ sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
 	print("Starting ".$ctx->method()." method.\n");
-	delete($self->{_kbase_store});
-	Bio::KBase::ObjectAPI::utilities::elapsedtime();
-	Bio::KBase::ObjectAPI::config::username($ctx->user_id());
-	Bio::KBase::ObjectAPI::config::token($ctx->token());
-	Bio::KBase::ObjectAPI::config::method($ctx->method());
-	Bio::KBase::ObjectAPI::config::provenance($ctx->provenance());
+	$self->{_token} = $ctx->token();
+	$self->{_username} = $ctx->user_id();
+	$self->{_method} = $ctx->method();
 	$self->{_wsclient} = new Bio::KBase::workspace::Client(Bio::KBase::ObjectAPI::config::workspace_url(),token => $ctx->token());
+	$self->{_gaclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::ObjectAPI::config::all_params()->{'service-wizard-url'});
+	my $callbackURL = $ENV{ SDK_CALLBACK_URL };
+	$self->{_assemblyclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($callbackURL);
 	$self->util_timestamp(DateTime->now()->datetime());
 	return $params;
 }
@@ -52,6 +54,21 @@ sub util_initialize_call {
 sub util_version {
 	my ($self) = @_;
 	return "1";
+}
+
+sub util_token {
+	my ($self) = @_;
+	return $self->{_token};
+}
+
+sub util_username {
+	my ($self) = @_;
+	return $self->{_username};
+}
+
+sub util_method {
+	my ($self) = @_;
+	return $self->{_method};
 }
 
 sub util_timestamp {
@@ -70,6 +87,16 @@ sub util_log {
 sub util_ws_client {
 	my ($self,$input) = @_;
 	return $self->{_wsclient};
+}
+
+sub util_ga_client {
+	my ($self,$input) = @_;
+	return $self->{_gaclient};
+}
+
+sub util_assembly_client {
+	my ($self,$input) = @_;
+	return $self->{_assemblyclient};
 }
 
 sub util_configure_ws_id {
@@ -107,51 +134,78 @@ sub util_get_object {
 
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $info = $self->util_get_object_info($workspace,$genomeid);
-	my $obj;
-	if ($info->[2] =~ /GenomeAnnotation/) {
-		my $output = Bio::KBase::ObjectAPI::utilities::runexecutable(Bio::KBase::ObjectAPI::config::all_params()->{"Data_API_script_directory"}.'get_genome.py "'.Bio::KBase::ObjectAPI::config::workspace_url().'" "'.Bio::KBase::ObjectAPI::config::shock_url().'" "'.Bio::KBase::ObjectAPI::config::all_params()->{"handle-service"}.'" "'.Bio::KBase::ObjectAPI::config::token().'" "'.$info->[6]."/".$info->[0]."/".$info->[4].'" "'.$info->[1].'" 1');
-		my $last = pop(@{$output});
-		if ($last !~ m/SUCCESS/) {
-			Bio::KBase::ObjectAPI::utilities->error("Genome failed to load!");
-		}
-		$obj = Bio::KBase::ObjectAPI::utilities::FROMJSON(pop(@{$output}));
-		$obj->{_kbasetype} = "GenomeAnnotation";
-	} else {
-		$obj = $self->util_get_object($workspace,$genomeid);
-		$obj->{_kbasetype} = "Genome";
-	}
-	$obj->{_reference} = $info->[6]."/".$info->[0]."/".$info->[4];
-	return $obj;
+	my $output = $self->util_ga_client()->get_genome_v1({
+		genomes => [{
+			"ref" => $workspace."/".$genomeid
+		}],
+		ignore_errors => 1,
+		no_data => 0,
+		no_metadata => 1
+	});
+	return $output->{genomes}->[0]->{data};
 }
 
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
 	my $info = $self->util_get_object_info($workspace,$objid);
 	my $obj;
-	if ($info->[2] =~ /GenomeAnnotation/ || $info->[2] =~ /GenomeAssembly/) {
-		my $output = Bio::KBase::ObjectAPI::utilities::runexecutable(Bio::KBase::ObjectAPI::config::all_params()->{"Data_API_script_directory"}.'get_contigset.py "'.Bio::KBase::ObjectAPI::config::workspace_url().'" "'.Bio::KBase::ObjectAPI::config::shock_url().'" "'.Bio::KBase::ObjectAPI::config::all_params()->{"handle-service"}.'" "'.Bio::KBase::ObjectAPI::config::token().'" "'.$info->[6]."/".$info->[0]."/".$info->[4].'" "'.$info->[1].'"');
-		my $last = pop(@{$output});
-		if ($last !~ m/SUCCESS/) {
-			Bio::KBase::ObjectAPI::utilities->error("Contigs failed to load!");
+	if ($info->[2] =~ /GenomeAssembly/) {
+		my $output = $self->util_assembly_client()->get_assembly_as_fasta({
+			"ref" => $workspace."/".$objid
+		});
+		my $fasta = "";
+		open(my $fh, "<", $output->{path}) || return;
+		while (my $line = <$fh>) {
+			$fasta .= $line;
 		}
-		$obj = Bio::KBase::ObjectAPI::utilities::FROMJSON(pop(@{$output}));
-		my $sortedcontigs = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
+		close($fh);
+		$obj = {
+			id => $objid,
+			name => $objid,
+			source_id => $objid,
+			source => "KBase",
+			type => "SingleGenome",
+			contigs => []
+		};
+		$fasta =~ s/\>(.+)\n/>$1\|\|\|/g;
+		$fasta =~ s/\n//g;
+		my $array = [split(/\>/,$fasta)];
+		for (my $i=0; $i < @{$array}; $i++) {
+			if (length($array->[$i]) > 0) {
+				my $subarray = [split(/\|\|\|/,$array->[$i])];
+				if (@{$subarray} == 2) {
+				    my $description = "unknown";
+				    if( $subarray->[0] =~ /.*?\s(.+)/ ) {
+						$description = $1;
+				    }
+				    my $contigobject = {
+						id => $subarray->[0],
+						name => $subarray->[0],
+						"length" => length($subarray->[1]),
+						md5 => Digest::MD5::md5_hex($subarray->[1]),
+						sequence => $subarray->[1],
+						description => $description
+					};
+					$contigobject->{name} = $subarray->[0];
+					$contigobject->{description} = $description;
+					push(@{$obj->{contigs}},$contigobject);
+	 			}
+			}
+		}
+		$obj->{contigs} = [sort { $a->{sequence} <=> $b->{sequence} } @{$obj->{contigs}}];
 		my $str = "";
-		for (my $i=0; $i < @{$sortedcontigs}; $i++) {
+		for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
 			if (length($str) > 0) {
 				$str .= ";";
 			}
-			$str .= $sortedcontigs->[$i]->{sequence};
-
+			$str .= $obj->{contigs}->[$i]->{sequence};
 		}
 		$obj->{md5} = Digest::MD5::md5_hex($str);
 		$obj->{_kbasetype} = "Assembly";
 	} else {
-		$obj = $self->util_get_object($workspace,$objid);
 		$obj->{_kbasetype} = "ContigSet";
+		$obj = $self->util_get_object($workspace,$objid);
 	}
-	$obj->{_reference} = $info->[6]."/".$info->[0]."/".$info->[4];
 	return $obj;
 }
 
@@ -176,13 +230,14 @@ sub annotate {
 				$inputgenome->{features}->[$i]->{function} = "hypothetical protein";
 			}
 		}
-		if (defined($inputgenome->{contigset_ref}) && $inputgenome->{contigset_ref} =~ m/^([^\/]+)\/([^\/]+)/) {
+		my $contigref;
+		if (defined($inputgenome->{contigset_ref})) {
+			$contigref = $inputgenome->{contigset_ref};
+		} elsif (defined($inputgenome->{assembly_ref})) {
+			$contigref = $inputgenome->{assembly_ref};
+		}
+		if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
 			$contigobj = $self->util_get_contigs($1,$2);
-		} elsif (defined($inputgenome->{assembly_ref}) && $inputgenome->{assembly_ref} =~ m/^([^\/]+)\/([^\/]+)/) {
-			$contigobj = $self->util_get_contigs($1,$2);
-		} elsif (defined($inputgenome->{contigobj})) {
-			$contigobj = $inputgenome->{contigobj};
-			delete $inputgenome->{contigobj};
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -471,13 +526,14 @@ sub annotate {
 			}
 		}
 	}
-	my $object = {
-		type => "KBaseGenomes.Genome",
-		data => $genome,
-		provenance => [{
+	return $self->util_ga_client()->save_one_genome_v1({
+		workspace => $parameters->{workspace},
+        name => $parameters->{output_genome},
+        data => $genome,
+        provenance => [{
 			"time" => DateTime->now()->datetime()."+0000",
 			service_ver => $self->util_version(),
-			service => "genome_annotation",
+			service => "RAST_SDK",
 			method => Bio::KBase::ObjectAPI::config::method(),
 			method_params => [$parameters],
 			input_ws_objects => [],
@@ -485,21 +541,8 @@ sub annotate {
 			intermediate_incoming => [],
 			intermediate_outgoing => []
 		}],
-	};
-	if ($parameters->{output_genome} =~ m/^\d+$/) {
-		$object->{objid} = $parameters->{output_genome};
-	} else {
-		$object->{name} = $parameters->{output_genome};
-	}
-	my $input = {
-		objects => [$object],
-	};
-	if ($parameters->{workspace} =~ m/^\d+$/) {
-		 $input->{id} = $parameters->{workspace};
-	} else {
-		 $input->{workspace} = $parameters->{workspace};
-	}
-	return $self->util_ws_client()->save_objects($input);
+        hidden => 0
+	});
 }
 #END_HEADER
 
@@ -512,7 +555,7 @@ sub new
     #BEGIN_CONSTRUCTOR
 	Bio::KBase::ObjectAPI::config::load_config({
 		service => "RAST_SDK"
-	},['workspace-url'],{});
+	},['workspace-url','service-wizard-url'],{});
 	Bio::KBase::ObjectAPI::logging::set_handler($self);
     #END_CONSTRUCTOR
 
