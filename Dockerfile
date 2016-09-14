@@ -20,20 +20,25 @@ RUN \
 
 # Build kb_seed
 RUN cd /kb/dev_container/modules && \
-    rm -rf kb_seed strep_repeats kmer_annotation_figfam && \
+    rm -rf kb_seed strep_repeats kmer_annotation_figfam genome_annotation && \
     git clone https://github.com/kbase/kb_seed && \
     git clone https://github.com/kbase/strep_repeats && \
     git clone https://github.com/kbase/kmer_annotation_figfam && \
+    git clone https://github.com/kbase/genome_annotation && \
+    git clone https://github.com/kbase/idserver && \
     . /kb/dev_container/user-env.sh && \
     cd kb_seed && make && make TARGET=/kb/deployment deploy && cd .. && \
     cd strep_repeats && make && make TARGET=/kb/deployment deploy && cd ..&& \
+    cd kmer_annotation_figfam && make && make TARGET=/kb/deployment deploy && cd ..&& \
     cd genome_annotation && make && make TARGET=/kb/deployment deploy && cd .. && \
+    cd idserver && make && make TARGET=/kb/deployment deploy && cd .. && \
     sed -i 's/print .*keeping.*/#ignore/'  /kb/deployment/lib/GenomeTypeObject.pm
 
 
 #RUN sed -i 's/capture_stderr/tee_stderr/' /kb/deployment/lib/Bio/KBase/GenomeAnnotation/GenomeAnnotationImpl.pm
 
 RUN \
+    cpanm install Set::IntervalTree && \
     cd /kb/deployment/services/kmer_annotation_figfam/ && \
     sed 's|$KB_TOP/deployment.cfg|/kb/module/deploy.cfg|' -i ./start_service  && \
     sed 's/8/1/' -i ./start_service 
