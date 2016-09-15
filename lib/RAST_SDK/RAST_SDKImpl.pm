@@ -44,8 +44,8 @@ sub util_initialize_call {
 	$self->{_username} = $ctx->user_id();
 	$self->{_method} = $ctx->method();
 	$self->{_wsclient} = new Bio::KBase::workspace::Client(Bio::KBase::ObjectAPI::config::workspace_url(),token => $ctx->token());
-	$self->{_gaclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::ObjectAPI::config::all_params()->{'service-wizard-url'});
 	my $callbackURL = $ENV{ SDK_CALLBACK_URL };
+	$self->{_gaclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($callbackURL);
 	$self->{_assemblyclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($callbackURL);
 	$self->util_timestamp(DateTime->now()->datetime());
 	return $params;

@@ -6,6 +6,7 @@ use strict;
 use Data::Dumper;
 use URI;
 use Bio::KBase::Exceptions;
+use Time::HiRes;
 my $get_time = sub { time, 0 };
 eval {
     require Time::HiRes;
@@ -35,12 +36,34 @@ sub new
 {
     my($class, $url, @args) = @_;
     
+    if (!defined($url))
+    {
+	$url = 'https://kbase.us/services/njs_wrapper';
+    }
 
     my $self = {
 	client => AssemblyUtil::AssemblyUtilClient::RpcClient->new,
 	url => $url,
 	headers => [],
     };
+    my %arg_hash = @args;
+    $self->{async_job_check_time} = 0.1;
+    if (exists $arg_hash{"async_job_check_time_ms"}) {
+        $self->{async_job_check_time} = $arg_hash{"async_job_check_time_ms"} / 1000.0;
+    }
+    $self->{async_job_check_time_scale_percent} = 150;
+    if (exists $arg_hash{"async_job_check_time_scale_percent"}) {
+        $self->{async_job_check_time_scale_percent} = $arg_hash{"async_job_check_time_scale_percent"};
+    }
+    $self->{async_job_check_max_time} = 300;  # 5 minutes
+    if (exists $arg_hash{"async_job_check_max_time_ms"}) {
+        $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
+    }
+    my $service_version = 'release';
+    if (exists $arg_hash{"service_version"}) {
+        $service_version = $arg_hash{"async_version"};
+    }
+    $self->{service_version} = $service_version;
 
     chomp($self->{hostname} = `hostname`);
     $self->{hostname} ||= 'unknown-host';
@@ -106,6 +129,43 @@ sub new
     return $self;
 }
 
+sub _check_job {
+    my($self, @args) = @_;
+# Authentication: ${method.authentication}
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _check_job (received $n, expecting 1)");
+    }
+    {
+        my($job_id) = @args;
+        my @_bad_arguments;
+        (!ref($job_id)) or push(@_bad_arguments, "Invalid type for argument 0 \"job_id\" (it should be a string)");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _check_job:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_check_job');
+        }
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._check_job",
+        params => \@args});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_check_job',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+                          );
+        } else {
+            return $result->result->[0];
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _check_job",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_check_job');
+    }
+}
+
 
 
 
@@ -155,51 +215,68 @@ specified filename.  Otherwise, a random name will be generated.
 
 =cut
 
- sub get_assembly_as_fasta
+sub get_assembly_as_fasta
 {
     my($self, @args) = @_;
-
-# Authentication: required
-
-    if ((my $n = @args) != 1)
-    {
-	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-							       "Invalid argument count for function get_assembly_as_fasta (received $n, expecting 1)");
-    }
-    {
-	my($params) = @args;
-
-	my @_bad_arguments;
-        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
-        if (@_bad_arguments) {
-	    my $msg = "Invalid arguments passed to get_assembly_as_fasta:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-								   method_name => 'get_assembly_as_fasta');
-	}
-    }
-
-    my $url = $self->{url};
-    my $result = $self->{client}->call($url, $self->{headers}, {
-	    method => "AssemblyUtil.get_assembly_as_fasta",
-	    params => \@args,
-    });
-    if ($result) {
-	if ($result->is_error) {
-	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-					       code => $result->content->{error}->{code},
-					       method_name => 'get_assembly_as_fasta',
-					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-					      );
-	} else {
-	    return wantarray ? @{$result->result} : $result->result->[0];
-	}
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_assembly_as_fasta",
-					    status_line => $self->{client}->status_line,
-					    method_name => 'get_assembly_as_fasta',
-				       );
+    my $job_id = $self->_get_assembly_as_fasta_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
     }
 }
+
+sub _get_assembly_as_fasta_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _get_assembly_as_fasta_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _get_assembly_as_fasta_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_get_assembly_as_fasta_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._get_assembly_as_fasta_submit",
+        params => \@args}, context => $context);
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_get_assembly_as_fasta_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_assembly_as_fasta_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_get_assembly_as_fasta_submit');
+    }
+}
+
  
 
 
@@ -247,51 +324,68 @@ a zip file and saves to shock.
 
 =cut
 
- sub export_assembly_as_fasta
+sub export_assembly_as_fasta
 {
     my($self, @args) = @_;
-
-# Authentication: required
-
-    if ((my $n = @args) != 1)
-    {
-	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-							       "Invalid argument count for function export_assembly_as_fasta (received $n, expecting 1)");
-    }
-    {
-	my($params) = @args;
-
-	my @_bad_arguments;
-        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
-        if (@_bad_arguments) {
-	    my $msg = "Invalid arguments passed to export_assembly_as_fasta:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-								   method_name => 'export_assembly_as_fasta');
-	}
-    }
-
-    my $url = $self->{url};
-    my $result = $self->{client}->call($url, $self->{headers}, {
-	    method => "AssemblyUtil.export_assembly_as_fasta",
-	    params => \@args,
-    });
-    if ($result) {
-	if ($result->is_error) {
-	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-					       code => $result->content->{error}->{code},
-					       method_name => 'export_assembly_as_fasta',
-					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-					      );
-	} else {
-	    return wantarray ? @{$result->result} : $result->result->[0];
-	}
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method export_assembly_as_fasta",
-					    status_line => $self->{client}->status_line,
-					    method_name => 'export_assembly_as_fasta',
-				       );
+    my $job_id = $self->_export_assembly_as_fasta_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
     }
 }
+
+sub _export_assembly_as_fasta_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _export_assembly_as_fasta_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _export_assembly_as_fasta_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_export_assembly_as_fasta_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._export_assembly_as_fasta_submit",
+        params => \@args}, context => $context);
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_export_assembly_as_fasta_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _export_assembly_as_fasta_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_export_assembly_as_fasta_submit');
+    }
+}
+
  
 
 
@@ -351,53 +445,117 @@ this will break.  So this method is certainly NOT thread safe on the input file.
 
 =cut
 
- sub save_assembly_from_fasta
+sub save_assembly_from_fasta
 {
     my($self, @args) = @_;
-
-# Authentication: required
-
-    if ((my $n = @args) != 1)
-    {
-	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-							       "Invalid argument count for function save_assembly_from_fasta (received $n, expecting 1)");
-    }
-    {
-	my($params) = @args;
-
-	my @_bad_arguments;
-        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
-        if (@_bad_arguments) {
-	    my $msg = "Invalid arguments passed to save_assembly_from_fasta:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-								   method_name => 'save_assembly_from_fasta');
-	}
-    }
-
-    my $url = $self->{url};
-    my $result = $self->{client}->call($url, $self->{headers}, {
-	    method => "AssemblyUtil.save_assembly_from_fasta",
-	    params => \@args,
-    });
-    if ($result) {
-	if ($result->is_error) {
-	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-					       code => $result->content->{error}->{code},
-					       method_name => 'save_assembly_from_fasta',
-					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-					      );
-	} else {
-	    return wantarray ? @{$result->result} : $result->result->[0];
-	}
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method save_assembly_from_fasta",
-					    status_line => $self->{client}->status_line,
-					    method_name => 'save_assembly_from_fasta',
-				       );
+    my $job_id = $self->_save_assembly_from_fasta_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
     }
 }
+
+sub _save_assembly_from_fasta_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _save_assembly_from_fasta_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _save_assembly_from_fasta_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_save_assembly_from_fasta_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._save_assembly_from_fasta_submit",
+        params => \@args}, context => $context);
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_save_assembly_from_fasta_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _save_assembly_from_fasta_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_save_assembly_from_fasta_submit');
+    }
+}
+
  
-  
+ 
+sub status
+{
+    my($self, @args) = @_;
+    my $job_id = undef;
+    if ((my $n = @args) != 0) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function status (received $n, expecting 0)");
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._status_submit",
+        params => \@args}, context => $context);
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_status_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            $job_id = $result->result->[0];
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _status_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_status_submit');
+    }
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+   
 
 sub version {
     my ($self) = @_;
