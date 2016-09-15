@@ -427,9 +427,9 @@ sub annotate {
 	my $funchash = {};
 	foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
 		my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
-	$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-	$rolename =~ s/\s//g;
-	$rolename =~ s/\#.*$//g;
+		$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+		$rolename =~ s/\s//g;
+		$rolename =~ s/\#.*$//g;
 		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
 	}	
 	if (defined($genome->{features})) {
