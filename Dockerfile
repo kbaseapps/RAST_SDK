@@ -20,7 +20,7 @@ RUN \
 
 # Build kb_seed
 RUN cd /kb/dev_container/modules && \
-    rm -rf kb_seed strep_repeats kmer_annotation_figfam genome_annotation && \
+    rm -rf idserver kb_seed strep_repeats kmer_annotation_figfam genome_annotation && \
     git clone https://github.com/kbase/kb_seed && \
     git clone https://github.com/kbase/strep_repeats && \
     git clone https://github.com/kbase/kmer_annotation_figfam && \
