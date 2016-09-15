@@ -46,7 +46,7 @@ sub util_initialize_call {
 	$self->{_wsclient} = new Bio::KBase::workspace::Client(Bio::KBase::ObjectAPI::config::workspace_url(),token => $ctx->token());
 	my $callbackURL = $ENV{ SDK_CALLBACK_URL };
 	$self->{_gaclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($callbackURL);
-	$self->{_assemblyclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($callbackURL);
+	$self->{_assemblyclient} = new AssemblyUtil::AssemblyUtilClient($callbackURL);
 	$self->util_timestamp(DateTime->now()->datetime());
 	return $params;
 }
@@ -526,7 +526,10 @@ sub annotate {
 			}
 		}
 	}
-	return $self->util_ga_client()->save_one_genome_v1({
+	if (!defined($genome->{assembly_ref})) {
+		delete $genome->{assembly_ref};
+	} 
+	my $gaout = $self->util_ga_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
@@ -543,6 +546,7 @@ sub annotate {
 		}],
         hidden => 0
 	});
+	return $gaout->{info};
 }
 #END_HEADER
 
@@ -555,7 +559,7 @@ sub new
     #BEGIN_CONSTRUCTOR
 	Bio::KBase::ObjectAPI::config::load_config({
 		service => "RAST_SDK"
-	},['workspace-url','service-wizard-url'],{});
+	},['workspace-url'],{});
 	Bio::KBase::ObjectAPI::logging::set_handler($self);
     #END_CONSTRUCTOR
 
