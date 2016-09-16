@@ -149,7 +149,7 @@ sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
 	my $info = $self->util_get_object_info($workspace,$objid);
 	my $obj;
-	if ($info->[2] =~ /GenomeAssembly/) {
+	if ($info->[2] =~ /Assembly/) {
 		my $output = $self->util_assembly_client()->get_assembly_as_fasta({
 			"ref" => $workspace."/".$objid
 		});
