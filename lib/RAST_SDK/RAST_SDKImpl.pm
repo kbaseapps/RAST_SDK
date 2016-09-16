@@ -154,11 +154,13 @@ sub util_get_contigs {
 			"ref" => $workspace."/".$objid
 		});
 		my $fasta = "";
-		open(my $fh, "<", $output->{path}) || return;
+		print "Path:".$output->{path}."\n";
+		open(my $fh, "<", $output->{path}) || die "Could not find file:".$output->{path};
 		while (my $line = <$fh>) {
 			$fasta .= $line;
 		}
 		close($fh);
+		print "FASTA:".$fasta;
 		$obj = {
 			id => $objid,
 			name => $objid,
@@ -186,6 +188,7 @@ sub util_get_contigs {
 						sequence => $subarray->[1],
 						description => $description
 					};
+					print "Contig name:".$contigobject->{name}."\n";
 					$contigobject->{name} = $subarray->[0];
 					$contigobject->{description} = $description;
 					push(@{$obj->{contigs}},$contigobject);
