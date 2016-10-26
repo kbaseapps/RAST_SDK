@@ -151,7 +151,9 @@ sub util_validate_args {
 			}
 		}
 	}
-	$self->util_error("Mandatory arguments ".join("; ",@{$args->{_error}})." missing.");
+	if (defined($args->{_error})) {
+		$self->util_error("Mandatory arguments ".join("; ",@{$args->{_error}})." missing.");
+	}
 	if (defined($optionalArguments)) {
 		foreach my $argument (keys(%{$optionalArguments})) {
 			if (!defined($args->{$argument})) {
