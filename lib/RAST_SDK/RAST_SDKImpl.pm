@@ -236,7 +236,7 @@ sub util_get_contigs {
 			$fasta .= $line;
 		}
 		close($fh);
-		$self->util_debug(Data::Dumper->Dump($fasta));
+		$self->util_debug(Data::Dumper->Dump([$fasta]));
 		$obj = {
 			id => $objid,
 			name => $objid,
@@ -472,7 +472,7 @@ sub annotate {
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
 	my $genome = $inputgenome;
-	$self->util_debug(Data::Dumper->Dump($inputgenome));
+	$self->util_debug(Data::Dumper->Dump([$inputgenome]));
 	#my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
