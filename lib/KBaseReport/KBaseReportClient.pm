@@ -441,6 +441,7 @@ sub _create_extended_report_submit {
         params => \@args}, context => $context);
     if ($result) {
         if ($result->is_error) {
+            print "ERRORRESULT:".Data::Dumper->Dump([$result])."\n";
             Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
                            code => $result->content->{error}->{code},
                            method_name => '_create_extended_report_submit',

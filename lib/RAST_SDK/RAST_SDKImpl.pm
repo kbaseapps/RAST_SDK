@@ -270,13 +270,13 @@ sub util_get_contigs {
 	 			}
 			}
 		}
-		$obj->{contigs} = [sort { $a->{sequence} <=> $b->{sequence} } @{$obj->{contigs}}];
+		my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
 		my $str = "";
-		for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
+		for (my $i=0; $i < @{$sortedarray}; $i++) {
 			if (length($str) > 0) {
 				$str .= ";";
 			}
-			$str .= $obj->{contigs}->[$i]->{sequence};
+			$str .= $sortedarray->[$i]->{sequence};
 		}
 		$obj->{md5} = Digest::MD5::md5_hex($str);
 		$obj->{_kbasetype} = "Assembly";
