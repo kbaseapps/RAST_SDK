@@ -648,7 +648,7 @@ sub new
 		service => "RAST_SDK"
 	},['workspace-url'],{});
 	Bio::KBase::ObjectAPI::logging::set_handler($self);
-	open ( my $debugfile, ">", "/kb/module/work/tmp/debug.txt");
+	open ( $debugfile, ">", "/kb/module/work/tmp/debug.txt");
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
