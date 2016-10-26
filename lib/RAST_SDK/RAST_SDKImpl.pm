@@ -34,6 +34,8 @@ use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
 use AssemblyUtil::AssemblyUtilClient;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
+my $fulltrace = 1;
+my $debugfile;
 
 #Initialization function for call
 sub util_initialize_call {
@@ -84,6 +86,20 @@ sub util_log {
 	print $message."\n";
 }
 
+sub util_error {
+	my($self,$message) = @_;
+	if ($fulltrace == 1) {
+		Carp::confess($message);
+    } else {
+    	die $message;
+    }
+}
+
+sub util_debug {
+	my($self,$message) = @_;
+	print $debugfile $message."\n";
+}
+
 sub util_ws_client {
 	my ($self,$input) = @_;
 	return $self->{_wsclient};
@@ -113,6 +129,64 @@ sub util_configure_ws_id {
 		$input->{name} = $id;
 	}
 	return $input;
+}
+
+sub util_validate_args {
+	my ($self,$args,$mandatoryArguments,$optionalArguments,$substitutions) = @_;
+	if (!defined($args)) {
+	    $args = {};
+	}
+	if (ref($args) ne "HASH") {
+		die "Arguments not hash");	
+	}
+	if (defined($substitutions) && ref($substitutions) eq "HASH") {
+		foreach my $original (keys(%{$substitutions})) {
+			$args->{$original} = $args->{$substitutions->{$original}};
+		}
+	}
+	if (defined($mandatoryArguments)) {
+		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
+			if (!defined($args->{$mandatoryArguments->[$i]})) {
+				push(@{$args->{_error}},$mandatoryArguments->[$i]);
+			}
+		}
+	}
+	$self->util_error("Mandatory arguments ".join("; ",@{$args->{_error}})." missing.");
+	if (defined($optionalArguments)) {
+		foreach my $argument (keys(%{$optionalArguments})) {
+			if (!defined($args->{$argument})) {
+				$args->{$argument} = $optionalArguments->{$argument};
+			}
+		}	
+	}
+	return $args;
+}
+
+sub util_report {
+	my($self,$parameters) = @_;
+	$parameters = $self->util_validate_args($parameters,["workspace_name","report_object_name"],{
+		warnings => [],
+		html_links => [],
+		file_links => [],
+		objects_created => [],
+		direct_html_link_index => undef,
+		direct_html => undef,
+		message => ""
+	});
+	require "KBaseReport/KBaseReportClient.pm";
+	my $kr = new KBaseReport::KBaseReportClient(Bio::KBase::ObjectAPI::config::all_params()->{call_back_url},token => Bio::KBase::ObjectAPI::config::token());
+	my $output = $kr->create_extended_report({
+		message => $parameters->{message},
+        objects_created => $parameters->{objects_created},
+        warnings => $parameters->{warnings},
+        html_links => $parameters->{html_links},
+        direct_html => $parameters->{direct_html},
+        direct_html_link_index => $parameters->{direct_html_link_index},
+        file_links => $parameters->{file_links},
+        report_object_name => $parameters->{report_object_name},
+        workspace_name => $parameters->{workspace_name}
+	});
+	return $output;
 }
 
 sub util_get_object_info {
@@ -159,6 +233,7 @@ sub util_get_contigs {
 			$fasta .= $line;
 		}
 		close($fh);
+		$self->util_debug(Data::Dumper->Dump($fasta));
 		$obj = {
 			id => $objid,
 			name => $objid,
@@ -245,7 +320,7 @@ sub annotate {
 	} elsif (defined($parameters->{input_contigset})) {
 		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});
 	} else {
-		Bio::KBase::ObjectAPI::utilities->error("Neither contigs nor genome specified!");
+		$self->util_error("Neither contigs nor genome specified!");
 	}
 	if (defined($contigobj)) {
 		if (defined($contigobj->{contigs})) {
@@ -267,25 +342,25 @@ sub annotate {
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_selenoproteins"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
@@ -297,31 +372,31 @@ sub annotate {
 					 }
 		});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_crispr"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
@@ -333,21 +408,21 @@ sub annotate {
 					 }
 		});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
 		$inputgenome->{features} = [];
 		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
 		$inputgenome->{features} = [];
 		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
 		if (!defined($contigobj)) {
-			Bio::KBase::ObjectAPI::utilities->error("Cannot call genes on genome with no contigs!");
+			$self->util_error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	my $v1flag = 0;
@@ -393,8 +468,9 @@ sub annotate {
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
-	
-	my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	my $genome = $inputgenome;
+	$self->util_debug(Data::Dumper->Dump($inputgenome));
+	#my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
@@ -546,7 +622,15 @@ sub annotate {
 		}],
         hidden => 0
 	});
-	return $gaout->{info};
+	return {
+		message => "Genome annotated",
+		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+		file_links => [{
+			path => "/kb/module/work/tmp/debug.txt",
+	        name => "Debug.txt",
+	        description => "Debug file"
+		}]
+	};
 }
 #END_HEADER
 
@@ -561,6 +645,7 @@ sub new
 		service => "RAST_SDK"
 	},['workspace-url'],{});
 	Bio::KBase::ObjectAPI::logging::set_handler($self);
+	open ( my $debugfile, ">", "/kb/module/work/tmp/debug.txt");
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
@@ -636,8 +721,45 @@ sub annotate_genome
     my($return);
     #BEGIN annotate_genome
     $self->util_initialize_call($params,$ctx);
+    $params = $self->util_validate_args($params,["workspace","output_genome"],{
+	    input_genome => undef,
+	    input_contigset => undef,
+	    genetic_code => 11,
+	    domain => "Bacteria",
+	    scientific_name => "Unknown species",
+	    call_features_rRNA_SEED => 1,
+	    call_features_tRNA_trnascan => 1,
+	    call_selenoproteins => 1,
+	    call_pyrrolysoproteins => 1,
+	    call_features_repeat_region_SEED => 1,
+	    call_features_insertion_sequences => 1,
+	    call_features_strep_suis_repeat => 1,
+	    call_features_strep_pneumo_repeat => 1,
+	    call_features_crispr => 1,
+	    call_features_CDS_glimmer3 => 1,
+	    call_features_CDS_prodigal => 1,
+	    call_features_CDS_genemark => 1,
+	    annotate_proteins_kmer_v2 => 1,
+	    kmer_v1_parameters => 1,
+	    annotate_proteins_similarity => 1,
+	    resolve_overlapping_features => 1,
+	    find_close_neighbors => 0,
+	    call_features_prophage_phispy => 1,
+	    retain_old_anno_for_hypotheticals => 1
+	});
     my $output = $self->annotate($params);
-    $return = {'workspace'=>$output->[7],'id'=>$output->[1]};
+    close($debugfile);
+    $self->util_report({
+    	workspace_name => $params->{workspace},
+    	report_object_name => $params->{output_genome}.".report",
+    	file_links => $output->{file_links},
+    	objects_created => [{
+    		"ref" => $output->{"ref"},
+        	description => "Annotated genome"
+    	}],
+    	message => $output->{message}
+    });
+    $return = {'workspace'=>$params->{workspace},'id'=>$params->{output_genome},report_name => $params->{output_genome}.".report",ws_report_id => $params->{output_genome}.".report"};
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
