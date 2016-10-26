@@ -145,14 +145,13 @@ sub util_validate_args {
 		}
 	}
 	if (defined($mandatoryArguments)) {
+		my $mandatorylist;
 		for (my $i=0; $i < @{$mandatoryArguments}; $i++) {
 			if (!defined($args->{$mandatoryArguments->[$i]})) {
-				push(@{$args->{_error}},$mandatoryArguments->[$i]);
+				push(@{$mandatorylist},$mandatoryArguments->[$i]);
 			}
 		}
-	}
-	if (defined($args->{_error})) {
-		$self->util_error("Mandatory arguments ".join("; ",@{$args->{_error}})." missing.");
+		$self->util_error("Mandatory arguments missing ".join("; ",@{$mandatorylist}));
 	}
 	if (defined($optionalArguments)) {
 		foreach my $argument (keys(%{$optionalArguments})) {
