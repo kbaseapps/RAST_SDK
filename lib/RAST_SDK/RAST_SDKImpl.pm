@@ -137,7 +137,7 @@ sub util_validate_args {
 	    $args = {};
 	}
 	if (ref($args) ne "HASH") {
-		die "Arguments not hash");	
+		$self->util_error("Arguments not hash");	
 	}
 	if (defined($substitutions) && ref($substitutions) eq "HASH") {
 		foreach my $original (keys(%{$substitutions})) {
