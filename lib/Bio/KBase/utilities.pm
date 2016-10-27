@@ -118,13 +118,14 @@ sub error {
 sub debug {
 	my ($message) = @_;
 	if (!defined($debugfile)) {
-		open ( $debugfile, ">", "/kb/module/work/tmp/debug.txt");
+		open ( $debugfile, ">", Bio::KBase::utilities::utilconf("debugfile"));
 	}
 	print $debugfile $message;
 }
 
 sub close_debug {
 	close($debugfile);
+	$debugfile = undef;
 }
 
 #create_report: creates a report object using the KBaseReport service
@@ -149,6 +150,13 @@ sub create_report {
 	} else {
 		require "KBaseReport/KBaseReportClient.pm";
 		$kr = new KBaseReport::KBaseReportClient(Bio::KBase::utilconf("call_back_url"),token => Bio::KBase::utilities::token());
+	}
+	if (defined(Bio::KBase::utilities::utilconf("debugging")) && Bio::KBase::utilities::utilconf("debugging") == 1) {
+		push(@{$parameters->{file_links}},{
+			path => Bio::KBase::utilities::utilconf("debugfile"),
+	        name => "Debug.txt",
+	        description => "Debug file"
+		});
 	}
 	return $kr->create_extended_report({
 		message => $parameters->{message},
@@ -249,7 +257,7 @@ sub timestamp {
 
 sub initialize_call {
 	my ($ctx) = @_;
-	Bio::KBase::timestamp(1);
+	Bio::KBase::utilities::timestamp(1);
 	Bio::KBase::utilities::set_context($ctx);
 	Bio::KBase::utilities::ws_client({refresh => 1});
 	print("Starting ".Bio::KBase::utilities::method()." method.\n");
