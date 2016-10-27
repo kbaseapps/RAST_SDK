@@ -481,11 +481,7 @@ sub annotate {
 	return {
 		message => "Genome annotated",
 		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
-		file_links => [{
-			path => "/kb/module/work/tmp/debug.txt",
-	        name => "Debug.txt",
-	        description => "Debug file"
-		}]
+		file_links => []
 	};
 }
 #END_HEADER
@@ -603,7 +599,6 @@ sub annotate_genome
 	    retain_old_anno_for_hypotheticals => 1
 	});
     my $output = $self->annotate($params);
-    close($debugfile);
     Bio::KBase::utilities::create_report({
     	workspace_name => $params->{workspace},
     	report_object_name => $params->{output_genome}.".report",
@@ -615,6 +610,7 @@ sub annotate_genome
     	message => $output->{message}
     });
     $return = {'workspace'=>$params->{workspace},'id'=>$params->{output_genome},report_name => $params->{output_genome}.".report",ws_report_id => $params->{output_genome}.".report"};
+    Bio::KBase::utilities::close_debug();
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
