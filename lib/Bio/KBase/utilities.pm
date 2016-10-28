@@ -84,7 +84,7 @@ sub args {
 #utilconf: returns values for configurations specifically relating to these utility functions
 sub utilconf {
 	my ($var) = @_;
-	return Bio::KBase::utilities::conf("UtilityConfig",$var);
+	return Bio::KBase::utilities::conf("UtilConfig",$var);
 }
 
 #setconf: sets the value of a specific config parameter
