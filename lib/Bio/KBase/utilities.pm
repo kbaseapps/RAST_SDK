@@ -232,7 +232,7 @@ sub user_id {
 }
 
 sub configure_ws_id {
-	my ($self,$ws,$id) = @_;
+	my ($ws,$id) = @_;
 	my $input = {};
  	if ($ws =~ m/^\d+$/) {
  		$input->{wsid} = $ws;
