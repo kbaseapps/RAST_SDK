@@ -439,8 +439,8 @@ sub annotate {
 						}
 						my $found = 0;
 						for (my $k=0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-							if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::ObjectAPI::config::method()) {
-								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::timestamp();
+							if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
+								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
 								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
 								$found = 1;
 								last;
@@ -448,9 +448,9 @@ sub annotate {
 						}
 						if ($found == 0) {
 							push(@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},{
-								method => Bio::KBase::ObjectAPI::config::method(),
+								method => Bio::KBase::utilities::method(),
 								method_version => $self->util_version(),
-								timestamp => Bio::KBase::timestamp()
+								timestamp => Bio::KBase::utilities::timestamp()
 							});
 						}
 					}
@@ -469,7 +469,7 @@ sub annotate {
 			"time" => DateTime->now()->datetime()."+0000",
 			service_ver => $self->util_version(),
 			service => "RAST_SDK",
-			method => Bio::KBase::ObjectAPI::config::method(),
+			method => Bio::KBase::utilities::method(),
 			method_params => [$parameters],
 			input_ws_objects => [],
 			resolved_ws_objects => [],
