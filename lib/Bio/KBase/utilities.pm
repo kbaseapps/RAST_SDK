@@ -193,7 +193,7 @@ sub ws_client {
 		refresh => 0
 	});
 	if ($parameters->{refresh} == 1 || !defined($ws_client)) {
-		$ws_client = new Bio::KBase::workspace::Client(Bio::KBase::utilities::utilconf("workspace_url"),token => Bio::KBase::utilities::token());
+		$ws_client = new Bio::KBase::workspace::Client(Bio::KBase::utilities::utilconf("workspace-url"),token => Bio::KBase::utilities::token());
 	}
 	return $ws_client;
 }
