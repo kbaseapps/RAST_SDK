@@ -199,7 +199,7 @@ sub ws_client {
 }
 
 sub get_object_info {
-	my ($self,$ws,$id) = @_;
+	my ($ws,$id) = @_;
 	my $info_array = Bio::KBase::utilities::ws_client()->get_object_info([
 		Bio::KBase::utilities::configure_ws_id($ws,$id)
 	],0);
@@ -207,7 +207,7 @@ sub get_object_info {
 }
 
 sub get_object {
-	my ($self,$ws,$id) = @_;
+	my ($ws,$id) = @_;
 	my $output = Bio::KBase::utilities::ws_client()->get_objects([
 		Bio::KBase::utilities::configure_ws_id($ws,$id)
 	]);
