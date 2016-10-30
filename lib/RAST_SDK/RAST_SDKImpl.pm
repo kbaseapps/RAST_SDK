@@ -21,7 +21,6 @@ use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
 use Bio::KBase::utilities;
 use Config::IniFiles;
-use Data::Dumper;
 use warnings;
 use JSON::XS;
 use Digest::MD5;
@@ -599,7 +598,7 @@ sub annotate_genome
 	    retain_old_anno_for_hypotheticals => 1
 	});
     my $output = $self->annotate($params);
-    Bio::KBase::utilities::create_report({
+    my $reportout = Bio::KBase::utilities::create_report({
     	workspace_name => $params->{workspace},
     	report_object_name => $params->{output_genome}.".report",
     	file_links => $output->{file_links},
@@ -609,7 +608,13 @@ sub annotate_genome
     	}],
     	message => $output->{message}
     });
-    $return = {'workspace'=>$params->{workspace},'id'=>$params->{output_genome},report_name => $params->{output_genome}.".report",ws_report_id => $params->{output_genome}.".report"};
+    $return = {
+    	workspace => $params->{workspace},
+    	id => $params->{output_genome},
+    	report_ref => $reportout->{"ref"},
+    	report_name => $params->{output_genome}.".report",
+    	ws_report_id => $params->{output_genome}.".report"
+    };
     Bio::KBase::utilities::close_debug();
     #END annotate_genome
     my @_bad_returns;
