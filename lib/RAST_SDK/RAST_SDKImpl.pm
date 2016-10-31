@@ -97,7 +97,7 @@ sub util_get_contigs {
 			type => "SingleGenome",
 			contigs => []
 		};
-		$fasta =~ s/\>(.+)\n/>$1\|\|\|/g;
+		$fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
 		$fasta =~ s/\n//g;
 		my $array = [split(/\>/,$fasta)];
 		for (my $i=0; $i < @{$array}; $i++) {
@@ -105,18 +105,20 @@ sub util_get_contigs {
 				my $subarray = [split(/\|\|\|/,$array->[$i])];
 				if (@{$subarray} == 2) {
 				    my $description = "unknown";
-				    if( $subarray->[0] =~ /.*?\s(.+)/ ) {
-						$description = $1;
+				    my $id = $subarray->[0];
+				    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
+				    	$id = $1;
+				    	$description = $2;
 				    }
 				    my $contigobject = {
-						id => $subarray->[0],
-						name => $subarray->[0],
+						id => $id,
+						name => $id,
 						"length" => length($subarray->[1]),
 						md5 => Digest::MD5::md5_hex($subarray->[1]),
 						sequence => $subarray->[1],
 						description => $description
 					};
-					$contigobject->{name} = $subarray->[0];
+					$contigobject->{name} = $id;
 					$contigobject->{description} = $description;
 					push(@{$obj->{contigs}},$contigobject);
 	 			}
