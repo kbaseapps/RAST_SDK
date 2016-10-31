@@ -57,6 +57,8 @@ module RAST_SDK {
 	typedef structure {
 	    workspace_name workspace;
 	    string id;
+	    string report_name;
+        string report_ref;
 	} AnnotateGenomeResults;
 	
 	/*

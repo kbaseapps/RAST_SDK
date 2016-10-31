@@ -327,7 +327,7 @@ sub annotate {
 	}
 	my $genome = $inputgenome;
 	Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	#my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
