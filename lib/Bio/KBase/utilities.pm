@@ -233,8 +233,8 @@ sub get_objects {
 }
 
 sub get_object_info {
-	my ($args) = @_;
-	return Bio::KBase::utilities::ws_client()->get_object_info($args);
+	my ($argone,$argtwo) = @_;
+	return Bio::KBase::utilities::ws_client()->get_object_info($argone,$argtwo);
 }
 
 sub administer {
