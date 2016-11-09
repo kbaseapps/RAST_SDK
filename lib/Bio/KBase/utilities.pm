@@ -125,8 +125,10 @@ sub debug {
 }
 
 sub close_debug {
-	close($debugfile);
-	$debugfile = undef;
+	if (defined($debugfile)) {
+		close($debugfile);
+		$debugfile = undef;
+	}
 }
 
 #create_report: creates a report object using the KBaseReport service
