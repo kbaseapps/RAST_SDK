@@ -10,6 +10,7 @@ our $ws_client = undef;
 our $ctx = undef;
 our $timestamp = undef;
 our $debugfile = undef;
+our $objects_created = [];
 
 #read_config: an all purpose general method for reading in service configurations and setting mandatory/optional values
 sub read_config {
@@ -135,7 +136,6 @@ sub create_report {
 		warnings => [],
 		html_links => [],
 		file_links => [],
-		objects_created => [],
 		direct_html_link_index => undef,
 		direct_html => undef,
 		message => ""
@@ -160,7 +160,7 @@ sub create_report {
 	}
 	return $kr->create_extended_report({
 		message => $parameters->{message},
-        objects_created => $parameters->{objects_created},
+        objects_created => $objects_created,
         warnings => $parameters->{warnings},
         html_links => $parameters->{html_links},
         direct_html => $parameters->{direct_html},
@@ -173,13 +173,35 @@ sub create_report {
 
 sub create_context {	
 	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		method => Bio::KBase::utilities::method(),
-		token => Bio::KBase::utilities::token(),
-		user => Bio::KBase::utilities::user_id(),
-		provenance => Bio::KBase::utilities::provenance()
+	$parameters = Bio::KBase::utilities::args($parameters,["token","user"],{
+		method => "unknown",
+		provenance => [],
+		setcontext => 1
 	});
-	return LocalCallContext->new($parameters->{token}, $parameters->{user},$parameters->{provenance},$parameters->{method});	
+	my $context = LocalCallContext->new($parameters->{token}, $parameters->{user},$parameters->{provenance},$parameters->{method});
+	if ($parameters->{setcontext} == 1) {
+		Bio::KBase::utilities::set_context($context);
+	}
+	return $context;
+}
+
+sub create_context_from_client_config {
+	my($parameters) = @_;
+	$parameters = Bio::KBase::utilities::args($parameters,[],{
+		filename => $ENV{ KB_CLIENT_CONFIG },
+		setcontext => 1,
+		method => "unknown",
+		provenance => []
+	});
+	my $config = Bio::KBase::utilities::read_config({
+		filename => $parameters->{filename},
+		service => "authentication"
+	});
+	my $context = LocalCallContext->new($config->{authentication}->{token},$config->{authentication}->{user_id},$parameters->{provenance},$parameters->{method});
+	if ($parameters->{setcontext} == 1) {
+		Bio::KBase::utilities::set_context($context);
+	}
+	return $context;
 }
 
 sub set_context {
@@ -198,21 +220,47 @@ sub ws_client {
 	return $ws_client;
 }
 
-sub get_object_info {
-	my ($ws,$id) = @_;
-	my $info_array = Bio::KBase::utilities::ws_client()->get_object_info([
-		Bio::KBase::utilities::configure_ws_id($ws,$id)
-	],0);
-	return $info_array->[0];
-}
-
 sub get_object {
 	my ($ws,$id) = @_;
-	my $output = Bio::KBase::utilities::ws_client()->get_objects([
-		Bio::KBase::utilities::configure_ws_id($ws,$id)
-	]);
+	my $output = Bio::KBase::utilities::ws_client()->get_objects();
 	print "Getting object: ".$ws."/".$id."\n";
 	return $output->[0]->{data};
+}
+
+sub get_objects {
+	my ($args) = @_;
+	return Bio::KBase::utilities::ws_client()->get_objects($args);
+}
+
+sub get_object_info {
+	my ($args) = @_;
+	return Bio::KBase::utilities::ws_client()->get_object_info($args);
+}
+
+sub administer {
+	my ($args) = @_;
+	return Bio::KBase::utilities::ws_client()->administer($args);
+}
+
+sub reset_objects_created {
+	$objects_created = [];
+}
+
+sub save_objects {
+	my ($args) = @_;
+	my $output = Bio::KBase::utilities::ws_client()->save_objects($args);
+	for (my $i=0; $i < @{$output}; $i++) {
+		my $array = [split(/\./,$output->[$i]->[2])];
+		my $description = $array->[1]." ".$output->[$i]->[1];
+		if (defined($output->[$i]->[10]) && defined($output->[$i]->[10]->{description})) {
+			$description = $output->[$i]->[10]->{description};
+		}
+		push(@{$objects_created},{
+			"ref" => $output->[$i]->[6]."/".$output->[$i]->[0]."/".$output->[$i]->[4],
+			description => $description
+		});
+	}
+	return $output;
 }
 
 sub token {
@@ -257,6 +305,7 @@ sub timestamp {
 
 sub initialize_call {
 	my ($ctx) = @_;
+	Bio::KBase::utilities::reset_objects_created();
 	Bio::KBase::utilities::timestamp(1);
 	Bio::KBase::utilities::set_context($ctx);
 	Bio::KBase::utilities::ws_client({refresh => 1});

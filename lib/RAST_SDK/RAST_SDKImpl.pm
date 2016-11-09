@@ -76,9 +76,11 @@ sub util_get_genome {
 
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
-	my $info = Bio::KBase::utilities::get_object_info($workspace,$objid);
+	my $info = Bio::KBase::utilities::get_object_info([
+		Bio::KBase::utilities::configure_ws_id($workspace,$objid)
+	],0);
 	my $obj;
-	if ($info->[2] =~ /Assembly/) {
+	if ($info->[0]->[2] =~ /Assembly/) {
 		my $output = $self->util_assembly_client()->get_assembly_as_fasta({
 			"ref" => $workspace."/".$objid
 		});
@@ -88,8 +90,9 @@ sub util_get_contigs {
 			$fasta .= $line;
 		}
 		close($fh);
-		Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
+		#Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
 		$obj = {
+			_reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
 			id => $objid,
 			name => $objid,
 			source_id => $objid,
@@ -136,7 +139,11 @@ sub util_get_contigs {
 		$obj->{_kbasetype} = "Assembly";
 	} else {
 		$obj->{_kbasetype} = "ContigSet";
-		$obj = Bio::KBase::utilities::get_object($workspace,$objid);
+		$obj = Bio::KBase::utilities::get_objects([
+			Bio::KBase::utilities::configure_ws_id($workspace,$objid)
+		]);
+		$obj = $obj->[0]->{data};
+		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
 	}
 	return $obj;
 }
@@ -326,7 +333,7 @@ sub annotate {
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
 	my $genome = $inputgenome;
-	Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
+	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
 	my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
@@ -352,7 +359,7 @@ sub annotate {
 		$genome->{md5} = $contigobj->{md5};
 	}
 	#Getting the seed ontology dictionary
-	my $output = Bio::KBase::utilities::ws_client()->get_objects([{
+	my $output = Bio::KBase::utilities::get_objects([{
 		workspace => "KBaseOntology",
 		name => "seed_subsystem_ontology"
 	}]);
@@ -461,7 +468,15 @@ sub annotate {
 	}
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
-	} 
+	}
+	if (defined($contigobj)) {
+		if ($contigobj->{_kbasetype} eq "ContigSet") {
+			$genome->{contigset_ref} = $contigobj->{_reference};
+		} else {
+			$genome->{assembly_ref} = $contigobj->{_reference};
+		}
+	}
+	
 	my $gaout = $self->util_ga_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
