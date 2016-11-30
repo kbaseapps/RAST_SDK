@@ -295,7 +295,7 @@ publications :
         display-text: |
             [9] Van Belkum, Alex, et al. "Novel BOX repeat PCR assay for high-resolution typing of Streptococcus pneumoniae strains." Journal of clinical microbiology 34.5 (1996): 1176-1179.
         link: https://www.ncbi.nlm.nih.gov/pubmed/8727898
-     -
+    -
         display-text: |
             [10] Croucher, Nicholas J., et al. "Identification, variation and transcription of pneumococcal repeat sequences." BMC genomics 12.1 (2011): 1.
         link: https://www.ncbi.nlm.nih.gov/pubmed/21333003
@@ -307,7 +307,7 @@ publications :
         display-text: |
             [12] Delcher, Arthur L., et al. "Identifying bacterial genes and endosymbiont DNA with Glimmer." Bioinformatics 23.6 (2007): 673-679.
         link: https://www.ncbi.nlm.nih.gov/pubmed/17237039
-      -
+    -
         display-text: |
             [13] Akhter, Sajia, Ramy K. Aziz, and Robert A. Edwards. "PhiSpy: a novel algorithm for finding prophages in bacterial genomes that combines similarity-and composition-based strategies." Nucleic acids research 40.16 (2012): e126-e126.
         link: https://www.ncbi.nlm.nih.gov/pubmed/22584627
