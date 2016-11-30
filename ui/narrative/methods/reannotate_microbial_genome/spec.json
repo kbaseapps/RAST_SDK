@@ -2,9 +2,9 @@
   "ver" : "1.0.0",
   "name" : "Annotate a microbial genome",
   "authors" : [ "chenry", "olson" ],
-  "contact" : "help@kbase.us",
+  "contact" : "http://kbase.us/contact-us/",
   "visble" : true,
-  "categories" : ["active"],
+  "categories" : ["active","annotation"],
   "widgets" : {
     "input" : null,
     "output" : "kbaseGenomeView"
