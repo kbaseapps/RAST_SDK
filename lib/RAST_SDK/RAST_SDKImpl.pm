@@ -466,7 +466,8 @@ sub annotate {
 			$genome->{assembly_ref} = $contigobj->{_reference};
 		}
 	}
-	
+	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($contigobj,1));
+	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($genome,1));
 	my $gaout = Bio::KBase::kbaseenv::gc_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
