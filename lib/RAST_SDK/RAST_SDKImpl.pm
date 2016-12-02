@@ -348,7 +348,7 @@ sub annotate {
 		$genome->{md5} = $contigobj->{md5};
 	}
 	#Getting the seed ontology dictionary
-	my $output = Bio::KBase::utilities::get_objects([{
+	my $output = Bio::KBase::kbaseenv::get_objects([{
 		workspace => "KBaseOntology",
 		name => "seed_subsystem_ontology"
 	}]);
