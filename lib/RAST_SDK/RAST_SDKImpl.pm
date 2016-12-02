@@ -27,9 +27,8 @@ use JSON::XS;
 use Digest::MD5;
 use Data::Dumper;
 use Getopt::Long;
-
-#use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
-#use Bio::KBase::GenomeAnnotation::Service;
+use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
+use Bio::KBase::GenomeAnnotation::Service;
 
 #Initialization function for call
 sub util_initialize_call {
