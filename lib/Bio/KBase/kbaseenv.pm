@@ -30,13 +30,17 @@ sub create_report {
 		require "KBaseReport/KBaseReportClient.pm";
 		$kr = new KBaseReport::KBaseReportClient(Bio::KBase::utilities::utilconf("call_back_url"),token => Bio::KBase::utilities::token());
 	}
+	print "TEST1\n";
 	if (defined(Bio::KBase::utilities::utilconf("debugging")) && Bio::KBase::utilities::utilconf("debugging") == 1) {
+		print "TEST2\n";
 		Bio::KBase::utilities::add_report_file({
 			file => Bio::KBase::utilities::utilconf("debugfile"),
 			name => "Debug.txt",
 			description => "Debug file"
 		});
 	};
+	print "TEST3\n";
+	print Data::Dumper->Dump([Bio::KBase::utilities::report_files()])."\n\n";
 	return $kr->create_extended_report({
 		message => Bio::KBase::utilities::report_message(),
         objects_created => $objects_created,

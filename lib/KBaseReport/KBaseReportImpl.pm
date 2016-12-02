@@ -118,30 +118,33 @@ sub format_images_base64{
 sub zip_archive {
     my ($path) = @_;
     my $zip = Archive::Zip->new();
-    my $outpath;
+    my $outpath = {};
     if (-d $path){
         print "processing html folder at $path\n";
         $zip->addTree( $path);
         my $tmpDir = "/kb/module/work/tmp/zippedHtml";
         mkpath([$tmpDir], 1);
         my @folder_name = split /\//, $path;
-        $outpath = $tmpDir."/".$folder_name[-1].".zip";
-        $zip->writeToFileNamed($outpath);
+        $outpath->{path} = $tmpDir."/".$folder_name[-1].".zip";
+        $zip->writeToFileNamed($outpath->{path});
+        $outpath->{folderName} = $folder_name[-1]."/";
     }
     elsif (-f $path){
         print "processing html file at $path\n";
-        my $tmpDir = "/kb/module/work/tmp/ZippedHtml";
+        my $tmpDir = "/kb/module/work/tmp/SingleZippedHtml";
         mkpath([$tmpDir], 1);
         copy $path, $tmpDir;
         $zip->addTree($tmpDir);
         my @folder_name = split /\//, $path;
-        $outpath = $tmpDir."/".$folder_name[-1].".zip";
-        $zip->writeToFileNamed($outpath);
+        $outpath->{path} = $tmpDir."/".$folder_name[-1].".zip";
+        $zip->writeToFileNamed($outpath->{path});
+        $outpath->{folderName} = $folder_name[-1];
     }
     else{
         print "Html input file/dir type unknown\n";
         die;
     }
+
     return $outpath;
 }
 
@@ -542,15 +545,15 @@ sub create_extended_report
 
             if (defined $html_link_arr->[$i]->{path}){
                 my $out_link = zip_archive ($html_link_arr->[$i]->{path});
-                if ( (-f $out_link) && ($handle_service) )  {
-                    $shock_out = curl_upload_shock ($out_link, $shock);
+                if ( (-f $out_link->{path}) && ($handle_service) )  {
+                    $shock_out = curl_upload_shock ($out_link->{path}, $shock);
                     $handle_return = create_handle($shock, $shock_out, $handle_service);
                 }
                 my $url = generate_shock_url($handle_return);
                 $LinkedFile = {
                     handle => $handle_return->{hid},
                     description => $html_link_arr->[$i]->{description},
-                    name =>  $html_link_arr->[$i]->{name},
+                    name =>  $out_link->{folderName},
                     URL => $url
                 };
                 print "$url\n";
