@@ -37,7 +37,7 @@ sub util_initialize_call {
 	Bio::KBase::kbaseenv::initialize_call($ctx);
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
 	Bio::KBase::kbaseenv::ac_client({refresh => 1});
-	Bio::KBase::kbaseenv::gc_client({refresh => 1});
+	Bio::KBase::kbaseenv::ga_client({refresh => 1});
 	return $params;
 }
 
@@ -53,7 +53,7 @@ sub util_log {
 
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $output = Bio::KBase::kbaseenv::gc_client()->get_genome_v1({
+	my $output = Bio::KBase::kbaseenv::ga_client()->get_genome_v1({
 		genomes => [{
 			"ref" => $workspace."/".$genomeid
 		}],
@@ -468,7 +468,7 @@ sub annotate {
 	}
 	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($contigobj,1));
 	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($genome,1));
-	my $gaout = Bio::KBase::kbaseenv::gc_client()->save_one_genome_v1({
+	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
