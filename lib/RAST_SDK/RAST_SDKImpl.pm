@@ -489,7 +489,8 @@ sub annotate {
 		append => 0,
 		html => 0
 	});
-	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
+	#return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
+	return {"ref" => ""};
 }
 #END_HEADER
 
