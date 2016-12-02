@@ -20,24 +20,24 @@ This wraps genome_annotation which is based off of the SEED annotations.
 use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
 use Bio::KBase::utilities;
+use Bio::KBase::kbaseenv;
 use Config::IniFiles;
 use warnings;
 use JSON::XS;
 use Digest::MD5;
 use Data::Dumper;
 use Getopt::Long;
-use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
-use AssemblyUtil::AssemblyUtilClient;
-use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
-use Bio::KBase::GenomeAnnotation::Service;
+
+#use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
+#use Bio::KBase::GenomeAnnotation::Service;
 
 #Initialization function for call
 sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
-	Bio::KBase::utilities::initialize_call($ctx);
+	Bio::KBase::kbaseenv::initialize_call($ctx);
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
-	$self->{_gaclient} = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	$self->{_assemblyclient} = new AssemblyUtil::AssemblyUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
+	Bio::KBase::kbaseenv::ac_client({refresh => 1});
+	Bio::KBase::kbaseenv::gc_client({refresh => 1});
 	return $params;
 }
 
@@ -51,19 +51,9 @@ sub util_log {
 	print $message."\n";
 }
 
-sub util_ga_client {
-	my ($self,$input) = @_;
-	return $self->{_gaclient};
-}
-
-sub util_assembly_client {
-	my ($self,$input) = @_;
-	return $self->{_assemblyclient};
-}
-
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $output = $self->util_ga_client()->get_genome_v1({
+	my $output = Bio::KBase::kbaseenv::gc_client()->get_genome_v1({
 		genomes => [{
 			"ref" => $workspace."/".$genomeid
 		}],
@@ -76,12 +66,12 @@ sub util_get_genome {
 
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
-	my $info = Bio::KBase::utilities::get_object_info([
-		Bio::KBase::utilities::configure_ws_id($workspace,$objid)
+	my $info = Bio::KBase::kbaseenv::get_object_info([
+		Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid)
 	],0);
 	my $obj;
 	if ($info->[0]->[2] =~ /Assembly/) {
-		my $output = $self->util_assembly_client()->get_assembly_as_fasta({
+		my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
 			"ref" => $workspace."/".$objid
 		});
 		my $fasta = "";
@@ -139,8 +129,8 @@ sub util_get_contigs {
 		$obj->{_kbasetype} = "Assembly";
 	} else {
 		$obj->{_kbasetype} = "ContigSet";
-		$obj = Bio::KBase::utilities::get_objects([
-			Bio::KBase::utilities::configure_ws_id($workspace,$objid)
+		$obj = Bio::KBase::kbaseenv::get_objects([
+			Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid)
 		]);
 		$obj = $obj->[0]->{data};
 		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
@@ -334,7 +324,7 @@ sub annotate {
 	}
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	my $genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
@@ -477,7 +467,7 @@ sub annotate {
 		}
 	}
 	
-	my $gaout = $self->util_ga_client()->save_one_genome_v1({
+	my $gaout = Bio::KBase::kbaseenv::gc_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
@@ -494,11 +484,12 @@ sub annotate {
 		}],
         hidden => 0
 	});
-	return {
+	Bio::KBase::utilities::print_report_message({
 		message => "Genome annotated",
-		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
-		file_links => []
-	};
+		append => 0,
+		html => 0
+	});
+	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
 }
 #END_HEADER
 
@@ -615,17 +606,11 @@ sub annotate_genome
 	    retain_old_anno_for_hypotheticals => 1
 	});
     my $output = $self->annotate($params);
-    my $reportout = Bio::KBase::utilities::create_report({
+    my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
     	report_object_name => $params->{output_genome}.".report",
-    	file_links => $output->{file_links},
-    	objects_created => [{
-    		"ref" => $output->{"ref"},
-        	description => "Annotated genome"
-    	}],
-    	message => $output->{message}
     });
-    $return = {
+	$return = {
     	workspace => $params->{workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
