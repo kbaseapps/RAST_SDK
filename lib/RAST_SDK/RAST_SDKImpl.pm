@@ -484,6 +484,10 @@ sub annotate {
 #		}],
 #        hidden => 0
 #	});
+#	Bio::KBase::utilities::add_object_created({
+#		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+#		"description" => "Annotated genome"
+#	});
 	Bio::KBase::utilities::print_report_message({
 		message => "Genome annotated",
 		append => 0,
