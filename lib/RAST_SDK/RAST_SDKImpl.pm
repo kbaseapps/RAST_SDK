@@ -127,11 +127,11 @@ sub util_get_contigs {
 		$obj->{md5} = Digest::MD5::md5_hex($str);
 		$obj->{_kbasetype} = "Assembly";
 	} else {
-		$obj->{_kbasetype} = "ContigSet";
 		$obj = Bio::KBase::kbaseenv::get_objects([
 			Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid)
 		]);
 		$obj = $obj->[0]->{data};
+		$obj->{_kbasetype} = "ContigSet";
 		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
 	}
 	return $obj;
@@ -467,27 +467,27 @@ sub annotate {
 	}
 	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($contigobj,1));
 	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($genome,1));
-#	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
-#		workspace => $parameters->{workspace},
-#        name => $parameters->{output_genome},
-#        data => $genome,
-#        provenance => [{
-#			"time" => DateTime->now()->datetime()."+0000",
-#			service_ver => $self->util_version(),
-#			service => "RAST_SDK",
-#			method => Bio::KBase::utilities::method(),
-#			method_params => [$parameters],
-#			input_ws_objects => [],
-#			resolved_ws_objects => [],
-#			intermediate_incoming => [],
-#			intermediate_outgoing => []
-#		}],
-#        hidden => 0
-#	});
-#	Bio::KBase::utilities::add_object_created({
-#		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
-#		"description" => "Annotated genome"
-#	});
+	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
+		workspace => $parameters->{workspace},
+        name => $parameters->{output_genome},
+        data => $genome,
+        provenance => [{
+			"time" => DateTime->now()->datetime()."+0000",
+			service_ver => $self->util_version(),
+			service => "RAST_SDK",
+			method => Bio::KBase::utilities::method(),
+			method_params => [$parameters],
+			input_ws_objects => [],
+			resolved_ws_objects => [],
+			intermediate_incoming => [],
+			intermediate_outgoing => []
+		}],
+        hidden => 0
+	});
+	Bio::KBase::utilities::add_object_created({
+		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+		"description" => "Annotated genome"
+	});
 	Bio::KBase::utilities::print_report_message({
 		message => "Genome annotated",
 		append => 0,
