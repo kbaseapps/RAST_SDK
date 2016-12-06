@@ -4,6 +4,7 @@ module-name:
 module-description:
     SDK version of Genome Annotation which is based on SEED and RAST.
     This uses Release70 of the Figfam database and the may1 release of the classification library.
+    
     These references can be found at ftp://ftp.theseed.org/KmerClassification.
 
 service-language:
