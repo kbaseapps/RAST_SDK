@@ -150,6 +150,7 @@ sub annotate {
   		features => []
   	};
   	my $contigobj;
+  	my $message = "";
 	if (defined($parameters->{input_genome})) {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
@@ -171,52 +172,95 @@ sub annotate {
 		$parameters->{domain} = $inputgenome->{domain};
 		$parameters->{scientific_name} = $inputgenome->{scientific_name};
 	} elsif (defined($parameters->{input_contigset})) {
-		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});
+		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});	
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
 	if (defined($contigobj)) {
+		my $count = 0;
+		my $size = 0;
 		if (defined($contigobj->{contigs})) {
 			$inputgenome->{contigs} = $contigobj->{contigs};
 			for (my $i=0; $i < @{$inputgenome->{contigs}}; $i++) {
+				$count++;
+				$size += length($inputgenome->{contigs}->[$i]->{sequence});
 				$inputgenome->{contigs}->[$i]->{dna} = $inputgenome->{contigs}->[$i]->{sequence};
 				delete $inputgenome->{contigs}->[$i]->{sequence};
 			}
 		}
+		
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
 			$inputgenome->{contigset_ref} = $contigobj->{_reference};
 		} else {
 			$inputgenome->{assembly_ref} = $contigobj->{_reference};
 		}
+		if (defined($parameters->{input_contigset})) {
+			$message = "RAST algorithm applied to annotating DNA sequence data comprised of ".$count." contigs containing".$size." nucleotides. No initial gene calls were provided.";
+		} else {
+			$message = "RAST algorithm applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. Input genome has ".@{$inputgenome->{features}}." existing features.";
+		}		
+	} else {
+		$message = "RAST algorithm applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence is provided for the genome. Only gene and/or protein sequences were provided. Input genome has ".@{$inputgenome->{features}}." existing features.";
 	}
 	
   	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
   	my $workflow = {stages => []};
+	my $extragenecalls = "";
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "rRNA";
 		push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "tRNA";
 		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "selenoproteins";
 		push(@{$workflow->{stages}},{name => "call_selenoproteins"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "pyrrolysoproteins";
 		push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "repeat regions";
 		push(@{$workflow->{stages}},{
 			name => "call_features_repeat_region_SEED",
 			"repeat_region_SEED_parameters" => {
@@ -229,31 +273,65 @@ sub annotate {
 		}
 	}
 	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "insertion sequences";
 		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "strep suis repeats";
 		push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "strep pneumonia repeats";
 		push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
+		if (length($extragenecalls) == 0) {
+			$extragenecalls = "Scanning for the following additional feature types: ";
+		} else {
+			$extragenecalls .= "; ";
+		}
+		$extragenecalls .= "crispr";
 		push(@{$workflow->{stages}},{name => "call_features_crispr"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
+	my $genecalls = "";
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
-		$inputgenome->{features} = [];
+		if (@{$inputgenome->{features}} > 0) {
+			$inputgenome->{features} = [];
+			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+		}
+		if (length($genecalls) == 0) {
+			$genecalls = "Calling standard features using: ";
+		} else {
+			$genecalls .= "; ";
+		}
+		$genecalls .= "glimmer3";
 		push(@{$workflow->{stages}},{
 			name => "call_features_CDS_glimmer3",
 			"glimmer3_parameters" => {
@@ -265,14 +343,32 @@ sub annotate {
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
-		$inputgenome->{features} = [];
+		if (@{$inputgenome->{features}} > 0) {
+			$inputgenome->{features} = [];
+			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+		}
+		if (length($genecalls) == 0) {
+			$genecalls = "Calling standard features using: ";
+		} else {
+			$genecalls .= "; ";
+		}
+		$genecalls .= "prodigal";
 		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
 		if (!defined($contigobj)) {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	#if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
-	#	$inputgenome->{features} = [];
+	#	if (@{$inputgenome->{features}} > 0) {
+	#		$inputgenome->{features} = [];
+	#		$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+	#	}
+	#	if (length($genecalls) == 0) {
+	#		$genecalls = "Calling standard features using: ";
+	#	} else {
+	#		$genecalls .= "; ";
+	#	}
+	#	$genecalls .= "genemark";
 	#	push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
 	#	if (!defined($contigobj)) {
 	#		Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
@@ -280,7 +376,12 @@ sub annotate {
 	#}
 	my $v1flag = 0;
 	my $simflag = 0;
+	my $annomessage = "";
 	if (defined($parameters->{annotate_proteins_kmer_v2}) && $parameters->{annotate_proteins_kmer_v2} == 1)	{
+		if (length($annomessage) == 0) {
+			$annomessage = "Genome functionally annotated with: ";
+		}
+		$annomessage .= "Kmers V2";
 		$v1flag = 1;
 		$simflag = 1;
 		push(@{$workflow->{stages}},{
@@ -293,6 +394,12 @@ sub annotate {
 	}
 	#if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
 	#	$simflag = 1;
+	#	if (length($annomessage) == 0) {
+	#		$annomessage = "Genome functionally annotated with: ";
+	#	} else {
+	#		$annomessage .= "; ";
+	#	}
+	#	$annomessage .= "Kmers V1";
 	#	push(@{$workflow->{stages}},{
 	#		name => "annotate_proteins_kmer_v1",
 	#		 "kmer_v1_parameters" => {
@@ -302,6 +409,12 @@ sub annotate {
 	#	});
 	#}
 	if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)	{
+		if (length($annomessage) == 0) {
+			$annomessage = "Genome functionally annotated with: ";
+		} else {
+			$annomessage .= "; ";
+		}
+		$annomessage .= "protein similarity";
 		push(@{$workflow->{stages}},{
 			name => "annotate_proteins_similarity",
 			"similarity_parameters" => {
@@ -321,8 +434,23 @@ sub annotate {
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
+	if (length($genecalls) > 0) {
+		$message .= " ".$genecalls.".";
+	}
+	if (length($genecalls) > 0) {
+		$message .= " ".$extragenecalls.".";
+	}
+	if (length($annomessage) > 0) {
+		$message .= " ".$annomessage.".";
+	}
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
+	my $genehash = {};
+	if (defined($genome->{features})) {
+		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			$genehash->{$genome->{features}->[$i]->{id}} = 1;
+		}
+	}
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
@@ -360,16 +488,28 @@ sub annotate {
 		$rolename =~ s/\s//g;
 		$rolename =~ s/\#.*$//g;
 		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
-	}	
+	}
+	my $newftrs = 0;
+	my $proteins = 0;
+	my $others = 0;
+	my $seedfunctions;
+	my $genomefunchash;
+	my $seedfunchash;
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
+			if (!defined($genehash->{$ftr->{id}})) {
+				$newftrs++;
+			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
 				$ftr->{type} = $1;
 			}
 			if (defined($ftr->{protein_translation})) {
 				$ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
 				$ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
+				$proteins++;
+			} else {
+				$others++;
 			}
 			if (defined($ftr->{dna_sequence})) {
 				$ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
@@ -419,12 +559,19 @@ sub annotate {
 				$function = shift(@{$array});
 				$function =~ s/\s+$//;
 				$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
+				my $marked = 0;
 				for (my $j=0;$j < @{$array}; $j++) {
 					my $rolename = lc($array->[$j]);
 					$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
 					$rolename =~ s/\s//g;
 					$rolename =~ s/\#.*$//g;
+					$genomefunchash->{$rolename} = 1;
 					if (defined($funchash->{$rolename})) {
+						$seedfunchash->{$rolename} = 1;
+						if ($marked == 0) {
+							$seedfunctions++;
+							$marked = 1;
+						}
 						if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
 							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
 								 evidence => [],
@@ -489,12 +636,11 @@ sub annotate {
 		"description" => "Annotated genome"
 	});
 	Bio::KBase::utilities::print_report_message({
-		message => "Genome annotated",
+		message => $message.". ".$seedfunctions." genes annotated with ".keys(%{$genomefunchash})." distinct functions, ".keys(%{$seedfunchash})." of which matched the SEED ontology.",
 		append => 0,
 		html => 0
 	});
-	#return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
-	return {"ref" => ""};
+	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
 }
 #END_HEADER
 
