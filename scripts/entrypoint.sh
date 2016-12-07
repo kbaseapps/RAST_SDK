@@ -18,12 +18,10 @@ elif [ "${1}" = "async" ] ; then
 elif [ "${1}" = "init" ] ; then
   echo "Initialize module"
   cd /data
-  mkdir kmer
-  cd kmer
-  /kb/deployment/services/kmer_annotation_figfam/bin/kmer-figfam-update-data Release70
-  cd ..
-  curl ftp://ftp.theseed.org/KmerClassification/Data.may1.tgz|tar xzf -
-  if [ -d Data.may1 ] ; then
+  curl http://bioseed.mcs.anl.gov/~chenry/kmer.tgz|tar xzf -
+  ln -s /data/kmer/Release70 /data/kmer/ACTIVE/Release70
+  ln -s /data/kmer/Release70 /data/kmer/DEFAULT
+  if [ -d kmer ] ; then
   	cd ..
   	touch __READY__
   fi
