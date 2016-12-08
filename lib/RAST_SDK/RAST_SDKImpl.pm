@@ -368,22 +368,22 @@ sub annotate {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
-	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
-		if (@{$inputgenome->{features}} > 0) {
-			$inputgenome->{features} = [];
-			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
-		}
-		if (length($genecalls) == 0) {
-			$genecalls = "Standard gene features were called using: ";
-		} else {
-			$genecalls .= "; ";
-		}
-		$genecalls .= "genemark";
-		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
+#	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
+#		if (@{$inputgenome->{features}} > 0) {
+#			$inputgenome->{features} = [];
+#			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+#		}
+#		if (length($genecalls) == 0) {
+#			$genecalls = "Standard gene features were called using: ";
+#		} else {
+#			$genecalls .= "; ";
+#		}
+#		$genecalls .= "genemark";
+#		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
+#		if (!defined($contigobj)) {
+#			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+#		}
+#	}
 	my $v1flag = 0;
 	my $simflag = 0;
 	my $annomessage = "";
