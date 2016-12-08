@@ -205,12 +205,12 @@ sub annotate {
 			$inputgenome->{assembly_ref} = $contigobj->{_reference};
 		}
 		if (defined($parameters->{input_contigset})) {
-			$message = "RAST algorithm applied to annotating DNA sequence data comprised of ".$count." contigs containing".$size." nucleotides. No initial gene calls were provided.";
+			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. No initial gene calls were provided.";
 		} else {
-			$message = "RAST algorithm applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. Input genome has ".@{$inputgenome->{features}}." existing features.";
+			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. Input genome has ".@{$inputgenome->{features}}." existing features.";
 		}		
 	} else {
-		$message = "RAST algorithm applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence is provided for the genome. Only gene and/or protein sequences were provided. Input genome has ".@{$inputgenome->{features}}." existing features.";
+		$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
 	}
 	
   	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
@@ -218,7 +218,7 @@ sub annotate {
 	my $extragenecalls = "";
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -230,7 +230,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -242,7 +242,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -254,7 +254,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -266,7 +266,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -284,7 +284,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -296,7 +296,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -308,7 +308,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -320,7 +320,7 @@ sub annotate {
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
 		if (length($extragenecalls) == 0) {
-			$extragenecalls = "Scanning for the following additional feature types: ";
+			$extragenecalls = "A scan was conducted for the following additional feature types: ";
 		} else {
 			$extragenecalls .= "; ";
 		}
@@ -334,10 +334,10 @@ sub annotate {
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
 			$inputgenome->{features} = [];
-			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+			$message .= " The existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
 		}
 		if (length($genecalls) == 0) {
-			$genecalls = "Calling standard features using: ";
+			$genecalls = "Standard features were called using: ";
 		} else {
 			$genecalls .= "; ";
 		}
@@ -355,10 +355,10 @@ sub annotate {
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
 			$inputgenome->{features} = [];
-			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+			$message .= " The existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
 		}
 		if (length($genecalls) == 0) {
-			$genecalls = "Calling standard features using: ";
+			$genecalls = "Standard gene features were called using: ";
 		} else {
 			$genecalls .= "; ";
 		}
@@ -374,7 +374,7 @@ sub annotate {
 			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
 		}
 		if (length($genecalls) == 0) {
-			$genecalls = "Calling standard features using: ";
+			$genecalls = "Standard gene features were called using: ";
 		} else {
 			$genecalls .= "; ";
 		}
@@ -389,7 +389,7 @@ sub annotate {
 	my $annomessage = "";
 	if (defined($parameters->{annotate_proteins_kmer_v2}) && $parameters->{annotate_proteins_kmer_v2} == 1)	{
 		if (length($annomessage) == 0) {
-			$annomessage = "Genome functionally annotated with: ";
+			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
 		}
 		$annomessage .= "Kmers V2";
 		$v1flag = 1;
@@ -405,7 +405,7 @@ sub annotate {
 	if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
 		$simflag = 1;
 		if (length($annomessage) == 0) {
-			$annomessage = "Genome functionally annotated with: ";
+			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
 		} else {
 			$annomessage .= "; ";
 		}
@@ -420,7 +420,7 @@ sub annotate {
 	}
 	if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)	{
 		if (length($annomessage) == 0) {
-			$annomessage = "Genome functionally annotated with: ";
+			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
 		} else {
 			$annomessage .= "; ";
 		}
@@ -650,6 +650,11 @@ sub annotate {
 		message => $message.". ".$seedfunctions." genes annotated with ".keys(%{$genomefunchash})." distinct functions, ".keys(%{$seedfunchash})." of which matched the SEED ontology.",
 		append => 0,
 		html => 0
+	});
+	Bio::KBase::utilities::print_report_message({
+		message => "<p>".$message.". ".$seedfunctions." genes annotated with ".keys(%{$genomefunchash})." distinct functions, ".keys(%{$seedfunchash})." of which matched the SEED ontology.</p>",
+		append => 0,
+		html => 1
 	});
 	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
 }
