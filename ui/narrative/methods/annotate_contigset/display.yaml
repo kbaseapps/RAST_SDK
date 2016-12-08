@@ -22,7 +22,7 @@ suggestions :
             [build_fba_model, build_species_tree]
     methods:
         related :
-            []
+            [build_metabolic_model]
         next :
             [annotate_domains_in_genome_generic]
 
@@ -33,11 +33,11 @@ suggestions :
 parameters :
     input_contigset :
         ui-name : |
-            Contig Set
+            Assembled Contigs
         short-hint : |
-            The set of contig sequences to annotate
+            An Assembly or ContigSet object to annotate
         long-hint  : |
-            The set of contig sequences to annotate
+            An Assembly or ContigSet object to annotate
 
 
     scientific_name :
@@ -208,11 +208,12 @@ parameters :
 
 
 description : |
-    <p>This method uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit to annotate an assembled bacterial or archaeal genome.  The required input - a Contig Set in FASTA format - can be generated using the <a data-method-id=“assemble_contigset_from_reads”>Assemble Contigs from Reads</a> method, uploaded from a GenBank file, or imported directly from NCBI via FTP.  The method converts the FASTA file of contigs (the &quot;Contig Set&quot;) into a genome typed object, which is called a &quot;Genome&quot; in the data menu.</p>
+    <p>This app uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit to annotate an assembled bacterial or archaeal genome.  The required input - an Assembly or ContigSet object - can be generated using the <a data-method-id=“assemble_contigset_from_reads”>Assemble Contigs from Reads</a> app, uploaded from a GenBank file, or imported directly from NCBI via FTP.
+    The app converts the FASTA file of contigs (the &quot;Contig Set&quot;) into a genome typed object, which is called a &quot;Genome&quot; in the data menu.</p>
     
     <p>There are three essential metadata fields that must be filled in: scientific name, domain, and genetic code. Most bacterial and archaeal genomes use genetic code 11, while Mycoplasmas use genetic code 4. For more information on genetic codes please refer to <a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi">this NCBI document</a>. All fields are required because they affect conditional parameters in various programs that are being run. Use existing scientific names whenever possible.</p>
     
-    <p><a href="http://kbase.us/annotate-microbial-contigs-method/" target="_blank">Tutorial for Annotate Microbial Contigs Method</a></p>
+    <p><a href="http://kbase.us/annotate-microbial-contigs-method/" target="_blank">Tutorial for Annotate Microbial Contigs</a></p>
     
     <p><strong>The Default Annotation Pipeline</strong><br>
     Clicking &quot;Run&quot; will run the default pipeline. For a typical 2-5 MBp genome, this should take about 5 minutes. The default pipeline consists of the following steps:</p>
@@ -280,4 +281,3 @@ description : |
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
     Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, Fangfang Xia. For questions, <a href="mailto:help@kbase.us">e-mail help@kbase.us</a></p>
 
-    
