@@ -134,6 +134,16 @@ sub util_get_contigs {
 		$obj->{_kbasetype} = "ContigSet";
 		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
 	}
+	my $totallength = 0;
+	my $gclength = 0;
+	for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
+		my $newseq = $obj->{contigs}->[$i]->{sequence};
+		$totallength += length($newseq);
+		$newseq =~ s/[atAT]//g;
+		$gclength += length($newseq);	
+	}
+	$obj->{_gc} = int(1000*$gclength/$totallength+0.5);
+	$obj->{_gc} = $obj->{_gc}/1000;
 	return $obj;
 }
 
@@ -358,22 +368,22 @@ sub annotate {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
-	#if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
-	#	if (@{$inputgenome->{features}} > 0) {
-	#		$inputgenome->{features} = [];
-	#		$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
-	#	}
-	#	if (length($genecalls) == 0) {
-	#		$genecalls = "Calling standard features using: ";
-	#	} else {
-	#		$genecalls .= "; ";
-	#	}
-	#	$genecalls .= "genemark";
-	#	push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
-	#	if (!defined($contigobj)) {
-	#		Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
-	#	}
-	#}
+	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
+		if (@{$inputgenome->{features}} > 0) {
+			$inputgenome->{features} = [];
+			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+		}
+		if (length($genecalls) == 0) {
+			$genecalls = "Calling standard features using: ";
+		} else {
+			$genecalls .= "; ";
+		}
+		$genecalls .= "genemark";
+		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
+		if (!defined($contigobj)) {
+			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+		}
+	}
 	my $v1flag = 0;
 	my $simflag = 0;
 	my $annomessage = "";
@@ -392,22 +402,22 @@ sub annotate {
 					 }
 		});
 	}
-	#if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
-	#	$simflag = 1;
-	#	if (length($annomessage) == 0) {
-	#		$annomessage = "Genome functionally annotated with: ";
-	#	} else {
-	#		$annomessage .= "; ";
-	#	}
-	#	$annomessage .= "Kmers V1";
-	#	push(@{$workflow->{stages}},{
-	#		name => "annotate_proteins_kmer_v1",
-	#		 "kmer_v1_parameters" => {
-	#						"dataset_name" => "Release70",
-	#						"annotate_hypothetical_only" => $v1flag
-	#				 }
-	#	});
-	#}
+	if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
+		$simflag = 1;
+		if (length($annomessage) == 0) {
+			$annomessage = "Genome functionally annotated with: ";
+		} else {
+			$annomessage .= "; ";
+		}
+		$annomessage .= "Kmers V1";
+		push(@{$workflow->{stages}},{
+			name => "annotate_proteins_kmer_v1",
+			 "kmer_v1_parameters" => {
+							"dataset_name" => "Release70",
+							"annotate_hypothetical_only" => $v1flag
+					 }
+		});
+	}
 	if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)	{
 		if (length($annomessage) == 0) {
 			$annomessage = "Genome functionally annotated with: ";
@@ -428,9 +438,9 @@ sub annotate {
 			"resolve_overlapping_features_parameters" => {}
 		});
 	}
-	#if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)	{
-	#	push(@{$workflow->{stages}},{name => "find_close_neighbors"});
-	#}
+	if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)	{
+		push(@{$workflow->{stages}},{name => "find_close_neighbors"});
+	}
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
@@ -606,6 +616,7 @@ sub annotate {
 		delete $genome->{assembly_ref};
 	}
 	if (defined($contigobj)) {
+		$genome->{gc_content} = $contigobj->{_gc};
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
 			$genome->{contigset_ref} = $contigobj->{_reference};
 		} else {
