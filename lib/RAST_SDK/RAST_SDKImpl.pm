@@ -455,10 +455,10 @@ sub annotate {
 	}
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	my $genehash = {};
+	my $genehash;
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			$genehash->{$genome->{features}->[$i]->{id}} = 1;
+			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
 		}
 	}
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
@@ -500,6 +500,7 @@ sub annotate {
 		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
 	}
 	my $newftrs = 0;
+	my $functionchanges = 0;
 	my $proteins = 0;
 	my $others = 0;
 	my $seedfunctions;
@@ -508,8 +509,11 @@ sub annotate {
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
-			if (!defined($genehash->{$ftr->{id}})) {
+			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
 				$newftrs++;
+				if (!defined($genehash->{$ftr->{id}}->{$ftr->{function}})) {
+					$functionchanges++;
+				}
 			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
 				$ftr->{type} = $1;
@@ -612,6 +616,11 @@ sub annotate {
 			}
 		}
 	}
+	if (defined($genehash)) {
+		$message .= ". In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called";
+		$message .= ". Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
+	}
+	$message .= ". Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
@@ -647,12 +656,12 @@ sub annotate {
 		"description" => "Annotated genome"
 	});
 	Bio::KBase::utilities::print_report_message({
-		message => $message.". ".$seedfunctions." genes annotated with ".keys(%{$genomefunchash})." distinct functions, ".keys(%{$seedfunchash})." of which matched the SEED ontology.",
+		message => $message,
 		append => 0,
 		html => 0
 	});
 	Bio::KBase::utilities::print_report_message({
-		message => "<p>".$message.". ".$seedfunctions." genes annotated with ".keys(%{$genomefunchash})." distinct functions, ".keys(%{$seedfunchash})." of which matched the SEED ontology.</p>",
+		message => "<p>".$message."</p>",
 		append => 0,
 		html => 1
 	});
