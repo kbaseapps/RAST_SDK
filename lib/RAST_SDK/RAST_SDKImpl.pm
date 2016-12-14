@@ -207,7 +207,7 @@ sub annotate {
 		if (defined($parameters->{input_contigset})) {
 			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. No initial gene calls were provided.";
 		} else {
-			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. Input genome has ".@{$inputgenome->{features}}." existing features.";
+			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. The input genome has ".@{$inputgenome->{features}}." existing features.";
 		}		
 	} else {
 		$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
@@ -617,10 +617,10 @@ sub annotate {
 		}
 	}
 	if (defined($genehash)) {
-		$message .= ". In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called";
-		$message .= ". Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
+		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
+		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
-	$message .= ". Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
+	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
