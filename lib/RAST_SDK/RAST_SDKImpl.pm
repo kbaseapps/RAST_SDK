@@ -445,7 +445,7 @@ sub annotate {
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
 	if (length($genecalls) > 0) {
-		push(@{$workflow->{stages}},{name => "renumber-features"});
+		push(@{$workflow->{stages}},{name => "renumber_features"});
 		$message .= " ".$genecalls.".";
 	}
 	if (length($genecalls) > 0) {
@@ -462,7 +462,9 @@ sub annotate {
 			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
 		}
 	}
-	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	eval {
+		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+	};
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
