@@ -445,6 +445,7 @@ sub annotate {
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
 	if (length($genecalls) > 0) {
+		push(@{$workflow->{stages}},{name => "renumber-features"});
 		$message .= " ".$genecalls.".";
 	}
 	if (length($genecalls) > 0) {
