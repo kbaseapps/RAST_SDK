@@ -51,8 +51,84 @@
         },
         {
           "constant_value": "1",
+          "target_property": "genetic_code"
+        },
+        {
+          "constant_value": "Plant",
+          "target_property": "domain"
+        },
+        {
+          "constant_value": "1",
           "target_property": "retain_old_anno_for_hypotheticals"
         },
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_rRNA_SEED"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_tRNA_trnascan"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_selenoproteins"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_pyrrolysoproteins"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_repeat_region_SEED"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_insertion_sequences"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_strep_suis_repeat"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_strep_pneumo_repeat"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_crispr"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_CDS_glimmer3"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_CDS_prodigal"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_CDS_genemark"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"annotate_proteins_kmer_v2"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"annotate_proteins_similarity"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"resolve_overlapping_features"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"find_close_neighbors"
+	},
+	{
+	  "constant_value":"0",
+	  "target_property":"call_features_prophage_phispy"
+	},
         {
           "narrative_system_variable": "workspace",
           "target_property": "workspace"
