@@ -462,9 +462,9 @@ sub annotate {
 			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
 		}
 	}
-	eval {
+	#eval {
 		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
-	};
+	#};
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
@@ -635,8 +635,8 @@ sub annotate {
 			$genome->{assembly_ref} = $contigobj->{_reference};
 		}
 	}
-	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($contigobj,1));
-	Bio::KBase::utilities::debug(Bio::KBase::utilities::to_json($genome,1));
+	#print Bio::KBase::utilities::to_json($contigobj,1));
+	print Bio::KBase::utilities::to_json({%{$genome}},1));
 	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
