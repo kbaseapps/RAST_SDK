@@ -49,6 +49,7 @@ sub make_impl_call {
         unlink($output_path);
     }
     # Run run_async.sh
+    #chdir('/kb/module');
     system("sh", "/kb/module/scripts/run_async.sh");
     # Load json file with output
     open my $fh2, "<", $output_path;
@@ -92,7 +93,7 @@ eval {
              "call_features_CDS_glimmer3"=>'0',
              "call_features_CDS_prodigal"=>'1',
              "annotate_proteins_kmer_v2"=>'1',
-             "kmer_v1_parameters"=>'0',
+             "kmer_v1_parameters"=>'1',
              "annotate_proteins_similarity"=>'1',
              "resolve_overlapping_features"=>'1',
              "find_close_neighbors"=>'0',
@@ -103,7 +104,7 @@ eval {
     my $ret = make_impl_call("RAST_SDK.annotate_genome", $params);
     print encode_json($ret);
     my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
-    my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0];
+    my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
     open my $fh, ">", "/kb/module/work/tmp/bogus_genome.json";
     print $fh encode_json($genome_obj);
     close $fh;

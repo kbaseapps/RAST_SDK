@@ -61,6 +61,7 @@ COPY ./ /kb/module
 
 RUN mkdir -p /kb/module/work
 RUN chmod -R 777 /kb/module
+RUN chmod -R 777 /kb/deployment/services/kmer_annotation_figfam
 WORKDIR /kb/module
 
 RUN make
