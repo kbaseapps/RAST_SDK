@@ -79,7 +79,7 @@ sub util_get_contigs {
 			$fasta .= $line;
 		}
 		close($fh);
-		#Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
+		Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
 		$obj = {
 			_reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
 			id => $objid,
@@ -640,7 +640,7 @@ sub annotate {
             $genome->{mrnas} = $mrnas;
             for (my $i=0; $i < @{$genome->{features}}; $i++) {
                 my $feature = $genome->{features}->[$i];
-                if (defined($feature->{protein_translation}) {
+                if (defined($feature->{protein_translation})) {
                     my $gene_id = $feature->{id};
                     my $cds_id = $gene_id . "_CDS";
                     my $mrna_id = $gene_id . "_mRNA";
