@@ -235,7 +235,7 @@ eval {
     print("After genome.4 prepared\n");
     test_reannotate_genome($genome_obj_name);
     print("After genome.4 tested\n");
-    done_testing(18);
+    done_testing(24);
 };
 
 my $err = undef;
