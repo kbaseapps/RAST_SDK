@@ -645,65 +645,65 @@ sub annotate {
 				}
 			}
 		}
-	        ## Rolling protein features back from 'CDS' to 'gene':
-	        for (my $i=0; $i < @{$genome->{features}}; $i++) {
-	            my $feature = $genome->{features}->[$i];
-	            if ($feature->{type} eq "CDS") {
-	                $feature->{type} = "gene"
-	            }
-	        }
-	        if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas}))) {
-	            ## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
-	            my $cdss = [];
-	            $genome->{cdss} = $cdss;
-	            my $mrnas = [];
-	            $genome->{mrnas} = $mrnas;
-	            for (my $i=0; $i < @{$genome->{features}}; $i++) {
-	                my $feature = $genome->{features}->[$i];
-	                if (defined($feature->{protein_translation})) {
-	                    my $gene_id = $feature->{id};
-	                    my $cds_id = $gene_id . "_CDS";
-	                    my $mrna_id = $gene_id . "_mRNA";
-	                    my $location = $feature->{location};
-	                    my $md5 = $feature->{md5};
-	                    my $function = $feature->{function};
-	                    if (not defined($function)) {
-	                        $function = "";
-	                    }
-	                    my $ontology_terms = $feature->{ontology_terms};
-	                    if (not defined($ontology_terms)) {
-	                        $ontology_terms = {};
-	                    }
-	                    my $protein_translation = $feature->{protein_translation};
-	                    my $protein_translation_length = length($protein_translation);
-	                    my $aliases = $feature->{aliases};
-	                    if (not defined($aliases)) {
-	                        $aliases = [];
-	                    }
-	                    push(@{$cdss}, {
-	                        id => $cds_id,
-	                        location => $location,
-	                        md5 => $md5,
-	                        parent_gene => $gene_id,
-	                        parent_mrna => $mrna_id,
-	                        function => $function,
-	                        ontology_terms => $ontology_terms,
-	                        protein_translation => $protein_translation,
-	                        protein_translation_length => $protein_translation_length,
-	                        aliases => $aliases
-	                    });
-	                    push(@{$mrnas}, {
-	                        id => $mrna_id,
-	                        location => $location,
-	                        md5 => $md5,
-	                        parent_gene => $gene_id,
-	                        cds => $cds_id
-	                    });
-	                    $feature->{cdss} = [$cds_id];
-	                    $feature->{mrnas} = [$mrna_id];
-	                }
-	            }
-	        }
+		## Rolling protein features back from 'CDS' to 'gene':
+		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			my $feature = $genome->{features}->[$i];
+			if ($feature->{type} eq "CDS") {
+				$feature->{type} = "gene"
+			}
+		}
+		if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas}))) {
+			## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
+			my $cdss = [];
+			$genome->{cdss} = $cdss;
+			my $mrnas = [];
+			$genome->{mrnas} = $mrnas;
+			for (my $i=0; $i < @{$genome->{features}}; $i++) {
+				my $feature = $genome->{features}->[$i];
+				if (defined($feature->{protein_translation})) {
+					my $gene_id = $feature->{id};
+					my $cds_id = $gene_id . "_CDS";
+					my $mrna_id = $gene_id . "_mRNA";
+					my $location = $feature->{location};
+					my $md5 = $feature->{md5};
+					my $function = $feature->{function};
+					if (not defined($function)) {
+						$function = "";
+					}
+					my $ontology_terms = $feature->{ontology_terms};
+					if (not defined($ontology_terms)) {
+						$ontology_terms = {};
+					}
+					my $protein_translation = $feature->{protein_translation};
+					my $protein_translation_length = length($protein_translation);
+					my $aliases = $feature->{aliases};
+					if (not defined($aliases)) {
+						$aliases = [];
+					}
+					push(@{$cdss}, {
+						id => $cds_id,
+						location => $location,
+						md5 => $md5,
+						parent_gene => $gene_id,
+						parent_mrna => $mrna_id,
+						function => $function,
+						ontology_terms => $ontology_terms,
+						protein_translation => $protein_translation,
+						protein_translation_length => $protein_translation_length,
+						aliases => $aliases
+					});
+					push(@{$mrnas}, {
+						id => $mrna_id,
+						location => $location,
+						md5 => $md5,
+						parent_gene => $gene_id,
+						cds => $cds_id
+					});
+					$feature->{cdss} = [$cds_id];
+					$feature->{mrnas} = [$mrna_id];
+				}
+			}
+		}
 	}
 	if (defined($genehash)) {
 		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
