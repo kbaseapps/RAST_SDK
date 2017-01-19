@@ -469,7 +469,7 @@ sub annotate {
 			my $non_genes = [];
 			for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
 				my $feature = $inputgenome->{features}->[$i];
-				if ($feature->{type} eq "gene" and not(defined($feature->{protein_sequence}))) {
+				if ($feature->{type} eq "gene" and not(defined($feature->{protein_translation}))) {
 					# gene without protein translation
 					push(@{$genes}, $feature);
 				} else {
@@ -484,7 +484,7 @@ sub annotate {
 		## Temporary switching feature type from 'gene' to 'CDS':
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
 			my $feature = $inputgenome->{features}->[$i];
-			if ($feature->{type} eq "gene" and defined($feature->{protein_sequence})) {
+			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
 				$feature->{type} = "CDS"
 			}
 		}
