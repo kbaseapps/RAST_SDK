@@ -79,7 +79,7 @@ sub util_get_contigs {
 			$fasta .= $line;
 		}
 		close($fh);
-		Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
+		#Bio::KBase::utilities::debug(Data::Dumper->Dump([$fasta]));
 		$obj = {
 			_reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
 			id => $objid,
