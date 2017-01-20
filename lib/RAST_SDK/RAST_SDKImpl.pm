@@ -165,6 +165,8 @@ sub annotate {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
 			my $ftr = $inputgenome->{features}->[$i];
+			# Reset functions in protein features to "hypothetical protein" to make them available
+			# for re-annotation in RAST service (otherwise these features will be skipped).
 			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
 					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
 				$oldfunchash->{$ftr->{id}} = $ftr->{function};
@@ -461,6 +463,9 @@ sub annotate {
 	my $genehash = {};
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			# Caching feature functions for future comparison against new functions
+			# defined by RAST service in order to calculate number of updated features.
+			# If function is not set we treat it as empty string to avoid perl warning.
 			my $func = $genome->{features}->[$i]->{function};
 			if (not defined($func)) {
 				$func = "";
@@ -546,6 +551,8 @@ sub annotate {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
 			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+				# Let's count number of features with functions updated by RAST service.
+				# If function is not set we treat it as empty string to avoid perl warning.
 				$newftrs++;
 				my $func = $ftr->{function};
 				if (not defined($func)) {
