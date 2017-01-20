@@ -164,9 +164,11 @@ sub annotate {
 	if (defined($parameters->{input_genome})) {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			if (lc($inputgenome->{features}->[$i]->{type}) eq "cds" || lc($inputgenome->{features}->[$i]->{type}) eq "peg") {
-				$oldfunchash->{$inputgenome->{features}->[$i]->{id}} = $inputgenome->{features}->[$i]->{function};
-				$inputgenome->{features}->[$i]->{function} = "hypothetical protein";
+			my $ftr = $inputgenome->{features}->[$i];
+			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
+					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				$oldfunchash->{$ftr->{id}} = $ftr->{function};
+				$ftr->{function} = "hypothetical protein";
 			}
 		}
 		my $contigref;
@@ -456,10 +458,14 @@ sub annotate {
 	}
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	my $genehash;
+	my $genehash = {};
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
+			my $func = $genome->{features}->[$i]->{function};
+			if (not defined($func)) {
+				$func = "";
+			}
+			$genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
 		}
 	}
 	if (defined($inputgenome->{features})) {
@@ -541,7 +547,11 @@ sub annotate {
 			my $ftr = $genome->{features}->[$i];
 			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
 				$newftrs++;
-				if (!defined($genehash->{$ftr->{id}}->{$ftr->{function}})) {
+				my $func = $ftr->{function};
+				if (not defined($func)) {
+					$func = "";
+				}
+				if (!defined($genehash->{$ftr->{id}}->{$func})) {
 					$functionchanges++;
 				}
 			}
