@@ -1,7 +1,7 @@
 #
 # Define basic display information
 #
-name     : Annotate Plant Transcripts with Metabolic Functions
+name     : Annotate Primary Metabolism for an Angiosperm Genome
 
 tooltip  : |
     Annotate a set of plant transcripts with metabolic functions from the PlantSEED project.
