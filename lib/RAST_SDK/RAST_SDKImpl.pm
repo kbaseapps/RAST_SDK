@@ -174,13 +174,15 @@ sub annotate {
 			}
 		}
 		my $contigref;
-		if (defined($inputgenome->{contigset_ref})) {
+		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
+		    if (defined($inputgenome->{contigset_ref})) {
 			$contigref = $inputgenome->{contigset_ref};
-		} elsif (defined($inputgenome->{assembly_ref})) {
+		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
-		}
-		if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
+		    }
+		    if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
 			$contigobj = $self->util_get_contigs($1,$2);
+		    }
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -214,7 +216,11 @@ sub annotate {
 			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. The input genome has ".@{$inputgenome->{features}}." existing features.";
 		}		
 	} else {
-		$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
+		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
+		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
+		}else{
+		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." features in an existing genome: ".$parameters->{scientific_name}.".";
+		}
 	}
 	
   	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
@@ -458,6 +464,7 @@ sub annotate {
 	if (length($annomessage) > 0) {
 		$message .= " ".$annomessage.".";
 	}
+
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
 	my $genehash = {};
@@ -501,8 +508,9 @@ sub annotate {
 		}
 	}
 	#eval {
-		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+#		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	#};
+
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
@@ -522,11 +530,12 @@ sub annotate {
 	if (!defined($genome->{gc_content})) {
 		$genome->{gc_content} = 0.5;
 	}
-	if ( defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
+	if (defined($contigobj) && defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
 		$genome->{num_contigs} = @{$contigobj->{contigs}};
 		$genome->{md5} = $contigobj->{md5};
 	}
 	#Getting the seed ontology dictionary
+	#Sam: I need to build the PlantSEED ontology and use it here
 	my $output = Bio::KBase::kbaseenv::get_objects([{
 		workspace => "KBaseOntology",
 		name => "seed_subsystem_ontology"
@@ -727,6 +736,7 @@ sub annotate {
 		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
+
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
@@ -738,6 +748,7 @@ sub annotate {
 			$genome->{assembly_ref} = $contigobj->{_reference};
 		}
 	}
+
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
 	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
