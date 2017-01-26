@@ -508,7 +508,7 @@ sub annotate {
 		}
 	}
 	#eval {
-#		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	#};
 
 	delete $genome->{contigs};
