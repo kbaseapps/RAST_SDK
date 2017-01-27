@@ -164,9 +164,13 @@ sub annotate {
 	if (defined($parameters->{input_genome})) {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			if (lc($inputgenome->{features}->[$i]->{type}) eq "cds" || lc($inputgenome->{features}->[$i]->{type}) eq "peg") {
-				$oldfunchash->{$inputgenome->{features}->[$i]->{id}} = $inputgenome->{features}->[$i]->{function};
-				$inputgenome->{features}->[$i]->{function} = "hypothetical protein";
+			my $ftr = $inputgenome->{features}->[$i];
+			# Reset functions in protein features to "hypothetical protein" to make them available
+			# for re-annotation in RAST service (otherwise these features will be skipped).
+			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
+					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				$oldfunchash->{$ftr->{id}} = $ftr->{function};
+				$ftr->{function} = "hypothetical protein";
 			}
 		}
 		my $contigref;
@@ -456,10 +460,17 @@ sub annotate {
 	}
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	my $genehash;
+	my $genehash = {};
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
+			# Caching feature functions for future comparison against new functions
+			# defined by RAST service in order to calculate number of updated features.
+			# If function is not set we treat it as empty string to avoid perl warning.
+			my $func = $genome->{features}->[$i]->{function};
+			if (not defined($func)) {
+				$func = "";
+			}
+			$genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
 		}
 	}
 	if (defined($inputgenome->{features})) {
@@ -540,8 +551,14 @@ sub annotate {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
 			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+				# Let's count number of features with functions updated by RAST service.
+				# If function is not set we treat it as empty string to avoid perl warning.
 				$newftrs++;
-				if (!defined($genehash->{$ftr->{id}}->{$ftr->{function}})) {
+				my $func = $ftr->{function};
+				if (not defined($func)) {
+					$func = "";
+				}
+				if (!defined($genehash->{$ftr->{id}}->{$func})) {
 					$functionchanges++;
 				}
 			}
