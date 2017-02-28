@@ -162,7 +162,7 @@ sub annotate {
   	my $contigobj;
   	my $message = "";
 	if (defined($parameters->{input_genome})) {
-		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
+		$inputgenome = $self->util_get_genome($parameters->{src_workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
 			my $ftr = $inputgenome->{features}->[$i];
 			# Reset functions in protein features to "hypothetical protein" to make them available
@@ -188,7 +188,7 @@ sub annotate {
 		$parameters->{domain} = $inputgenome->{domain};
 		$parameters->{scientific_name} = $inputgenome->{scientific_name};
 	} elsif (defined($parameters->{input_contigset})) {
-		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});	
+		$contigobj = $self->util_get_contigs($parameters->{src_workspace},$parameters->{input_contigset});	
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
@@ -752,7 +752,7 @@ sub annotate {
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
 	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
-		workspace => $parameters->{workspace},
+		workspace => $parameters->{dest_workspace},
         name => $parameters->{output_genome},
         data => $genome,
         provenance => [{
@@ -872,7 +872,7 @@ sub annotate_genome
     my($return);
     #BEGIN annotate_genome
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
+    $params = Bio::KBase::utilities::args($params,["input_workspace","output_workspace","output_genome"],{
 	    input_genome => undef,
 	    input_contigset => undef,
 	    genetic_code => 11,
@@ -900,11 +900,11 @@ sub annotate_genome
 	});
     my $output = $self->annotate($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
-    	workspace_name => $params->{workspace},
-    	report_object_name => $params->{output_genome}.".report",
+    	workspace_name => $params->{dest_workspace},
+    	report_object_name => $params->{dest_genome}.".report",
     });
 	$return = {
-    	workspace => $params->{workspace},
+    	workspace => $params->{dest_workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
     	report_name => $params->{output_genome}.".report",
