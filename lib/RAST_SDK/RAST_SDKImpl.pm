@@ -872,7 +872,7 @@ sub annotate_genome
     my($return);
     #BEGIN annotate_genome
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["input_workspace","output_workspace","output_genome"],{
+    $params = Bio::KBase::utilities::args($params,["src_workspace","dest_workspace","output_genome"],{
 	    input_genome => undef,
 	    input_contigset => undef,
 	    genetic_code => 11,
