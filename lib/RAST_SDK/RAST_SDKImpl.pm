@@ -901,7 +901,7 @@ sub annotate_genome
     my $output = $self->annotate($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{dest_workspace},
-    	report_object_name => $params->{dest_genome}.".report",
+    	report_object_name => $params->{output_genome}.".report",
     });
 	$return = {
     	workspace => $params->{dest_workspace},
