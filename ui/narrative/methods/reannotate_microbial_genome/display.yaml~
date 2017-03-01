@@ -39,22 +39,7 @@ parameters :
         long-hint  : |
             A genome (set of DNA contigs) including structural and functional annotations
 
-    src_workspace :
-        ui-name : |
-            Source workspace
-        short-hint : |
-            The workspace name for the input genome to be annotated
-        long-hint : |
-            The workspace name for the input genome to be annotated
 
-     dest_workspace : 
-        ui-name : |
-            Target workspace
-        short-hint : |
-            The workspace name for saving the annotated genome
-        long-hint : |
-            The workspace name for saving the annotated genome
-        
     call_features_rRNA_SEED :
         ui-name : |
             Call features rRNA SEED

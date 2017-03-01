@@ -39,21 +39,6 @@ parameters :
         long-hint  : |
             The set of plant transcripts to annotate
 
-    src_workspace :
-        ui-name : |
-            Source workspace
-        short-hint : |
-            The workspace name for the input genome to be annotated
-        long-hint : |
-            The workspace name for the input genome to be annotated
-
-     dest_workspace : 
-        ui-name : |
-            Target workspace
-        short-hint : |
-            The workspace name for saving the annotated genome
-        long-hint : |
-            The workspace name for saving the annotated genome
 
     output_genome :
         ui-name : |

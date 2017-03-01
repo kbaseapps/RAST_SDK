@@ -31,26 +31,6 @@
       "is_output_name":true
     }
   }, {
-    "id" : "src_workspace",
-    "optional" : true,
-    "advanced" : false,
-    "allow_multiple" : false,
-    "default_values" : [ "" ],
-    "field_type" : "text",
-    "text_options" : {
-      "valid_as" : "text"
-    }
-  }, {
-    "id" : "dest_workspace",
-    "optional" : true,
-    "advanced" : false,
-    "allow_multiple" : false,
-    "default_values" : [ "" ],
-    "field_type" : "text",
-    "text_options" : {
-      "valid_as" : "text"
-    }
-  }, {
     "id": "call_features_rRNA_SEED",
     "optional":false,
     "advanced":true,

@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.0.5';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'bfae1566f6742cbfd920f7c6e4cc92155b3d5ca6';
+our $GIT_COMMIT_HASH = 'a1c2c2402418f54dd55afb2419fb41ab51067559';
 
 =head1 NAME
 
@@ -832,7 +832,7 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	genetic_code has a value which is an int
 	domain has a value which is a string
 	scientific_name has a value which is a string
-	output_genome has a value which is a string
+	output_genome has a value which is a RAST_SDK.genome_id
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -877,7 +877,7 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	genetic_code has a value which is an int
 	domain has a value which is a string
 	scientific_name has a value which is a string
-	output_genome has a value which is a string
+	output_genome has a value which is a RAST_SDK.genome_id
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1184,7 +1184,7 @@ Input for the annotate_genome function.
 
         Required parameters:
         workspace - the workspace of the destination (and source if src_workspace is not provided) of the genome/contigset object.
-        output_genome - the genome_id for the RAST-ed genome;
+        input_genome - the genome_id for the genome to be RAST-ed;
 
         Optional parameters:
         src_workspace - the workspace of the source the genome/contigset object, default to workspace.
@@ -1193,7 +1193,7 @@ Input for the annotate_genome function.
         genetic_code - an int representing the genetic code of the genome;
         domain - the domain of the genome;
         scientific_name - the scientific_name of the genome;
-        input_genome - the id for the RAST-ed genome, default to the output_genome;
+        output_genome - the id for the RAST-ed genome, default to the input_genome;
         The following are a group of bool settings for the RAST processing, default values are set in the implementation
         call_features_rRNA_SEED,
         call_features_tRNA_trnascan,
@@ -1228,7 +1228,7 @@ input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
-output_genome has a value which is a string
+output_genome has a value which is a RAST_SDK.genome_id
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1262,7 +1262,7 @@ input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
-output_genome has a value which is a string
+output_genome has a value which is a RAST_SDK.genome_id
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 call_selenoproteins has a value which is a RAST_SDK.bool
