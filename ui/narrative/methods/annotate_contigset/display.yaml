@@ -15,16 +15,11 @@ icon: rast-red.png
 # Define the set of other narrative methods that should be suggested to the user.
 #
 suggestions :
-    apps:
-        related :
-            []
-        next :
-            [build_fba_model, build_species_tree]
     methods:
         related :
-            [build_metabolic_model]
+            [annotate_contigs, annotate_domains_in_a_genome, annotate_plant_transcripts, reannotate_microbial_genome]
         next :
-            [annotate_domains_in_genome_generic]
+            [build_metabolic_model]
 
 
 #
