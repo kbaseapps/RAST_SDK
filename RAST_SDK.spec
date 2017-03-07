@@ -28,7 +28,7 @@ module RAST_SDK {
 
         Required parameters:
         workspace - the workspace of the destination (and source if src_workspace is not provided) of the genome/contigset object.
-	input_genome - the genome_id for the genome to be RAST-ed;
+	output_genome - the genome_id for the RAST-ed genome to be saved;
 
         Optional parameters:
         src_workspace - the workspace of the source the genome/contigset object, default to workspace.
@@ -37,7 +37,7 @@ module RAST_SDK {
         genetic_code - an int representing the genetic code of the genome;
         domain - the domain of the genome;
 	scientific_name - the scientific_name of the genome;
-	output_genome - the id for the RAST-ed genome, default to the input_genome;
+	input_genome - the id for the genome to be RAST-ed, default to the output_genome_id;
         The following are a group of bool settings for the RAST processing, default values are set in the implementation
 	call_features_rRNA_SEED,
 	call_features_tRNA_trnascan,
@@ -61,6 +61,8 @@ module RAST_SDK {
         */
 	typedef structure {
 	    string workspace;
+	    string src_workspace;
+	    string dest_workspace;
 	    genome_id input_genome;
 	    contigset_id input_contigset;
 	    int genetic_code;
