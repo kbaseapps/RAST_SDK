@@ -11,7 +11,7 @@
   },
   "parameters" : [ {
     "id" : "input_genome",
-    "optional" : false,
+    "optional" : true,
     "advanced" : false,
     "allow_multiple" : false,
     "default_values" : [ "" ],
@@ -21,7 +21,7 @@
     }
   }, {
     "id" : "output_genome",
-    "optional" : true,
+    "optional" : false,
     "advanced" : false,
     "allow_multiple" : false,
     "default_values" : [ "" ],
@@ -339,6 +339,14 @@
             "prefix": "genome_"
           },
           "target_property": "output_genome"
+        },
+        {
+          "input_parameter": "src_workspace",
+          "target_property": "src_workspace"
+        },
+        {
+          "input_parameter": "dest_workspace",
+          "target_property": "dest_workspace"
         },
         {
           "narrative_system_variable": "workspace",

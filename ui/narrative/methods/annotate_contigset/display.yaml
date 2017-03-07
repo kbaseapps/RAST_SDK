@@ -47,7 +47,7 @@ parameters :
         long-hint : |
             The workspace name for the input genome to be annotated
 
-     dest_workspace : 
+    dest_workspace : 
         ui-name : |
             Target workspace
         short-hint : |

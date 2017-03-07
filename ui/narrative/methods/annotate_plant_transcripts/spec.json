@@ -62,6 +62,14 @@
           "target_property": "input_genome"
         },
         {
+          "input_parameter": "src_workspace",
+          "target_property": "src_workspace"
+        },
+        {
+          "input_parameter": "dest_workspace",
+          "target_property": "dest_workspace"
+        },
+        {
           "input_parameter": "output_genome",
           "target_property": "output_genome"
         },

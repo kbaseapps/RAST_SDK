@@ -303,6 +303,14 @@
           "target_property": "input_contigset"
         },
         {
+          "input_parameter": "src_workspace",
+          "target_property": "src_workspace"
+        },
+        {
+          "input_parameter": "dest_workspace",
+          "target_property": "dest_workspace"
+        },
+        {
           "input_parameter": "scientific_name",
           "target_property": "scientific_name"
         },

@@ -47,7 +47,7 @@ parameters :
         long-hint : |
             The workspace name for the input genome to be annotated
 
-     dest_workspace : 
+    dest_workspace : 
         ui-name : |
             Target workspace
         short-hint : |
@@ -55,6 +55,14 @@ parameters :
         long-hint : |
             The workspace name for saving the annotated genome
         
+    workspace :
+        ui-name : |
+            Genome workspace
+        short-hint : |
+            The workspace name for the output genome to be saved to
+        long-hint : |
+            The workspace name for the output genome to be saved to
+
     call_features_rRNA_SEED :
         ui-name : |
             Call features rRNA SEED
