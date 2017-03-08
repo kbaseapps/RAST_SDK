@@ -39,17 +39,17 @@ class RAST_SDK(object):
         :param params: instance of type "AnnotateGenomeParams" (Input for the
            annotate_genome function. Required parameters: workspace - the
            workspace of the destination (and source if src_workspace is not
-           provided) of the genome/contigset object. input_genome - the
-           genome_id for the genome to be RAST-ed; Optional parameters:
+           provided) of the genome/contigset object. output_genome - the
+           genome_id for the RAST-ed genome to be saved; Optional parameters:
            src_workspace - the workspace of the source the genome/contigset
            object, default to workspace. dest_workspace - the workspace for
            the RAST-ed the genome, default to workspace. input_contigset - a
            contigset, defaut to null. genetic_code - an int representing the
            genetic code of the genome; domain - the domain of the genome;
-           scientific_name - the scientific_name of the genome; output_genome
-           - the id for the RAST-ed genome, default to the input_genome; The
-           following are a group of bool settings for the RAST processing,
-           default values are set in the implementation
+           scientific_name - the scientific_name of the genome; input_genome
+           - the id for the genome to be RAST-ed, default to the
+           output_genome_id; The following are a group of bool settings for
+           the RAST processing, default values are set in the implementation
            call_features_rRNA_SEED, call_features_tRNA_trnascan,
            call_selenoproteins, call_pyrrolysoproteins,
            call_features_repeat_region_SEED,
@@ -62,20 +62,22 @@ class RAST_SDK(object):
            resolve_overlapping_features, find_close_neighbors,
            call_features_prophage_phispy, retain_old_anno_for_hypotheticals)
            -> structure: parameter "workspace" of String, parameter
-           "input_genome" of type "genome_id" (A string representing a genome
-           id.), parameter "input_contigset" of type "contigset_id" (A string
-           representing a ContigSet id.), parameter "genetic_code" of Long,
-           parameter "domain" of String, parameter "scientific_name" of
-           String, parameter "output_genome" of type "genome_id" (A string
-           representing a genome id.), parameter "call_features_rRNA_SEED" of
-           type "bool" (A boolean - 0 for false, 1 for true. @range (0, 1)),
-           parameter "call_features_tRNA_trnascan" of type "bool" (A boolean
+           "src_workspace" of String, parameter "dest_workspace" of String,
+           parameter "input_genome" of type "genome_id" (A string
+           representing a genome id.), parameter "input_contigset" of type
+           "contigset_id" (A string representing a ContigSet id.), parameter
+           "genetic_code" of Long, parameter "domain" of String, parameter
+           "scientific_name" of String, parameter "output_genome" of type
+           "genome_id" (A string representing a genome id.), parameter
+           "call_features_rRNA_SEED" of type "bool" (A boolean - 0 for false,
+           1 for true. @range (0, 1)), parameter
+           "call_features_tRNA_trnascan" of type "bool" (A boolean - 0 for
+           false, 1 for true. @range (0, 1)), parameter "call_selenoproteins"
+           of type "bool" (A boolean - 0 for false, 1 for true. @range (0,
+           1)), parameter "call_pyrrolysoproteins" of type "bool" (A boolean
            - 0 for false, 1 for true. @range (0, 1)), parameter
-           "call_selenoproteins" of type "bool" (A boolean - 0 for false, 1
-           for true. @range (0, 1)), parameter "call_pyrrolysoproteins" of
-           type "bool" (A boolean - 0 for false, 1 for true. @range (0, 1)),
-           parameter "call_features_repeat_region_SEED" of type "bool" (A
-           boolean - 0 for false, 1 for true. @range (0, 1)), parameter
+           "call_features_repeat_region_SEED" of type "bool" (A boolean - 0
+           for false, 1 for true. @range (0, 1)), parameter
            "call_features_insertion_sequences" of type "bool" (A boolean - 0
            for false, 1 for true. @range (0, 1)), parameter
            "call_features_strep_suis_repeat" of type "bool" (A boolean - 0

@@ -13,13 +13,48 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 /**
  * <p>Original spec-file type: AnnotateGenomeParams</p>
- * 
+ * <pre>
+ * Input for the annotate_genome function.
+ *         Required parameters:
+ *         workspace - the workspace of the destination (and source if src_workspace is not provided) of the genome/contigset object.
+ *         output_genome - the genome_id for the RAST-ed genome to be saved;
+ *         Optional parameters:
+ *         src_workspace - the workspace of the source the genome/contigset object, default to workspace.
+ *         dest_workspace - the workspace for the RAST-ed the genome, default to workspace.
+ *         input_contigset - a contigset, defaut to null.
+ *         genetic_code - an int representing the genetic code of the genome;
+ *         domain - the domain of the genome;
+ *         scientific_name - the scientific_name of the genome;
+ *         input_genome - the id for the genome to be RAST-ed, default to the output_genome_id;
+ *         The following are a group of bool settings for the RAST processing, default values are set in the implementation
+ *         call_features_rRNA_SEED,
+ *         call_features_tRNA_trnascan,
+ *         call_selenoproteins,
+ *         call_pyrrolysoproteins,
+ *         call_features_repeat_region_SEED,
+ *         call_features_insertion_sequences,
+ *         call_features_strep_suis_repeat,
+ *         call_features_strep_pneumo_repeat,
+ *         call_features_crispr,
+ *         call_features_CDS_glimmer3,
+ *         call_features_CDS_prodigal,
+ *         call_features_CDS_genemark,
+ *         annotate_proteins_kmer_v2,
+ *         kmer_v1_parameters,
+ *         annotate_proteins_similarity,
+ *         resolve_overlapping_features,
+ *         find_close_neighbors,
+ *         call_features_prophage_phispy,
+ *         retain_old_anno_for_hypotheticals
+ * </pre>
  * 
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Generated("com.googlecode.jsonschema2pojo")
 @JsonPropertyOrder({
     "workspace",
+    "src_workspace",
+    "dest_workspace",
     "input_genome",
     "input_contigset",
     "genetic_code",
@@ -50,6 +85,10 @@ public class AnnotateGenomeParams {
 
     @JsonProperty("workspace")
     private String workspace;
+    @JsonProperty("src_workspace")
+    private String srcWorkspace;
+    @JsonProperty("dest_workspace")
+    private String destWorkspace;
     @JsonProperty("input_genome")
     private String inputGenome;
     @JsonProperty("input_contigset")
@@ -114,6 +153,36 @@ public class AnnotateGenomeParams {
 
     public AnnotateGenomeParams withWorkspace(String workspace) {
         this.workspace = workspace;
+        return this;
+    }
+
+    @JsonProperty("src_workspace")
+    public String getSrcWorkspace() {
+        return srcWorkspace;
+    }
+
+    @JsonProperty("src_workspace")
+    public void setSrcWorkspace(String srcWorkspace) {
+        this.srcWorkspace = srcWorkspace;
+    }
+
+    public AnnotateGenomeParams withSrcWorkspace(String srcWorkspace) {
+        this.srcWorkspace = srcWorkspace;
+        return this;
+    }
+
+    @JsonProperty("dest_workspace")
+    public String getDestWorkspace() {
+        return destWorkspace;
+    }
+
+    @JsonProperty("dest_workspace")
+    public void setDestWorkspace(String destWorkspace) {
+        this.destWorkspace = destWorkspace;
+    }
+
+    public AnnotateGenomeParams withDestWorkspace(String destWorkspace) {
+        this.destWorkspace = destWorkspace;
         return this;
     }
 
@@ -504,7 +573,7 @@ public class AnnotateGenomeParams {
 
     @Override
     public String toString() {
-        return ((((((((((((((((((((((((((((((((((((((((((((((((((((((("AnnotateGenomeParams"+" [workspace=")+ workspace)+", inputGenome=")+ inputGenome)+", inputContigset=")+ inputContigset)+", geneticCode=")+ geneticCode)+", domain=")+ domain)+", scientificName=")+ scientificName)+", outputGenome=")+ outputGenome)+", callFeaturesRRNASEED=")+ callFeaturesRRNASEED)+", callFeaturesTRNATrnascan=")+ callFeaturesTRNATrnascan)+", callSelenoproteins=")+ callSelenoproteins)+", callPyrrolysoproteins=")+ callPyrrolysoproteins)+", callFeaturesRepeatRegionSEED=")+ callFeaturesRepeatRegionSEED)+", callFeaturesInsertionSequences=")+ callFeaturesInsertionSequences)+", callFeaturesStrepSuisRepeat=")+ callFeaturesStrepSuisRepeat)+", callFeaturesStrepPneumoRepeat=")+ callFeaturesStrepPneumoRepeat)+", callFeaturesCrispr=")+ callFeaturesCrispr)+", callFeaturesCDSGlimmer3=")+ callFeaturesCDSGlimmer3)+", callFeaturesCDSProdigal=")+ callFeaturesCDSProdigal)+", callFeaturesCDSGenemark=")+ callFeaturesCDSGenemark)+", annotateProteinsKmerV2=")+ annotateProteinsKmerV2)+", kmerV1Parameters=")+ kmerV1Parameters)+", annotateProteinsSimilarity=")+ annotateProteinsSimilarity)+", resolveOverlappingFeatures=")+ resolveOverlappingFeatures)+", findCloseNeighbors=")+ findCloseNeighbors)+", callFeaturesProphagePhispy=")+ callFeaturesProphagePhispy)+", retainOldAnnoForHypotheticals=")+ retainOldAnnoForHypotheticals)+", additionalProperties=")+ additionalProperties)+"]");
+        return ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((("AnnotateGenomeParams"+" [workspace=")+ workspace)+", srcWorkspace=")+ srcWorkspace)+", destWorkspace=")+ destWorkspace)+", inputGenome=")+ inputGenome)+", inputContigset=")+ inputContigset)+", geneticCode=")+ geneticCode)+", domain=")+ domain)+", scientificName=")+ scientificName)+", outputGenome=")+ outputGenome)+", callFeaturesRRNASEED=")+ callFeaturesRRNASEED)+", callFeaturesTRNATrnascan=")+ callFeaturesTRNATrnascan)+", callSelenoproteins=")+ callSelenoproteins)+", callPyrrolysoproteins=")+ callPyrrolysoproteins)+", callFeaturesRepeatRegionSEED=")+ callFeaturesRepeatRegionSEED)+", callFeaturesInsertionSequences=")+ callFeaturesInsertionSequences)+", callFeaturesStrepSuisRepeat=")+ callFeaturesStrepSuisRepeat)+", callFeaturesStrepPneumoRepeat=")+ callFeaturesStrepPneumoRepeat)+", callFeaturesCrispr=")+ callFeaturesCrispr)+", callFeaturesCDSGlimmer3=")+ callFeaturesCDSGlimmer3)+", callFeaturesCDSProdigal=")+ callFeaturesCDSProdigal)+", callFeaturesCDSGenemark=")+ callFeaturesCDSGenemark)+", annotateProteinsKmerV2=")+ annotateProteinsKmerV2)+", kmerV1Parameters=")+ kmerV1Parameters)+", annotateProteinsSimilarity=")+ annotateProteinsSimilarity)+", resolveOverlappingFeatures=")+ resolveOverlappingFeatures)+", findCloseNeighbors=")+ findCloseNeighbors)+", callFeaturesProphagePhispy=")+ callFeaturesProphagePhispy)+", retainOldAnnoForHypotheticals=")+ retainOldAnnoForHypotheticals)+", additionalProperties=")+ additionalProperties)+"]");
     }
 
 }

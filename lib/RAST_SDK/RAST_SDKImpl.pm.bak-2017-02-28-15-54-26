@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.0.5';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '48faac1cc964ab2edf19da990841b323b52507d9';
+our $GIT_COMMIT_HASH = 'bfae1566f6742cbfd920f7c6e4cc92155b3d5ca6';
 
 =head1 NAME
 
@@ -827,14 +827,12 @@ $params is a RAST_SDK.AnnotateGenomeParams
 $return is a RAST_SDK.AnnotateGenomeResults
 AnnotateGenomeParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	src_workspace has a value which is a string
-	dest_workspace has a value which is a string
 	input_genome has a value which is a RAST_SDK.genome_id
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
 	scientific_name has a value which is a string
-	output_genome has a value which is a RAST_SDK.genome_id
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -874,14 +872,12 @@ $params is a RAST_SDK.AnnotateGenomeParams
 $return is a RAST_SDK.AnnotateGenomeResults
 AnnotateGenomeParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	src_workspace has a value which is a string
-	dest_workspace has a value which is a string
 	input_genome has a value which is a RAST_SDK.genome_id
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
 	scientific_name has a value which is a string
-	output_genome has a value which is a RAST_SDK.genome_id
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -944,8 +940,8 @@ sub annotate_genome
     $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
 	    input_genome => undef,
 	    input_contigset => undef,
-            src_workspace => undef,
-            dest_workspace => undef,
+            src_workspace => workspace,
+            dest_workspace => workspace,
 	    genetic_code => 11,
 	    domain => "Bacteria",
 	    scientific_name => "Unknown species",
@@ -968,25 +964,13 @@ sub annotate_genome
 	    find_close_neighbors => 0,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
-    });
-
-    if (not defined($params->{src_workspace})) {
-        $params->{src_workspace} = $params->{workspace};
-    }
-    if (not defined($params->{dest_workspace})) {
-        $params->{dest_workspace} = $params->{workspace};
-    }
-    if (not defined($params->{input_genome})) {
-        $params->{input_genome} = $params->{output_genome};
-    }
-
+	});
     my $output = $self->annotate($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{dest_workspace},
     	report_object_name => $params->{output_genome}.".report",
     });
-
-    $return = {
+	$return = {
     	workspace => $params->{dest_workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
@@ -1188,7 +1172,6 @@ Input for the annotate_genome function.
 
         Required parameters:
         workspace - the workspace of the destination (and source if src_workspace is not provided) of the genome/contigset object.
-        output_genome - the genome_id for the RAST-ed genome to be saved;
 
         Optional parameters:
         src_workspace - the workspace of the source the genome/contigset object, default to workspace.
@@ -1197,7 +1180,7 @@ Input for the annotate_genome function.
         genetic_code - an int representing the genetic code of the genome;
         domain - the domain of the genome;
         scientific_name - the scientific_name of the genome;
-        input_genome - the id for the genome to be RAST-ed, default to the output_genome_id;
+        output_genome - the id for the RAST-ed genome, default to input_genome;
         The following are a group of bool settings for the RAST processing, default values are set in the implementation
         call_features_rRNA_SEED,
         call_features_tRNA_trnascan,
@@ -1227,14 +1210,12 @@ Input for the annotate_genome function.
 <pre>
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-src_workspace has a value which is a string
-dest_workspace has a value which is a string
 input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
-output_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1263,14 +1244,12 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-src_workspace has a value which is a string
-dest_workspace has a value which is a string
 input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
-output_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 call_selenoproteins has a value which is a RAST_SDK.bool

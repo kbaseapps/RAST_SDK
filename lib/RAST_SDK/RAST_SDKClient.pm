@@ -125,6 +125,8 @@ $params is a RAST_SDK.AnnotateGenomeParams
 $return is a RAST_SDK.AnnotateGenomeResults
 AnnotateGenomeParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
+	src_workspace has a value which is a string
+	dest_workspace has a value which is a string
 	input_genome has a value which is a RAST_SDK.genome_id
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
@@ -170,6 +172,8 @@ $params is a RAST_SDK.AnnotateGenomeParams
 $return is a RAST_SDK.AnnotateGenomeResults
 AnnotateGenomeParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
+	src_workspace has a value which is a string
+	dest_workspace has a value which is a string
 	input_genome has a value which is a RAST_SDK.genome_id
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
@@ -488,7 +492,7 @@ Input for the annotate_genome function.
 
         Required parameters:
         workspace - the workspace of the destination (and source if src_workspace is not provided) of the genome/contigset object.
-        input_genome - the genome_id for the genome to be RAST-ed;
+        output_genome - the genome_id for the RAST-ed genome to be saved;
 
         Optional parameters:
         src_workspace - the workspace of the source the genome/contigset object, default to workspace.
@@ -497,7 +501,7 @@ Input for the annotate_genome function.
         genetic_code - an int representing the genetic code of the genome;
         domain - the domain of the genome;
         scientific_name - the scientific_name of the genome;
-        output_genome - the id for the RAST-ed genome, default to the input_genome;
+        input_genome - the id for the genome to be RAST-ed, default to the output_genome_id;
         The following are a group of bool settings for the RAST processing, default values are set in the implementation
         call_features_rRNA_SEED,
         call_features_tRNA_trnascan,
@@ -527,6 +531,8 @@ Input for the annotate_genome function.
 <pre>
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
+src_workspace has a value which is a string
+dest_workspace has a value which is a string
 input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
@@ -561,6 +567,8 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
+src_workspace has a value which is a string
+dest_workspace has a value which is a string
 input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int

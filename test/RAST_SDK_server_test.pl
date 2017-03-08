@@ -5,7 +5,7 @@ use Config::Simple;
 use Time::HiRes qw(time);
 use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
-use JSON;
+#use JSON;
 use File::Copy;
 use AssemblyUtil::AssemblyUtilClient;
 use Storable qw(dclone);
