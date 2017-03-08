@@ -20,7 +20,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @Generated("com.googlecode.jsonschema2pojo")
 @JsonPropertyOrder({
     "workspace",
-    "id"
+    "id",
+    "report_name",
+    "report_ref"
 })
 public class AnnotateGenomeResults {
 
@@ -28,6 +30,10 @@ public class AnnotateGenomeResults {
     private String workspace;
     @JsonProperty("id")
     private String id;
+    @JsonProperty("report_name")
+    private String reportName;
+    @JsonProperty("report_ref")
+    private String reportRef;
     private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
     @JsonProperty("workspace")
@@ -60,6 +66,36 @@ public class AnnotateGenomeResults {
         return this;
     }
 
+    @JsonProperty("report_name")
+    public String getReportName() {
+        return reportName;
+    }
+
+    @JsonProperty("report_name")
+    public void setReportName(String reportName) {
+        this.reportName = reportName;
+    }
+
+    public AnnotateGenomeResults withReportName(String reportName) {
+        this.reportName = reportName;
+        return this;
+    }
+
+    @JsonProperty("report_ref")
+    public String getReportRef() {
+        return reportRef;
+    }
+
+    @JsonProperty("report_ref")
+    public void setReportRef(String reportRef) {
+        this.reportRef = reportRef;
+    }
+
+    public AnnotateGenomeResults withReportRef(String reportRef) {
+        this.reportRef = reportRef;
+        return this;
+    }
+
     @JsonAnyGetter
     public Map<String, Object> getAdditionalProperties() {
         return this.additionalProperties;
@@ -72,7 +108,7 @@ public class AnnotateGenomeResults {
 
     @Override
     public String toString() {
-        return ((((((("AnnotateGenomeResults"+" [workspace=")+ workspace)+", id=")+ id)+", additionalProperties=")+ additionalProperties)+"]");
+        return ((((((((((("AnnotateGenomeResults"+" [workspace=")+ workspace)+", id=")+ id)+", reportName=")+ reportName)+", reportRef=")+ reportRef)+", additionalProperties=")+ additionalProperties)+"]");
     }
 
 }

@@ -39,7 +39,22 @@ parameters :
         long-hint  : |
             An Assembly or ContigSet object to annotate
 
+    src_workspace :
+        ui-name : |
+            Source workspace
+        short-hint : |
+            The workspace name for the input genome to be annotated
+        long-hint : |
+            The workspace name for the input genome to be annotated
 
+    dest_workspace : 
+        ui-name : |
+            Target workspace
+        short-hint : |
+            The workspace name for saving the annotated genome
+        long-hint : |
+            The workspace name for saving the annotated genome
+        
     scientific_name :
         ui-name : |
             Scientific Name

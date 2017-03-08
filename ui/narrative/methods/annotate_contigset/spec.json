@@ -19,6 +19,26 @@
       "valid_ws_types" : [ "KBaseGenomes.ContigSet","KBaseGenomeAnnotations.Assembly" ]
     }
   }, {
+    "id" : "src_workspace",
+    "optional" : true,
+    "advanced" : false,
+    "allow_multiple" : false,
+    "default_values" : [ "" ],
+    "field_type" : "text",
+    "text_options" : {
+      "valid_as" : "text"
+    }
+  }, {
+    "id" : "dest_workspace",
+    "optional" : true,
+    "advanced" : false,
+    "allow_multiple" : false,
+    "default_values" : [ "" ],
+    "field_type" : "text",
+    "text_options" : {
+      "valid_as" : "text"
+    }
+  }, {
     "id" : "scientific_name",
     "optional" : false,
     "advanced" : false,
@@ -281,6 +301,14 @@
         {
           "input_parameter": "input_contigset",
           "target_property": "input_contigset"
+        },
+        {
+          "input_parameter": "src_workspace",
+          "target_property": "src_workspace"
+        },
+        {
+          "input_parameter": "dest_workspace",
+          "target_property": "dest_workspace"
         },
         {
           "input_parameter": "scientific_name",

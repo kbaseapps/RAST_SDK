@@ -5,10 +5,11 @@ use Config::Simple;
 use Time::HiRes qw(time);
 use Bio::KBase::AuthToken;
 use Bio::KBase::workspace::Client;
-use JSON;
+#use JSON;
 use File::Copy;
 use AssemblyUtil::AssemblyUtilClient;
 use Storable qw(dclone);
+use RAST_SDK::RAST_SDKImpl;
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -18,6 +19,8 @@ my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Bio::KBase::workspace::Client($ws_url,token => $token);
 my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+
+my $rast_Impl = new RAST_SDK::RAST_SDKImpl();
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -175,7 +178,7 @@ sub test_reannotate_genome {
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };
-    my $ret = make_impl_call("RAST_SDK.annotate_genome", $params);
+    my $ret = $rast_Impl->annotate_genome($params);
     my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
     my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
     check_genome_obj($genome_obj);
@@ -219,6 +222,34 @@ sub prepare_recent_old_genome {
 }
 
 eval {
+    my $genome_obj_name = "GCF_001483845.1";
+    my $params={"input_genome"=>$genome_obj_name,
+             "call_features_rRNA_SEED"=>'0',
+             "call_features_tRNA_trnascan"=>'0',
+             "call_selenoproteins"=>'0',
+             "call_pyrrolysoproteins"=>'0',
+             "call_features_repeat_region_SEED"=>'0',
+             "call_features_insertion_sequences"=>'0',
+             "call_features_strep_suis_repeat"=>'0',
+             "call_features_strep_pneumo_repeat"=>'0',
+             "call_features_crispr"=>'0',
+             "call_features_CDS_glimmer3"=>'0',
+             "call_features_CDS_prodigal"=>'0',
+             "annotate_proteins_kmer_v2"=>'0',
+             "kmer_v1_parameters"=>'0',
+             "annotate_proteins_similarity"=>'1',
+             "resolve_overlapping_features"=>'0',
+             "find_close_neighbors"=>'1',
+             "call_features_prophage_phispy"=>'0',
+             "output_genome"=>$genome_obj_name,
+             "src_workspace"=>"ReferenceDataManager",
+             "workspace"=>"RAST_ReferenceGenomes"
+           };
+    my $ret = make_impl_call("RAST_SDK.annotate_genome", $params);
+    my $genome_ref = "RAST_ReferenceGenomes". "/" . $genome_obj_name;
+    my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
+    check_genome_obj($genome_obj);
+=begin
     my $assembly_obj_name = "contigset.1";
     prepare_assembly($assembly_obj_name);
     test_annotate_assembly($assembly_obj_name);
@@ -235,6 +266,7 @@ eval {
     print("After genome.4 prepared\n");
     test_reannotate_genome($genome_obj_name);
     print("After genome.4 tested\n");
+=cut
     done_testing(24);
 };
 
