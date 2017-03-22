@@ -1161,16 +1161,15 @@ sub annotate_genomes
 		    domain => "Bacteria",
 		    scientific_name => "Unknown species"
 		});
-		if (!defined($currentparams->{output_genome})) {
-			if (defined($currentparams->{input_genome})) {
-				$currentparams->{output_genome} = $currentparams->{input_genome}.".RAST";
-			} elsif (defined($currentparams->{input_contigset})) {
-				$currentparams->{output_genome} = $currentparams->{input_contigset}.".genome.RAST";
-			}
-		}
 		my $input = $currentparams->{input_genome};
 		if (!defined($input)) {
 			$input = $currentparams->{input_contigset};
+		}
+		if ($input =~ m/$([^\/]+)\/([^\/]+)/) {
+			$input = $2;	
+		}
+		if (!defined($currentparams->{output_genome})) {
+			$currentparams->{output_genome} = $input.".RAST";
 		}
 		my $list = [qw(
 			workspace
