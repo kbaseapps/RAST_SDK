@@ -180,19 +180,25 @@ sub annotate {
 	if (defined($parameters->{input_genome})) {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			if (lc($inputgenome->{features}->[$i]->{type}) eq "cds" || lc($inputgenome->{features}->[$i]->{type}) eq "peg") {
-				$oldfunchash->{$inputgenome->{features}->[$i]->{id}} = $inputgenome->{features}->[$i]->{function};
-				$inputgenome->{features}->[$i]->{function} = "hypothetical protein";
+			my $ftr = $inputgenome->{features}->[$i];
+			# Reset functions in protein features to "hypothetical protein" to make them available
+			# for re-annotation in RAST service (otherwise these features will be skipped).
+			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
+					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				$oldfunchash->{$ftr->{id}} = $ftr->{function};
+				$ftr->{function} = "hypothetical protein";
 			}
 		}
 		my $contigref;
-		if (defined($inputgenome->{contigset_ref})) {
+		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
+		    if (defined($inputgenome->{contigset_ref})) {
 			$contigref = $inputgenome->{contigset_ref};
-		} elsif (defined($inputgenome->{assembly_ref})) {
+		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
-		}
-		if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
+		    }
+		    if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
 			$contigobj = $self->util_get_contigs($1,$2);
+		    }
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -226,7 +232,11 @@ sub annotate {
 			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. The input genome has ".@{$inputgenome->{features}}." existing features.";
 		}		
 	} else {
-		$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
+		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
+		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
+		}else{
+		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." features in an existing genome: ".$parameters->{scientific_name}.".";
+		}
 	}
 	
   	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
@@ -470,17 +480,53 @@ sub annotate {
 	if (length($annomessage) > 0) {
 		$message .= " ".$annomessage.".";
 	}
+
 	my $genome = $inputgenome;
 	#Bio::KBase::utilities::debug(Data::Dumper->Dump([$inputgenome]));
-	my $genehash;
+	my $genehash = {};
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			$genehash->{$genome->{features}->[$i]->{id}}->{$genome->{features}->[$i]->{function}} = 1;
+			# Caching feature functions for future comparison against new functions
+			# defined by RAST service in order to calculate number of updated features.
+			# If function is not set we treat it as empty string to avoid perl warning.
+			my $func = $genome->{features}->[$i]->{function};
+			if (not defined($func)) {
+				$func = "";
+			}
+			$genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
+		}
+	}
+	if (defined($inputgenome->{features})) {
+		## Checking if it's recent old genome containing both CDSs and genes in "features" array
+		if ((not defined($inputgenome->{cdss})) && (not defined($inputgenome->{mrnas}))) {
+			my $genes = [];
+			my $non_genes = [];
+			for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+				my $feature = $inputgenome->{features}->[$i];
+				if ($feature->{type} eq "gene" and not(defined($feature->{protein_translation}))) {
+					# gene without protein translation
+					push(@{$genes}, $feature);
+				} else {
+					push(@{$non_genes}, $feature);
+				}
+			}
+			if ((scalar @{$genes} > 0) && (scalar @{$non_genes} > 0)) {
+				# removing genes from features
+				$inputgenome->{features} = $non_genes;
+			}
+		}
+		## Temporary switching feature type from 'gene' to 'CDS':
+		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+			my $feature = $inputgenome->{features}->[$i];
+			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
+				$feature->{type} = "CDS"
+			}
 		}
 	}
 	#eval {
 		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	#};
+
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
 	delete $genome->{analysis_events};
@@ -500,11 +546,12 @@ sub annotate {
 	if (!defined($genome->{gc_content})) {
 		$genome->{gc_content} = 0.5;
 	}
-	if ( defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
+	if (defined($contigobj) && defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
 		$genome->{num_contigs} = @{$contigobj->{contigs}};
 		$genome->{md5} = $contigobj->{md5};
 	}
 	#Getting the seed ontology dictionary
+	#Sam: I need to build the PlantSEED ontology and use it here
 	my $output = Bio::KBase::kbaseenv::get_objects([{
 		workspace => "KBaseOntology",
 		name => "seed_subsystem_ontology"
@@ -529,8 +576,14 @@ sub annotate {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
 			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+				# Let's count number of features with functions updated by RAST service.
+				# If function is not set we treat it as empty string to avoid perl warning.
 				$newftrs++;
-				if (!defined($genehash->{$ftr->{id}}->{$ftr->{function}})) {
+				my $func = $ftr->{function};
+				if (not defined($func)) {
+					$func = "";
+				}
+				if (!defined($genehash->{$ftr->{id}}->{$func})) {
 					$functionchanges++;
 				}
 			}
@@ -634,12 +687,72 @@ sub annotate {
 				}
 			}
 		}
+		## Rolling protein features back from 'CDS' to 'gene':
+		for (my $i=0; $i < @{$genome->{features}}; $i++) {
+			my $feature = $genome->{features}->[$i];
+			if ($feature->{type} eq "CDS") {
+				$feature->{type} = "gene"
+			}
+		}
+		if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas}))) {
+			## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
+			my $cdss = [];
+			$genome->{cdss} = $cdss;
+			my $mrnas = [];
+			$genome->{mrnas} = $mrnas;
+			for (my $i=0; $i < @{$genome->{features}}; $i++) {
+				my $feature = $genome->{features}->[$i];
+				if (defined($feature->{protein_translation})) {
+					my $gene_id = $feature->{id};
+					my $cds_id = $gene_id . "_CDS";
+					my $mrna_id = $gene_id . "_mRNA";
+					my $location = $feature->{location};
+					my $md5 = $feature->{md5};
+					my $function = $feature->{function};
+					if (not defined($function)) {
+						$function = "";
+					}
+					my $ontology_terms = $feature->{ontology_terms};
+					if (not defined($ontology_terms)) {
+						$ontology_terms = {};
+					}
+					my $protein_translation = $feature->{protein_translation};
+					my $protein_translation_length = length($protein_translation);
+					my $aliases = $feature->{aliases};
+					if (not defined($aliases)) {
+						$aliases = [];
+					}
+					push(@{$cdss}, {
+						id => $cds_id,
+						location => $location,
+						md5 => $md5,
+						parent_gene => $gene_id,
+						parent_mrna => $mrna_id,
+						function => $function,
+						ontology_terms => $ontology_terms,
+						protein_translation => $protein_translation,
+						protein_translation_length => $protein_translation_length,
+						aliases => $aliases
+					});
+					push(@{$mrnas}, {
+						id => $mrna_id,
+						location => $location,
+						md5 => $md5,
+						parent_gene => $gene_id,
+						cds => $cds_id
+					});
+					$feature->{cdss} = [$cds_id];
+					$feature->{mrnas} = [$mrna_id];
+				}
+			}
+		}
 	}
 	if (defined($genehash)) {
 		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
 		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
+
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
@@ -651,6 +764,7 @@ sub annotate {
 			$genome->{assembly_ref} = $contigobj->{_reference};
 		}
 	}
+
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
 	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
