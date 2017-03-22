@@ -1153,7 +1153,7 @@ sub annotate_genomes
 	my $failed = {};
 	my $htmlmessage = "<p>";
 	for (my $i=0; $i < @{$params->{genomes}}; $i++) {
-		my $currentparams = Bio::KBase::utilities::args($params->{genomes}->[$i],[""],{
+		my $currentparams = Bio::KBase::utilities::args($params->{genomes}->[$i],[],{
 			output_genome => undef,
 			input_genome => undef,
 		    input_contigset => undef,
