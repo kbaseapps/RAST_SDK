@@ -24,7 +24,6 @@ module RAST_SDK {
 	*/
 	typedef string workspace_name;
 	
-	
 	typedef structure {
 	    string workspace;
 	    genome_id input_genome;
@@ -65,5 +64,50 @@ module RAST_SDK {
 		annotate genome
 		params - a param hash that includes the workspace id and options
 	*/
-	funcdef annotate_genome(UnspecifiedObject params) returns (AnnotateGenomeResults) authentication required;
+	funcdef annotate_genome(AnnotateGenomeParams params) returns (AnnotateGenomeResults) authentication required;
+	
+	typedef structure {
+		contigset_id input_contigset;
+		genome_id input_genome;
+		genome_id output_genome;
+		int genetic_code;
+		string domain;
+	    string scientific_name;
+	} GenomeParams;
+	
+	typedef structure {
+	    string workspace;
+	    list<GenomeParams> genomes;
+	    bool call_features_rRNA_SEED;
+	    bool call_features_tRNA_trnascan;
+	    bool call_selenoproteins;
+	    bool call_pyrrolysoproteins;
+	    bool call_features_repeat_region_SEED;
+	    bool call_features_insertion_sequences;
+	    bool call_features_strep_suis_repeat;
+	    bool call_features_strep_pneumo_repeat;
+	    bool call_features_crispr;
+	    bool call_features_CDS_glimmer3;
+	    bool call_features_CDS_prodigal;
+	    bool call_features_CDS_genemark;
+	    bool annotate_proteins_kmer_v2;
+	    bool kmer_v1_parameters;
+	    bool annotate_proteins_similarity;
+	    bool resolve_overlapping_features;
+	    bool find_close_neighbors;
+	    bool call_features_prophage_phispy;
+	    bool retain_old_anno_for_hypotheticals;
+	} AnnotateGenomesParams;
+	
+	typedef structure {
+	    workspace_name workspace;
+	    string report_name;
+        string report_ref;
+	} AnnotateGenomesResults;
+	
+	/*
+		annotate genomes
+		params - a param hash that includes the workspace id and options
+	*/
+	funcdef annotate_genomes(AnnotateGenomesParams params) returns (AnnotateGenomesResults) authentication required;
 };

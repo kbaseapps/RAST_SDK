@@ -29,27 +29,13 @@ our $CallContext;
 
 our %return_counts = (
         'annotate_genome' => 1,
-        'annotate_genome_async' => 1,
-        'annotate_genome_check' => 1,
-        'version' => 1,
+        'annotate_genomes' => 1,
+        'status' => 1,
 );
 
 our %method_authentication = (
         'annotate_genome' => 'required',
-        'annotate_genome_async' => 'required',
-        'annotate_genome_check' => 'required',
-);
-
-our %sync_methods = (
-        'annotate_genome' => 1,
-);
-
-our %async_run_methods = (
-        'annotate_genome_async' => 'RAST_SDK.annotate_genome',
-);
-
-our %async_check_methods = (
-        'annotate_genome_check' => 'RAST_SDK.annotate_genome',
+        'annotate_genomes' => 'required',
 );
 
 sub _build_valid_methods
@@ -57,9 +43,8 @@ sub _build_valid_methods
     my($self) = @_;
     my $methods = {
         'annotate_genome' => 1,
-        'annotate_genome_async' => 1,
-        'annotate_genome_check' => 1,
-        'version' => 1,
+        'annotate_genomes' => 1,
+        'status' => 1,
     };
     return $methods;
 }
@@ -297,36 +282,7 @@ sub call_method {
         }
 	
         my $err;
-        my $async_err;
         eval {
-            my $job_srv_cl;
-            my $job_id;
-            my $cli = $self->_plack_req_header("CLI");
-            if (exists($async_run_methods{$method})) {
-                my $orig_full_method = $async_run_methods{$method};
-                my %run_job_params = (
-                    "method" => $orig_full_method,
-                    "params" => $data->{arguments}
-                );
-                $job_srv_cl = JobServiceClient->new();
-                $job_id = $job_srv_cl->run_method($self->config, $ctx->token, "run_job", \%run_job_params);
-                @result = ($job_id);
-            } elsif (exists($async_check_methods{$method})) {
-                $job_id = $data->{arguments}->[0];
-                $job_srv_cl = JobServiceClient->new();
-                my $job_state = $job_srv_cl->run_method($self->config, $ctx->token, "check_job", $job_id);
-                if ($job_state->{"finished"} != 0 and exists($job_state->{"error"})) {
-                    my $remote_err = $job_state->{"error"};
-                    $async_err = {
-                            code => -32603, # perl error from RPC::Any::Exception
-                            message => $remote_err->{message},
-                            data => $remote_err->{error}
-                           };
-                } else {
-                    @result = ($job_state);
-                }
-            } elsif ($cli || exists($sync_methods{$method}) || 
-                !exists($async_run_methods{$method . "_async"})) {
             $self->log($Bio::KBase::Log::INFO, $ctx, "start method", $tag);
             local $SIG{__WARN__} = sub {
                 my($msg) = @_;
@@ -336,14 +292,7 @@ sub call_method {
 
             @result = $module->$method(@{ $data->{arguments} });
             $self->log($Bio::KBase::Log::INFO, $ctx, "end method", $tag);
-            } else {
-                die "Method ".$method." cannot be run synchronously";
-            }
         };
-        if (defined($async_err)) {
-            $async_err->{context} = $ctx;
-            die $async_err;
-        }
 
         if ($@)
         {
@@ -434,10 +383,6 @@ sub get_method
 	Class::MOP::load_class($module);
     }
 
-    if (exists($async_run_methods{$method}) or exists($async_check_methods{$method})) {
-        return { module => $module, method => $method, modname => $package };
-    }
-    
     if (!$module->can($method)) {
 	$self->exception('NoSuchMethod',
 			 "There is no method named '$method' in the"
@@ -764,95 +709,6 @@ sub text_value
     }
 }
 
-package JobServiceClient;
-use base 'JSON::RPC::Client';
-use POSIX;
-use strict;
-
-sub run_method {
-    my($self, $config, $token, $method_name, @args) = @_;
-    $self->{token} = $token;
-    my $url = $ENV{'KB_JOB_SERVICE_URL'};
-    if (!defined($url)) {
-        $url = $config->{"job-service-url"};
-        if (!defined($url)) {
-            Bio::KBase::Exceptions::KBaseException->throw(
-                error => "Neither 'job-service-url' parameter is defined in " .
-                    "configuration nor 'KB_JOB_SERVICE_URL' variable is defined in system", 
-                method_name => $method_name);
-        }
-    }
-    my @headers = ();
-    my $result = $self->call($url, \@headers, {
-        method => "KBaseJobService." . $method_name,
-        params => \@args,
-    });
-    if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => $method_name,
-                           data => $result->content->{error}->{error});
-        } else {
-            return $result->result->[0];
-        }
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method " . $method_name,
-                        status_line => $self->status_line,
-                        method_name => $method_name);
-    }
-}
-
-sub call {
-    my ($self, $uri, $headers, $obj) = @_;
-    my $result;
-    {
-        if ($uri =~ /\?/) {
-            $result = $self->_get($uri);
-        } else {
-            Carp::croak "not hashref." unless (ref $obj eq 'HASH');
-            $result = $self->_post($uri, $headers, $obj);
-        }
-    }
-    my $service = $obj->{method} =~ /^system\./ if ( $obj );
-    $self->status_line($result->status_line);
-    if ($result->is_success) {
-        return unless($result->content); # notification?
-        if ($service) {
-            return JSON::RPC::ServiceObject->new($result, $self->json);
-        }
-        return JSON::RPC::ReturnObject->new($result, $self->json);
-    } elsif ($result->content_type eq 'application/json') {
-        return JSON::RPC::ReturnObject->new($result, $self->json);
-    } else {
-        return;
-    }
-}
-
-sub _post {
-    my ($self, $uri, $headers, $obj) = @_;
-    my $json = $self->json;
-    $obj->{version} ||= $self->{version} || '1.1';
-    if ($obj->{version} eq '1.0') {
-        delete $obj->{version};
-        if (exists $obj->{id}) {
-            $self->id($obj->{id}) if ($obj->{id}); # if undef, it is notification.
-        } else {
-            $obj->{id} = $self->id || ($self->id('JSON::RPC::Client'));
-        }
-    } else {
-        $obj->{id} = (defined $self->id) ? $self->id : substr(rand(),2);
-    }
-    my $content = $json->encode($obj);
-    $self->ua->post(
-        $uri,
-        Content_Type   => $self->{content_type},
-        Content        => $content,
-        Accept         => 'application/json',
-        @$headers,
-        ($self->{token} ? (Authorization => $self->{token}) : ())
-    );
-}
 
 unless (caller) {
     my($input_file,$output_file,$token) = @ARGV;
