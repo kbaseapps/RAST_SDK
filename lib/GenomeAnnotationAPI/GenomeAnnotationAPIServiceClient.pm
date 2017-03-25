@@ -1,4 +1,4 @@
-package GenomeAnnotationAPI::GenomeAnnotationAPIClient;
+package GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient;
 
 use JSON::RPC::Client;
 use POSIX;
@@ -6,7 +6,6 @@ use strict;
 use Data::Dumper;
 use URI;
 use Bio::KBase::Exceptions;
-use Time::HiRes;
 my $get_time = sub { time, 0 };
 eval {
     require Time::HiRes;
@@ -22,7 +21,7 @@ our $VERSION = "0.1.0";
 
 =head1 NAME
 
-GenomeAnnotationAPI::GenomeAnnotationAPIClient
+GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient
 
 =head1 DESCRIPTION
 
@@ -36,30 +35,16 @@ sub new
 {
     my($class, $url, @args) = @_;
     
+    if (!defined($url))
+    {
+	$url = 'https://kbase.us/services/service_wizard';
+    }
 
     my $self = {
-	client => GenomeAnnotationAPI::GenomeAnnotationAPIClient::RpcClient->new,
+	client => GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient::RpcClient->new,
 	url => $url,
 	headers => [],
     };
-    my %arg_hash = @args;
-    $self->{async_job_check_time} = 0.1;
-    if (exists $arg_hash{"async_job_check_time_ms"}) {
-        $self->{async_job_check_time} = $arg_hash{"async_job_check_time_ms"} / 1000.0;
-    }
-    $self->{async_job_check_time_scale_percent} = 150;
-    if (exists $arg_hash{"async_job_check_time_scale_percent"}) {
-        $self->{async_job_check_time_scale_percent} = $arg_hash{"async_job_check_time_scale_percent"};
-    }
-    $self->{async_job_check_max_time} = 300;  # 5 minutes
-    if (exists $arg_hash{"async_job_check_max_time_ms"}) {
-        $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
-    }
-    my $service_version = 'release';
-    if (exists $arg_hash{"service_version"}) {
-        $service_version = $arg_hash{"service_version"};
-    }
-    $self->{service_version} = $service_version;
 
     chomp($self->{hostname} = `hostname`);
     $self->{hostname} ||= 'unknown-host';
@@ -124,43 +109,6 @@ sub new
     return $self;
 }
 
-sub _check_job {
-    my($self, @args) = @_;
-# Authentication: ${method.authentication}
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _check_job (received $n, expecting 1)");
-    }
-    {
-        my($job_id) = @args;
-        my @_bad_arguments;
-        (!ref($job_id)) or push(@_bad_arguments, "Invalid type for argument 0 \"job_id\" (it should be a string)");
-        if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _check_job:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_check_job');
-        }
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._check_job",
-        params => \@args});
-    if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_check_job',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-                          );
-        } else {
-            return $result->result->[0];
-        }
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _check_job",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_check_job');
-    }
-}
-
 
 
 
@@ -204,68 +152,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_taxon
+ sub get_taxon
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_taxon_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_taxon_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_taxon_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_taxon (received $n, expecting 1)");
     }
     {
-        my($inputs_get_taxon) = @args;
-        my @_bad_arguments;
+	my($inputs_get_taxon) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_taxon) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_taxon\" (value was \"$inputs_get_taxon\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_taxon_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_taxon_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_taxon:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_taxon');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_taxon_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_taxon",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_taxon_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_taxon',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_taxon_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_taxon_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_taxon",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_taxon',
+				       );
     }
 }
-
  
 
 
@@ -309,68 +250,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_assembly
+ sub get_assembly
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_assembly_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_assembly_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_assembly_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_assembly (received $n, expecting 1)");
     }
     {
-        my($inputs_get_assembly) = @args;
-        my @_bad_arguments;
+	my($inputs_get_assembly) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_assembly) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_assembly\" (value was \"$inputs_get_assembly\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_assembly_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_assembly_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_assembly:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_assembly');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_assembly_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_assembly",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_assembly_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_assembly',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_assembly_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_assembly_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_assembly",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_assembly',
+				       );
     }
 }
-
  
 
 
@@ -414,68 +348,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_types
+ sub get_feature_types
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_types_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_types_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_types_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_types (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_types) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_types) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_types) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_types\" (value was \"$inputs_get_feature_types\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_types_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_types_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_types:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_types');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_types_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_types",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_types_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_types',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_types_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_types_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_types",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_types',
+				       );
     }
 }
-
  
 
 
@@ -521,68 +448,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_type_descriptions
+ sub get_feature_type_descriptions
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_type_descriptions_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_type_descriptions_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_type_descriptions_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_type_descriptions (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_type_descriptions) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_type_descriptions) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_type_descriptions) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_type_descriptions\" (value was \"$inputs_get_feature_type_descriptions\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_type_descriptions_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_type_descriptions_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_type_descriptions:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_type_descriptions');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_type_descriptions_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_type_descriptions",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_type_descriptions_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_type_descriptions',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_type_descriptions_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_type_descriptions_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_type_descriptions",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_type_descriptions',
+				       );
     }
 }
-
  
 
 
@@ -628,68 +548,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_type_counts
+ sub get_feature_type_counts
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_type_counts_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_type_counts_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_type_counts_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_type_counts (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_type_counts) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_type_counts) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_type_counts) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_type_counts\" (value was \"$inputs_get_feature_type_counts\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_type_counts_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_type_counts_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_type_counts:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_type_counts');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_type_counts_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_type_counts",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_type_counts_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_type_counts',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_type_counts_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_type_counts_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_type_counts",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_type_counts',
+				       );
     }
 }
-
  
 
 
@@ -767,68 +680,61 @@ Feature_id_mapping is a reference to a hash where the following keys are defined
 
 =cut
 
-sub get_feature_ids
+ sub get_feature_ids
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_ids_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_ids_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_ids_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_ids (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_ids) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_ids) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_ids) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_ids\" (value was \"$inputs_get_feature_ids\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_ids_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_ids_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_ids:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_ids');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_ids_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_ids",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_ids_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_ids',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_ids_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_ids_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_ids",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_ids',
+				       );
     }
 }
-
  
 
 
@@ -916,68 +822,61 @@ Region is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_features
+ sub get_features
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_features_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_features_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_features_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_features (received $n, expecting 1)");
     }
     {
-        my($inputs_get_features) = @args;
-        my @_bad_arguments;
+	my($inputs_get_features) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_features) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_features\" (value was \"$inputs_get_features\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_features_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_features_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_features:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_features');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_features_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_features",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_features_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_features',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_features_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_features_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_features",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_features',
+				       );
     }
 }
-
  
 
 
@@ -1069,68 +968,61 @@ Retrieve Feature data, v2.
 
 =cut
 
-sub get_features2
+ sub get_features2
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_features2_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_features2_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_features2_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_features2 (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_features2_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_features2_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_features2:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_features2');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_features2_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_features2",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_features2_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_features2',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_features2_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_features2_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_features2",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_features2',
+				       );
     }
 }
-
  
 
 
@@ -1188,68 +1080,61 @@ Protein_data is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_proteins
+ sub get_proteins
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_proteins_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_proteins_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_proteins_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_proteins (received $n, expecting 1)");
     }
     {
-        my($inputs_get_proteins) = @args;
-        my @_bad_arguments;
+	my($inputs_get_proteins) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_proteins) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_proteins\" (value was \"$inputs_get_proteins\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_proteins_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_proteins_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_proteins:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_proteins');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_proteins_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_proteins",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_proteins_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_proteins',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_proteins_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_proteins_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_proteins",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_proteins',
+				       );
     }
 }
-
  
 
 
@@ -1305,68 +1190,61 @@ Region is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_feature_locations
+ sub get_feature_locations
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_locations_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_locations_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_locations_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_locations (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_locations) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_locations) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_locations) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_locations\" (value was \"$inputs_get_feature_locations\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_locations_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_locations_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_locations:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_locations');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_locations_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_locations",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_locations_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_locations',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_locations_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_locations_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_locations",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_locations',
+				       );
     }
 }
-
  
 
 
@@ -1412,68 +1290,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_publications
+ sub get_feature_publications
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_publications_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_publications_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_publications_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_publications (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_publications) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_publications) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_publications) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_publications\" (value was \"$inputs_get_feature_publications\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_publications_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_publications_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_publications:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_publications');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_publications_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_publications",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_publications_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_publications',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_publications_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_publications_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_publications",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_publications',
+				       );
     }
 }
-
  
 
 
@@ -1519,68 +1390,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_dna
+ sub get_feature_dna
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_dna_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_dna_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_dna_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_dna (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_dna) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_dna) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_dna) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_dna\" (value was \"$inputs_get_feature_dna\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_dna_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_dna_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_dna:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_dna');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_dna_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_dna",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_dna_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_dna',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_dna_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_dna_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_dna",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_dna',
+				       );
     }
 }
-
  
 
 
@@ -1626,68 +1490,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_functions
+ sub get_feature_functions
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_functions_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_functions_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_functions_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_functions (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_functions) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_functions) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_functions) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_functions\" (value was \"$inputs_get_feature_functions\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_functions_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_functions_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_functions:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_functions');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_functions_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_functions",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_functions_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_functions',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_functions_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_functions_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_functions",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_functions',
+				       );
     }
 }
-
  
 
 
@@ -1733,68 +1590,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_feature_aliases
+ sub get_feature_aliases
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_feature_aliases_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_feature_aliases_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_feature_aliases_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_feature_aliases (received $n, expecting 1)");
     }
     {
-        my($inputs_get_feature_aliases) = @args;
-        my @_bad_arguments;
+	my($inputs_get_feature_aliases) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_feature_aliases) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_feature_aliases\" (value was \"$inputs_get_feature_aliases\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_feature_aliases_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_feature_aliases_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_feature_aliases:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_feature_aliases');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_feature_aliases_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_feature_aliases",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_feature_aliases_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_feature_aliases',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_feature_aliases_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_feature_aliases_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_feature_aliases",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_feature_aliases',
+				       );
     }
 }
-
  
 
 
@@ -1840,68 +1690,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_cds_by_gene
+ sub get_cds_by_gene
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_cds_by_gene_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_cds_by_gene_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_cds_by_gene_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_cds_by_gene (received $n, expecting 1)");
     }
     {
-        my($inputs_get_cds_by_gene) = @args;
-        my @_bad_arguments;
+	my($inputs_get_cds_by_gene) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_cds_by_gene) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_cds_by_gene\" (value was \"$inputs_get_cds_by_gene\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_cds_by_gene_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_cds_by_gene_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_cds_by_gene:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_cds_by_gene');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_cds_by_gene_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_cds_by_gene",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_cds_by_gene_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_cds_by_gene',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_cds_by_gene_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_cds_by_gene_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_cds_by_gene",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_cds_by_gene',
+				       );
     }
 }
-
  
 
 
@@ -1947,68 +1790,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_cds_by_mrna
+ sub get_cds_by_mrna
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_cds_by_mrna_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_cds_by_mrna_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_cds_by_mrna_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_cds_by_mrna (received $n, expecting 1)");
     }
     {
-        my($inputs_mrna_id_list) = @args;
-        my @_bad_arguments;
+	my($inputs_mrna_id_list) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_mrna_id_list) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_mrna_id_list\" (value was \"$inputs_mrna_id_list\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_cds_by_mrna_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_cds_by_mrna_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_cds_by_mrna:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_cds_by_mrna');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_cds_by_mrna_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_cds_by_mrna",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_cds_by_mrna_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_cds_by_mrna',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_cds_by_mrna_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_cds_by_mrna_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_cds_by_mrna",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_cds_by_mrna',
+				       );
     }
 }
-
  
 
 
@@ -2054,68 +1890,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_gene_by_cds
+ sub get_gene_by_cds
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_gene_by_cds_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_gene_by_cds_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_gene_by_cds_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_gene_by_cds (received $n, expecting 1)");
     }
     {
-        my($inputs_get_gene_by_cds) = @args;
-        my @_bad_arguments;
+	my($inputs_get_gene_by_cds) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_gene_by_cds) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_gene_by_cds\" (value was \"$inputs_get_gene_by_cds\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_gene_by_cds_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_gene_by_cds_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_gene_by_cds:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_gene_by_cds');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_gene_by_cds_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_gene_by_cds",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_gene_by_cds_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_gene_by_cds',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_gene_by_cds_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_gene_by_cds_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_gene_by_cds",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_gene_by_cds',
+				       );
     }
 }
-
  
 
 
@@ -2161,68 +1990,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_gene_by_mrna
+ sub get_gene_by_mrna
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_gene_by_mrna_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_gene_by_mrna_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_gene_by_mrna_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_gene_by_mrna (received $n, expecting 1)");
     }
     {
-        my($inputs_get_gene_by_mrna) = @args;
-        my @_bad_arguments;
+	my($inputs_get_gene_by_mrna) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_gene_by_mrna) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_gene_by_mrna\" (value was \"$inputs_get_gene_by_mrna\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_gene_by_mrna_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_gene_by_mrna_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_gene_by_mrna:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_gene_by_mrna');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_gene_by_mrna_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_gene_by_mrna",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_gene_by_mrna_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_gene_by_mrna',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_gene_by_mrna_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_gene_by_mrna_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_gene_by_mrna",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_gene_by_mrna',
+				       );
     }
 }
-
  
 
 
@@ -2268,68 +2090,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_mrna_by_cds
+ sub get_mrna_by_cds
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_mrna_by_cds_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_mrna_by_cds_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_mrna_by_cds_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_mrna_by_cds (received $n, expecting 1)");
     }
     {
-        my($inputs_get_mrna_by_cds) = @args;
-        my @_bad_arguments;
+	my($inputs_get_mrna_by_cds) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_mrna_by_cds) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_mrna_by_cds\" (value was \"$inputs_get_mrna_by_cds\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_mrna_by_cds_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_mrna_by_cds_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_mrna_by_cds:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_mrna_by_cds');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_mrna_by_cds_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_mrna_by_cds",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_mrna_by_cds_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_mrna_by_cds',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_mrna_by_cds_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_mrna_by_cds_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_mrna_by_cds",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_mrna_by_cds',
+				       );
     }
 }
-
  
 
 
@@ -2375,68 +2190,61 @@ ObjectReference is a string
 
 =cut
 
-sub get_mrna_by_gene
+ sub get_mrna_by_gene
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_mrna_by_gene_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_mrna_by_gene_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_mrna_by_gene_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_mrna_by_gene (received $n, expecting 1)");
     }
     {
-        my($inputs_get_mrna_by_gene) = @args;
-        my @_bad_arguments;
+	my($inputs_get_mrna_by_gene) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_mrna_by_gene) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_mrna_by_gene\" (value was \"$inputs_get_mrna_by_gene\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_mrna_by_gene_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_mrna_by_gene_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_mrna_by_gene:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_mrna_by_gene');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_mrna_by_gene_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_mrna_by_gene",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_mrna_by_gene_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_mrna_by_gene',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_mrna_by_gene_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_mrna_by_gene_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_mrna_by_gene",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_mrna_by_gene',
+				       );
     }
 }
-
  
 
 
@@ -2500,68 +2308,61 @@ Region is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_mrna_exons
+ sub get_mrna_exons
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_mrna_exons_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_mrna_exons_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_mrna_exons_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_mrna_exons (received $n, expecting 1)");
     }
     {
-        my($inputs_get_mrna_exons) = @args;
-        my @_bad_arguments;
+	my($inputs_get_mrna_exons) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_mrna_exons) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_mrna_exons\" (value was \"$inputs_get_mrna_exons\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_mrna_exons_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_mrna_exons_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_mrna_exons:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_mrna_exons');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_mrna_exons_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_mrna_exons",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_mrna_exons_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_mrna_exons',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_mrna_exons_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_mrna_exons_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_mrna_exons",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_mrna_exons',
+				       );
     }
 }
-
  
 
 
@@ -2623,68 +2424,61 @@ Region is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_mrna_utrs
+ sub get_mrna_utrs
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_mrna_utrs_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_mrna_utrs_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_mrna_utrs_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_mrna_utrs (received $n, expecting 1)");
     }
     {
-        my($inputs_get_mrna_utrs) = @args;
-        my @_bad_arguments;
+	my($inputs_get_mrna_utrs) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_mrna_utrs) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_mrna_utrs\" (value was \"$inputs_get_mrna_utrs\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_mrna_utrs_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_mrna_utrs_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_mrna_utrs:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_mrna_utrs');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_mrna_utrs_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_mrna_utrs",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_mrna_utrs_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_mrna_utrs',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_mrna_utrs_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_mrna_utrs_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_mrna_utrs",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_mrna_utrs',
+				       );
     }
 }
-
  
 
 
@@ -2766,68 +2560,61 @@ Summary_data is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub get_summary
+ sub get_summary
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_summary_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_summary_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_summary_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_summary (received $n, expecting 1)");
     }
     {
-        my($inputs_get_summary) = @args;
-        my @_bad_arguments;
+	my($inputs_get_summary) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_get_summary) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_get_summary\" (value was \"$inputs_get_summary\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_summary_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_summary_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_summary:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_summary');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_summary_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_summary",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_summary_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_summary',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_summary_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_summary_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_summary",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_summary',
+				       );
     }
 }
-
  
 
 
@@ -2911,68 +2698,61 @@ Summary_data is a reference to a hash where the following keys are defined:
 
 =cut
 
-sub save_summary
+ sub save_summary
 {
     my($self, @args) = @_;
-    my $job_id = $self->_save_summary_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _save_summary_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _save_summary_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function save_summary (received $n, expecting 1)");
     }
     {
-        my($inputs_save_summary) = @args;
-        my @_bad_arguments;
+	my($inputs_save_summary) = @args;
+
+	my @_bad_arguments;
         (ref($inputs_save_summary) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"inputs_save_summary\" (value was \"$inputs_save_summary\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _save_summary_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_save_summary_submit');
-        }
+	    my $msg = "Invalid arguments passed to save_summary:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'save_summary');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._save_summary_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.save_summary",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_save_summary_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'save_summary',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _save_summary_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_save_summary_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method save_summary",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'save_summary',
+				       );
     }
 }
-
  
 
 
@@ -3171,68 +2951,61 @@ of large eukaryotic datasets. It may lead to out-of-memory errors.
 
 =cut
 
-sub get_combined_data
+ sub get_combined_data
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_combined_data_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_combined_data_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_combined_data_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_combined_data (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_combined_data_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_combined_data_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_combined_data:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_combined_data');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_combined_data_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_combined_data",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_combined_data_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_combined_data',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_combined_data_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_combined_data_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_combined_data",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_combined_data',
+				       );
     }
 }
-
  
 
 
@@ -3761,68 +3534,61 @@ filters instead of arbitrary get subdata included paths.
 
 =cut
 
-sub get_genome_v1
+ sub get_genome_v1
 {
     my($self, @args) = @_;
-    my $job_id = $self->_get_genome_v1_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _get_genome_v1_submit {
-    my($self, @args) = @_;
 # Authentication: optional
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _get_genome_v1_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function get_genome_v1 (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _get_genome_v1_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_get_genome_v1_submit');
-        }
+	    my $msg = "Invalid arguments passed to get_genome_v1:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'get_genome_v1');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._get_genome_v1_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.get_genome_v1",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_get_genome_v1_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'get_genome_v1',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_genome_v1_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_get_genome_v1_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method get_genome_v1",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'get_genome_v1',
+				       );
     }
 }
-
  
 
 
@@ -4308,114 +4074,100 @@ usermeta is a reference to a hash where the key is a string and the value is a s
 
 =cut
 
-sub save_one_genome_v1
+ sub save_one_genome_v1
 {
     my($self, @args) = @_;
-    my $job_id = $self->_save_one_genome_v1_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _save_one_genome_v1_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _save_one_genome_v1_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function save_one_genome_v1 (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _save_one_genome_v1_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_save_one_genome_v1_submit');
-        }
+	    my $msg = "Invalid arguments passed to save_one_genome_v1:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'save_one_genome_v1');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._save_one_genome_v1_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "GenomeAnnotationAPI.save_one_genome_v1",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_save_one_genome_v1_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'save_one_genome_v1',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _save_one_genome_v1_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_save_one_genome_v1_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method save_one_genome_v1",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'save_one_genome_v1',
+				       );
     }
 }
-
  
- 
+  
 sub status
 {
     my($self, @args) = @_;
-    my $job_id = undef;
     if ((my $n = @args) != 0) {
         Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
                                    "Invalid argument count for function status (received $n, expecting 0)");
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
+    my $service_state = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "ServiceWizard.get_service_status",
+        params => [{module_name=>"GenomeAnnotationAPI", version=>$self->{service_version}}]});
+    if ($service_state->is_error) {
+        Bio::KBase::Exceptions::JSONRPC->throw(error => $service_state->error_message,
+                           code => $service_state->content->{error}->{code},
+                           method_name => 'ServiceWizard.get_service_status',
+                           data => $service_state->content->{error}->{error}
+                          );
     }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "GenomeAnnotationAPI._status_submit",
-        params => \@args, context => $context});
+    my $url = $service_state->result->[0]->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+        method => "GenomeAnnotationAPI.status",
+        params => \@args,
+    });
     if ($result) {
         if ($result->is_error) {
             Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
                            code => $result->content->{error}->{code},
-                           method_name => '_status_submit',
+                           method_name => 'status',
                            data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
+                          );
         } else {
-            $job_id = $result->result->[0];
+            return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _status_submit",
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method status",
                         status_line => $self->{client}->status_line,
-                        method_name => '_status_submit');
-    }
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
+                        method_name => 'status',
+                       );
     }
 }
    
@@ -4466,10 +4218,10 @@ sub _validate_version {
         );
     }
     if ($sMinor > $cMinor) {
-        warn "New client version available for GenomeAnnotationAPI::GenomeAnnotationAPIClient\n";
+        warn "New client version available for GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient\n";
     }
     if ($sMajor == 0) {
-        warn "GenomeAnnotationAPI::GenomeAnnotationAPIClient version is $svr_version. API subject to change.\n";
+        warn "GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient version is $svr_version. API subject to change.\n";
     }
 }
 
@@ -6135,7 +5887,7 @@ info has a value which is a Workspace.object_info
 
 =cut
 
-package GenomeAnnotationAPI::GenomeAnnotationAPIClient::RpcClient;
+package GenomeAnnotationAPI::GenomeAnnotationAPIServiceClient::RpcClient;
 use base 'JSON::RPC::Client';
 use POSIX;
 use strict;

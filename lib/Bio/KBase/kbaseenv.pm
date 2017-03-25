@@ -101,7 +101,11 @@ sub ws_client {
 		refresh => 0
 	});
 	if ($parameters->{refresh} == 1 || !defined($ws_client)) {
-		$ws_client = new Bio::KBase::workspace::Client(Bio::KBase::utilities::utilconf("workspace-url"),token => Bio::KBase::utilities::token());
+		require "Workspace/WorkspaceClient.pm";
+		$ws_client = new Workspace::WorkspaceClient(Bio::KBase::utilities::utilconf("workspace-url"),
+					token => Bio::KBase::utilities::token());
+#					auth_svc => Bio::KBase::utilities::utilconf("auth-service-url")
+#				);
 	}
 	return $ws_client;
 }

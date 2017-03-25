@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.3';
-our $GIT_URL = 'ssh://git@github.com/kbaseapps/RAST_SDK';
-our $GIT_COMMIT_HASH = '60993c63f9b532ea0449e86083dff2828317eb89';
+our $VERSION = '0.0.6';
+our $GIT_URL = 'https://github.com/kbaseapps//RAST_SDK';
+our $GIT_COMMIT_HASH = 'caabe1d46c5c3f73c00ac5c0b6760e40e101f25d';
 
 =head1 NAME
 
@@ -20,7 +20,6 @@ This wraps genome_annotation which is based off of the SEED annotations.
 
 #BEGIN_HEADER
 use Bio::KBase::AuthToken;
-use Bio::KBase::workspace::Client;
 use Bio::KBase::utilities;
 use Bio::KBase::kbaseenv;
 use Config::IniFiles;
