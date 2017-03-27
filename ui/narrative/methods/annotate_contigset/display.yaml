@@ -1,10 +1,10 @@
 #
 # Define basic display information
 #
-name     : Annotate Microbial Contigs
+name     : Annotate Microbial Assembly
 
 tooltip  : |
-    Annotate bacterial or archaeal contigs using components from the RAST (Rapid Annotations using Subsystems Technology) toolkit (RASTtk).
+    Annotate a bacterial or archaeal assembly using components from the RAST (Rapid Annotations using Subsystems Technology) toolkit (RASTtk).
 
 screenshots :
     []
@@ -33,7 +33,7 @@ suggestions :
 parameters :
     input_contigset :
         ui-name : |
-            Assembled Contigs
+            Assembly
         short-hint : |
             An Assembly or ContigSet object to annotate
         long-hint  : |
