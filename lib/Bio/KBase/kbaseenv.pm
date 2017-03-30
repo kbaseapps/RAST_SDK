@@ -44,16 +44,8 @@ sub create_report {
 		message => ""
 	});
 	my $kr;
-	if (Bio::KBase::utilities::utilconf("reportimpl") == 1) {
-		require "KBaseReport/KBaseReportImpl.pm";
-		$kr = new KBaseReport::KBaseReportImpl();
-		if (!defined($KBaseReport::KBaseReportServer::CallContext)) {
-			$KBaseReport::KBaseReportServer::CallContext = Bio::KBase::utilities::context();
-		}
-	} else {
-		require "KBaseReport/KBaseReportClient.pm";
-		$kr = new KBaseReport::KBaseReportClient(Bio::KBase::utilities::utilconf("call_back_url"),token => Bio::KBase::utilities::token());
-	}
+	require "KBaseReport/KBaseReportClient.pm";
+	$kr = new KBaseReport::KBaseReportClient(Bio::KBase::utilities::utilconf("call_back_url"),token => Bio::KBase::utilities::token());
 	if (defined(Bio::KBase::utilities::utilconf("debugging")) && Bio::KBase::utilities::utilconf("debugging") == 1) {
 		Bio::KBase::utilities::add_report_file({
 			path => Bio::KBase::utilities::utilconf("debugfile"),
@@ -101,7 +93,11 @@ sub ws_client {
 		refresh => 0
 	});
 	if ($parameters->{refresh} == 1 || !defined($ws_client)) {
-		$ws_client = new Bio::KBase::workspace::Client(Bio::KBase::utilities::utilconf("workspace-url"),token => Bio::KBase::utilities::token());
+		require "Workspace/WorkspaceClient.pm";
+		$ws_client = new Workspace::WorkspaceClient(Bio::KBase::utilities::utilconf("workspace-url"),
+					token => Bio::KBase::utilities::token());
+#					auth_svc => Bio::KBase::utilities::utilconf("auth-service-url")
+#				);
 	}
 	return $ws_client;
 }
