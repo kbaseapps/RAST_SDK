@@ -1128,7 +1128,9 @@ sub annotate_genomes
     my($return);
     #BEGIN annotate_genomes
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["workspace","genomes"],{
+    $params = Bio::KBase::utilities::args($params,["workspace"],{
+    	input_genomes => [],
+    	genome_text => undef,
 	    call_features_rRNA_SEED => 1,
 	    call_features_tRNA_trnascan => 1,
 	    call_selenoproteins => 1,
@@ -1152,25 +1154,26 @@ sub annotate_genomes
 	my $success = [];
 	my $failed = {};
 	my $htmlmessage = "<p>";
-	for (my $i=0; $i < @{$params->{genomes}}; $i++) {
-		my $currentparams = Bio::KBase::utilities::args($params->{genomes}->[$i],[],{
-			output_genome => undef,
-			input_genome => undef,
+	my $genomes = $params->{input_genomes};
+	if (defined($params->{genome_text})) {
+		my $new_genome_list = [split(/[\n;\|]+/,$params->{genome_text})];
+		for (my $i=0; $i < @{$new_genome_list}; $i++) {
+			push(@{$genomes},$new_genome_list->[$i]);
+		}
+	}
+	for (my $i=0; $i < @{$genomes}; $i++) {
+		my $input = $genomes->[$i];
+		if ($input =~ m/$([^\/]+)\/([^\/]+)\/*\d*/) {
+			$input = $2;
+		}
+		my $currentparams = Bio::KBase::utilities::args({},[],{
+			output_genome => $input.".RAST",
+			input_genome => $genomes->[$i],
 		    input_contigset => undef,
 		    genetic_code => 11,
 		    domain => "Bacteria",
 		    scientific_name => "Unknown species"
 		});
-		my $input = $currentparams->{input_genome};
-		if (!defined($input)) {
-			$input = $currentparams->{input_contigset};
-		}
-		if ($input =~ m/$([^\/]+)\/([^\/]+)/) {
-			$input = $2;	
-		}
-		if (!defined($currentparams->{output_genome})) {
-			$currentparams->{output_genome} = $input.".RAST";
-		}
 		my $list = [qw(
 			workspace
 			call_features_rRNA_SEED
@@ -1201,10 +1204,8 @@ sub annotate_genomes
 		};
 		if ($@) {
 			$htmlmessage .= $input." failed!<br>";
-			$failed->{$input} = $@;
 		} else {
 			$htmlmessage .= $input." succeeded!<br>";
-			push(@{$success},$input);
 		}
 	}
 	$htmlmessage = ".</p>";

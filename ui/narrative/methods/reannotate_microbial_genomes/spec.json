@@ -9,40 +9,26 @@
     "input" : null,
     "output" : "no-display"
   },
-  "parameter-groups": [
-      {
-          "id": "genomes",
-          "parameters": [
-              "input_genome",
-              "output_genome"
-          ],
-          "optional": false,
-          "advanced": false,
-          "allow_multiple": true,
-          "with_border": true
-      }
-  ],
   "parameters" : [ {
-    "id" : "input_genome",
-    "optional" : false,
+    "id" : "input_genomes",
+    "optional" : true,
     "advanced" : false,
-    "allow_multiple" : false,
+    "allow_multiple" : true,
     "default_values" : [ "" ],
     "field_type" : "text",
     "text_options" : {
       "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation" ]
     }
   }, {
-    "id" : "output_genome",
-    "optional" : true,
-    "advanced" : false,
-    "allow_multiple" : false,
-    "default_values" : [ "" ],
-    "field_type" : "text",
-    "text_options" : {
-      "valid_ws_types" : [ "KBaseGenomes.Genome" ],
-      "is_output_name":true
-    }
+        "id": "genome_text",
+        "optional": true,
+        "advanced": false,
+        "allow_multiple": false,
+        "default_values": [ "" ],
+        "field_type": "textarea",
+        "textarea_options" : {
+            "n_rows" : 10
+    	}
   }, {
     "id": "call_features_rRNA_SEED",
     "optional":false,
@@ -251,8 +237,12 @@
       "method" : "annotate_genomes",
       "input_mapping" : [
         {
-          "input_parameter": "genomes",
-          "target_property": "genomes"
+          "input_parameter": "input_genomes",
+          "target_property": "input_genomes"
+        },
+        {
+          "input_parameter": "genome_text",
+          "target_property": "genome_text"
         },
         {
           "input_parameter": "call_features_rRNA_SEED",
