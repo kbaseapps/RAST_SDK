@@ -205,7 +205,6 @@ sub read_config {
 	$config->{$args->{service}} = Bio::KBase::utilities::args($config->{$args->{service}},$args->{mandatory},$args->{optional});
 	$config->{UtilConfig} = Bio::KBase::utilities::args($config->{UtilConfig},[],{
 		fulltrace => 0,
-		reportimpl => 0,
 		call_back_url =>  $ENV{ SDK_CALLBACK_URL },
 		token => undef
 	});
