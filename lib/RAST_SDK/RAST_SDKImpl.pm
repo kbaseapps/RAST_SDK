@@ -1162,7 +1162,7 @@ sub annotate_genomes
 	}
 	for (my $i=0; $i < @{$genomes}; $i++) {
 		my $input = $genomes->[$i];
-		if ($input =~ m/$([^\/]+)\/([^\/]+)\/*\d*/) {
+		if ($input =~ m/^([^\/]+)\/([^\/]+)\/*\d*$/) {
 			$input = $2;
 		}
 		my $currentparams = Bio::KBase::utilities::args({},[],{
