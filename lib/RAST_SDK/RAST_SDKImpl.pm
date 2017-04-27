@@ -1162,12 +1162,14 @@ sub annotate_genomes
 	}
 	for (my $i=0; $i < @{$genomes}; $i++) {
 		my $input = $genomes->[$i];
+		Bio::KBase::utilities::debug("TEST1:".$input);
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
 			my $info = Bio::KBase::kbaseenv::get_object_info([
 				Bio::KBase::kbaseenv::configure_ws_id($array->[0],$array->[1],$array->[2]);
 			],0);
 			$input = $info->[0]->[1];
+			Bio::KBase::utilities::debug("TEST2:".$input);
 		}
 		my $currentparams = Bio::KBase::utilities::args({},[],{
 			output_genome => $input.".RAST",
@@ -1206,6 +1208,7 @@ sub annotate_genomes
 			my $output = $self->annotate($currentparams);
 		};
 		if ($@) {
+			Bio::KBase::utilities::debug("ERROR:".$@);
 			$htmlmessage .= $input." failed!<br>";
 		} else {
 			$htmlmessage .= $input." succeeded!<br>";
