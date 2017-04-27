@@ -1166,7 +1166,7 @@ sub annotate_genomes
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
 			my $info = Bio::KBase::kbaseenv::get_object_info([
-				Bio::KBase::kbaseenv::configure_ws_id($array->[0],$array->[1],$array->[2]);
+				Bio::KBase::kbaseenv::configure_ws_id($array->[0],$array->[1],$array->[2])
 			],0);
 			$input = $info->[0]->[1];
 			Bio::KBase::utilities::debug("TEST2:".$input);
