@@ -22,6 +22,7 @@ RUN \
     ./build.glimmer /kb/runtime/ && \
     ./build.elph /kb/runtime/ && \
     ./build.prodigal /kb/runtime/ && \
+    ./build.phispy /kb/runtime/ && \
     cd .. && rm -rf bootstrap
 
 # Build kb_seed
