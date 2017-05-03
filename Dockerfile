@@ -25,6 +25,13 @@ RUN \
     ./build.phispy /kb/runtime/ && \
     cd .. && rm -rf bootstrap
 
+# Add random forest for phispy
+RUN \
+    wget https://cran.r-project.org/src/contrib/randomForest_4.6-12.tar.gz && \
+    R CMD INSTALL ./randomForest_4.6-12.tar.gz && \
+    rm randomForest_4.6-12.tar.gz
+
+
 # Build kb_seed
 RUN cd /kb/dev_container/modules && \
     rm -rf idserver kb_seed strep_repeats kmer_annotation_figfam genome_annotation && \
