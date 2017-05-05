@@ -279,5 +279,7 @@ description : |
     For more information on the steps of the default RAStk pipeline please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org.</a></p>
     
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
-    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, Fangfang Xia. For questions, <a href="mailto:help@kbase.us">e-mail help@kbase.us</a></p>
+    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, Fangfang Xia.
+    Questions? Suggestions? Bug reports? Please <a href="http://kbase.us/contact-us/">contact us</a> and include the app name and error message (if any).
+</p>
 
