@@ -1,10 +1,10 @@
 #
 # Define basic display information
 #
-name     : Annotate Plant Transcripts with Metabolic Functions
+name     : Annotate Primary Metabolism for an Angiosperm Genome
 
 tooltip  : |
-    Annotate a set of plant transcripts with metabolic functions from the PlantSEED project.
+    Annotate the set of sequences within an angiosperm genome with metabolic functions from the PlantSEED project.
 
 screenshots :
     - annotate_plant_transcripts_with_metabolic_functions_input1.png
@@ -19,7 +19,7 @@ suggestions :
         related :
             []
         next :
-            [build_plant_metabolic_model]
+            [build_metabolic_model]
     methods:
         related :
             []
@@ -33,20 +33,19 @@ suggestions :
 parameters :
     input_genome :
         ui-name : |
-            Plant Transcripts
+            Angiosperm genome
         short-hint : |
-            The set of plant transcripts to annotate
+            The angiosperm genome to annotate
         long-hint  : |
-            The set of plant transcripts to annotate
-
+            The angiosperm genome to annotate
 
     output_genome :
         ui-name : |
             Output Genome
         short-hint : |
-            A set of metabolically annotated transcripts saved as a "Genome" object
+            A newly annotated "Genome" object
         long-hint  : |
-            A set of metabolically annotated transcripts saved as a "Genome" object
+            A newly annotated "Genome" object
         placeholder : |
             Name of Output Genome
             
@@ -55,22 +54,24 @@ fixed-parameters :
         ui-name : |
             Dataset name
         description : |
-            The name of the set of signature k-mers to use for annotating the plant transcripts. The SEED project frequently releases new and updated sets of signature k-mers for each round of annotation accomplished. The set that contains this parameter allows us to retrieve and use the signature k-mers computed via the PlantSEED project. We are currently using Release 70.
+            The name of the set of signature k-mers to use for annotating the sequences in the angiosperm genome. The SEED project may release updated sets of signature k-mers, but the set that contains the signature k-mers computed via the PlantSEED project is Release 70.
     
     -
         ui-name : |
             k-mer size
         description : |
             The length of k-mer to use when annotating plant transcripts. When a set of signature k-mers is computed, the computation is done at various k-mer lengths. By default we are using the signature k-mers of 8 amino acids in length.
-        
  
 description : |
-    <p>The Annotate Plant Transcripts with Metabolic Functions app performs functional annotation of plant cDNA or protein sequences. The input FASTA file should contain cDNA sequences (obtained from assembling transcripts from next generation sequencing of a transcriptome) or translated protein sequences from plant gene models. This app assigns metabolic functions (derived from the PlantSEED Subsystems ontology) to the sequences. The resulting annotated genome can then be reviewed and downloaded. It can also be used as an input to other KBase apps such as <a data-method-id="build_a_metabolic_model">Build Metabolic Model/a>.</p>
+
+    <p>The Annotate Primary Metabolism for an Angiosperm Genome method will functionally annotate sequences in an angiosperm genome. Here, the functions were curated as part of the PlantSEED project, and collated into the PlantSEED Subsystems ontology. The curated functions constitute plant primary metabolism, and as such, is assumed to be largely unchanged between angiosperms. The resulting annotated genome be reviewed and downloaded. It can also be used as an input to other KBase methods such as <a data-method-id="build_a_metabolic_model">Build Metabolic Model</a>.</p>
     
+    <p><strong>NB:</strong> The initial set of genomes used for PlantSEED constituted of five Eudicots and five Monocots, as such, the signature k-mers used to annotate the sequences here were trained on angiosperms. A user may use this method to annotate any genome from any domain of life, but if the genome is not that of a green plant, the results will be unreliable.</p> 
+
     <p><a href="http://kbase.us/annotate-plant-transcripts-with-metabolic-functions-method/" target="_blank">Tutorial for Annotate Plant Transcripts with Metabolic Functions App</a></p>
     
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
-    Sam Seaver, Chris Henry, Robert Olson, Ross Overbeek, Gordon Pusch, Shiran Pasternak, Doreen Ware. For questions, <a href="mailto:help@kbase.us">e-mail help@kbase.us</a></p>
+    Sam Seaver, Chris Henry, Robert Olson, Ross Overbeek, Gordon Pusch, Shiran Pasternak, Doreen Ware. For questions, please <a href="http://kbase.us/contact-us/">contact us</a>.
 
 publications :
     -
