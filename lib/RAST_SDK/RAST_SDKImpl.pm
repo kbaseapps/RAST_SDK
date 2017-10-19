@@ -227,7 +227,7 @@ sub annotate {
 		}
 	}
 	
-  	#my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+  	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
   	my $workflow = {stages => []};
 	my $extragenecalls = "";
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
@@ -511,9 +511,8 @@ sub annotate {
 			}
 		}
 	}
-	#eval {
-		#$genome = $gaserv->run_pipeline($inputgenome, $workflow);
-	#};
+	# Runs, the annotation, comment out if you dont have the reference files
+	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
