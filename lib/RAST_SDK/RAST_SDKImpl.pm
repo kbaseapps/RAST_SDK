@@ -186,7 +186,7 @@ sub annotate {
 		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
 		    }
-			$contigobj = $self->util_get_contigs(undef,$contigref)
+			$contigobj = $self->util_get_contigs(undef,$inputgenome->{_reference}.";".$contigref)
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};

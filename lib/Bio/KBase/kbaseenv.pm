@@ -147,8 +147,13 @@ sub list_objects {
 }
 
 sub get_object_info {
-	my ($argone,$argtwo) = @_;
-	return Bio::KBase::kbaseenv::ws_client()->get_object_info($argone,$argtwo);
+	my ($argone,$argtwo,$argthree) = @_;
+	my $params = {
+		objects => $argone,
+		includeMetadata => $argtwo,
+		ignoreErrors => $argthree
+	};
+	return Bio::KBase::kbaseenv::ws_client()->get_object_info3($params)->{infos};
 }
 
 sub administer {
