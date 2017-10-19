@@ -70,12 +70,13 @@ sub prepare_assembly {
     copy $fasta_data_path, $fasta_temp_path;
     my $call_back_url = $ENV{ SDK_CALLBACK_URL };
     my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
-    $au->save_assembly_from_fasta({
+    my $ret = $au->save_assembly_from_fasta({
         file => {path => $fasta_temp_path},
         workspace_name => get_ws_name(),
         assembly_name => $assembly_obj_name
     });
     unlink($fasta_temp_path);
+    return $ret;
 }
 
 sub check_genome_obj {
@@ -127,7 +128,7 @@ sub test_annotate_assembly {
 }
 
 sub load_genome_from_json {
-    my($assembly_obj_name) = @_;
+    my($assembly_ref) = @_;
     my $genome_obj_dir = "/kb/module/work/tmp/";
     my $genome_file_name = "bogus_genome.json";
     my $genome_obj_path = $genome_obj_dir . $genome_file_name;
@@ -140,7 +141,7 @@ sub load_genome_from_json {
     close $fh2;
     my $json = JSON->new;
     my $genome_obj = $json->decode($genome_json);
-    $genome_obj->{assembly_ref} = get_ws_name() . "/" . $assembly_obj_name;
+    $genome_obj->{assembly_ref} = $assembly_ref;
     # TODO: we need to set $genome_obj->{features}->[*]->{ontology_terms}->{SSO}->{"*"}->{ontology_ref} = "KBaseOntology/seed_subsystem_ontology";
     # And the same with $genome_obj->{cdss}
     return $genome_obj;
@@ -150,16 +151,17 @@ sub save_genome_to_ws {
     my($genome_obj,$genome_obj_name) = @_;
     my $ret = $ws_client->save_objects({workspace=>get_ws_name(),objects=>[{data=>$genome_obj,
             type=>"KBaseGenomes.Genome", name=>$genome_obj_name}]})->[0];
+    return $ret->[6]."/".$ret->[0]."/".$ret->[4];
 }
 
 sub prepare_new_genome {
     my($assembly_obj_name,$genome_obj_name) = @_;
     my $genome_obj = load_genome_from_json($assembly_obj_name);
-    save_genome_to_ws($genome_obj, $genome_obj_name);
+    return save_genome_to_ws($genome_obj, $genome_obj_name);
 }
 
 sub test_reannotate_genome {
-    my($genome_obj_name) = @_;
+    my($genome_obj_name, $genome_ref) = @_;
     my $params={"input_genome"=>$genome_obj_name,
              "call_features_rRNA_SEED"=>'0',
              "call_features_tRNA_trnascan"=>'0',
@@ -181,6 +183,9 @@ sub test_reannotate_genome {
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };
+    if (defined $genome_ref){
+        $params->{input_genome} = $genome_ref;
+    }
     return $impl->annotate_genome($params);
     #my $ret = make_impl_call("RAST_SDK.annotate_genome", $params);
     my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
@@ -200,7 +205,7 @@ sub prepare_old_genome {
         delete $ftr->{cdss};
         delete $ftr->{mrnas};
     }
-    save_genome_to_ws($genome_obj, $genome_obj_name);
+    return save_genome_to_ws($genome_obj, $genome_obj_name);
 }
 
 sub prepare_recent_old_genome {
@@ -223,28 +228,28 @@ sub prepare_recent_old_genome {
     for (my $i=0; $i < @{$genes}; $i++) {
         push(@{$genome_obj->{features}}, $genes->[$i]);
     }
-    save_genome_to_ws($genome_obj, $genome_obj_name);
+    return save_genome_to_ws($genome_obj, $genome_obj_name);
 }
 
 my $assembly_obj_name = "contigset.1";
+my $assembly_ref = prepare_assembly($assembly_obj_name);
 lives_ok {
-        prepare_assembly($assembly_obj_name);
         test_annotate_assembly($assembly_obj_name);
     }, "test_annotate_assembly";
     my $genome_obj_name = "genome.2";
 lives_ok{
-        prepare_new_genome($assembly_obj_name, $genome_obj_name);
-        test_reannotate_genome($genome_obj_name);
+        my $genome_ref = prepare_new_genome($assembly_ref, $genome_obj_name);
+        test_reannotate_genome($genome_obj_name, $genome_ref);
     }, "test_reannotate_genome";
 lives_ok{
         $genome_obj_name = "genome.3";
-        prepare_old_genome($assembly_obj_name, $genome_obj_name);
-        test_reannotate_genome($genome_obj_name);
+        my $genome_ref = prepare_old_genome($assembly_ref, $genome_obj_name);
+        test_reannotate_genome($genome_obj_name, $genome_ref);
     }, "test_reannotate_genome";
 lives_ok{
         $genome_obj_name = "genome.4";
-        prepare_recent_old_genome($assembly_obj_name, $genome_obj_name);
-        test_reannotate_genome($genome_obj_name);
+        my $genome_ref = prepare_recent_old_genome($assembly_ref, $genome_obj_name);
+        test_reannotate_genome($genome_obj_name, $genome_ref);
     }, 'test_reannotate_genome';
 done_testing(4);
 

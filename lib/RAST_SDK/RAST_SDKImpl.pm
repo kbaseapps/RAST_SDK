@@ -53,36 +53,25 @@ sub util_log {
 
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $ref = $workspace."/".$genomeid;
-	if ($genomeid =~ m/\//) {
-		$ref = $genomeid;
-	}
+	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$genomeid);
 	my $output = Bio::KBase::kbaseenv::ga_client()->get_genome_v1({
 		genomes => [{
 			"ref" => $ref
 		}],
 		ignore_errors => 1,
 		no_data => 0,
-		no_metadata => 1
+		no_metadata => 0
 	});
-	return $output->{genomes}->[0]->{data};
+	my $genome = $output->{genomes}->[0];
+	$genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
+	print("Genome $genome->{data}->{'_reference'} downloaded\n");
+	return $genome->{data};
 }
 
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
-	my $ref = $workspace."/".$objid;
-	my $version;
-	if ($objid =~ m/$([^\/]+)\/([^\/]+)/) {
-		$ref = $objid;
-		$objid = $2;
-		$workspace = $1;
-		if ($objid =~ m/$([^\/]+)\/([^\/]+)\/(\d+)/) {
-			$version = $3;
-		}
-	}
-	my $info = Bio::KBase::kbaseenv::get_object_info([
-		Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid,$version)
-	],0);
+	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
+	my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
 	my $obj;
 	if ($info->[0]->[2] =~ /Assembly/) {
 		my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
@@ -139,15 +128,17 @@ sub util_get_contigs {
 			}
 			$str .= $sortedarray->[$i]->{sequence};
 		}
+		print("Assembly $obj->{_reference} Downloaded\n");
 		$obj->{md5} = Digest::MD5::md5_hex($str);
 		$obj->{_kbasetype} = "Assembly";
 	} else {
-		$obj = Bio::KBase::kbaseenv::get_objects([
-			Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid,$version)
-		]);
+		$obj = Bio::KBase::kbaseenv::get_objects([{
+			ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
+		}]);
 		$obj = $obj->[0]->{data};
 		$obj->{_kbasetype} = "ContigSet";
 		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
+		print("Contigset $obj->{_reference}  Downloaded\n");
 	}
 	my $totallength = 0;
 	my $gclength = 0;
@@ -195,9 +186,7 @@ sub annotate {
 		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
 		    }
-		    if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
-			$contigobj = $self->util_get_contigs($1,$2);
-		    }
+			$contigobj = $self->util_get_contigs(undef,$contigref)
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -238,7 +227,7 @@ sub annotate {
 		}
 	}
 	
-  	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+  	#my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
   	my $workflow = {stages => []};
 	my $extragenecalls = "";
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
@@ -523,7 +512,7 @@ sub annotate {
 		}
 	}
 	#eval {
-		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+		#$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 	#};
 
 	delete $genome->{contigs};
@@ -1165,7 +1154,7 @@ sub annotate_genomes
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
 			my $info = Bio::KBase::kbaseenv::get_object_info([
-				Bio::KBase::kbaseenv::configure_ws_id($array->[0],$array->[1],$array->[2])
+				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])
 			],0);
 			$input = $info->[0]->[1];
 		}

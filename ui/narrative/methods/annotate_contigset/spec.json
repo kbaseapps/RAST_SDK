@@ -280,7 +280,8 @@
       "input_mapping" : [
         {
           "input_parameter": "input_contigset",
-          "target_property": "input_contigset"
+          "target_property": "input_contigset",
+          "target_type_transform": "resolved-ref"
         },
         {
           "input_parameter": "scientific_name",

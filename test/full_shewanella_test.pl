@@ -145,7 +145,7 @@ sub reannotate_genome {
     return $impl->annotate_genome($params);
     #return make_impl_call("RAST_SDK.annotate_genome", $params);
 }
-die;
+
 my $diff_count = 0;
 lives_ok {
     print("Loading assembly to WS\n");
