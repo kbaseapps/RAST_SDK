@@ -109,7 +109,8 @@ sub ga_client {
 	});
 	if ($parameters->{refresh} == 1 || !defined($ga_client)) {
 		require "GenomeAnnotationAPI/GenomeAnnotationAPIClient.pm";
-		$ga_client = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::utilities::utilconf("call_back_url"));
+		$ga_client = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::utilities::utilconf("call_back_url"),
+		                                                                ('service_version' => 'dev'));
 	}
 	return $ga_client;
 }
