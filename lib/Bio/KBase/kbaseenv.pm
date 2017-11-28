@@ -147,8 +147,13 @@ sub list_objects {
 }
 
 sub get_object_info {
-	my ($argone,$argtwo) = @_;
-	return Bio::KBase::kbaseenv::ws_client()->get_object_info($argone,$argtwo);
+	my ($argone,$argtwo,$argthree) = @_;
+	my $params = {
+		objects => $argone,
+		includeMetadata => $argtwo,
+		ignoreErrors => $argthree
+	};
+	return Bio::KBase::kbaseenv::ws_client()->get_object_info3($params)->{infos};
 }
 
 sub administer {
@@ -199,23 +204,22 @@ sub save_objects {
 	return $output;
 }
 
-sub configure_ws_id {
-	my ($ws,$id,$version) = @_;
-	my $input = {};
- 	if ($ws =~ m/^\d+$/) {
- 		$input->{wsid} = $ws;
-	} else {
-		$input->{workspace} = $ws;
+sub buildref {
+	my ($ws, $id, $version) = @_;
+	#Check if the ID is a ref or ref_path with a version
+	if ($id =~ m/^(([^\/]+)\/([^\/]+)\/(\d+);?)+$/) {
+		return $id;
 	}
-	if ($id =~ m/^\d+$/) {
-		$input->{objid} = $id;
-	} else {
-		$input->{name} = $id;
+	#Check if the ID contains lacks "/" which indicates that it is not a ref
+	elsif ($id !~ m/\//) {
+		#Removing any "/" that may appear at the end of the ws
+		$ws =~ s/\/$//;
+		$id = $ws . "/" . $id;
 	}
-	if (defined($version)) {
-		$input->{ver} = $version;
+	if (defined $version) {
+		return $id . "/" . $version;
 	}
-	return $input;
+	return $id;
 }
 
 sub initialize_call {

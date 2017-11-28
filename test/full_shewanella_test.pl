@@ -1,6 +1,7 @@
 use strict;
 use Data::Dumper;
 use Test::More;
+use Test::Exception;
 use Config::Simple;
 use Time::HiRes qw(time);
 use Workspace::WorkspaceClient;
@@ -8,6 +9,7 @@ use JSON;
 use File::Copy;
 use AssemblyUtil::AssemblyUtilClient;
 use Storable qw(dclone);
+use RAST_SDK::RAST_SDKImpl
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -16,6 +18,10 @@ my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
+my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
+my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
+my $impl = new RAST_SDK::RAST_SDKImpl();
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -67,12 +73,13 @@ sub prepare_assembly {
     copy $fasta_data_path, $fasta_temp_path;
     my $call_back_url = $ENV{ SDK_CALLBACK_URL };
     my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
-    $au->save_assembly_from_fasta({
+    my $ret = $au->save_assembly_from_fasta({
         file => {path => $fasta_temp_path},
         workspace_name => get_ws_name(),
         assembly_name => $assembly_obj_name
     });
     unlink($fasta_temp_path);
+    return $ret;
 }
 
 sub load_genome_from_json {
@@ -100,20 +107,21 @@ sub load_genome_from_json {
 
 sub save_genome_to_ws {
     my($genome_obj,$genome_obj_name) = @_;
-    my $ret = $ws_client->save_objects({workspace=>get_ws_name(),objects=>[{data=>$genome_obj,
+    my $info = $ws_client->save_objects({workspace=>get_ws_name(),objects=>[{data=>$genome_obj,
             type=>"KBaseGenomes.Genome", name=>$genome_obj_name}]})->[0];
+    return $info->[6]."/".$info->[0]."/".$info->[4];
 }
 
 sub prepare_genome {
     my($assembly_obj_name,$genome_obj_name,$input_json_file) = @_;
     my $genome_obj = load_genome_from_json($assembly_obj_name,$input_json_file);
-    save_genome_to_ws($genome_obj, $genome_obj_name);
-    return $genome_obj;
+    my $genome_upa = save_genome_to_ws($genome_obj, $genome_obj_name);
+    return ($genome_obj, $genome_upa);
 }
 
 sub reannotate_genome {
-    my($genome_obj_name) = @_;
-    my $params={"input_genome"=>$genome_obj_name,
+    my($genome_obj_name, $genome_upa) = @_;
+    my $params={"input_genome"=>$genome_upa,
              "call_features_rRNA_SEED"=>'0',
              "call_features_tRNA_trnascan"=>'0',
              "call_selenoproteins"=>'0',
@@ -134,17 +142,19 @@ sub reannotate_genome {
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };
-    return make_impl_call("RAST_SDK.annotate_genome", $params);
+    return $impl->annotate_genome($params);
+    #return make_impl_call("RAST_SDK.annotate_genome", $params);
 }
 
-eval {
+my $diff_count = 0;
+lives_ok {
     print("Loading assembly to WS\n");
     my $assembly_obj_name = "assembly.1";
     prepare_assembly($assembly_obj_name);
     my $genome_obj_name = "genome.1";
     print("Loading genome to WS\n");
     my $genome_json_path = "/kb/module/test/data/shewy_genome.json";
-    my $orig_genome = prepare_genome($assembly_obj_name, $genome_obj_name, $genome_json_path);
+    my ($orig_genome, $genome_upa) = prepare_genome($assembly_obj_name, $genome_obj_name, $genome_json_path);
     my $orig_funcs = {};
     for (my $i=0; $i < @{$orig_genome->{features}}; $i++) {
         my $ftr = $orig_genome->{features}->[$i];
@@ -158,7 +168,7 @@ eval {
     print $fh encode_json($orig_funcs);
     close $fh;
     print("Running RAST annotation\n");
-    my $ret = reannotate_genome($genome_obj_name);
+    my $ret = reannotate_genome($genome_obj_name, $genome_upa);
     my $report_ref = $ret->{report_ref};
     my $report_obj = $ws_client->get_objects([{ref=>$report_ref}])->[0]->{data};
     my $report_json = encode_json($report_obj);
@@ -170,7 +180,6 @@ eval {
     open my $fh, ">", "/kb/module/work/tmp/shewy_genome_reannot.json";
     print $fh encode_json($genome_obj);
     close $fh;
-    my $diff_count = 0;
     for (my $i=0; $i < @{$genome_obj->{features}}; $i++) {
         my $ftr = $genome_obj->{features}->[$i];
         my $func = $ftr->{function};
@@ -182,10 +191,10 @@ eval {
             $diff_count++;
         }
     }
-    print "Number of features with changed function: " . $diff_count . "\n";
-    ok($diff_count > 1000, "Number of updated features (" . $diff_count . ")");
-    done_testing(1);
-};
+    } "Pipeline Runs";
+print "Number of features with changed function: " . $diff_count . "\n";
+ok($diff_count > 1000, "Number of updated features (" . $diff_count . ")");
+done_testing(2);
 
 my $err = undef;
 if ($@) {

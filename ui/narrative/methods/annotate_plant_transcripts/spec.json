@@ -39,7 +39,8 @@
       "input_mapping" : [
         {
           "input_parameter": "input_genome",
-          "target_property": "input_genome"
+          "target_property": "input_genome",
+          "target_type_transform": "resolved-ref"
         },
         {
           "input_parameter": "output_genome",

@@ -10,10 +10,10 @@ service-language:
     perl
 
 module-version:
-    0.0.8
+    0.0.9
 
 owners:
-    [chenry,scanon,olson,umaganapathyswork]
+    [chenry,scanon,olson,jjeffryes,umaganapathyswork]
 
 data-version:
     0.2
