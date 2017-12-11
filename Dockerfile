@@ -54,6 +54,7 @@ RUN \
     cpanm install Set::IntervalTree && \
     cd /kb/deployment/services/kmer_annotation_figfam/ && \
     sed 's|$KB_TOP/deployment.cfg|/kb/module/deploy.cfg|' -i ./start_service  && \
+    sed 's|$KB_TOP/services/kmer_annotation_figfam|/tmp/|' -i ./start_service  && \
     sed 's/8/1/' -i ./start_service 
 
 RUN mkdir /data && \
