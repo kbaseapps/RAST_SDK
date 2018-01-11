@@ -38,6 +38,7 @@ sub util_initialize_call {
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
 	Bio::KBase::kbaseenv::ac_client({refresh => 1});
 	Bio::KBase::kbaseenv::ga_client({refresh => 1});
+	Bio::KBase::kbaseenv::gfu_client({refresh => 1});
 	return $params;
 }
 
@@ -754,7 +755,7 @@ sub annotate {
 
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
-	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
+	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
