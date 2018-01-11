@@ -9,7 +9,6 @@ use JSON;
 use File::Copy;
 use AssemblyUtil::AssemblyUtilClient;
 use Storable qw(dclone);
-use RAST_SDK::RAST_SDKImpl
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -18,10 +17,6 @@ my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
-my $auth_token = Bio::KBase::AuthToken->new(token => $token, ignore_authrc => 1);
-my $ctx = LocalCallContext->new($token, $auth_token->user_id);
-$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
-my $impl = new RAST_SDK::RAST_SDKImpl();
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -142,8 +137,7 @@ sub reannotate_genome {
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };
-    return $impl->annotate_genome($params);
-    #return make_impl_call("RAST_SDK.annotate_genome", $params);
+    return make_impl_call("RAST_SDK.annotate_genome", $params);
 }
 
 my $diff_count = 0;
