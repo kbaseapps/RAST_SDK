@@ -101,7 +101,7 @@ sub util_get_contigs {
 		for (my $i=0; $i < @{$array}; $i++) {
 			if (@{$obj->{contigs}} > $max_contigs){
 				Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs', 
-																method_name => 'util_get_contigs');
+										method_name => 'util_get_contigs');
 			}
 			if (length($array->[$i]) > 0) {
 				my $subarray = [split(/\|\|\|/,$array->[$i])];
