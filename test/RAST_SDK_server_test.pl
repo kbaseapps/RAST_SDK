@@ -2,6 +2,7 @@ use strict;
 use Data::Dumper;
 use Test::More;
 use Test::Exception;
+use Test::MockObject;
 use Config::Simple;
 use Time::HiRes qw(time);
 use Workspace::WorkspaceClient;
@@ -246,7 +247,14 @@ lives_ok{
         my $genome_ref = prepare_recent_old_genome($assembly_ref, $genome_obj_name);
         test_reannotate_genome($genome_obj_name, $genome_ref);
     }, 'test_reannotate_genome';
-done_testing(4);
+
+my $mock_max_contigs = Test::MockObject->new();
+$mock_max_contigs->set_always('max_contigs', 0);
+dies_ok {
+        test_annotate_assembly($assembly_obj_name);
+    }, "test_fail_max_contigs_annotate_assembly";
+
+done_testing(5);
 
 my $err = undef;
 if ($@) {
