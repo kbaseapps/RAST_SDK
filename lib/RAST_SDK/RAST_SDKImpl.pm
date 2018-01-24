@@ -69,6 +69,12 @@ sub util_get_genome {
 	return $genome->{data};
 }
 
+sub max_contigs {
+	my $max_contigs = 10000;
+	print ("Setting maximum contigs to $max_contigs\n");
+	return $max_contigs;
+}
+
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
 	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
@@ -97,7 +103,7 @@ sub util_get_contigs {
 		$fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
 		$fasta =~ s/\n//g;
 		my $array = [split(/\>/,$fasta)];
-		my $max_contigs = 10000;
+		my $max_contigs = max_contigs();
 		for (my $i=0; $i < @{$array}; $i++) {
 			if (@{$obj->{contigs}} > $max_contigs){
 				Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs', 
