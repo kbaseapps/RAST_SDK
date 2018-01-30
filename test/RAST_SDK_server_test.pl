@@ -2,7 +2,6 @@ use strict;
 use Data::Dumper;
 use Test::More;
 use Test::Exception;
-use Test::MockObject;
 use Config::Simple;
 use Time::HiRes qw(time);
 use Workspace::WorkspaceClient;
