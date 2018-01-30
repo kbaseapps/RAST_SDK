@@ -247,13 +247,8 @@ lives_ok{
         my $genome_ref = prepare_recent_old_genome($assembly_ref, $genome_obj_name);
         test_reannotate_genome($genome_obj_name, $genome_ref);
     }, 'test_reannotate_genome';
-dies_ok {
-        my $mock = Test::MockObject->new();
-        $mock->set_always('max_contigs', 0);
-        test_annotate_assembly($assembly_obj_name);
-    }, "test_fail_max_contigs_annotate_assembly";
 
-done_testing(5);
+done_testing(4);
 
 my $err = undef;
 if ($@) {
