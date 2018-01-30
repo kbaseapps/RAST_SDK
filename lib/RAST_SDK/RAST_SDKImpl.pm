@@ -61,7 +61,8 @@ sub util_get_genome {
 		}],
 		ignore_errors => 1,
 		no_data => 0,
-		no_metadata => 0
+		no_metadata => 0,
+		downgrade => 0
 	});
 	my $genome = $output->{genomes}->[0];
 	$genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
@@ -509,8 +510,12 @@ sub annotate {
 			my $feature = $inputgenome->{features}->[$i];
 			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
 				$feature->{type} = "CDS"
+			};
+			if (defined($feature->{functions})){
+				$feature->{function} = join("; ", @{$feature->{functions}});
 			}
 		}
+		delete $inputgenome->{feature_counts};
 	}
 	# Runs, the annotation, comment out if you dont have the reference files
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
@@ -740,7 +745,7 @@ sub annotate {
 		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
-
+	print($message);
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
@@ -755,6 +760,10 @@ sub annotate {
 
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
+	use JSON;
+	open my $fh, ">", "/kb/module/work/tmp/data_out.json";
+	print $fh encode_json($genome);
+	close $fh;
 	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
