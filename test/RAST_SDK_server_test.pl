@@ -10,6 +10,7 @@ use File::Copy;
 use AssemblyUtil::AssemblyUtilClient;
 use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
 use Storable qw(dclone);
+use File::Slurp;
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -126,17 +127,13 @@ sub test_annotate_assembly {
 }
 
 sub load_genome_from_json {
-    my($assembly_ref) = @_;
-    #my $genome_obj_dir = "/kb/module/work/tmp/";
-    my $genome_file_name = "bogus_genome.json";
-    #my $genome_obj_path = $genome_obj_dir . $genome_file_name;
-    #unless (-e $genome_obj_path) {
-        my $genome_obj_dir = "/kb/module/test/data/";
-        my $genome_obj_path = $genome_obj_dir . $genome_file_name;
-    #}
-    open my $fh2, "<", $genome_obj_path;
-    my $genome_json = <$fh2>;
-    close $fh2;
+    my($assembly_ref, $genome_file_name) = @_;
+    if (!defined($genome_file_name)){
+        $genome_file_name = "bogus_genome.json";
+    }
+    my $genome_obj_dir = "/kb/module/test/data/";
+    my $genome_obj_path = $genome_obj_dir . $genome_file_name;
+    my $genome_json = read_file($genome_obj_path);
     my $json = JSON->new;
     my $genome_obj = $json->decode($genome_json);
     $genome_obj->{assembly_ref} = $assembly_ref;
@@ -244,12 +241,23 @@ lives_ok{
         my $genome_ref = prepare_old_genome($assembly_ref, $genome_obj_name);
         test_reannotate_genome($genome_obj_name, $genome_ref);
     }, "test_reannotate_genome";
+
 lives_ok{
-        $genome_obj_name = "genome.4";
+        my $genome_obj_name = "genome.4";
         my $genome_ref = prepare_recent_old_genome($assembly_ref, $genome_obj_name);
         test_reannotate_genome($genome_obj_name, $genome_ref);
     }, 'test_reannotate_genome';
-done_testing(4);
+
+lives_ok{
+        my $genome_obj_name = "genome.5";
+        my $genome_obj = load_genome_from_json($assembly_ref, "new_genome.json");
+        my $ret = $ws_client->save_objects({workspace=>get_ws_name(),
+             objects=>[{data=>$genome_obj, type=>"KBaseGenomes.Genome",
+                name=>$genome_obj_name}]})->[0];
+        my $genome_ref = $ret->[6]."/".$ret->[0]."/".$ret->[4];
+        test_reannotate_genome($genome_obj_name, $genome_ref);
+    }, 'test_reannotate_newest_genome';
+done_testing(5);
 
 my $err = undef;
 if ($@) {

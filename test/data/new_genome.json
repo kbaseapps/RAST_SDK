@@ -1,0 +1,291 @@
+{
+  "domain": "B",
+  "features": [
+    {
+      "functions": [
+        "leader",
+        "Amino acid biosynthesis: Threonine",
+        "product:thr operon leader peptide"
+      ],
+      "ontology_terms": {
+        "GO": {
+          "GO:0009088": [
+            1
+          ]
+        }
+      },
+      "dna_sequence_length": 66,
+      "protein_translation": "MKRISTTITTTITITTGNGAG",
+      "cdss": [
+        "b0001_CDS_1"
+      ],
+      "location": [
+        [
+          "NC_000913.3",
+          190,
+          "+",
+          66
+        ]
+      ],
+      "dna_sequence": "ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACAGGTAACGGTGCGGGCTGA",
+      "db_xrefs": [
+        [
+          "EcoGene",
+          "EG11277"
+        ],
+        [
+          "GeneID",
+          "944742"
+        ]
+      ],
+      "protein_translation_length": 21,
+      "md5": "d9a5340149daa92ec59912f01a1922ff",
+      "type": "gene",
+      "id": "b0001",
+      "aliases": [
+        [
+          "gene_synonym",
+          "ECK0001; JW4367"
+        ],
+        [
+          "gene",
+          "thrL"
+        ],
+        [
+          "locus_tag",
+          "b0001"
+        ],
+        [
+          "protein_id",
+          "NP_414542.1"
+        ]
+      ]
+    }
+  ],
+  "mrnas": [
+    {
+      "functions": [
+        "leader",
+        "Amino acid biosynthesis: Threonine",
+        "product:thr operon leader peptide"
+      ],
+      "parent_gene": "b0001",
+      "ontology_terms": {
+        "GO": {
+          "GO:0009088": [
+            1
+          ]
+        }
+      },
+      "dna_sequence_length": 66,
+      "location": [
+        [
+          "NC_000913.3",
+          190,
+          "+",
+          66
+        ]
+      ],
+      "dna_sequence": "ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACAGGTAACGGTGCGGGCTGA",
+      "db_xrefs": [
+        [
+          "GI",
+          "16127995"
+        ],
+        [
+          "ASAP",
+          "ABE-0000006"
+        ],
+        [
+          "UniProtKB/Swiss-Prot",
+          "P0AD86"
+        ],
+        [
+          "EcoGene",
+          "EG11277"
+        ],
+        [
+          "GeneID",
+          "944742"
+        ]
+      ],
+      "protein_translation_length": 21,
+      "md5": "d9a5340149daa92ec59912f01a1922ff",
+      "id": "b0001_mRNA_1",
+      "inference_data": [
+        {
+          "category": "",
+          "type": "alignment",
+          "evidence": "Splign:1.26p:RefSeq:NM_000041.2,INSD:BC003557.1"
+        },
+        {
+          "category": "COORDINATES",
+          "type": "profile",
+          "evidence": "tRNAscan:2.1"
+        },
+        {
+          "category": "",
+          "type": "alignment",
+          "evidence": "Splign:1.0"
+        }
+      ],
+      "aliases": [
+        [
+          "locus_tag",
+          "b0001"
+        ],
+        [
+          "gene_synonym",
+          "ECK0001; JW4367"
+        ],
+        [
+          "gene",
+          "thrL"
+        ],
+        [
+          "protein_id",
+          "NP_414542.1"
+        ]
+      ]
+    }
+  ],
+  "cdss": [
+    {
+      "functions": [
+        "leader",
+        "Amino acid biosynthesis: Threonine",
+        "product:thr operon leader peptide"
+      ],
+      "parent_gene": "b0001",
+      "ontology_terms": {
+        "GO": {
+          "GO:0009088": [
+            1
+          ]
+        }
+      },
+      "dna_sequence_length": 66,
+      "protein_translation": "MKRISTTITTTITITTGNGAG",
+      "protein_md5": "13fe4258b37e32edda386faa50ec5fdf",
+      "location": [
+        [
+          "NC_000913.3",
+          190,
+          "+",
+          66
+        ]
+      ],
+      "dna_sequence": "ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACAGGTAACGGTGCGGGCTGA",
+      "db_xrefs": [
+        [
+          "GI",
+          "16127995"
+        ],
+        [
+          "ASAP",
+          "ABE-0000006"
+        ],
+        [
+          "UniProtKB/Swiss-Prot",
+          "P0AD86"
+        ],
+        [
+          "EcoGene",
+          "EG11277"
+        ],
+        [
+          "GeneID",
+          "944742"
+        ]
+      ],
+      "protein_translation_length": 21,
+      "md5": "d9a5340149daa92ec59912f01a1922ff",
+      "id": "b0001_CDS_1",
+      "inference_data": [
+        {
+          "category": "",
+          "type": "alignment",
+          "evidence": "Splign:1.26p:RefSeq:NM_000041.2,INSD:BC003557.1"
+        },
+        {
+          "category": "COORDINATES",
+          "type": "profile",
+          "evidence": "tRNAscan:2.1"
+        },
+        {
+          "category": "",
+          "type": "alignment",
+          "evidence": "Splign:1.0"
+        }
+      ],
+      "aliases": [
+        [
+          "locus_tag",
+          "b0001"
+        ],
+        [
+          "gene_synonym",
+          "ECK0001; JW4367"
+        ],
+        [
+          "gene",
+          "thrL"
+        ],
+        [
+          "protein_id",
+          "NP_414542.1"
+        ]
+      ]
+    }
+  ],
+  "non_coding_features": [
+    {
+      "dna_sequence_length": 105,
+      "note": "RIP1 (repetitive extragenic palindromic) element; contains 2 REP sequences and 1 IHF site",
+      "location": [
+        [
+          "NC_000913.3",
+          5565,
+          "+",
+          105
+        ]
+      ],
+      "dna_sequence": "GCCTGATGCGACGCTGGCGCGTCTTATCAGGCCTACGTTAATTCTGCAATATATTGAATCTGCATGCTTTTGTAGGCAGGATAAGGCGTTCACGCCGCATCCGGC",
+      "type": "repeat_region",
+      "id": "repeat_region_1",
+      "md5": "b95bfb2d7248be83a1cd1f7845b379a2"
+    }
+  ],
+  "gc_content": 0.5,
+  "genetic_code": 11,
+  "id": "NewGenome",
+  "md5": "07c65be37332c39f111365e68fc56473",
+  "scientific_name": "EColi",
+  "source_id": "NewGenome",
+  "assembly_ref": "1/2/1",
+  "feature_counts": {
+    "protein_encoding_gene": 1,
+    "repeat_region": 1,
+    "mRNA": 1,
+    "CDS": 1,
+    "gene": 1
+  },
+  "ontology_events": [
+    {
+      "timestamp": "2017_12_04_23_47_19",
+      "ontology_ref": "6308/3/2",
+      "method_version": "0.7.0",
+      "id": "GO",
+      "method": "GenomeFileUtils Genbank uploader from annotations"
+    }
+  ],
+  "molecule_type": "DNA",
+  "original_source_file_name": "GCF_000005845.2_ASM584v2_altered_genomic.gbff",
+  "source": "Genbank",
+  "num_contigs": 2,
+  "genome_tiers": [
+    "User"
+  ],
+  "dna_size": 4641772,
+  "taxon_ref": "ReferenceTaxons/unknown_taxon"
+}
