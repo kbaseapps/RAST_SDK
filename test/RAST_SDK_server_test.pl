@@ -19,7 +19,7 @@ my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gfu = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
+my $gaa = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -127,13 +127,13 @@ sub test_annotate_assembly {
 
 sub load_genome_from_json {
     my($assembly_ref) = @_;
-    my $genome_obj_dir = "/kb/module/work/tmp/";
+    #my $genome_obj_dir = "/kb/module/work/tmp/";
     my $genome_file_name = "bogus_genome.json";
-    my $genome_obj_path = $genome_obj_dir . $genome_file_name;
-    unless (-e $genome_obj_path) {
-        $genome_obj_dir = "/kb/module/test/data/";
-        $genome_obj_path = $genome_obj_dir . $genome_file_name;
-    }
+    #my $genome_obj_path = $genome_obj_dir . $genome_file_name;
+    #unless (-e $genome_obj_path) {
+        my $genome_obj_dir = "/kb/module/test/data/";
+        my $genome_obj_path = $genome_obj_dir . $genome_file_name;
+    #}
     open my $fh2, "<", $genome_obj_path;
     my $genome_json = <$fh2>;
     close $fh2;
@@ -148,8 +148,8 @@ sub load_genome_from_json {
 sub save_genome_to_ws {
     my($genome_obj,$genome_obj_name) = @_;
     #my $ret = $ws_client->save_objects({workspace=>get_ws_name(),objects=>[{data=>$genome_obj,
-    #        type=>"KBaseGenomes.Genome-12.1", name=>$genome_obj_name}]})->[0];
-    my $ret = $gfu->save_one_genome_v1({workspace=>get_ws_name(), data=>$genome_obj, name=>$genome_obj_name})->{info};
+    #        type=>"KBaseGenomes.Genome-11.0", name=>$genome_obj_name}]})->[0];
+    my $ret = $gaa->save_one_genome_v1({workspace=>get_ws_name(), data=>$genome_obj, name=>$genome_obj_name})->{info};
     return $ret->[6]."/".$ret->[0]."/".$ret->[4];
 }
 
