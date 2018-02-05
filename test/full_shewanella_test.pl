@@ -19,7 +19,7 @@ my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gfu = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
+my $gaa = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -107,7 +107,7 @@ sub save_genome_to_ws {
     my($genome_obj,$genome_obj_name) = @_;
     #my $info = $ws_client->save_objects({workspace=>get_ws_name(),objects=>[{data=>$genome_obj,
     #        type=>"KBaseGenomes.Genome-12.1", name=>$genome_obj_name}]})->[0];
-    my $info = $gfu->save_one_genome_v1({workspace=>get_ws_name(), data=>$genome_obj, name=>$genome_obj_name})->{info};
+    my $info = $gaa->save_one_genome_v1({workspace=>get_ws_name(), data=>$genome_obj, name=>$genome_obj_name})->{info};
     return $info->[6]."/".$info->[0]."/".$info->[4];
 }
 
