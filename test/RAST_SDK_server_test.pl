@@ -249,8 +249,10 @@ lives_ok{
     }, 'test_reannotate_genome';
 
 lives_ok{
+        # Test with a new (as of 2/2018) genome
         my $genome_obj_name = "genome.5";
         my $genome_obj = load_genome_from_json($assembly_ref, "new_genome.json");
+        # TODO: Should use GFU to save new genomes
         my $ret = $ws_client->save_objects({workspace=>get_ws_name(),
              objects=>[{data=>$genome_obj, type=>"KBaseGenomes.Genome",
                 name=>$genome_obj_name}]})->[0];

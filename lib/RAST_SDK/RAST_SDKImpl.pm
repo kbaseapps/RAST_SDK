@@ -513,8 +513,11 @@ sub annotate {
 			my $feature = $inputgenome->{features}->[$i];
 			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
 				$feature->{type} = "CDS"
-			};
+			}
 		}
+		# When RAST annotates the genome it becomes incompatible with the new
+		# spec. Removing this attribute triggers an "upgrade" to the genome
+		# that fixes these problems when saving with GFU
 		delete $inputgenome->{feature_counts};
 	}
 	# Runs, the annotation, comment out if you dont have the reference files
@@ -760,10 +763,6 @@ sub annotate {
 
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
-	use JSON;
-	open my $fh, ">", "/kb/module/work/tmp/data_out.json";
-	print $fh encode_json($genome);
-	close $fh;
 	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
