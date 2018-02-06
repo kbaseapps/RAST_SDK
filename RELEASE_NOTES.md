@@ -1,6 +1,12 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.0.11
+__Changes__
+- Save genomes though the GenomeFileUtils
+- Adapt code for new style genome and add test
+- Tests use GenomeAnnotationAPI to load data
+
 ### Version 0.0.10
 __Changes__
 - Switch KMer FigFam service to write to /tmp for HPC support
