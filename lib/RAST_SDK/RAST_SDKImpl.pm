@@ -177,6 +177,9 @@ sub annotate {
 			# for re-annotation in RAST service (otherwise these features will be skipped).
 			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
 					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				if (defined($ftr->{functions})){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+				}
 				$oldfunchash->{$ftr->{id}} = $ftr->{function};
 				$ftr->{function} = "hypothetical protein";
 			}
@@ -511,9 +514,6 @@ sub annotate {
 			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
 				$feature->{type} = "CDS"
 			};
-			if (defined($feature->{functions})){
-				$feature->{function} = join("; ", @{$feature->{functions}});
-			}
 		}
 		delete $inputgenome->{feature_counts};
 	}
