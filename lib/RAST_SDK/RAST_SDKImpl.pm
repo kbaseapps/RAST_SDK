@@ -61,7 +61,8 @@ sub util_get_genome {
 		}],
 		ignore_errors => 1,
 		no_data => 0,
-		no_metadata => 0
+		no_metadata => 0,
+		downgrade => 0
 	});
 	my $genome = $output->{genomes}->[0];
 	$genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
@@ -187,6 +188,9 @@ sub annotate {
 			# for re-annotation in RAST service (otherwise these features will be skipped).
 			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
 					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				if (defined($ftr->{functions})){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+				}
 				$oldfunchash->{$ftr->{id}} = $ftr->{function};
 				$ftr->{function} = "hypothetical protein";
 			}
@@ -522,6 +526,10 @@ sub annotate {
 				$feature->{type} = "CDS"
 			}
 		}
+		# When RAST annotates the genome it becomes incompatible with the new
+		# spec. Removing this attribute triggers an "upgrade" to the genome
+		# that fixes these problems when saving with GFU
+		delete $inputgenome->{feature_counts};
 	}
 	# Runs, the annotation, comment out if you dont have the reference files
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
@@ -751,7 +759,7 @@ sub annotate {
 		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
-
+	print($message);
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
