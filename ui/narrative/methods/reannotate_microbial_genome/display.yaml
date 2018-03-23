@@ -169,14 +169,6 @@ parameters :
         long-hint  : |
             See manual page for description of annotation pipieline
                         
-    find_close_neighbors :
-        ui-name : |
-            Find close neighbors
-        short-hint : |
-            See manual page for description of annotation pipieline
-        long-hint  : |
-            See manual page for description of annotation pipieline
-                        
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy

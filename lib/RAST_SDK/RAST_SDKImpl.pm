@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.6';
-our $GIT_URL = 'https://github.com/kbaseapps//RAST_SDK';
-our $GIT_COMMIT_HASH = 'caabe1d46c5c3f73c00ac5c0b6760e40e101f25d';
+our $VERSION = '0.0.12';
+our $GIT_URL = 'git@github.com:kbaseapps/RAST_SDK.git';
+our $GIT_COMMIT_HASH = '4d601e6cb289caacf5e928e563513c41d3d1dcb5';
 
 =head1 NAME
 
@@ -468,9 +468,6 @@ sub annotate {
 			"resolve_overlapping_features_parameters" => {}
 		});
 	}
-	if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)	{
-		push(@{$workflow->{stages}},{name => "find_close_neighbors"});
-	}
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
@@ -865,7 +862,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -910,7 +906,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -976,7 +971,6 @@ sub annotate_genome
 	    kmer_v1_parameters => 1,
 	    annotate_proteins_similarity => 1,
 	    resolve_overlapping_features => 1,
-	    find_close_neighbors => 0,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
@@ -1039,7 +1033,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -1085,7 +1078,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -1154,7 +1146,6 @@ sub annotate_genomes
 	    kmer_v1_parameters => 1,
 	    annotate_proteins_similarity => 1,
 	    resolve_overlapping_features => 1,
-	    find_close_neighbors => 0,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
@@ -1203,7 +1194,6 @@ sub annotate_genomes
 		    kmer_v1_parameters
 		    annotate_proteins_similarity
 		    resolve_overlapping_features
-		    find_close_neighbors
 		    call_features_prophage_phispy
 		    retain_old_anno_for_hypotheticals
 		)];
@@ -1450,7 +1440,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1484,7 +1473,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1601,7 +1589,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1630,7 +1617,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 

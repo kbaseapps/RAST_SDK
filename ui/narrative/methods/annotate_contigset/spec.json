@@ -248,17 +248,6 @@
       "unchecked_value": 0
     }
   }, {
-    "id": "find_close_neighbors",
-    "optional":false,
-    "advanced":true,
-    "allow_multiple":false,
-    "default_values":["1"],
-    "field_type" : "checkbox",
-    "checkbox_options":{
-      "checked_value": 1,
-      "unchecked_value": 0
-    }
-  }, {
     "id": "call_features_prophage_phispy",
     "optional":false,
     "advanced":true,
@@ -354,10 +343,6 @@
         {
           "input_parameter": "resolve_overlapping_features",
           "target_property": "resolve_overlapping_features"
-        },
-        {
-          "input_parameter": "find_close_neighbors",
-          "target_property": "find_close_neighbors"
         },
         {
           "input_parameter": "call_features_prophage_phispy",

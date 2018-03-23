@@ -184,14 +184,6 @@ parameters :
         long-hint  : |
             Perform basic gene overlap removal
                         
-    find_close_neighbors :
-        ui-name : |
-            Find close neighbors
-        short-hint : |
-            Find close neighbors
-        long-hint  : |
-            Find close neighbors
-                        
     call_features_prophage_phispy :
         ui-name : |
             Find prophage elements with phispy

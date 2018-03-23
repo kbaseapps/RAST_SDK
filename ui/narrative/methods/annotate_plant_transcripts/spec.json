@@ -124,10 +124,6 @@
 	},
 	{
 	  "constant_value":"0",
-	  "target_property":"find_close_neighbors"
-	},
-	{
-	  "constant_value":"0",
 	  "target_property":"call_features_prophage_phispy"
 	},
         {
