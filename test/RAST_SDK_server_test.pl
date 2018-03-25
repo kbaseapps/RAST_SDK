@@ -110,7 +110,6 @@ sub test_annotate_assembly {
              "kmer_v1_parameters"=>'1',
              "annotate_proteins_similarity"=>'1',
              "resolve_overlapping_features"=>'1',
-             "find_close_neighbors"=>'1',
              "call_features_prophage_phispy"=>'0',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
@@ -174,7 +173,6 @@ sub test_reannotate_genome {
              "kmer_v1_parameters"=>'0',
              "annotate_proteins_similarity"=>'1',
              "resolve_overlapping_features"=>'0',
-             "find_close_neighbors"=>'1',
              "call_features_prophage_phispy"=>'0',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
@@ -188,6 +186,30 @@ sub test_reannotate_genome {
     my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
     # no detailed checking right now
     check_genome_obj($genome_obj);
+}
+
+sub test_reannotate_multi_genome {
+    my ($genome_refs) = @_;
+    my $params = { "genome_text"            => $genome_refs,
+        "call_features_rRNA_SEED"           => '0',
+        "call_features_tRNA_trnascan"       => '0',
+        "call_selenoproteins"               => '0',
+        "call_pyrrolysoproteins"            => '0',
+        "call_features_repeat_region_SEED"  => '0',
+        "call_features_insertion_sequences" => '0',
+        "call_features_strep_suis_repeat"   => '0',
+        "call_features_strep_pneumo_repeat" => '0',
+        "call_features_crispr"              => '0',
+        "call_features_CDS_glimmer3"        => '0',
+        "call_features_CDS_prodigal"        => '0',
+        "annotate_proteins_kmer_v2"         => '0',
+        "kmer_v1_parameters"                => '0',
+        "annotate_proteins_similarity"      => '1',
+        "resolve_overlapping_features"      => '0',
+        "call_features_prophage_phispy"     => '0',
+        "workspace"                         => get_ws_name()
+    };
+    my $ret = make_impl_call("RAST_SDK.annotate_genomes", $params);
 }
 
 sub prepare_old_genome {
@@ -228,18 +250,20 @@ sub prepare_recent_old_genome {
 
 my $assembly_obj_name = "contigset.1";
 my $assembly_ref = prepare_assembly($assembly_obj_name);
+my $genome_ref_new;
+my $genome_ref_old;
 lives_ok {
         test_annotate_assembly($assembly_obj_name);
     }, "test_annotate_assembly";
 my $genome_obj_name = "genome.2";
 lives_ok{
-        my $genome_ref = prepare_new_genome($assembly_ref, $genome_obj_name);
-        test_reannotate_genome($genome_obj_name, $genome_ref);
+        $genome_ref_new = prepare_new_genome($assembly_ref, $genome_obj_name);
+        test_reannotate_genome($genome_obj_name, $genome_ref_new);
     }, "test_reannotate_genome";
 lives_ok{
         $genome_obj_name = "genome.3";
-        my $genome_ref = prepare_old_genome($assembly_ref, $genome_obj_name);
-        test_reannotate_genome($genome_obj_name, $genome_ref);
+        $genome_ref_old = prepare_old_genome($assembly_ref, $genome_obj_name);
+        test_reannotate_genome($genome_obj_name, $genome_ref_old);
     }, "test_reannotate_genome";
 
 lives_ok{
@@ -259,7 +283,12 @@ lives_ok{
         my $genome_ref = $ret->[6]."/".$ret->[0]."/".$ret->[4];
         test_reannotate_genome($genome_obj_name, $genome_ref);
     }, 'test_reannotate_newest_genome';
-done_testing(5);
+
+lives_ok{
+    my $genome_refs = $genome_ref_new."\n".$genome_ref_old;
+    test_reannotate_multi_genome($genome_refs);
+}, 'test_reannotate_multi_genome';
+done_testing(6);
 
 my $err = undef;
 if ($@) {

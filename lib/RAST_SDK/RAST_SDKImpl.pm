@@ -1149,8 +1149,6 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $success = [];
-	my $failed = {};
 	my $htmlmessage = "<p>";
 	my $genomes = $params->{input_genomes};
 	if (defined($params->{genome_text})) {
@@ -1163,8 +1161,8 @@ sub annotate_genomes
 		my $input = $genomes->[$i];
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
-			my $info = Bio::KBase::kbaseenv::get_object_info([
-				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])
+			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>
+				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}
 			],0);
 			$input = $info->[0]->[1];
 		}
