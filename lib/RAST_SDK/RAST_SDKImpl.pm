@@ -570,7 +570,6 @@ sub annotate {
 		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
 	}
 	my $newftrs = 0;
-	my $functionchanges = 0;
 	my $proteins = 0;
 	my $others = 0;
 	my $seedfunctions;
@@ -586,9 +585,6 @@ sub annotate {
 				my $func = $ftr->{function};
 				if (not defined($func)) {
 					$func = "";
-				}
-				if (!defined($genehash->{$ftr->{id}}->{$func})) {
-					$functionchanges++;
 				}
 			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
@@ -751,9 +747,8 @@ sub annotate {
 			}
 		}
 	}
-	if (defined($genehash)) {
+	if (defined($inputgenome)) {
 		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
-		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
 	print($message);
