@@ -63,8 +63,7 @@ class RAST_SDK(object):
            boolean), parameter "kmer_v1_parameters" of type "bool" (A binary
            boolean), parameter "annotate_proteins_similarity" of type "bool"
            (A binary boolean), parameter "resolve_overlapping_features" of
-           type "bool" (A binary boolean), parameter "find_close_neighbors"
-           of type "bool" (A binary boolean), parameter
+           type "bool" (A binary boolean), parameter
            "call_features_prophage_phispy" of type "bool" (A binary boolean),
            parameter "retain_old_anno_for_hypotheticals" of type "bool" (A
            binary boolean)
@@ -109,8 +108,7 @@ class RAST_SDK(object):
            boolean), parameter "kmer_v1_parameters" of type "bool" (A binary
            boolean), parameter "annotate_proteins_similarity" of type "bool"
            (A binary boolean), parameter "resolve_overlapping_features" of
-           type "bool" (A binary boolean), parameter "find_close_neighbors"
-           of type "bool" (A binary boolean), parameter
+           type "bool" (A binary boolean), parameter
            "call_features_prophage_phispy" of type "bool" (A binary boolean),
            parameter "retain_old_anno_for_hypotheticals" of type "bool" (A
            binary boolean)

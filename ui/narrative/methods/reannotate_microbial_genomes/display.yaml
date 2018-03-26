@@ -54,7 +54,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-            
+
     call_features_tRNA_trnascan :
         ui-name : |
             Call features tRNA trnascan
@@ -62,7 +62,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
@@ -70,7 +70,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
@@ -78,7 +78,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_repeat_region_SEED :
         ui-name : |
             Call features repeat region SEED
@@ -86,7 +86,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
@@ -94,7 +94,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_strep_suis_repeat :
         ui-name : |
             Call features strep suis repeat
@@ -102,7 +102,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_strep_pneumo_repeat :
         ui-name : |
             Call features strep pneumo repeat
@@ -110,7 +110,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_crispr :
         ui-name : |
             Call features crispr
@@ -118,7 +118,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_CDS_glimmer3 :
         ui-name : |
             Call features CDS glimmer3
@@ -126,7 +126,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_CDS_prodigal :
         ui-name : |
             Call features CDS prodigal
@@ -134,7 +134,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
@@ -143,7 +143,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     kmer_v1_parameters :
         ui-name : |
             Kmer v1 parameters
@@ -151,7 +151,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
@@ -159,7 +159,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
@@ -167,18 +167,10 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
-        short-hint : |
-            See manual page for description of annotation pipieline
-        long-hint  : |
-            See manual page for description of annotation pipieline
-                        
-    find_close_neighbors :
-        ui-name : |
-            Find close neighbors
         short-hint : |
             See manual page for description of annotation pipieline
         long-hint  : |

@@ -136,7 +136,6 @@ sub reannotate_genome {
              "kmer_v1_parameters"=>'1',
              "annotate_proteins_similarity"=>'0',
              "resolve_overlapping_features"=>'0',
-             "find_close_neighbors"=>'0',
              "call_features_prophage_phispy"=>'0',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()

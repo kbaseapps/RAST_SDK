@@ -146,7 +146,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -191,7 +190,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -296,7 +294,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -342,7 +339,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -667,7 +663,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -701,7 +696,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -818,7 +812,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -847,7 +840,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 

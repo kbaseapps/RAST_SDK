@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.0.12
+__Changes__
+- Remove find close neighbors option. Users should use genome tree instead.
+
 ### Version 0.0.11
 __Changes__
 - Save genomes though the GenomeFileUtils

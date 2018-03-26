@@ -42,7 +42,6 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
     "kmer_v1_parameters",
     "annotate_proteins_similarity",
     "resolve_overlapping_features",
-    "find_close_neighbors",
     "call_features_prophage_phispy",
     "retain_old_anno_for_hypotheticals"
 })
@@ -94,8 +93,6 @@ public class AnnotateGenomeParams {
     private Long annotateProteinsSimilarity;
     @JsonProperty("resolve_overlapping_features")
     private Long resolveOverlappingFeatures;
-    @JsonProperty("find_close_neighbors")
-    private Long findCloseNeighbors;
     @JsonProperty("call_features_prophage_phispy")
     private Long callFeaturesProphagePhispy;
     @JsonProperty("retain_old_anno_for_hypotheticals")
@@ -447,21 +444,6 @@ public class AnnotateGenomeParams {
         return this;
     }
 
-    @JsonProperty("find_close_neighbors")
-    public Long getFindCloseNeighbors() {
-        return findCloseNeighbors;
-    }
-
-    @JsonProperty("find_close_neighbors")
-    public void setFindCloseNeighbors(Long findCloseNeighbors) {
-        this.findCloseNeighbors = findCloseNeighbors;
-    }
-
-    public AnnotateGenomeParams withFindCloseNeighbors(Long findCloseNeighbors) {
-        this.findCloseNeighbors = findCloseNeighbors;
-        return this;
-    }
-
     @JsonProperty("call_features_prophage_phispy")
     public Long getCallFeaturesProphagePhispy() {
         return callFeaturesProphagePhispy;
@@ -504,7 +486,7 @@ public class AnnotateGenomeParams {
 
     @Override
     public String toString() {
-        return ((((((((((((((((((((((((((((((((((((((((((((((((((((((("AnnotateGenomeParams"+" [workspace=")+ workspace)+", inputGenome=")+ inputGenome)+", inputContigset=")+ inputContigset)+", geneticCode=")+ geneticCode)+", domain=")+ domain)+", scientificName=")+ scientificName)+", outputGenome=")+ outputGenome)+", callFeaturesRRNASEED=")+ callFeaturesRRNASEED)+", callFeaturesTRNATrnascan=")+ callFeaturesTRNATrnascan)+", callSelenoproteins=")+ callSelenoproteins)+", callPyrrolysoproteins=")+ callPyrrolysoproteins)+", callFeaturesRepeatRegionSEED=")+ callFeaturesRepeatRegionSEED)+", callFeaturesInsertionSequences=")+ callFeaturesInsertionSequences)+", callFeaturesStrepSuisRepeat=")+ callFeaturesStrepSuisRepeat)+", callFeaturesStrepPneumoRepeat=")+ callFeaturesStrepPneumoRepeat)+", callFeaturesCrispr=")+ callFeaturesCrispr)+", callFeaturesCDSGlimmer3=")+ callFeaturesCDSGlimmer3)+", callFeaturesCDSProdigal=")+ callFeaturesCDSProdigal)+", callFeaturesCDSGenemark=")+ callFeaturesCDSGenemark)+", annotateProteinsKmerV2=")+ annotateProteinsKmerV2)+", kmerV1Parameters=")+ kmerV1Parameters)+", annotateProteinsSimilarity=")+ annotateProteinsSimilarity)+", resolveOverlappingFeatures=")+ resolveOverlappingFeatures)+", findCloseNeighbors=")+ findCloseNeighbors)+", callFeaturesProphagePhispy=")+ callFeaturesProphagePhispy)+", retainOldAnnoForHypotheticals=")+ retainOldAnnoForHypotheticals)+", additionalProperties=")+ additionalProperties)+"]");
+        return ((((((((((((((((((((((((((((((((((((((((((((((((((((("AnnotateGenomeParams"+" [workspace=")+ workspace)+", inputGenome=")+ inputGenome)+", inputContigset=")+ inputContigset)+", geneticCode=")+ geneticCode)+", domain=")+ domain)+", scientificName=")+ scientificName)+", outputGenome=")+ outputGenome)+", callFeaturesRRNASEED=")+ callFeaturesRRNASEED)+", callFeaturesTRNATrnascan=")+ callFeaturesTRNATrnascan)+", callSelenoproteins=")+ callSelenoproteins)+", callPyrrolysoproteins=")+ callPyrrolysoproteins)+", callFeaturesRepeatRegionSEED=")+ callFeaturesRepeatRegionSEED)+", callFeaturesInsertionSequences=")+ callFeaturesInsertionSequences)+", callFeaturesStrepSuisRepeat=")+ callFeaturesStrepSuisRepeat)+", callFeaturesStrepPneumoRepeat=")+ callFeaturesStrepPneumoRepeat)+", callFeaturesCrispr=")+ callFeaturesCrispr)+", callFeaturesCDSGlimmer3=")+ callFeaturesCDSGlimmer3)+", callFeaturesCDSProdigal=")+ callFeaturesCDSProdigal)+", callFeaturesCDSGenemark=")+ callFeaturesCDSGenemark)+", annotateProteinsKmerV2=")+ annotateProteinsKmerV2)+", kmerV1Parameters=")+ kmerV1Parameters)+", annotateProteinsSimilarity=")+ annotateProteinsSimilarity)+", resolveOverlappingFeatures=")+ resolveOverlappingFeatures)+", callFeaturesProphagePhispy=")+ callFeaturesProphagePhispy)+", retainOldAnnoForHypotheticals=")+ retainOldAnnoForHypotheticals)+", additionalProperties=")+ additionalProperties)+"]");
     }
 
 }

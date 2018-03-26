@@ -48,7 +48,6 @@ module RAST_SDK {
 	    bool kmer_v1_parameters;
 	    bool annotate_proteins_similarity;
 	    bool resolve_overlapping_features;
-	    bool find_close_neighbors;
 	    bool call_features_prophage_phispy;
 	    bool retain_old_anno_for_hypotheticals;
 	} AnnotateGenomeParams;
@@ -94,7 +93,6 @@ module RAST_SDK {
 	    bool kmer_v1_parameters;
 	    bool annotate_proteins_similarity;
 	    bool resolve_overlapping_features;
-	    bool find_close_neighbors;
 	    bool call_features_prophage_phispy;
 	    bool retain_old_anno_for_hypotheticals;
 	} AnnotateGenomesParams;
