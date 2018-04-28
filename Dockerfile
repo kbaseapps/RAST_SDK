@@ -74,6 +74,9 @@ WORKDIR /kb/module
 
 RUN make
 
+# try to force tmp files to be written to right spot
+RUN rm -rf /tmp && ln -s /kb/module/work/tmp /tmp
+
 ENTRYPOINT [ "./scripts/entrypoint.sh" ]
 
 CMD [ ]
