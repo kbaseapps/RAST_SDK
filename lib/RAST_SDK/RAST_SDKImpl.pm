@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.6';
-our $GIT_URL = 'https://github.com/kbaseapps//RAST_SDK';
-our $GIT_COMMIT_HASH = 'caabe1d46c5c3f73c00ac5c0b6760e40e101f25d';
+our $VERSION = '0.0.12';
+our $GIT_URL = 'git@github.com:kbaseapps/RAST_SDK.git';
+our $GIT_COMMIT_HASH = '4d601e6cb289caacf5e928e563513c41d3d1dcb5';
 
 =head1 NAME
 
@@ -38,6 +38,7 @@ sub util_initialize_call {
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
 	Bio::KBase::kbaseenv::ac_client({refresh => 1});
 	Bio::KBase::kbaseenv::ga_client({refresh => 1});
+	Bio::KBase::kbaseenv::gfu_client({refresh => 1});
 	return $params;
 }
 
@@ -53,36 +54,32 @@ sub util_log {
 
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $ref = $workspace."/".$genomeid;
-	if ($genomeid =~ m/\//) {
-		$ref = $genomeid;
-	}
+	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$genomeid);
 	my $output = Bio::KBase::kbaseenv::ga_client()->get_genome_v1({
 		genomes => [{
 			"ref" => $ref
 		}],
 		ignore_errors => 1,
 		no_data => 0,
-		no_metadata => 1
+		no_metadata => 0,
+		downgrade => 0
 	});
-	return $output->{genomes}->[0]->{data};
+	my $genome = $output->{genomes}->[0];
+	$genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
+	print("Genome $genome->{data}->{'_reference'} downloaded\n");
+	return $genome->{data};
+}
+
+sub max_contigs {
+	my $max_contigs = 10000;
+	print ("Setting maximum contigs to $max_contigs\n");
+	return $max_contigs;
 }
 
 sub util_get_contigs {
 	my ($self,$workspace,$objid) = @_;
-	my $ref = $workspace."/".$objid;
-	my $version;
-	if ($objid =~ m/$([^\/]+)\/([^\/]+)/) {
-		$ref = $objid;
-		$objid = $2;
-		$workspace = $1;
-		if ($objid =~ m/$([^\/]+)\/([^\/]+)\/(\d+)/) {
-			$version = $3;
-		}
-	}
-	my $info = Bio::KBase::kbaseenv::get_object_info([
-		Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid,$version)
-	],0);
+	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
+	my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
 	my $obj;
 	if ($info->[0]->[2] =~ /Assembly/) {
 		my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
@@ -107,7 +104,12 @@ sub util_get_contigs {
 		$fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
 		$fasta =~ s/\n//g;
 		my $array = [split(/\>/,$fasta)];
+		my $max_contigs = max_contigs();
 		for (my $i=0; $i < @{$array}; $i++) {
+			if (@{$obj->{contigs}} > $max_contigs){
+				Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs', 
+										method_name => 'util_get_contigs');
+			}
 			if (length($array->[$i]) > 0) {
 				my $subarray = [split(/\|\|\|/,$array->[$i])];
 				if (@{$subarray} == 2) {
@@ -139,15 +141,17 @@ sub util_get_contigs {
 			}
 			$str .= $sortedarray->[$i]->{sequence};
 		}
+		print("Assembly $obj->{_reference} Downloaded\n");
 		$obj->{md5} = Digest::MD5::md5_hex($str);
 		$obj->{_kbasetype} = "Assembly";
 	} else {
-		$obj = Bio::KBase::kbaseenv::get_objects([
-			Bio::KBase::kbaseenv::configure_ws_id($workspace,$objid,$version)
-		]);
+		$obj = Bio::KBase::kbaseenv::get_objects([{
+			ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
+		}]);
 		$obj = $obj->[0]->{data};
 		$obj->{_kbasetype} = "ContigSet";
 		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
+		print("Contigset $obj->{_reference}  Downloaded\n");
 	}
 	my $totallength = 0;
 	my $gclength = 0;
@@ -184,6 +188,9 @@ sub annotate {
 			# for re-annotation in RAST service (otherwise these features will be skipped).
 			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
 					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+				if (defined($ftr->{functions})){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+				}
 				$oldfunchash->{$ftr->{id}} = $ftr->{function};
 				$ftr->{function} = "hypothetical protein";
 			}
@@ -195,9 +202,7 @@ sub annotate {
 		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
 		    }
-		    if ($contigref =~ m/^([^\/]+)\/([^\/]+)/) {
-			$contigobj = $self->util_get_contigs($1,$2);
-		    }
+			$contigobj = $self->util_get_contigs(undef,$inputgenome->{_reference}.";".$contigref)
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -463,9 +468,6 @@ sub annotate {
 			"resolve_overlapping_features_parameters" => {}
 		});
 	}
-	if (defined($parameters->{find_close_neighbors}) && $parameters->{find_close_neighbors} == 1)	{
-		push(@{$workflow->{stages}},{name => "find_close_neighbors"});
-	}
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
@@ -521,10 +523,13 @@ sub annotate {
 				$feature->{type} = "CDS"
 			}
 		}
+		# When RAST annotates the genome it becomes incompatible with the new
+		# spec. Removing this attribute triggers an "upgrade" to the genome
+		# that fixes these problems when saving with GFU
+		delete $inputgenome->{feature_counts};
 	}
-	#eval {
-		$genome = $gaserv->run_pipeline($inputgenome, $workflow);
-	#};
+	# Runs, the annotation, comment out if you dont have the reference files
+	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
 	delete $genome->{contigs};
 	delete $genome->{feature_creation_event};
@@ -565,7 +570,6 @@ sub annotate {
 		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
 	}
 	my $newftrs = 0;
-	my $functionchanges = 0;
 	my $proteins = 0;
 	my $others = 0;
 	my $seedfunctions;
@@ -581,9 +585,6 @@ sub annotate {
 				my $func = $ftr->{function};
 				if (not defined($func)) {
 					$func = "";
-				}
-				if (!defined($genehash->{$ftr->{id}}->{$func})) {
-					$functionchanges++;
 				}
 			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
@@ -746,12 +747,11 @@ sub annotate {
 			}
 		}
 	}
-	if (defined($genehash)) {
+	if (defined($inputgenome)) {
 		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
-		$message .= " Of the original features, ".$functionchanges." were re-annotated by RAST with new functions.";
 	}
 	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
-
+	print($message);
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
 	}
@@ -766,7 +766,7 @@ sub annotate {
 
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
-	my $gaout = Bio::KBase::kbaseenv::ga_client()->save_one_genome_v1({
+	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
@@ -857,7 +857,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -902,7 +901,6 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 genome_id is a string
@@ -968,7 +966,6 @@ sub annotate_genome
 	    kmer_v1_parameters => 1,
 	    annotate_proteins_similarity => 1,
 	    resolve_overlapping_features => 1,
-	    find_close_neighbors => 0,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
@@ -1031,7 +1028,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -1077,7 +1073,6 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	kmer_v1_parameters has a value which is a RAST_SDK.bool
 	annotate_proteins_similarity has a value which is a RAST_SDK.bool
 	resolve_overlapping_features has a value which is a RAST_SDK.bool
-	find_close_neighbors has a value which is a RAST_SDK.bool
 	call_features_prophage_phispy has a value which is a RAST_SDK.bool
 	retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 GenomeParams is a reference to a hash where the following keys are defined:
@@ -1146,12 +1141,9 @@ sub annotate_genomes
 	    kmer_v1_parameters => 1,
 	    annotate_proteins_similarity => 1,
 	    resolve_overlapping_features => 1,
-	    find_close_neighbors => 0,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $success = [];
-	my $failed = {};
 	my $htmlmessage = "<p>";
 	my $genomes = $params->{input_genomes};
 	if (defined($params->{genome_text})) {
@@ -1164,8 +1156,8 @@ sub annotate_genomes
 		my $input = $genomes->[$i];
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
-			my $info = Bio::KBase::kbaseenv::get_object_info([
-				Bio::KBase::kbaseenv::configure_ws_id($array->[0],$array->[1],$array->[2])
+			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>
+				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}
 			],0);
 			$input = $info->[0]->[1];
 		}
@@ -1195,7 +1187,6 @@ sub annotate_genomes
 		    kmer_v1_parameters
 		    annotate_proteins_similarity
 		    resolve_overlapping_features
-		    find_close_neighbors
 		    call_features_prophage_phispy
 		    retain_old_anno_for_hypotheticals
 		)];
@@ -1442,7 +1433,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1476,7 +1466,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1593,7 +1582,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
@@ -1622,7 +1610,6 @@ annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
 kmer_v1_parameters has a value which is a RAST_SDK.bool
 annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
-find_close_neighbors has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 

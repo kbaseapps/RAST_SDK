@@ -39,7 +39,8 @@
       "input_mapping" : [
         {
           "input_parameter": "input_genome",
-          "target_property": "input_genome"
+          "target_property": "input_genome",
+          "target_type_transform": "resolved-ref"
         },
         {
           "input_parameter": "output_genome",
@@ -120,10 +121,6 @@
 	{
 	  "constant_value":"0",
 	  "target_property":"resolve_overlapping_features"
-	},
-	{
-	  "constant_value":"0",
-	  "target_property":"find_close_neighbors"
 	},
 	{
 	  "constant_value":"0",

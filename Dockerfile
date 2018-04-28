@@ -6,13 +6,12 @@ MAINTAINER KBase Developer
 # any required dependencies for your module.
 
 # RUN apt-get update
-RUN cpanm -i Config::IniFiles
-RUN cpanm -i Config::IniFiles
-RUN cpanm -i UUID::Random
-RUN cpanm -i HTML::SimpleLinkExtor
-RUN cpanm -i WWW::Mechanize --force
-RUN cpanm -i MIME::Base64
-RUN apt-get -y install nano
+RUN cpanm -i Config::IniFiles && \
+    cpanm -i UUID::Random && \
+    cpanm -i HTML::SimpleLinkExtor && \
+    cpanm -i WWW::Mechanize --force && \
+    cpanm -i MIME::Base64 && \
+    apt-get -y install nano
 
 ADD ./bootstrap bootstrap
 
@@ -55,6 +54,7 @@ RUN \
     cpanm install Set::IntervalTree && \
     cd /kb/deployment/services/kmer_annotation_figfam/ && \
     sed 's|$KB_TOP/deployment.cfg|/kb/module/deploy.cfg|' -i ./start_service  && \
+    sed 's|$KB_TOP/services/kmer_annotation_figfam|/tmp/|' -i ./start_service  && \
     sed 's/8/1/' -i ./start_service 
 
 RUN mkdir /data && \
