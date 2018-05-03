@@ -10,7 +10,7 @@ service-language:
     perl
 
 module-version:
-    0.0.12
+    0.0.13
 
 owners:
     [chenry,scanon,olson,jjeffryes,umaganapathyswork]

@@ -3,7 +3,7 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.12';
+our $VERSION = '0.0.13';
 our $GIT_URL = 'git@github.com:kbaseapps/RAST_SDK.git';
 our $GIT_COMMIT_HASH = '4d601e6cb289caacf5e928e563513c41d3d1dcb5';
 
@@ -44,7 +44,7 @@ sub util_initialize_call {
 
 sub util_version {
 	my ($self) = @_;
-	return "1";
+	return $VERSION;
 }
 
 sub util_log {
@@ -527,6 +527,16 @@ sub annotate {
 		# spec. Removing this attribute triggers an "upgrade" to the genome
 		# that fixes these problems when saving with GFU
 		delete $inputgenome->{feature_counts};
+		if (defined($inputgenome->{ontology_events})){
+			my $ont_event = {
+				 "id" => "SSO",
+				  "method" => Bio::KBase::utilities::method(),
+				  "method_version" => $self->util_version(),
+				  "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
+				  "timestamp" => Bio::KBase::utilities::timestamp()
+			};
+			push(@{$inputgenome->{ontology_events}}, $ont_event);
+		}
 	}
 	# Runs, the annotation, comment out if you dont have the reference files
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
@@ -658,30 +668,37 @@ sub annotate {
 							$seedfunctions++;
 							$marked = 1;
 						}
+						my $ont_term = $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}};
 						if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
 							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
 								 evidence => [],
 								 id => $funchash->{$rolename}->{id},
 								 term_name => $funchash->{$rolename}->{name},
-								 ontology_ref => $output->[0]->{info}->[6]."/".$output->[0]->{info}->[0]."/".$output->[0]->{info}->[4],
+								 ontology_ref => "KBaseOntology/seed_subsystem_ontology",
 								 term_lineage => [],
 							};
 						}
 						my $found = 0;
-						for (my $k=0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-							if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
-								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
-								$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
-								$found = 1;
-								last;
+						if (ref($ont_term) eq 'ARRAY'){
+							push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
+						} else {
+							for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
+								if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
+									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
+									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+									$found = 1;
+									last;
+								}
 							}
-						}
-						if ($found == 0) {
-							push(@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},{
-								method => Bio::KBase::utilities::method(),
-								method_version => $self->util_version(),
-								timestamp => Bio::KBase::utilities::timestamp()
-							});
+							if ($found == 0) {
+								push(
+									@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
+									{
+										method         => Bio::KBase::utilities::method(),
+										method_version => $self->util_version(),
+										timestamp      => Bio::KBase::utilities::timestamp()
+									});
+							}
 						}
 					}
 				}
