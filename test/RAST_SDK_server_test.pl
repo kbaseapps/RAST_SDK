@@ -136,8 +136,6 @@ sub load_genome_from_json {
     my $json = JSON->new;
     my $genome_obj = $json->decode($genome_json);
     $genome_obj->{assembly_ref} = $assembly_ref;
-    # TODO: we need to set $genome_obj->{features}->[*]->{ontology_terms}->{SSO}->{"*"}->{ontology_ref} = "KBaseOntology/seed_subsystem_ontology";
-    # And the same with $genome_obj->{cdss}
     return $genome_obj;
 }
 
@@ -288,7 +286,7 @@ lives_ok{
     my $genome_refs = $genome_ref_new."\n".$genome_ref_old;
     test_reannotate_multi_genome($genome_refs);
 }, 'test_reannotate_multi_genome';
-done_testing(6);
+done_testing(36);
 
 my $err = undef;
 if ($@) {
