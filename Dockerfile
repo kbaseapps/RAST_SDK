@@ -26,7 +26,7 @@ RUN \
 
 # Add random forest for phispy
 RUN \
-    wget https://cran.r-project.org/src/contrib/randomForest_4.6-12.tar.gz && \
+    wget https://cran.r-project.org/src/contrib/Archive/randomForest/randomForest_4.6-12.tar.gz && \
     R CMD INSTALL ./randomForest_4.6-12.tar.gz && \
     rm randomForest_4.6-12.tar.gz
 
