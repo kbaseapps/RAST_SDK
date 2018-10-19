@@ -1,9 +1,13 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.0.15
+__Changes__
+- added proper citations in PLOS format
+
 ### Version 0.0.13
 __Changes__
-- Handle annotation of new genomes with existing sso ids and update test to cover this. 
+- Handle annotation of new genomes with existing sso ids and update test to cover this.
 - Version in the ontology event is now the tool version.
 - update source for R dependency
 
@@ -29,5 +33,3 @@ __Changes__
 ### Version 0.0.8
 __Changes__
 - Added phispy dependencies
-
-

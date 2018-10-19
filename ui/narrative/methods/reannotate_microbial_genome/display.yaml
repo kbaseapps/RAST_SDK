@@ -47,7 +47,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-            
+
     call_features_tRNA_trnascan :
         ui-name : |
             Call features tRNA trnascan
@@ -55,7 +55,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
@@ -63,7 +63,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
@@ -71,7 +71,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_repeat_region_SEED :
         ui-name : |
             Call features repeat region SEED
@@ -79,7 +79,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
@@ -87,7 +87,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_strep_suis_repeat :
         ui-name : |
             Call features strep suis repeat
@@ -95,7 +95,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_strep_pneumo_repeat :
         ui-name : |
             Call features strep pneumo repeat
@@ -103,7 +103,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_crispr :
         ui-name : |
             Call features crispr
@@ -111,7 +111,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_CDS_glimmer3 :
         ui-name : |
             Call features CDS glimmer3
@@ -119,7 +119,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_CDS_prodigal :
         ui-name : |
             Call features CDS prodigal
@@ -127,7 +127,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
@@ -136,7 +136,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     kmer_v1_parameters :
         ui-name : |
             Kmer v1 parameters
@@ -144,7 +144,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
@@ -152,7 +152,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
@@ -160,7 +160,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                
+
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
@@ -168,7 +168,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-                        
+
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy
@@ -176,7 +176,7 @@ parameters :
             See manual page for description of annotation pipieline
         long-hint  : |
             See manual page for description of annotation pipieline
-            
+
     output_genome :
         ui-name : |
             Output Genome Name
@@ -189,17 +189,17 @@ parameters :
 
 description : |
     <p>The KBase annotation apps (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a>  and Annotate Microbial Genome) use  components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate a prokaryotic genome, to update the annotations of a genome, or to perform computations on a set of genomes so that they are consistent.The Annotate Microbial Contigs app starts with unannotated microbial sequence in one or more contigs and runs it through an annotation pipeline. The Annotate Microbial Genome app, which takes an annotated genome as input, allows users to re-annotate annotated genomes in order to make the annotations consistent with other KBase genomes and prepare the imported genome for further analysis by other KBase apps. A Genome object can be generated by uploading a GenBank file, importing a GenBank file from NCBI via FTP, retrieving a Genome-typed object from KBase, or using the output of the <a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a> app.</p>
-        
+
     <p><strong>The Default Annotation Pipeline</strong><br>
     <p>For a typical 2-5 MBp genome, the default annotation pipeline should take about 5 minutes. Note that the default behavior of this app is to only reannotate the protein-encoding genes. The default pipeline for this app consists of the following steps:</p>
-    
+
     <ol>
     <li><i>Annotate protein-encoding genes with k-mers (version 2)</i><br>
     This is a set of signature k-mers (amino acid 8-mers) built from the annotations in the <a href="http://core.theseed.org/FIG/seedviewer.cgi">CoreSEED</a>. The CoreSEED is a database of ~1,000 diverse microbial genomes and is currently the main focus of the RAST manual annotation efforts. Annotating using this k-mer set provides our most stable and best estimate of the core gene functions.</li>
-    
+
     <li><i>Annotate remaining hypothetical proteins with k-mers (version 1)</i><br>
     This set of k-mers is built from the <a href="http://www.ncbi.nlm.nih.gov/pubmed/19762480">FigFam collection</a> in the PubSEED,  which is the publically annotated version of the SEED database that consists of ~12,000 microbial genomes. The "classic" version of RAST on the RAST website (rast.nmpdr.org) uses the FigFam-based k-mers (hence the version 1 designation).</li>
-    
+
     <li><i>Find close neighbors and Annotate proteins similarity</i><br>
     Annotates remaining hypothetical proteins possibly missed in steps 1) and 2) by searching against close relative genomes. The search uses a combination of BLAT [4] and BLASTP [5].</li>
     </li>
@@ -212,94 +212,106 @@ description : |
     <ol>
     <li><i>Call rRNAs (default = off)</i><br>
     The RAST rRNA finder calls a custom script that uses a hand-curated and phylogenetically diverse set of representative sequences of the 23S (currently 81 representatives), 16S (currently 120 representatives) and 5S (currently 292 representatives) rRNAs. These sets represent the diversity of curated genomes in the SEED. The rRNAs of a new genome are found using a BLASTN [5] search against the curated set. tRNAs are found using an implementation of tRNAscanSE, [6]. This tool uses a secondary structure based searching methodology to find the tRNA genes.</li>
-    
+
     <li><i>Call selenoproteins (default = off)</i><br>
     Selenoproteins are widespread among the sequenced bacterial and archaeal genomes. These proteins occur in ~25% of the genomes in the CoreSEED). Selenoproteins contain the rare amino acid selenocysteine, which is incorporated at a UGA stop codon in frame [7]. To find these proteins, a hand-curated set of known selenoproteins is used. Potential selenoprotein matches prompt a search for the in-frame stop codon. When a stop codon is found,  the respective proteins are annotated as a selenoprotein. This is a custom BLAST-based tool.</li>
-        
+
     <li><i>Call pyrrolysylproteins (default = off)</i><br>
     Pyrrolysyl proteins are less common than selenoproteins among the currently sequenced genomes. They have been found to occur in ~1% of the sequenced bacterial and archaeal genomes in the CoreSEED. Similar to selenocysteine, pyrrolysine is incorporated at a UAG stop codon [7]. We search for pyrrolysyl proteins using the  strategy described in the previous step. This is a custom BLAST-based tool.</li>
-    
+
     <li><i>Call features repeat region SEED (default = off)</i><br>
      Large repeat regions are often characteristic of horizontal gene transfer and are an indication of insertion sequences and other mobile elements. A custom script performs a BLASTN search of the genome against itself, and reports any region that occurs more than once with  > 95% nucleotide identity. These precomputed repeat regions can then be used for comparative analyses and as supporting data for more detailed annotation of mobile elements. </li>
-    
+
     <li><i>Call insertion sequences (default = off)</i><br>
     The insertion sequence caller uses a reference set of end sequences and transposase proteins from the SEED [2] and ISfinder [8] databases to search the genome for IS elements. A combination of BLASTN for the end regions and BLASTX for the proteins [5] is used to find potential matches. It also looks for novel insertion sequences by searching for inverted repeats.</li>
-    
+
     <li><i>Call features strep suis repeat and Call features strep pneumo repeat (default = conditional)</i><br>
     Species in the Streptococcus genus have small interspersed repeats that may modulate gene expression. These repeats can be used for epidemiological typing [9]. RASTtk [3] implemented  a set of tools created by Croucher et al. [10] specifically designed for finding these elements. This is a conditional command that will only be implemented if the genus is Streptococcus.</li>
-    
+
     <li><i>Call CRISPR features (default = off)</i><br>
     CRISPRs (clustered regularly interspaced short palindromic repeats) are a special type of repeat region found in many bacterial and archaeal genomes.This is a custom tool that uses a perl regular expression-based search to find CRISPR elements.</li>
-    
+
     <li><i>Call the protein-encoding genes with Prodigal and Glimmer3 (default = off)</i><br>
     In addition to the protein-encoding gene caller provided by default, Prodigal and Glimmer gene callers are also available. Please refer to Prodigal [11] and Glimmer [12] for more info.</li>
-    
+
     <li><i>Retain old annotations for hypotheticals (default = off)</i><br>
     In instances where the pipeline fails to find an annotation for a gene, this will retain the original annotation from the input genome typed object.</li>
-    
+
     <li><i> Resolve overlapping features (default = off)</i><br>
     Using multiple gene calling algorithms (such as Prodigal [11] and Glimmer [12]) in addition to the default gene caller can result in overlapping gene calls. This program is a custom tool that attempts to minimize overlaps and gaps to provide a set of calls that has a smaller number of gene calling errors. We do not recommend using overlap removal if you are attempting to annotate phage.</li>
-    
+
     <li><i>Call prophage features  with PhiSpy (default = off)</i><br>
     To find potential prophage elements we have implemented PhiSpy [13] in the annotation pipeline. PhiSpy uses heuristic methods to identify specific regions in the genome that  may be derived from phages or other mobile elements.</li>
-    
+
     </li>
     </ol>
     </p>
-    
+
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
     Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, Fangfang Xia. For questions, please go to http://kbase.us/contact-us
 
 publications :
     -
         display-text: |
-            [1] Aziz, R. K., Bartels, D., Best, A. A., DeJongh, M., Disz, T., Edwards, R. A., ... & Meyer, F. (2008). The RAST Server: rapid annotations using subsystems technology. BMC genomics, 9(1), 1.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2265698/
+            [1] Aziz RK, Bartels D, Best AA, DeJongh M, Disz T, Edwards RA, et al. The RAST Server: Rapid Annotations using Subsystems Technology. BMC Genomics. 2008;9: 75. doi:10.1186/1471-2164-9-75
+        link: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-9-75
+
     -
         display-text: |
-            [2] Overbeek, Ross, et al. "The SEED and the Rapid Annotation of microbial genomes using Subsystems Technology (RAST)." Nucleic acids research 42.D1 (2014): D206-D214.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3965101/
+            [2] Overbeek R, Olson R, Pusch GD, Olsen GJ, Davis JJ, Disz T, et al. The SEED and the Rapid Annotation of microbial genomes using Subsystems Technology (RAST). Nucleic Acids Res. 2014;42: D206–D214. doi:10.1093/nar/gkt1226
+        link: https://academic.oup.com/nar/article/42/D1/D206/1062536
+
     -
         display-text: |
-            [3] Brettin, T., Davis, J. J., Disz, T., Edwards, R. A., Gerdes, S., Olsen, G. J., ... & Shukla, M. (2015). RASTtk: a modular and extensible implementation of the RAST algorithm for building custom annotation pipelines and annotating batches of genomes. Scientific reports, 5.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4322359/
+            [3] Brettin T, Davis JJ, Disz T, Edwards RA, Gerdes S, Olsen GJ, et al. RASTtk: A modular and extensible implementation of the RAST algorithm for building custom annotation pipelines and annotating batches of genomes. Sci Rep. 2015;5. doi:10.1038/srep08365
+        link: https://www.nature.com/articles/srep08365
+
     -
         display-text: |
-            [4] Kent, W. James. "BLAT—the BLAST-like alignment tool." Genome research 12.4 (2002): 656-664.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC187518/
+            [4] Kent WJ. BLAT—The BLAST-Like Alignment Tool. Genome Res. 2002;12: 656–664. doi:10.1101/gr.229202
+        link: https://genome.cshlp.org/content/12/4/656
+
     -
         display-text: |
-            [5] Camacho, Christiam, et al. "BLAST+: architecture and applications." BMC bioinformatics 10.1 (2009): 1.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2803857/
+            [5] Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, et al. BLAST+: architecture and applications. BMC Bioinformatics. 2009;10: 421. doi:10.1186/1471-2105-10-421
+        link: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-421
+
     -
         display-text: |
-            [6] Lowe, Todd M., and Sean R. Eddy. "tRNAscan-SE: a program for improved detection of transfer RNA genes in genomic sequence." Nucleic acids research 25.5 (1997): 955-964.
+            [6] Lowe TM, Eddy SR. tRNAscan-SE: a program for improved detection of transfer RNA genes in genomic sequence. Nucleic Acids Res. 1997;25: 955–964.
         link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC146525/
+
     -
         display-text: |
-            [7] Cobucci-Ponzano, Beatrice, Mosè Rossi, and Marco Moracci. "Translational recoding in archaea." Extremophiles 16.6 (2012): 793-803.
+            [7] Cobucci-Ponzano B, Rossi M, Moracci M. Translational recoding in archaea. Extremophiles. 2012;16: 793–803. doi:10.1007/s00792-012-0482-8
         link: https://www.ncbi.nlm.nih.gov/pubmed/23015064
+
     -
         display-text: |
-            [8] Siguier, Patricia, et al. "ISfinder: the reference centre for bacterial insertion sequences." Nucleic acids research 34.suppl 1 (2006): D32-D36.
-        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1347377/
+            [8] Siguier P, Perochon J, Lestrade L, Mahillon J, Chandler M. ISfinder: the reference centre for bacterial insertion sequences. Nucleic Acids Res. 2006;34: D32–D36. doi:10.1093/nar/gkj014
+        link: https://academic.oup.com/nar/article/34/suppl_1/D32/1132247
+
     -
         display-text: |
-            [9] Van Belkum, Alex, et al. "Novel BOX repeat PCR assay for high-resolution typing of Streptococcus pneumoniae strains." Journal of clinical microbiology 34.5 (1996): 1176-1179.
-        link: https://www.ncbi.nlm.nih.gov/pubmed/8727898
+            [9] van Belkum A, Sluijuter M, de Groot R, Verbrugh H, Hermans PW. Novel BOX repeat PCR assay for high-resolution typing of Streptococcus pneumoniae strains. J Clin Microbiol. 1996;34: 1176–1179.
+        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC228977/
+
     -
         display-text: |
-            [10] Croucher, Nicholas J., et al. "Identification, variation and transcription of pneumococcal repeat sequences." BMC genomics 12.1 (2011): 1.
-        link: https://www.ncbi.nlm.nih.gov/pubmed/21333003
+            [10] Croucher NJ, Vernikos GS, Parkhill J, Bentley SD. Identification, variation and transcription of pneumococcal repeat sequences. BMC Genomics. 2011;12: 120. doi:10.1186/1471-2164-12-120
+        link: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-12-120
+
     -
         display-text: |
-            [11] Hyatt, Doug, et al. "Prodigal: prokaryotic gene recognition and translation initiation site identification." BMC bioinformatics 11.1 (2010): 1.
-        link: https://www.ncbi.nlm.nih.gov/pubmed/20211023
+            [11] Hyatt D, Chen G-L, Locascio PF, Land ML, Larimer FW, Hauser LJ. Prodigal: prokaryotic gene recognition and translation initiation site identification. BMC Bioinformatics. 2010;11: 119. doi:10.1186/1471-2105-11-119
+        link: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-11-119
+
     -
         display-text: |
-            [12] Delcher, Arthur L., et al. "Identifying bacterial genes and endosymbiont DNA with Glimmer." Bioinformatics 23.6 (2007): 673-679.
-        link: https://www.ncbi.nlm.nih.gov/pubmed/17237039
+            [12] Delcher AL, Bratke KA, Powers EC, Salzberg SL. Identifying bacterial genes and endosymbiont DNA with Glimmer. Bioinformatics. 2007;23: 673–679. doi:10.1093/bioinformatics/btm009
+        link: https://academic.oup.com/bioinformatics/article/23/6/673/419055
+
     -
         display-text: |
-            [13] Akhter, Sajia, Ramy K. Aziz, and Robert A. Edwards. "PhiSpy: a novel algorithm for finding prophages in bacterial genomes that combines similarity-and composition-based strategies." Nucleic acids research 40.16 (2012): e126-e126.
-        link: https://www.ncbi.nlm.nih.gov/pubmed/22584627
+            [13] Akhter S, Aziz RK, Edwards RA. PhiSpy: a novel algorithm for finding prophages in bacterial genomes that combines similarity- and composition-based strategies. Nucleic Acids Res. 2012;40: e126. doi:10.1093/nar/gks406
+        link: https://academic.oup.com/nar/article/40/16/e126/1027055
