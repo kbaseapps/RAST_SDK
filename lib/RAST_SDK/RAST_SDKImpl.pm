@@ -180,10 +180,15 @@ sub annotate {
   	};
   	my $contigobj;
   	my $message = "";
+	my %types = ();
 	if (defined($parameters->{input_genome})) {
 		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
 		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
 			my $ftr = $inputgenome->{features}->[$i];
+			if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
+				$ftr->{type} = 'other';
+			}
+
 			# Reset functions in protein features to "hypothetical protein" to make them available
 			# for re-annotation in RAST service (otherwise these features will be skipped).
 			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
@@ -194,7 +199,37 @@ sub annotate {
 				$oldfunchash->{$ftr->{id}} = $ftr->{function};
 				$ftr->{function} = "hypothetical protein";
 			}
+			elsif ($ftr->{type} eq "gene") {
+				$ftr->{type} = 'Non-Coding '.$ftr->{type};
+			}
+			#
+			#	Count the input feature types
+			#
+			if (exists $types{$ftr->{type}}) {
+				$types{$ftr->{type}} += 1;
+			} else {
+				$types{$ftr->{type}} = 1;
+			}
 		}
+		if (exists $inputgenome->{non_coding_features}) {
+			for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
+				my $ftr = $inputgenome->{non_coding_features}->[$i];
+				if (!defined($ftr->{type})) {
+					$ftr->{type} = "non-coding-gene";
+				}
+				#
+				#	Count the input feature types
+				#
+				if (exists $types{"Non-coding ".$ftr->{type}}) {
+					$types{"Non-coding ".$ftr->{type}} += 1;
+				} else {
+					$types{"Non-coding ".$ftr->{type}} = 1;
+				}
+			}
+		} else {
+			$inputgenome->{non_coding_features} = [];
+		}
+		
 		my $contigref;
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
 		    if (defined($inputgenome->{contigset_ref})) {
@@ -231,15 +266,23 @@ sub annotate {
 			$inputgenome->{assembly_ref} = $contigobj->{_reference};
 		}
 		if (defined($parameters->{input_contigset})) {
-			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. No initial gene calls were provided.";
+			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
 		} else {
-			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". The sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. The input genome has ".@{$inputgenome->{features}}." existing features.";
+			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
+			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
 		}		
 	} else {
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". No DNA sequence was provided for this genome, therefore new genes cannot be called. We can only functionally annotate the ".@{$inputgenome->{features}}." existing features.";
-		}else{
-		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." features in an existing genome: ".$parameters->{scientific_name}.".";
+		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
+		} else {
+		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
+			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
+		}
+	}
+	if  (%types) {
+		$message .= "Input genome has the following feature types:\n";
+		for my $key (keys(%types)) {
+			$message .= "\t$key\t$types{$key}\n";
 		}
 	}
 	
@@ -360,11 +403,13 @@ sub annotate {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
+	$extragenecalls .= ".\n" if (length($extragenecalls) > 0);
+
 	my $genecalls = "";
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
 			$inputgenome->{features} = [];
-			$message .= " The existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
 			$genecalls = "Standard features were called using: ";
@@ -379,13 +424,13 @@ sub annotate {
 					 }
 		});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
 			$inputgenome->{features} = [];
-			$message .= " The existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
 			$genecalls = "Standard gene features were called using: ";
@@ -395,9 +440,11 @@ sub annotate {
 		$genecalls .= "prodigal";
 		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
 		}
 	}
+	$genecalls .= ".\n" if (length($genecalls) > 0);
+
 #	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
 #		if (@{$inputgenome->{features}} > 0) {
 #			$inputgenome->{features} = [];
@@ -471,15 +518,17 @@ sub annotate {
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
 		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 	}
+	$annomessage .= ".\n" if (length($annomessage) > 0);
+
 	if (length($genecalls) > 0) {
 		push(@{$workflow->{stages}},{name => "renumber_features"});
-		$message .= " ".$genecalls.".";
+		$message .= $genecalls;
 	}
-	if (length($genecalls) > 0) {
-		$message .= " ".$extragenecalls.".";
+	if (length($extragenecalls) > 0) {
+		$message .= $extragenecalls;
 	}
 	if (length($annomessage) > 0) {
-		$message .= " ".$annomessage.".";
+		$message .= $annomessage;
 	}
 
 	my $genome = $inputgenome;
@@ -538,7 +587,9 @@ sub annotate {
 			push(@{$inputgenome->{ontology_events}}, $ont_event);
 		}
 	}
+	#----------------------
 	# Runs, the annotation, comment out if you dont have the reference files
+	#---------------------
 	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
 	delete $genome->{contigs};
@@ -582,12 +633,20 @@ sub annotate {
 	my $newftrs = 0;
 	my $proteins = 0;
 	my $others = 0;
-	my $seedfunctions;
+	my $seedfunctions = 0;
 	my $genomefunchash;
 	my $seedfunchash;
+	my $advancedmessage = '';
+	%types = ();
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			my $ftr = $genome->{features}->[$i];
+			#	Count the input feature types
+			if (exists $types{$ftr->{type}}) {
+				$types{$ftr->{type}} += 1;
+			} else {
+				$types{$ftr->{type}} = 1;
+			}
 			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
 				# Let's count number of features with functions updated by RAST service.
 				# If function is not set we treat it as empty string to avoid perl warning.
@@ -700,6 +759,16 @@ sub annotate {
 									});
 							}
 						}
+						if (exists ($ftr->{ontology_terms}->{SSO})) {
+							foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
+								if ($sso =~ /SSO:000009304/) {
+									$advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+								}
+								elsif ($sso =~ /SSO:000009291/) {
+									$advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+								}
+							}
+						}	
 					}
 				}
 			}
@@ -764,10 +833,33 @@ sub annotate {
 			}
 		}
 	}
-	if (defined($inputgenome)) {
-		$message .= " In addition to the original ".keys(%{$genehash})." features, ".$newftrs." new features were called.";
+	my $num_non_coding = 0;
+	if (defined($genome->{non_coding_features})) {
+		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
+			$num_non_coding++; 
+			my $ftr = $genome->{non_coding_features}->[$i];
+			#	Count the input feature types
+			if (exists $types{$ftr->{type}}) {
+				$types{$ftr->{type}} += 1;
+			} else {
+				$types{$ftr->{type}} = 1;
+			}
+		}
 	}
-	$message .= " Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct functions. Of these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.";
+	if (defined($inputgenome)) {
+		$message .= "In addition to the original ".keys(%{$genehash})." coding features and $num_non_coding non-coding features, ".$newftrs." new features were called.\n";
+		if  (%types) {
+			$message .= "Output genome has the following feature types:\n";
+			for my $key (keys(%types)) {
+				$message .= "\t$key\t$types{$key}\n";
+			}
+		}
+	}
+
+
+#	$message .= "Overall, a total of ".$seedfunctions." genes are now annotated with ".keys(%{$genomefunchash})." distinct SEED functions. \nOf these functions, ".keys(%{$seedfunchash})." are a match for the SEED annotation ontology.\n";
+	$message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
+#	$message .= "The number of distint functions can exceed the number of genes because some genes have multiple functions.\n";
 	print($message);
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
@@ -780,7 +872,7 @@ sub annotate {
 			$genome->{assembly_ref} = $contigobj->{_reference};
 		}
 	}
-
+	
 	#print Bio::KBase::utilities::to_json($contigobj,1));
 	#print Bio::KBase::utilities::to_json($genome,1);
 	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
@@ -805,7 +897,7 @@ sub annotate {
 		"description" => "Annotated genome"
 	});
 	Bio::KBase::utilities::print_report_message({
-		message => "<p>".$message."</p>",
+		message => "<pre>".$message."</pre>",
 		append => 0,
 		html => 1
 	});
