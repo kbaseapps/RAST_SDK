@@ -1,6 +1,13 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.0.16
+__Changes__
+- Improved the report messages to give users more complete and accurate information.
+- Updated the Dockerfile to the current version
+- Added tests to check all of the advanced options
+- Updated the catalog page for multiple genomes. Add the delimiter and reworded the description.
+
 ### Version 0.0.15
 __Changes__
 - added proper citations in PLOS format
