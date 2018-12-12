@@ -20,11 +20,6 @@ default: compile build-startup-script build-executable-script build-test-script
 compile:
 	kb-sdk compile $(SPEC_FILE) \
 		--out $(LIB_DIR) \
-		--plclname $(SERVICE_CAPS)::$(SERVICE_CAPS)Client \
-		--jsclname javascript/Client \
-		--pyclname $(SERVICE_CAPS).$(SERVICE_CAPS)Client \
-		--javasrc src \
-		--java \
 		--plsrvname $(SERVICE_CAPS)::$(SERVICE_CAPS)Server \
 		--plimplname $(SERVICE_CAPS)::$(SERVICE_CAPS)Impl \
 		--plpsginame $(SERVICE_CAPS).psgi;
