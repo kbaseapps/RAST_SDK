@@ -158,6 +158,7 @@ sub _check_job {
         return {
             finished  => 0,
             failed  => 1,
+	}
     };
 }
 
