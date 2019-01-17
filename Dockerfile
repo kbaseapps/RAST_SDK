@@ -68,6 +68,8 @@ RUN mkdir /data && \
 COPY ./ /kb/module
 
 RUN mkdir -p /kb/module/work
+RUN mkdir -p /kb/module/lib
+COPY ./test/testRASTutil.pm /kb/module/lib
 RUN chmod -R 777 /kb/module
 RUN chmod -R 777 /kb/deployment/services/kmer_annotation_figfam
 WORKDIR /kb/module

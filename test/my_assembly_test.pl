@@ -145,6 +145,7 @@ my $genome_ref_old;
 lives_ok {
         test_annotate_assembly($assembly_obj_name);
     }, "test_annotate_assembly";
+print "Summary for $assembly_obj_name\n";
 done_testing(7);
 
 my $err = undef;
