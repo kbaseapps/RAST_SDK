@@ -12,8 +12,7 @@ use GenomeFileUtil::GenomeFileUtilClient;
 use Storable qw(dclone);
 use Bio::KBase::kbaseenv;
 
-use lib "/kb/module/lib";
-#use testRASTutil qw(get_ws_name make_impl_call prepare_gbff);
+use lib "/kb/module/test";
 use testRASTutil;
 
 local $| = 1;

@@ -12,7 +12,7 @@ use GenomeFileUtil::GenomeFileUtilClient;
 use Storable qw(dclone);
 use Bio::KBase::kbaseenv;
 
-use lib "/kb/module/lib";
+use lib "/kb/module/test";
 use testRASTutil;
 
 my $purpose = "Streptococcus suis is a test for the strep-suis specific repeat\n";

@@ -87,7 +87,7 @@ sub prepare_gbff {
         workspace_name => get_ws_name(),
         genome_name => $genome_obj_name,
         file => {"path" => $temp_path},
-		source => "Clostridium botulinum"
+		source => "Refseq"
     });
 #	print "Genome Object Keys\n";
 #	foreach my $key (keys(%$genome_obj))
@@ -121,7 +121,11 @@ sub get_and_prep {
 
 	for (my $i=0; $i < scalar @{$orig_genome->{features}}; $i++) {
 		my $ftr = $orig_genome->{features}->[$i];
+		if (defined($ftr->{functions}) && scalar @{$ftr->{functions}} > 0){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+		}
         my $func      = defined($ftr->{function}) ? $ftr->{function} : "";
+        $orig_funcs->{$ftr->{id}} = $func;
 		if (not defined($ftr->{type})) {
            if (defined($ftr->{protein_translation})) {
               $ftr->{type} = "gene";
@@ -140,11 +144,14 @@ sub get_and_prep {
 			}
 		}
 		%types = &count_types($ftr->{type},%types);
-        $orig_funcs->{$ftr->{id}} = $func;
     }
 	for (my $i=0; $i < scalar @{$orig_genome->{non_coding_features}}; $i++) {
 		my $ftr = $orig_genome->{non_coding_features}->[$i];
+		if (defined($ftr->{functions}) && scalar @{$ftr->{functions}} > 0){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+		}
         my $func      = defined($ftr->{function}) ? $ftr->{function} : "";
+        $orig_funcs->{$ftr->{id}} = $func;
 		if (not defined($ftr->{type})) {
            if (defined($ftr->{protein_translation})) {
               $ftr->{type} = "gene";
@@ -153,7 +160,6 @@ sub get_and_prep {
            }
 		}
 		%types = &count_types($ftr->{type},%types);
-        $orig_funcs->{$ftr->{id}} = $func;
     }
 	return ($orig_genome,$orig_funcs);
 

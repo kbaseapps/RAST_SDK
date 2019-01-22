@@ -12,7 +12,7 @@ use GenomeFileUtil::GenomeFileUtilClient;
 use Storable qw(dclone);
 use Bio::KBase::kbaseenv;
 
-use lib "/kb/module/lib";
+use lib "/kb/module/test";
 use testRASTutil;
 
 my $purpose = "Methanosarcina_acetivorans_C2A.gbff is used as a test for pyrrolysine-containing genes.\n";

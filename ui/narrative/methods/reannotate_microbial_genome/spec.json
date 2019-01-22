@@ -86,17 +86,6 @@
       "unchecked_value": 0
     }
   }, {
-    "id": "call_features_insertion_sequences",
-    "optional":false,
-    "advanced":true,
-    "allow_multiple":false,
-    "default_values":["0"],
-    "field_type" : "checkbox",
-    "checkbox_options":{
-      "checked_value": 1,
-      "unchecked_value": 0
-    }
-  }, {
     "id": "call_features_strep_suis_repeat",
     "optional":false,
     "advanced":true,
@@ -250,10 +239,6 @@
         {
           "input_parameter": "call_features_repeat_region_SEED",
           "target_property": "call_features_repeat_region_SEED"
-        },
-        {
-          "input_parameter": "call_features_insertion_sequences",
-          "target_property": "call_features_insertion_sequences"
         },
         {
           "input_parameter": "call_features_strep_suis_repeat",

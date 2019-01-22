@@ -12,7 +12,7 @@ use GenomeFileUtil::GenomeFileUtilClient;
 use Storable qw(dclone);
 use Bio::KBase::kbaseenv;
 
-use lib "/kb/module/lib";
+use lib "/kb/module/test";
 use testRASTutil;
 
 my $purpose = "Shewanella_sp._ANA-3 is used as a test for RAST repeats, kmer v2 and kmer v2.\n";
@@ -43,12 +43,12 @@ sub reannotate_genome {
              "call_features_strep_pneumo_repeat"=>'0',
              "call_features_crispr"=>'0',
              "call_features_CDS_glimmer3"=>'0',
-             "call_features_CDS_prodigal"=>'1',
+             "call_features_CDS_prodigal"=>'0',
              "annotate_proteins_kmer_v2"=>'1',
              "kmer_v1_parameters"=>'1',
              "annotate_proteins_similarity"=>'0',
              "retain_old_anno_for_hypotheticals"=>'0',
-             "resolve_overlapping_features"=>'1',
+             "resolve_overlapping_features"=>'0',
              "call_features_prophage_phispy"=>'0',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
@@ -81,8 +81,10 @@ lives_ok {
 	my %types = ();
     for (my $i=0; $i < @{$genome_obj->{features}}; $i++) {
         my $ftr = $genome_obj->{features}->[$i];
-        my $ftr = $genome_obj->{features}->[$i];
-        my $func      = defined($ftr->{function}) ? $ftr->{function} : "";
+		if (defined($ftr->{functions}) && scalar @{$ftr->{functions}} > 0){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+		}
+        my $func      = defined($ftr->{function}) ? $ftr->{function} : "Not defined";
 		my $orig_func = defined($orig_funcs->{$ftr->{id}}) ? $orig_funcs->{$ftr->{id}} : "";
         if ($func ne $orig_func) {
             $diff_count++;
@@ -91,7 +93,9 @@ lives_ok {
     }
     for (my $i=0; $i < @{$genome_obj->{non_coding_features}}; $i++) {
         my $ftr = $genome_obj->{non_coding_features}->[$i];
-        my $ftr = $genome_obj->{features}->[$i];
+		if (defined($ftr->{functions}) && scalar @{$ftr->{functions}} > 0){
+					$ftr->{function} = join("; ", @{$ftr->{functions}});
+		}
         my $func      = defined($ftr->{function}) ? $ftr->{function} : "";
 		my $orig_func = defined($orig_funcs->{$ftr->{id}}) ? $orig_funcs->{$ftr->{id}} : "";
         if ($func ne $orig_func) {
@@ -102,9 +106,9 @@ lives_ok {
 	print "**** Number of features post-annotation = $num_func_out\n";
     } "Pipeline Runs";
 print "Summary for $genome_obj_name\n";
-print "Number of features with changed function: " . $diff_count . "\n";
-ok($num_func_out > $num_func_in, "Number of updated features (" . $diff_count . ")");
-done_testing(2);
+ok($diff_count > 10,"Some of the features changed function ($diff_count)\n");
+ok($num_func_out > $num_func_in, "More features out than in.  OUT=$num_func_out IN=$num_func_in\n");
+done_testing(3);
 
 my $err = undef;
 if ($@) {

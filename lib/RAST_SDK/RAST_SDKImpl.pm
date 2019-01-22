@@ -540,6 +540,7 @@ sub annotate_process {
 
 	my $genome = $inputgenome;
 	my $genehash = {};
+	my $num_coding = 0;
 	if (defined($genome->{features})) {
 		for (my $i=0; $i < @{$genome->{features}}; $i++) {
 			# Caching feature functions for future comparison against new functions
@@ -724,6 +725,8 @@ sub annotate_process {
 					#They may not have the cdss
 					$update_cdss = 'Y';
 				}
+			} else {
+				$num_coding++;
 			}
 			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
 				$ftr->{type} = $1;
@@ -961,7 +964,7 @@ sub annotate_process {
 		}
 	}
 	if (defined($inputgenome)) {
-		$message .= "In addition to the original ".keys(%{$genehash})." coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
+		$message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
 		if  (%types) {
 			$message .= "Output genome has the following feature types:\n";
 			for my $key (sort keys(%types)) {
