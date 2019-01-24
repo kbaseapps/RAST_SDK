@@ -415,7 +415,7 @@ sub annotate_process {
 	my $genecalls = "";
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
-			$inputgenome->{features} = [];
+#			$inputgenome->{features} = [];
 			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
@@ -436,7 +436,7 @@ sub annotate_process {
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
-			$inputgenome->{features} = [];
+#			$inputgenome->{features} = [];
 			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
@@ -454,7 +454,7 @@ sub annotate_process {
 
 #	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
 #		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
+##			$inputgenome->{features} = [];
 #			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
 #		}
 #		if (length($genecalls) == 0) {
@@ -529,6 +529,16 @@ sub annotate_process {
 
 	if (length($genecalls) > 0) {
 		push(@{$workflow->{stages}},{name => "renumber_features"});
+		if (@{$inputgenome->{features}} > 0) {
+			my $replace = [];
+			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
+				my $ftr = $inputgenome->{features}->[$i];
+				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
+					push(@$replace, @{$inputgenome->{features}}->[$i]);
+				} 
+			}
+			$inputgenome->{features} = $replace;
+		}
 		$message .= $genecalls;
 	}
 	if (length($extragenecalls) > 0) {
