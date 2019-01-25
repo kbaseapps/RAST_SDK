@@ -415,7 +415,7 @@ sub annotate_process {
 	my $genecalls = "";
 	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
-			$inputgenome->{features} = [];
+#			$inputgenome->{features} = [];
 			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
@@ -436,7 +436,7 @@ sub annotate_process {
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
 		if (@{$inputgenome->{features}} > 0) {
-			$inputgenome->{features} = [];
+#			$inputgenome->{features} = [];
 			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
 		}
 		if (length($genecalls) == 0) {
@@ -454,7 +454,7 @@ sub annotate_process {
 
 #	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
 #		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
+##			$inputgenome->{features} = [];
 #			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
 #		}
 #		if (length($genecalls) == 0) {
@@ -529,6 +529,16 @@ sub annotate_process {
 
 	if (length($genecalls) > 0) {
 		push(@{$workflow->{stages}},{name => "renumber_features"});
+		if (@{$inputgenome->{features}} > 0) {
+			my $replace = [];
+			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
+				my $ftr = $inputgenome->{features}->[$i];
+				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
+					push(@$replace, @{$inputgenome->{features}}->[$i]);
+				} 
+			}
+			$inputgenome->{features} = $replace;
+		}
 		$message .= $genecalls;
 	}
 	if (length($extragenecalls) > 0) {
@@ -553,10 +563,9 @@ sub annotate_process {
 			$genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
 		}
 	}
-	my $ncfhash = {};
 	if (defined($genome->{non_coding_features})) {
 		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
-			$ncfhash->{$genome->{non_coding_features}->[$i]->{id}} = 1;
+			$genehash->{$genome->{non_coding_features}->[$i]->{id}} = 1;
 		}
 	}
 	if (defined($inputgenome->{features})) {
@@ -934,7 +943,7 @@ sub annotate_process {
 	if (defined($genome->{non_coding_features})) {
 		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
 			my $ftr = $genome->{non_coding_features}->[$i];
-			if (defined($ncfhash) && !defined($ncfhash->{$ftr->{id}})) {
+			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
 				# Let's count number of non_coding_features with functions updated by RAST service.
 				# If function is not set we treat it as empty string to avoid perl warning.
 				$newncfs++;
@@ -974,7 +983,7 @@ sub annotate_process {
 	}
 
 	$message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
-	$message .= "The number of distint functions can exceed the number of genes because some genes have multiple functions.\n";
+	$message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
 	print($message);
 	if (!defined($genome->{assembly_ref})) {
 		delete $genome->{assembly_ref};
