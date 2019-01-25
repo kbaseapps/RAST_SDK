@@ -48,7 +48,7 @@ sub reannotate_genome {
              "annotate_proteins_similarity"=>'0',
              "retain_old_anno_for_hypotheticals"=>'1',
              "resolve_overlapping_features"=>'0',
-             "call_features_prophage_phispy"=>'0',
+             "call_features_prophage_phispy"=>'1',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };

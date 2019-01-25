@@ -16,7 +16,7 @@ use lib "/kb/module/test";
 use testRASTutil;
 
 my $purpose = "Clostridium botulinum is used as a test for selenocysteine-containing and for CRISPRS.\n";
-$purpose   .= "Both of these should exist in this genome\n";
+$purpose   .= "Both of these and one prophage should exist in this genome\n";
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -48,7 +48,7 @@ sub reannotate_genome {
              "annotate_proteins_similarity"=>'0',
              "retain_old_anno_for_hypotheticals"=>'1',
              "resolve_overlapping_features"=>'0',
-             "call_features_prophage_phispy"=>'0',
+             "call_features_prophage_phispy"=>'1',
              "output_genome"=>$genome_obj_name,
              "workspace"=>get_ws_name()
            };
@@ -60,6 +60,7 @@ my $num_func_in  = 0;
 my $num_func_out = 0;
 my $seleno = 0;
 my $crispr = 0;
+my $prophage = 0;
 my $genome_obj_name = "Clostridium_botulinum";
 lives_ok {
     my $genome_gbff_name = "Clostridium_botulinum_310.gbff";
@@ -107,6 +108,8 @@ lives_ok {
 		%types = &count_types($ftr->{type},%types);
 		if ($ftr->{function} &&  $ftr->{type} =~ /crispr/) {
 			$crispr++;
+		} elsif ($ftr->{function} &&  $ftr->{function} =~ /phiSpy/) {
+			$prophage++;
 		}
     }
 	&report_types(%types);
@@ -119,6 +122,7 @@ print "Number of CRISPR repeat features = $crispr\n";
 print "Number of features with changed function: " . $diff_count . "\n";
 ok($seleno > 0, "Number of features with selenocysteines = " . $seleno . "\n");
 ok($crispr > 0, "Number of features with CRISPR = " . $crispr . "\n");
+ok($prophage > 0, "Number of features with prophage = " . $prophage . "\n");
 done_testing(3);
 
 my $err = undef;
