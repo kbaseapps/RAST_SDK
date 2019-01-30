@@ -17,7 +17,7 @@
     "default_values" : [ "" ],
     "field_type" : "text",
     "text_options" : {
-      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation" ]
+      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation", "KBaseSearch.GenomeSet" ]
     }
   }, {
         "id": "genome_text",

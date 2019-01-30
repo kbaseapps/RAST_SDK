@@ -1382,6 +1382,28 @@ sub annotate_genomes
 	});
 	my $htmlmessage = "<p>";
 	my $genomes = $params->{input_genomes};
+
+	if (ref $genomes eq 'ARRAY') {
+		my $replace_genomes = [];
+		foreach my $ref (@$genomes) {
+	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+			my $type = $info->[0]->[2];
+			print "THE TYPE IS $type\n";
+			if ($type =~ /KBaseSearch\.GenomeSet/) {
+				my $obj = Bio::KBase::kbaseenv::get_objects([{
+					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{data}->{elements};
+
+				print Dumper $obj;
+				foreach my $key (keys %$obj) {
+					push(@$replace_genomes,$key);
+				}
+			} else {
+				push(@$replace_genomes,$ref);
+			}
+		}
+		$genomes = $replace_genomes;
+	}
+	
 	if (defined($params->{genome_text})) {
 		my $new_genome_list = [split(/[\n;\|]+/,$params->{genome_text})];
 		for (my $i=0; $i < @{$new_genome_list}; $i++) {

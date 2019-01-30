@@ -208,4 +208,43 @@ sub submit_annotation {
 	return ($genome_obj,$params);
 }
 
+sub submit_multi_annotation {
+	my ($multi_name, $genome_refs) = @_;
+
+    my ($ret,$params) = reannotate_genomes($multi_name, $genome_refs);
+	my $report_ref = $ret->{report_ref};
+    my $report_obj = $ws_client->get_objects([{ref=>$report_ref}])->[0]->{data};
+	my $report_text = $report_obj->{direct_html};
+    print "\nReport: " . $report_text . "\n\n";
+
+	foreach my $ref (@$genome_refs) {
+		my $name = $ws_client->get_object_info([{ref=>$ref}],0)->[0]->[1];
+#		print "REF=$ref\tNAME=$name\n";
+		$name .= ".RAST";
+		my $new = get_ws_name() . "/" . $name ;
+		my $info = $ws_client->get_objects([{ref=>$new}])->[0]->{info};
+		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
+#		print "NEW NAME=$name\tNEWREF=$newref\n";
+	}
+	return ($genome_refs,$params);
+}
+
+sub submit_set_annotation {
+	my ($genome_set_name, $set_ref) = @_;
+
+    my ($ret,$params) = reannotate_genomes($genome_set_name, $set_ref);
+	my $report_ref = $ret->{report_ref};
+    my $report_obj = $ws_client->get_objects([{ref=>$report_ref}])->[0]->{data};
+	my $report_text = $report_obj->{direct_html};
+    print "\nReport: " . $report_text . "\n\n";
+
+    my $ref = get_ws_name() . "/" . $genome_set_name ;
+    my $genome_objs = $ws_client->get_objects([{ref=>$ref}])->[0]->{data}->{elements};
+	foreach my $obj (keys %$genome_objs) {
+		my $name = $ws_client->get_object_info([{ref=>$obj}],0)->[0]->[1];
+#		print "REF=$obj\tNAME=$name\n";
+	}
+	return ($set_ref,$params);
+}
+
 1;
