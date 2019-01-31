@@ -54,17 +54,13 @@ sub reannotate_genomes {
     return make_impl_call("RAST_SDK.annotate_genomes", $params);
 }
 
-my $diff_count   = 0;
-my $num_func_in  = 0;
-my $num_func_out = 0;
-
-my $DEBUG = 1;
+my $DEBUG = 'Y';
 my $genome_obj_name1 = "Dactylopius coccus";
 my $genome_ref1 = "40046/2/1";
 my $genome_obj_name2 = "Drosophila melanogaster";
 my $genome_ref2 = "40046/3/1";
 
-if ($DEBUG > 0) {
+if ($DEBUG != 'Y') {
 	my $tmp_obj;
 	$genome_obj_name1 = "Carsonella";
 	my $genome_gbff_name1 = "Carsonella.gbk";
@@ -79,23 +75,33 @@ my ($orig_genome2,$orig_funcs2) = &get_and_prep($genome_ref2);
 
 lives_ok {
 	my ($genome_obj,$params) = &submit_multi_annotation('multi_genomes', [$genome_ref1,$genome_ref2]);
-} "Pipeline Runs";
-
-
-lives_ok {
-	my $genome_set_name = 'new_genome_set';
-    my $genome_set = $su->KButil_Build_GenomeSet({
-        workspace_name => get_ws_name(),
-        input_refs => [$genome_ref1,$genome_ref2],
-        output_name => $genome_set_name,
-        desc => 'GenomeSet Description'
-    });
-
-	my $gs = get_ws_name() . "/" . $genome_set_name ;
+	my $gs = get_ws_name() . "/" . $genome_obj ;
 	my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
 	my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-	my ($genome_obj,$params) = &submit_set_annotation($genome_set_name, [$newref]);
+	# If you got this far, the new object was created.
+	1;
+} "Pipeline Runs";
 
+lives_ok {
+	if ($DEBUG ne 'Y') {
+		my $genome_set_name = 'new_genome_set';
+		my $genome_set = $su->KButil_Build_GenomeSet({
+        	workspace_name => get_ws_name(),
+        	input_refs => [$genome_ref1,$genome_ref2],
+        	output_name => $genome_set_name,
+        	desc => 'GenomeSet Description'
+    	});
+
+		my $gs = get_ws_name() . "/" . $genome_set_name ;
+		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
+		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
+
+		my ($genome_obj,$params) = &submit_set_annotation($genome_set_name, [$newref]);
+		$info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
+	# 	If you got this far, the new object was created.
+	} else {
+		1;
+	}
 } "Pipeline Runs";
 done_testing(2);
 

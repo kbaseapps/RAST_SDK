@@ -219,16 +219,26 @@ sub submit_multi_annotation {
 
 	print Dumper $ret;
 
-	foreach my $ref (@$genome_refs) {
-		my $name = $ws_client->get_object_info([{ref=>$ref}],0)->[0]->[1];
-		print "REF=$ref\tNAME=$name\n";
-		$name .= ".RAST";
-		my $new = get_ws_name() . "/" . $name ;
-		my $info = $ws_client->get_objects([{ref=>$new}])->[0]->{info};
-		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-		print "NEW NAME=$name\tNEWREF=$newref\n";
+#	print "Verification of the Input Names\n";
+	foreach my $g_ref (@$genome_refs) {
+		my $g_name = $ws_client->get_object_info([{ref=>$g_ref}],0)->[0]->[1];
+#		print "INPUT GENOME REF=$g_ref\tGENOME NAME=$g_name\n";
+		my $output_name = "$g_name.RAST";
+		my $output_id = get_ws_name() . "/" . $output_name ;
+		my $g_info = $ws_client->get_objects([{ref=>$output_id}])->[0]->{info};
+		my $output_ref = $g_info->[6]."/".$g_info->[0]."/".$g_info->[4];
+#		print "OUTPUT GENOME NAME=$output_name\tOUTPUT GENOME REF=$output_ref\n";
 	}
-	print "RETURNING $ret->{id}\n";
+#	print "\n\nRETURNING SET ID $ret->{id}\n";
+    my $new_set = get_ws_name() . "/" . $multi_name ;
+	my $info        = $ws_client->get_objects([{ref=>$new_set}])->[0]->{info};
+	my $new_set_ref = $info->[6]."/".$info->[0]."/".$info->[4];
+#	print "NEW SET NAME=$multi_name\tNEWREF=$new_set_ref\n";
+    my $genome_objs = $ws_client->get_objects([{ref=>$new_set_ref}])->[0]->{data}->{elements};
+	foreach my $obj (keys %$genome_objs) {
+		my $name = $ws_client->get_object_info([{ref=>$obj}],0)->[0]->[1];
+#		print "REF=$obj\tNAME=$name\n";
+	}
 	return ($ret->{id},$params);
 }
 
@@ -245,7 +255,7 @@ sub submit_set_annotation {
     my $genome_objs = $ws_client->get_objects([{ref=>$ref}])->[0]->{data}->{elements};
 	foreach my $obj (keys %$genome_objs) {
 		my $name = $ws_client->get_object_info([{ref=>$obj}],0)->[0]->[1];
-		print "REF=$obj\tNAME=$name\n";
+#		print "REF=$obj\tNAME=$name\n";
 	}
 	return ($ref,$params);
 }

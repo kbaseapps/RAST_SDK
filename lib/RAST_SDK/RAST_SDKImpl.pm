@@ -1029,7 +1029,6 @@ sub annotate_process {
 		append => 0,
 		html => 1
 	});
-
 	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
 }
 #END_HEADER
@@ -1411,6 +1410,8 @@ sub annotate_genomes
 			push(@{$genomes},$new_genome_list->[$i]);
 		}
 	}
+
+	my $output_genomes = [];
 	for (my $i=0; $i < @{$genomes}; $i++) {
 		my $input = $genomes->[$i];
 		if ($input =~ m/\//) {
@@ -1450,24 +1451,12 @@ sub annotate_genomes
 		    retain_old_anno_for_hypotheticals
 		)];
 
-		
-		my $output_genomeset;
-		if (defined $params->{output_genome} && $params->{output_genome} gt ' ') { 
-			my $output_genomeset = $params->{output_genome};
-	        my $genome_set_name = $params->{output_genome};
-	        my $genome_set = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
-	            workspace_name => $params->{workspace},
-	            input_refs => $genomes,
-	            output_name => $output_genomeset,
-	            desc => 'GenomeSet Description'
-	        });
-		}
-
 		for (my $j=0; $j < @{$list}; $j++) {
 			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
 		}
 		eval {
 			my $output = $self->annotate_process($currentparams);
+			push(@$output_genomes,$output->{ref});
 		};
 		if ($@) {
 			$htmlmessage .= $input." failed!<br>";
@@ -1475,6 +1464,19 @@ sub annotate_genomes
 			$htmlmessage .= $input." succeeded!<br>";
 		}
 	}
+		
+		my $output_genomeset;
+		if (defined $params->{output_genome} && $params->{output_genome} gt ' ') { 
+			my $output_genomeset = $params->{output_genome};
+	        my $genome_set_name = $params->{output_genome};
+	        my $genome_set = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+	            workspace_name => $params->{workspace},
+	            input_refs => $output_genomes,
+	            output_name => $output_genomeset,
+	            desc => 'GenomeSet Description'
+	        });
+		}
+
 	$htmlmessage = ".</p>";
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
