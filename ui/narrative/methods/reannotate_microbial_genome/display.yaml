@@ -39,143 +39,141 @@ parameters :
         long-hint  : |
             A genome (set of DNA contigs) including structural and functional annotations
 
-
     call_features_rRNA_SEED :
         ui-name : |
-            Call features rRNA SEED
+            Call rRNAs
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call rRNA non-coding features
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_tRNA_trnascan :
         ui-name : |
-            Call features tRNA trnascan
+            Call tRNA trnascan
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call tRNA non-coding feature
         long-hint  : |
-            See manual page for description of annotation pipieline
+           Call tRNA non-coding features with trnascan in RAST. See http://rast.nmpdr.org/ for more information
 
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call new selenoprotein-containing genes
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call new pyrrolysoprotein-containing genes
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_repeat_region_SEED :
         ui-name : |
-            Call features repeat region SEED
+            Call SEED repeat region
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call SEED-defined repeat regions
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information
 
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding features insertion sequences
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_suis_repeat :
         ui-name : |
-            Call features strep suis repeat
+            Call strep suis repeats
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep suis repeats
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_pneumo_repeat :
         ui-name : |
-            Call features strep pneumo repeat
+            Call strep pneumo repeats
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep pneumo repeats
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_crispr :
         ui-name : |
-            Call features crispr
+            Call crisprs
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding crisprs
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_CDS_glimmer3 :
         ui-name : |
-            Call features CDS glimmer3
+            Call glimmer3
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call CDS features with glimmer3
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
 
     call_features_CDS_prodigal :
         ui-name : |
-            Call features CDS prodigal
+            Call prodigal
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call CDS features with prodigal
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://compbio.ornl.gov/prodigal/ for more information. WARNING: Calling new genes will delete existing genes.
 
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
         short-hint : |
-        short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins kmer v2 with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     kmer_v1_parameters :
         ui-name : |
-            Kmer v1 parameters
+            Annotate proteins Kmer v1
         short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins kmer v1 with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
         short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins similarity with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
         short-hint : |
-            See manual page for description of annotation pipieline
+            Retain old annotations for hypotheticals
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Retain old annotations for hypotheticals
 
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
         short-hint : |
-            See manual page for description of annotation pipieline
+            Resolve overlapping features
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call features prophage phispy with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     output_genome :
         ui-name : |

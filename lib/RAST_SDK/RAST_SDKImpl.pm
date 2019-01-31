@@ -31,6 +31,7 @@ use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 
+
 #Initialization function for call
 sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
@@ -39,6 +40,7 @@ sub util_initialize_call {
 	Bio::KBase::kbaseenv::ac_client({refresh => 1});
 	Bio::KBase::kbaseenv::ga_client({refresh => 1});
 	Bio::KBase::kbaseenv::gfu_client({refresh => 1});
+	Bio::KBase::kbaseenv::su_client({refresh => 1});
 	return $params;
 }
 
@@ -1358,7 +1360,8 @@ sub annotate_genomes
     my($return);
     #BEGIN annotate_genomes
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["workspace"],{
+    #$params = Bio::KBase::utilities::args($params,["workspace"],{
+    $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
     	input_genomes => [],
     	genome_text => undef,
 	    call_features_rRNA_SEED => 1,
@@ -1388,12 +1391,10 @@ sub annotate_genomes
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
 			my $type = $info->[0]->[2];
-			print "THE TYPE IS $type\n";
 			if ($type =~ /KBaseSearch\.GenomeSet/) {
 				my $obj = Bio::KBase::kbaseenv::get_objects([{
 					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{data}->{elements};
 
-				print Dumper $obj;
 				foreach my $key (keys %$obj) {
 					push(@$replace_genomes,$key);
 				}
@@ -1448,6 +1449,20 @@ sub annotate_genomes
 		    call_features_prophage_phispy
 		    retain_old_anno_for_hypotheticals
 		)];
+
+		
+		my $output_genomeset;
+		if (defined $params->{output_genome} && $params->{output_genome} gt ' ') { 
+			my $output_genomeset = $params->{output_genome};
+	        my $genome_set_name = $params->{output_genome};
+	        my $genome_set = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+	            workspace_name => $params->{workspace},
+	            input_refs => $genomes,
+	            output_name => $output_genomeset,
+	            desc => 'GenomeSet Description'
+	        });
+		}
+
 		for (my $j=0; $j < @{$list}; $j++) {
 			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
 		}
@@ -1470,6 +1485,7 @@ sub annotate_genomes
     });
 	$return = {
     	workspace => $params->{workspace},
+    	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
     	report_name =>  Bio::KBase::utilities::processid().".report",
     	ws_report_id => Bio::KBase::utilities::processid().".report"

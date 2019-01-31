@@ -217,16 +217,19 @@ sub submit_multi_annotation {
 	my $report_text = $report_obj->{direct_html};
     print "\nReport: " . $report_text . "\n\n";
 
+	print Dumper $ret;
+
 	foreach my $ref (@$genome_refs) {
 		my $name = $ws_client->get_object_info([{ref=>$ref}],0)->[0]->[1];
-#		print "REF=$ref\tNAME=$name\n";
+		print "REF=$ref\tNAME=$name\n";
 		$name .= ".RAST";
 		my $new = get_ws_name() . "/" . $name ;
 		my $info = $ws_client->get_objects([{ref=>$new}])->[0]->{info};
 		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-#		print "NEW NAME=$name\tNEWREF=$newref\n";
+		print "NEW NAME=$name\tNEWREF=$newref\n";
 	}
-	return ($genome_refs,$params);
+	print "RETURNING $ret->{id}\n";
+	return ($ret->{id},$params);
 }
 
 sub submit_set_annotation {
@@ -242,9 +245,9 @@ sub submit_set_annotation {
     my $genome_objs = $ws_client->get_objects([{ref=>$ref}])->[0]->{data}->{elements};
 	foreach my $obj (keys %$genome_objs) {
 		my $name = $ws_client->get_object_info([{ref=>$obj}],0)->[0]->[1];
-#		print "REF=$obj\tNAME=$name\n";
+		print "REF=$obj\tNAME=$name\n";
 	}
-	return ($set_ref,$params);
+	return ($ref,$params);
 }
 
 1;
