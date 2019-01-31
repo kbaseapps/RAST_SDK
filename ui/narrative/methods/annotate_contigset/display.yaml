@@ -68,129 +68,138 @@ parameters :
         ui-name : |
             Call rRNAs
         short-hint : |
-            Call rRNAs
+            Call rRNA non-coding features
         long-hint  : |
-            Call rRNAs
+            Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_tRNA_trnascan :
         ui-name : |
-            Call tRNAs with tRNAscan
+            Call tRNA trnascan
         short-hint : |
-            Call tRNAs with tRNAscan
+            Call tRNA non-coding feature
         long-hint  : |
-            Call tRNAs with tRNAscan
+           Call tRNA non-coding features with trnascan in RAST. See http://rast.nmpdr.org/ for more information
 
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
         short-hint : |
-            Call selenoproteins
+            Call new selenoprotein-containing genes
         long-hint  : |
-            Call selenoproteins
+            Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
         short-hint : |
-            Call pyrrolysoproteins
+            Call new pyrrolysoprotein-containing genes
         long-hint  : |
-            Call pyrrolysoproteins
+            Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_repeat_region_SEED :
         ui-name : |
-            Call large repeat regions
+            Call SEED repeat region
         short-hint : |
-            Call pyrrolysoproteins
+            Call SEED-defined repeat regions
         long-hint  : |
-            Call pyrrolysoproteins
+            Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information
 
     call_features_insertion_sequences :
         ui-name : |
-            Call insertion sequences
+            Call features insertion sequences
         short-hint : |
-            Call insertion sequences
+            Call non-coding features insertion sequences
         long-hint  : |
-            Call insertion sequences
+            Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_suis_repeat :
         ui-name : |
-            Find Streptococcus repeat regions
+            Call strep suis repeats
         short-hint : |
-            Find Streptococcus repeat regions
+            Call non-coding strep suis repeats
         long-hint  : |
-            Find Streptococcus repeat regions
+            Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_pneumo_repeat :
         ui-name : |
-            Call features strep pneumo repeat
+            Call strep pneumo repeats
         short-hint : |
-            Call features strep pneumo repeat
+            Call non-coding strep pneumo repeats
         long-hint  : |
-            Call features strep pneumo repeat
+            Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_crispr :
         ui-name : |
-            Call CRISPRs
+            Call crisprs
         short-hint : |
-            Call CRISPRs
+            Call non-coding crisprs
         long-hint  : |
-            Call CRISPRs
+            Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_CDS_glimmer3 :
         ui-name : |
-            Call protein-encoding genes with Glimmer3
+            Call glimmer3
         short-hint : |
-            Call protein-encoding genes with Glimmer3
+            Call CDS features with glimmer3
         long-hint  : |
-            Call protein-encoding genes with Glimmer3
+            See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
 
     call_features_CDS_prodigal :
         ui-name : |
-            Call protein-encoding genes with Prodigal
+            Call prodigal
         short-hint : |
-            Call protein-encoding genes with Prodigal
+            Call CDS features with prodigal
         long-hint  : |
-            Call protein-encoding genes with Prodigal
+            See http://compbio.ornl.gov/prodigal/ for more information. WARNING: Calling new genes will delete existing genes.
 
     annotate_proteins_kmer_v2 :
         ui-name : |
-            Annotate protein-encoding genes with k-mers v2
+            Annotate proteins kmer v2
         short-hint : |
-            Annotate protein-encoding genes with k-mers v2
+            Annotate proteins kmer v2 with RAST
         long-hint  : |
-            Annotate protein-encoding genes with k-mers v2
+            See http://rast.nmpdr.org/ for more information
 
     kmer_v1_parameters :
         ui-name : |
-            Annotate remaining hypothetical proteins with k-mers
+            Annotate proteins Kmer v1
         short-hint : |
-            Annotate remaining hypothetical proteins with k-mers
+            Annotate proteins kmer v1 with RAST
         long-hint  : |
-            Annotate remaining hypothetical proteins with k-mers
+            See http://rast.nmpdr.org/ for more information
 
     annotate_proteins_similarity :
         ui-name : |
-            Annotate remaining hypothetical proteins by searching against close relatives
+            Annotate proteins similarity
         short-hint : |
-            Annotate remaining hypothetical proteins by searching against close relatives
+            Annotate proteins similarity with RAST
         long-hint  : |
-            Annotate remaining hypothetical proteins by searching against close relatives
+            See http://rast.nmpdr.org/ for more information
+
+    retain_old_anno_for_hypotheticals :
+        ui-name : |
+            Retain old annotations for hypotheticals
+        short-hint : |
+            Retain old annotations for hypotheticals
+        long-hint  : |
+            Retain old annotations for hypotheticals
 
     resolve_overlapping_features :
         ui-name : |
-            Perform basic gene overlap removal
+            Resolve overlapping features
         short-hint : |
-            Perform basic gene overlap removal
+            Resolve overlapping features
         long-hint  : |
-            Perform basic gene overlap removal
+            See http://rast.nmpdr.org/ for more information
 
     call_features_prophage_phispy :
         ui-name : |
-            Find prophage elements with phispy
+            Call features prophage phispy
         short-hint : |
-            Find prophage elements with phispy
+            Call features prophage phispy with RAST
         long-hint  : |
-            Find prophage elements with phispy
+            See http://rast.nmpdr.org/ for more information
+
 
     output_genome :
         ui-name : |

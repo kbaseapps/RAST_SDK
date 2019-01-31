@@ -7,6 +7,7 @@ our $ws_client = undef;
 our $ga_client = undef;
 our $gfu_client = undef;
 our $ac_client = undef;
+our $su_client = undef;
 our $data_file_client = undef;
 our $objects_created = [];
 
@@ -137,6 +138,18 @@ sub ac_client {
 		$ac_client = new AssemblyUtil::AssemblyUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
 	}
 	return $ac_client;
+}
+
+sub su_client {
+	my($parameters) = @_;
+	$parameters = Bio::KBase::utilities::args($parameters,[],{
+		refresh => 0
+	});
+	if ($parameters->{refresh} == 1 || !defined($su_client)) {
+		require "installed_clients/kb_SetUtilitiesClient.pm";
+		$su_client = new installed_clients::kb_SetUtilitiesClient(Bio::KBase::utilities::utilconf("call_back_url"));
+	}
+	return $su_client;
 }
 
 sub get_object {

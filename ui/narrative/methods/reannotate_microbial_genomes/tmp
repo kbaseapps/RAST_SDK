@@ -17,7 +17,7 @@
     "default_values" : [ "" ],
     "field_type" : "text",
     "text_options" : {
-      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation", "KBaseSearch.GenomeSet" ]
+      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation", "KBaseSearch.GenomeSet"  ]
     }
   }, {
         "id": "genome_text",
@@ -28,7 +28,7 @@
         "field_type": "textarea",
         "textarea_options" : {
             "n_rows" : 10
-    	}
+        }
   }, {
     "id": "call_features_rRNA_SEED",
     "optional":false,
@@ -204,18 +204,20 @@
     "checkbox_options":{
       "checked_value": 1,
       "unchecked_value": 0
-    }  
+     }
   }, {
-    "id": "output_genome",
-    "optional": true,
-    "advanced": false,
-    "allow_multiple": false,
-    "default_values": [ "" ],
-    "field_type": "text",
-    "text_options" : {
-      "valid_ws_types" : [ "KBaseSearch.GenomeSet" ],
-      "is_output_name":true
-    }
+        "id": "output_genome",
+        "optional": true,
+        "advanced": false,
+        "allow_multiple": false,
+        "default_values": [ "" ],
+        "field_type": "text",
+        "text_options" : {
+          "valid_ws_types" : [ "KBaseSearch.GenomeSet" ],
+          "is_output_name":true
+        }
+
+    
   }],
   "job_id_output_field": "docker",
   "behavior" : {
@@ -300,11 +302,10 @@
         {
           "input_parameter": "output_genome",
           "generated_value": {
-              "prefix": "genomeset_"
+            "prefix": "genome_"
           },
           "target_property": "output_genome"
-        },
-        {
+        },        {
           "narrative_system_variable": "workspace",
           "target_property": "workspace"
         }
