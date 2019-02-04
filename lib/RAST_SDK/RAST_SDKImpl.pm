@@ -364,18 +364,18 @@ sub annotate_process {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
-	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "insertion sequences";
-		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
+#	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
+#		if (length($extragenecalls) == 0) {
+#			$extragenecalls = "A scan was conducted for the following additional feature types: ";
+#		} else {
+#			$extragenecalls .= "; ";
+#		}
+#		$extragenecalls .= "insertion sequences";
+#		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
+#		if (!defined($contigobj)) {
+#			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+#		}
+#	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		if (length($extragenecalls) == 0) {
 			$extragenecalls = "A scan was conducted for the following additional feature types: ";
@@ -1029,7 +1029,7 @@ sub annotate_process {
 		append => 0,
 		html => 1
 	});
-	return {"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]};
+	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
 #END_HEADER
 
@@ -1192,7 +1192,7 @@ sub annotate_genome
 	    call_selenoproteins => 1,
 	    call_pyrrolysoproteins => 1,
 	    call_features_repeat_region_SEED => 1,
-	    call_features_insertion_sequences => 1,
+#	    call_features_insertion_sequences => 1,
 	    call_features_strep_suis_repeat => 1,
 	    call_features_strep_pneumo_repeat => 1,
 	    call_features_crispr => 1,
@@ -1368,7 +1368,7 @@ sub annotate_genomes
 	    call_selenoproteins => 1,
 	    call_pyrrolysoproteins => 1,
 	    call_features_repeat_region_SEED => 1,
-	    call_features_insertion_sequences => 1,
+#	    call_features_insertion_sequences => 1,
 	    call_features_strep_suis_repeat => 1,
 	    call_features_strep_pneumo_repeat => 1,
 	    call_features_crispr => 1,
@@ -1436,7 +1436,7 @@ sub annotate_genomes
 		    call_selenoproteins
 		    call_pyrrolysoproteins
 		    call_features_repeat_region_SEED
-		    call_features_insertion_sequences
+#		    call_features_insertion_sequences
 		    call_features_strep_suis_repeat
 		    call_features_strep_pneumo_repeat
 		    call_features_crispr
@@ -1455,11 +1455,12 @@ sub annotate_genomes
 			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
 		}
 		eval {
-			my $output = $self->annotate_process($currentparams);
+			my ($output,$message) = $self->annotate_process($currentparams);
 			push(@$output_genomes,$output->{ref});
+			$htmlmessage .= $message;
 		};
 		if ($@) {
-			$htmlmessage .= $input." failed!<br>";
+			$htmlmessage .=$input." failed!<br>";
 		} else {
 			$htmlmessage .= $input." succeeded!<br>";
 		}
@@ -1477,13 +1478,14 @@ sub annotate_genomes
 	        });
 		}
 
-	$htmlmessage = ".</p>";
+	$htmlmessage .= "</p>";
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
-    	report_object_name => $params->{output_genome}.".report",
+#    	report_object_name => $params->{output_genome}.".report",
+    	report_object_name => Bio::KBase::utilities::processid().".report",
     });
 	$return = {
     	workspace => $params->{workspace},
