@@ -364,18 +364,6 @@ sub annotate_process {
 			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
-#	if (defined($parameters->{call_features_insertion_sequences}) && $parameters->{call_features_insertion_sequences} == 1)	{
-#		if (length($extragenecalls) == 0) {
-#			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-#		} else {
-#			$extragenecalls .= "; ";
-#		}
-#		$extragenecalls .= "insertion sequences";
-#		push(@{$workflow->{stages}},{name => "call_features_insertion_sequences"});
-#		if (!defined($contigobj)) {
-#			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
-#		}
-#	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
 		if (length($extragenecalls) == 0) {
 			$extragenecalls = "A scan was conducted for the following additional feature types: ";
@@ -1192,7 +1180,6 @@ sub annotate_genome
 	    call_selenoproteins => 1,
 	    call_pyrrolysoproteins => 1,
 	    call_features_repeat_region_SEED => 1,
-#	    call_features_insertion_sequences => 1,
 	    call_features_strep_suis_repeat => 1,
 	    call_features_strep_pneumo_repeat => 1,
 	    call_features_crispr => 1,
@@ -1368,7 +1355,6 @@ sub annotate_genomes
 	    call_selenoproteins => 1,
 	    call_pyrrolysoproteins => 1,
 	    call_features_repeat_region_SEED => 1,
-#	    call_features_insertion_sequences => 1,
 	    call_features_strep_suis_repeat => 1,
 	    call_features_strep_pneumo_repeat => 1,
 	    call_features_crispr => 1,
@@ -1382,7 +1368,7 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $htmlmessage = "<p>";
+	my $htmlmessage = "<pre>";
 	my $genomes = $params->{input_genomes};
 
 	if (ref $genomes eq 'ARRAY') {
@@ -1460,9 +1446,9 @@ sub annotate_genomes
 			$htmlmessage .= $message;
 		};
 		if ($@) {
-			$htmlmessage .=$input." failed!<br>";
+			$htmlmessage .=$input." failed!<br>\n\n";
 		} else {
-			$htmlmessage .= $input." succeeded!<br>";
+			$htmlmessage .= $input." succeeded!<br>\n\n";
 		}
 	}
 		
@@ -1478,7 +1464,7 @@ sub annotate_genomes
 	        });
 		}
 
-	$htmlmessage .= "</p>";
+	$htmlmessage .= "</pre>";
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
