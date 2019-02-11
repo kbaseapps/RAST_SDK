@@ -1,6 +1,14 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.0.18
+__Changes__
+Add support for AssemblySet and a new app for 'Annotate Multiple Microbial Assemblies'
+
+### Version 0.0.17
+__Changes__
+Add support for GenomeSets to 'Annotate Multiple Microbial Genomes'
+
 ### Version 0.0.16
 __Changes__
 - Improved the report messages to give users more complete and accurate information.
