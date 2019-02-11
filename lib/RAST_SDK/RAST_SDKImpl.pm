@@ -1368,20 +1368,28 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $htmlmessage = "<pre>";
+	my $htmlmessage = "<pre>\n";
 	my $genomes = $params->{input_genomes};
 
+	my $obj_type;
 	if (ref $genomes eq 'ARRAY') {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
-			my $type = $info->[0]->[2];
-			if ($type =~ /KBaseSearch\.GenomeSet/) {
+			$obj_type = $info->[0]->[2];
+			if ($obj_type =~ /KBaseSearch\.GenomeSet/ || $obj_type =~ /KBaseSets\.AssemblySet/) {
 				my $obj = Bio::KBase::kbaseenv::get_objects([{
-					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{data}->{elements};
+					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{'refs'};
 
-				foreach my $key (keys %$obj) {
-					push(@$replace_genomes,$key);
+				if (ref($obj) eq 'HASH') {
+					foreach my $key (keys %$obj) {
+						push(@$replace_genomes,$key);
+					}
+				} elsif (ref($obj) eq 'ARRAY') {
+					foreach my $key (@$obj) {
+						push(@$replace_genomes,$key);
+					}
+					
 				}
 			} else {
 				push(@$replace_genomes,$ref);
@@ -1399,6 +1407,7 @@ sub annotate_genomes
 
 	my $output_genomes = [];
 	for (my $i=0; $i < @{$genomes}; $i++) {
+		my $obj_type = '';
 		my $input = $genomes->[$i];
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
@@ -1406,6 +1415,10 @@ sub annotate_genomes
 				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}
 			],0);
 			$input = $info->[0]->[1];
+			$obj_type =  $info->[0]->[2];
+		} else {
+			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
+			$obj_type =  $info->[0]->[2];
 		}
 		my $currentparams = Bio::KBase::utilities::args({},[],{
 			output_genome => $input.".RAST",
@@ -1422,7 +1435,6 @@ sub annotate_genomes
 		    call_selenoproteins
 		    call_pyrrolysoproteins
 		    call_features_repeat_region_SEED
-#		    call_features_insertion_sequences
 		    call_features_strep_suis_repeat
 		    call_features_strep_pneumo_repeat
 		    call_features_crispr
@@ -1440,13 +1452,21 @@ sub annotate_genomes
 		for (my $j=0; $j < @{$list}; $j++) {
 			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
 		}
+
+		if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
+			$currentparams->{'scientific_name'} = 'unknown taxon';
+			$currentparams->{'domain'} = 'Unknown';
+			$currentparams->{'genetic_code'} = 11;
+			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
+		}
+			
 		eval {
 			my ($output,$message) = $self->annotate_process($currentparams);
 			push(@$output_genomes,$output->{ref});
 			$htmlmessage .= $message;
 		};
 		if ($@) {
-			$htmlmessage .=$input." failed!<br>\n\n";
+			$htmlmessage .= $input." failed!<br>\n\n";
 		} else {
 			$htmlmessage .= $input." succeeded!<br>\n\n";
 		}
@@ -1464,7 +1484,7 @@ sub annotate_genomes
 	        });
 		}
 
-	$htmlmessage .= "</pre>";
+	$htmlmessage .= "</pre>\n\n";
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
