@@ -30,6 +30,65 @@
             "n_rows" : 10
     	}
   }, {
+    "id" : "scientific_name",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "unknown taxon" ],
+    "field_type" : "text"
+  }, {
+    "id" : "domain",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "U" ],
+    "field_type" : "dropdown",
+     "dropdown_options":{
+      "options": [
+        {
+          "value": "B",
+          "display": "B (Bacteria)",
+          "id": "B",
+          "ui_name": "B (Bacteria)"
+        },
+        {
+          "value": "A",
+          "display": "A (Archaea)",
+          "id": "fast",
+          "ui_name": "A (Archaea)"
+        },
+        {
+          "value": "U",
+          "display": "U (Unknown)",
+          "id": "fast",
+          "ui_name": "U (Unknown)"
+        }
+      ]
+    }
+  }, {
+    "id" : "genetic_code",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "11" ],
+    "field_type" : "dropdown",
+     "dropdown_options":{
+      "options": [
+        {
+          "value": "11",
+          "display": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)",
+          "id": "11",
+          "ui_name": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)"
+        },
+        {
+          "value": "4",
+          "display": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)",
+          "id": "fast",
+          "ui_name": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)"
+        }
+      ]
+    }
+  }, {
     "id": "call_features_rRNA_SEED",
     "optional":false,
     "advanced":true,

@@ -47,6 +47,30 @@ parameters :
         long-hint  : |
             List of assemblies to annotate, delimited with semicolon
 
+    scientific_name :
+        ui-name : |
+            Scientific Name
+        short-hint : |
+            The scientific name to assign to the genome
+        long-hint  : |
+            The scientific name to assign to the genome
+
+    domain :
+        ui-name : |
+            Domain
+        short-hint : |
+            The domain of life of the organism being annotated
+        long-hint  : |
+            The domain of life of the organism being annotated
+
+    genetic_code :
+        ui-name : |
+            Genetic Code
+        short-hint : |
+            The genetic code used in translating to protein sequences
+        long-hint  : |
+            The genetic code used in translating to protein sequences
+
     call_features_rRNA_SEED :
         ui-name : |
             Call rRNAs
