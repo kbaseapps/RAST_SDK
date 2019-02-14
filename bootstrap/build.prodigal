@@ -17,7 +17,7 @@ if (@ARGV)
 
 -d $dest || mkdir $dest;
 
-my $vers = "2.6.1";
+my $vers = "2.6.3";
 
 my $prodigal_dir = "Prodigal-$vers";
 my $prodigal_tar = "v$vers.tar.gz";

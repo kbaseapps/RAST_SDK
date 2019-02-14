@@ -252,6 +252,9 @@ sub annotate_process {
 		$parameters->{domain} = $inputgenome->{domain};
 		$parameters->{scientific_name} = $inputgenome->{scientific_name};
 	} elsif (defined($parameters->{input_contigset})) {
+		$parameters->{genetic_code} = $inputgenome->{genetic_code};
+		$parameters->{domain} = $inputgenome->{domain};
+		$parameters->{scientific_name} = $inputgenome->{scientific_name};
 		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});	
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
@@ -268,7 +271,7 @@ sub annotate_process {
 				delete $inputgenome->{contigs}->[$i]->{sequence};
 			}
 		}
-		
+	
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
 			$inputgenome->{contigset_ref} = $contigobj->{_reference};
 		} else {
@@ -1440,7 +1443,6 @@ sub annotate_genomes
 		    call_features_crispr
 		    call_features_CDS_glimmer3
 		    call_features_CDS_prodigal
-		    call_features_CDS_genemark
 		    annotate_proteins_kmer_v2
 		    kmer_v1_parameters
 		    annotate_proteins_similarity
@@ -1455,9 +1457,10 @@ sub annotate_genomes
 
 		if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
 			$currentparams->{'scientific_name'} = 'unknown taxon';
-			$currentparams->{'domain'} = 'Unknown';
+			$currentparams->{'domain'} = 'B';
 			$currentparams->{'genetic_code'} = 11;
 			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
+			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
 			
 		eval {
