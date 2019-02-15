@@ -1520,14 +1520,18 @@ sub annotate_genomes
 	print FH $htmlmessage;
 	close FH;
 	$htmlmessage .= "<pre>$htmlmessage</pre>\n\n";
-
+    my $reportfile = Bio::KBase::utilities::add_report_file({
+    	workspace_name => $params->{workspace},
+    	name =>  "microbial_genome_report.$params->{output_genome}",
+		path => $path,
+		description => 'Microbial Annotation Report'
+    });
 
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
-#    	report_object_name => $params->{output_genome}.".report",
     	report_object_name => Bio::KBase::utilities::processid().".report",
     });
 	$return = {
