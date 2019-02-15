@@ -56,6 +56,12 @@
           "display": "A (Archaea)",
           "id": "fast",
           "ui_name": "A (Archaea)"
+        },
+        {
+          "value": "U",
+          "display": "U (Unknown)",
+          "id": "fast",
+          "ui_name": "U (Unknown)"
         }
       ]
     }

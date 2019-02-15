@@ -41,11 +41,10 @@ sub reannotate_genomes {
              "call_features_strep_pneumo_repeat"=>'0',
              "call_features_crispr"=>'0',
              "call_features_CDS_glimmer3"=>'0',
-             "call_features_CDS_prodigal"=>'0',
+             "call_features_CDS_prodigal"=>'1',
              "annotate_proteins_kmer_v2"=>'0',
              "kmer_v1_parameters"=>'0',
              "annotate_proteins_similarity"=>'0',
-             "retain_old_anno_for_hypotheticals"=>'0',
              "resolve_overlapping_features"=>'0',
              "call_features_prophage_phispy"=>'0',
              "output_genome"=>$genome_obj_name,
@@ -72,29 +71,27 @@ sub prepare_assembly {
 }
 
 
-my $DEBUG = 'Y';
-#my $genome_obj_name1 = "Dactylopius coccus";
-#my $assembly_ref1 = "40046/2/1";
-#my $genome_obj_name2 = "Drosophila melanogaster";
-#my $assembly_ref2 = "40046/3/1";
-#my $genome_obj_name3 = "Nomada ferruginata";
-#my $assembly_ref3 = "40046/4/1";
+my $DEBUG = 'N';
+my $assembly_obj_name1 = "Dactylopius coccus";
+my $assembly_ref1 = "40046/5/1";
+   $assembly_ref1 = "40619/11/1";
+my $assembly_obj_name2 = "Drosophila melanogaster";
+my $assembly_ref2 = "40046/6/1";
+   $assembly_ref2 = "40619/39/1";
+my $assembly_obj_name3 = "Nomada ferruginata";
+my $assembly_ref3 = "40046/7/1";
 
-my $assembly_obj_name1 = "bogus.fna";
-my $assembly_ref1 = prepare_assembly($assembly_obj_name1);
-my $assembly_ref_new1;
-my $assembly_ref_old1;
+if ($DEBUG ne 'Y') {
+	$assembly_obj_name1 = "bogus.fna";
+	$assembly_ref1 = prepare_assembly($assembly_obj_name1);
+		
+	$assembly_obj_name2 = "bogus2.fna";
+	$assembly_ref2 = prepare_assembly($assembly_obj_name2);
 	
-my $assembly_obj_name2 = "bogus2.fna";
-my $assembly_ref2 = prepare_assembly($assembly_obj_name2);
-my $assembly_ref_new2;
-my $assembly_ref_old2;
-	
-my $assembly_obj_name3 = "bogus2.fna";
-my $assembly_ref3 = prepare_assembly($assembly_obj_name2);
-my $assembly_ref_new3;
-my $assembly_ref_old3;
-	
+	$assembly_obj_name3 = "bogus2.fna";
+	$assembly_ref3 = prepare_assembly($assembly_obj_name2);
+}
+
 my $assembly_set_name = 'new_assembly_set';
 my $assembly_set = $su->KButil_Build_AssemblySet({
      	workspace_name => get_ws_name(),
@@ -124,14 +121,6 @@ lives_ok {
 
 lives_ok {
 	if ($DEBUG eq 'Y') {
-		my $assembly_set_name = 'new_genome_set';
-		my $assembly_set = $su->KButil_Build_AssemblySet({
-        	workspace_name => get_ws_name(),
-        	input_refs => [$assembly_ref1,$assembly_ref2],
-        	output_name => $assembly_set_name,
-        	desc => 'GenomeSet Description'
-    	});
-
 		my $gs = get_ws_name() . "/" . $assembly_set_name ;
 		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
 		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
