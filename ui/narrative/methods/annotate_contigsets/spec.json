@@ -276,6 +276,18 @@
           "target_property": "genome_text"
         },
         {
+          "input_parameter": "scientific_name",
+          "target_property": "scientific_name"
+        },
+        {
+          "input_parameter": "domain",
+          "target_property": "domain"
+        },
+        {
+          "input_parameter": "genetic_code",
+          "target_property": "genetic_code"
+        },
+        {
           "input_parameter": "call_features_rRNA_SEED",
           "target_property": "call_features_rRNA_SEED"
         },

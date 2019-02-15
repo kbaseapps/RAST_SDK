@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.16';
+our $VERSION = '0.0.18';
 our $GIT_URL = 'https://github.com/landml/RAST_SDK';
-our $GIT_COMMIT_HASH = '152bb0b02d601d031316b04ed4e817f978a049db';
+our $GIT_COMMIT_HASH = '4be42e6ffcbe0811f68abf19b86c6d2a7407cf98';
 
 =head1 NAME
 
@@ -1264,7 +1264,12 @@ $params is a RAST_SDK.AnnotateGenomesParams
 $return is a RAST_SDK.AnnotateGenomesResults
 AnnotateGenomesParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	scientific_name has a value which is a string
+	genome_text has a value which is a string
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1309,7 +1314,12 @@ $params is a RAST_SDK.AnnotateGenomesParams
 $return is a RAST_SDK.AnnotateGenomesResults
 AnnotateGenomesParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	scientific_name has a value which is a string
+	genome_text has a value which is a string
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1803,31 +1813,8 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 =head2 AnnotateGenomeResults
 
-<pre>
-a string
-</pre>
-
-=end html
-
-=begin text
-
-a string
-
-=end text
-
-=back
-
-
-
-=head2 workspace_name
-
 =over 4
 
-
-
-=item Description
-
-A string representing a workspace name.
 
 
 =item Definition
@@ -1835,14 +1822,24 @@ A string representing a workspace name.
 =begin html
 
 <pre>
-a string
+a reference to a hash where the following keys are defined:
+workspace has a value which is a RAST_SDK.workspace_name
+id has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
 </pre>
 
 =end html
 
 =begin text
 
-a string
+a reference to a hash where the following keys are defined:
+workspace has a value which is a RAST_SDK.workspace_name
+id has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
 
 =end text
 
@@ -1850,7 +1847,47 @@ a string
 
 
 
-=head2 AnnotateGenomeParams
+=head2 GenomeParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+input_contigset has a value which is a RAST_SDK.contigset_id
+input_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a RAST_SDK.genome_id
+genetic_code has a value which is an int
+domain has a value which is a string
+scientific_name has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+input_contigset has a value which is a RAST_SDK.contigset_id
+input_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a RAST_SDK.genome_id
+genetic_code has a value which is an int
+domain has a value which is a string
+scientific_name has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 AnnotateGenomesParams
 
 =over 4
 
@@ -1863,11 +1900,11 @@ a string
 <pre>
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
+genome_text has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
@@ -1896,11 +1933,11 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
+genome_text has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
@@ -1909,23 +1946,6 @@ call_pyrrolysoproteins has a value which is a RAST_SDK.bool
 call_features_repeat_region_SEED has a value which is a RAST_SDK.bool
 call_features_insertion_sequences has a value which is a RAST_SDK.bool
 call_features_strep_suis_repeat has a value which is a RAST_SDK.bool
-call_features_strep_pneumo_repeat has a value which is a RAST_SDK.bool
-call_features_crispr has a value which is a RAST_SDK.bool
-call_features_CDS_glimmer3 has a value which is a RAST_SDK.bool
-call_features_CDS_prodigal has a value which is a RAST_SDK.bool
-call_features_CDS_genemark has a value which is a RAST_SDK.bool
-annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
-kmer_v1_parameters has a value which is a RAST_SDK.bool
-annotate_proteins_similarity has a value which is a RAST_SDK.bool
-resolve_overlapping_features has a value which is a RAST_SDK.bool
-call_features_prophage_phispy has a value which is a RAST_SDK.bool
-retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
-
-
-=end text
-
-=back
-
 call_features_strep_pneumo_repeat has a value which is a RAST_SDK.bool
 call_features_crispr has a value which is a RAST_SDK.bool
 call_features_CDS_glimmer3 has a value which is a RAST_SDK.bool

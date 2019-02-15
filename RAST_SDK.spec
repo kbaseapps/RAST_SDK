@@ -76,7 +76,12 @@ module RAST_SDK {
 	
 	typedef structure {
 	    string workspace;
-	    list<GenomeParams> genomes;
+	    list<GenomeParams> input_genomes;
+		int genetic_code;
+		string domain;
+	    string scientific_name;
+		string genome_text;
+	    string output_genome;
 	    bool call_features_rRNA_SEED;
 	    bool call_features_tRNA_trnascan;
 	    bool call_selenoproteins;
