@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.16';
+our $VERSION = '0.0.18';
 our $GIT_URL = 'https://github.com/landml/RAST_SDK';
-our $GIT_COMMIT_HASH = '152bb0b02d601d031316b04ed4e817f978a049db';
+our $GIT_COMMIT_HASH = '4be42e6ffcbe0811f68abf19b86c6d2a7407cf98';
 
 =head1 NAME
 
@@ -259,6 +259,12 @@ sub annotate_process {
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
+
+	my $tax_domain =  (exists $inputgenome->{domain} && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
+	if ($tax_domain eq 'U' ) {
+		$message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+	}
+
 	if (defined($contigobj)) {
 		my $count = 0;
 		my $size = 0;
@@ -278,16 +284,16 @@ sub annotate_process {
 			$inputgenome->{assembly_ref} = $contigobj->{_reference};
 		}
 		if (defined($parameters->{input_contigset})) {
-			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
+			$message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
 		} else {
-			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
+			$message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
 			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
 		}		
 	} else {
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
+		    $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
 		} else {
-		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
+		    $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
 			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
 		}
 	}
@@ -326,27 +332,35 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
+				$extragenecalls .= "; ";
+			}
+			$extragenecalls .= "selenoproteins";
+			push(@{$workflow->{stages}},{name => "call_selenoproteins"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
 		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "selenoproteins";
-		push(@{$workflow->{stages}},{name => "call_selenoproteins"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			$message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
 		}
 	}
 	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
 			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "pyrrolysoproteins";
-		push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
+			$extragenecalls .= "pyrrolysoproteins";
+			push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			} 
+		} else {
+			$message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
@@ -392,15 +406,19 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
+				$extragenecalls .= "; ";
+			}
+			$extragenecalls .= "crispr";
+			push(@{$workflow->{stages}},{name => "call_features_crispr"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
 		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "crispr";
-		push(@{$workflow->{stages}},{name => "call_features_crispr"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			$message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	$extragenecalls .= ".\n" if (length($extragenecalls) > 0);
@@ -428,19 +446,23 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
-		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
-			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-		}
-		if (length($genecalls) == 0) {
-			$genecalls = "Standard gene features were called using: ";
+		if ($tax_domain ne 'U' ) {
+			if (@{$inputgenome->{features}} > 0) {
+#				$inputgenome->{features} = [];
+				$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+			}
+			if (length($genecalls) == 0) {
+				$genecalls = "Standard gene features were called using: ";
+			} else {
+				$genecalls .= "; ";
+			}
+			$genecalls .= "prodigal";
+			push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
+			}
 		} else {
-			$genecalls .= "; ";
-		}
-		$genecalls .= "prodigal";
-		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
+			$message .= "Did not predict prodigal genes because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	$genecalls .= ".\n" if (length($genecalls) > 0);
@@ -516,7 +538,11 @@ sub annotate_process {
 		});
 	}
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
-		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+		if ($tax_domain ne 'U' ) {
+			push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+		} else {
+			$message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";	
+		}
 	}
 	$annomessage .= ".\n" if (length($annomessage) > 0);
 
@@ -527,7 +553,7 @@ sub annotate_process {
 			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
 				my $ftr = $inputgenome->{features}->[$i];
 				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-					push(@$replace, @{$inputgenome->{features}}->[$i]);
+					push(@{$replace}, @{$inputgenome->{features}}->[$i]);
 				} 
 			}
 			$inputgenome->{features} = $replace;
@@ -1018,7 +1044,7 @@ sub annotate_process {
 	Bio::KBase::utilities::print_report_message({
 		message => "<pre>".$message."</pre>",
 		append => 0,
-		html => 1
+		html => 0
 	});
 	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
@@ -1238,7 +1264,12 @@ $params is a RAST_SDK.AnnotateGenomesParams
 $return is a RAST_SDK.AnnotateGenomesResults
 AnnotateGenomesParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	scientific_name has a value which is a string
+	genome_text has a value which is a string
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1283,7 +1314,12 @@ $params is a RAST_SDK.AnnotateGenomesParams
 $return is a RAST_SDK.AnnotateGenomesResults
 AnnotateGenomesParams is a reference to a hash where the following keys are defined:
 	workspace has a value which is a string
-	genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	scientific_name has a value which is a string
+	genome_text has a value which is a string
+	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 	call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
 	call_selenoproteins has a value which is a RAST_SDK.bool
@@ -1371,7 +1407,7 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $htmlmessage = "<pre>\n";
+	my $htmlmessage = "";
 	my $genomes = $params->{input_genomes};
 
 	my $obj_type;
@@ -1423,16 +1459,20 @@ sub annotate_genomes
 			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
 			$obj_type =  $info->[0]->[2];
 		}
+
 		my $currentparams = Bio::KBase::utilities::args({},[],{
 			output_genome => $input.".RAST",
 			input_genome => $genomes->[$i],
 		    input_contigset => undef,
 		    genetic_code => 11,
 		    domain => "Bacteria",
-		    scientific_name => "Unknown species"
+		    scientific_name => "unknown taxon"
 		});
 		my $list = [qw(
 			workspace
+			scientific_name
+			genetic_name
+			domain
 			call_features_rRNA_SEED
 		    call_features_tRNA_trnascan
 		    call_selenoproteins
@@ -1452,13 +1492,10 @@ sub annotate_genomes
 		)];
 
 		for (my $j=0; $j < @{$list}; $j++) {
-			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
+			$currentparams->{$list->[$j]} = $params->{$list->[$j]} if (exists $params->{$list->[$j]});
 		}
 
 		if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
-			$currentparams->{'scientific_name'} = 'unknown taxon';
-			$currentparams->{'domain'} = 'B';
-			$currentparams->{'genetic_code'} = 11;
 			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
 			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
@@ -1487,13 +1524,24 @@ sub annotate_genomes
 	        });
 		}
 
-	$htmlmessage .= "</pre>\n\n";
+
+	my $path = "/kb/module/work/tmp/microbial_genome_report.$params->{output_genome}";
+	open (FH,">$path") || warn("Did not create the output file\n");
+	print FH $htmlmessage;
+	close FH;
+	$htmlmessage .= "<pre>$htmlmessage</pre>\n\n";
+    my $reportfile = Bio::KBase::utilities::add_report_file({
+    	workspace_name => $params->{workspace},
+    	name =>  "microbial_genome_report.$params->{output_genome}",
+		path => $path,
+		description => 'Microbial Annotation Report'
+    });
+
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
-#    	report_object_name => $params->{output_genome}.".report",
     	report_object_name => Bio::KBase::utilities::processid().".report",
     });
 	$return = {
@@ -1765,31 +1813,8 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 =head2 AnnotateGenomeResults
 
-<pre>
-a string
-</pre>
-
-=end html
-
-=begin text
-
-a string
-
-=end text
-
-=back
-
-
-
-=head2 workspace_name
-
 =over 4
 
-
-
-=item Description
-
-A string representing a workspace name.
 
 
 =item Definition
@@ -1797,14 +1822,24 @@ A string representing a workspace name.
 =begin html
 
 <pre>
-a string
+a reference to a hash where the following keys are defined:
+workspace has a value which is a RAST_SDK.workspace_name
+id has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
 </pre>
 
 =end html
 
 =begin text
 
-a string
+a reference to a hash where the following keys are defined:
+workspace has a value which is a RAST_SDK.workspace_name
+id has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
 
 =end text
 
@@ -1812,7 +1847,47 @@ a string
 
 
 
-=head2 AnnotateGenomeParams
+=head2 GenomeParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+input_contigset has a value which is a RAST_SDK.contigset_id
+input_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a RAST_SDK.genome_id
+genetic_code has a value which is an int
+domain has a value which is a string
+scientific_name has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+input_contigset has a value which is a RAST_SDK.contigset_id
+input_genome has a value which is a RAST_SDK.genome_id
+output_genome has a value which is a RAST_SDK.genome_id
+genetic_code has a value which is an int
+domain has a value which is a string
+scientific_name has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 AnnotateGenomesParams
 
 =over 4
 
@@ -1825,11 +1900,11 @@ a string
 <pre>
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
+genome_text has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
@@ -1858,11 +1933,11 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 a reference to a hash where the following keys are defined:
 workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
 scientific_name has a value which is a string
+genome_text has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
 call_features_tRNA_trnascan has a value which is a RAST_SDK.bool
@@ -1871,23 +1946,6 @@ call_pyrrolysoproteins has a value which is a RAST_SDK.bool
 call_features_repeat_region_SEED has a value which is a RAST_SDK.bool
 call_features_insertion_sequences has a value which is a RAST_SDK.bool
 call_features_strep_suis_repeat has a value which is a RAST_SDK.bool
-call_features_strep_pneumo_repeat has a value which is a RAST_SDK.bool
-call_features_crispr has a value which is a RAST_SDK.bool
-call_features_CDS_glimmer3 has a value which is a RAST_SDK.bool
-call_features_CDS_prodigal has a value which is a RAST_SDK.bool
-call_features_CDS_genemark has a value which is a RAST_SDK.bool
-annotate_proteins_kmer_v2 has a value which is a RAST_SDK.bool
-kmer_v1_parameters has a value which is a RAST_SDK.bool
-annotate_proteins_similarity has a value which is a RAST_SDK.bool
-resolve_overlapping_features has a value which is a RAST_SDK.bool
-call_features_prophage_phispy has a value which is a RAST_SDK.bool
-retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
-
-
-=end text
-
-=back
-
 call_features_strep_pneumo_repeat has a value which is a RAST_SDK.bool
 call_features_crispr has a value which is a RAST_SDK.bool
 call_features_CDS_glimmer3 has a value which is a RAST_SDK.bool
