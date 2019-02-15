@@ -259,6 +259,12 @@ sub annotate_process {
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
+
+	my $tax_domain =  (exists $inputgenome->{domain} && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
+	if ($tax_domain eq 'U' ) {
+		$message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+	}
+
 	if (defined($contigobj)) {
 		my $count = 0;
 		my $size = 0;
@@ -278,16 +284,16 @@ sub annotate_process {
 			$inputgenome->{assembly_ref} = $contigobj->{_reference};
 		}
 		if (defined($parameters->{input_contigset})) {
-			$message = "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
+			$message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
 		} else {
-			$message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
+			$message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
 			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
 		}		
 	} else {
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-		    $message = "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
+		    $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
 		} else {
-		    $message = "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
+		    $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
 			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
 		}
 	}
@@ -326,27 +332,35 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
+				$extragenecalls .= "; ";
+			}
+			$extragenecalls .= "selenoproteins";
+			push(@{$workflow->{stages}},{name => "call_selenoproteins"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
 		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "selenoproteins";
-		push(@{$workflow->{stages}},{name => "call_selenoproteins"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			$message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
 		}
 	}
 	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
 			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "pyrrolysoproteins";
-		push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
+			$extragenecalls .= "pyrrolysoproteins";
+			push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			} 
+		} else {
+			$message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
@@ -392,15 +406,19 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
+		if ($tax_domain ne 'U' ) {
+			if (length($extragenecalls) == 0) {
+				$extragenecalls = "A scan was conducted for the following additional feature types: ";
+			} else {
+				$extragenecalls .= "; ";
+			}
+			$extragenecalls .= "crispr";
+			push(@{$workflow->{stages}},{name => "call_features_crispr"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			}
 		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "crispr";
-		push(@{$workflow->{stages}},{name => "call_features_crispr"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			$message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	$extragenecalls .= ".\n" if (length($extragenecalls) > 0);
@@ -428,19 +446,23 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
-		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
-			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-		}
-		if (length($genecalls) == 0) {
-			$genecalls = "Standard gene features were called using: ";
+		if ($tax_domain ne 'U' ) {
+			if (@{$inputgenome->{features}} > 0) {
+#				$inputgenome->{features} = [];
+				$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+			}
+			if (length($genecalls) == 0) {
+				$genecalls = "Standard gene features were called using: ";
+			} else {
+				$genecalls .= "; ";
+			}
+			$genecalls .= "prodigal";
+			push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
+			if (!defined($contigobj)) {
+				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
+			}
 		} else {
-			$genecalls .= "; ";
-		}
-		$genecalls .= "prodigal";
-		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
-		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
+			$message .= "Did not predict prodigal genes because the domain is $parameters->{domain}\n\n";	
 		}
 	}
 	$genecalls .= ".\n" if (length($genecalls) > 0);
@@ -516,7 +538,11 @@ sub annotate_process {
 		});
 	}
 	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
-		push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+		if ($tax_domain ne 'U' ) {
+			push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+		} else {
+			$message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";	
+		}
 	}
 	$annomessage .= ".\n" if (length($annomessage) > 0);
 
@@ -527,7 +553,7 @@ sub annotate_process {
 			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
 				my $ftr = $inputgenome->{features}->[$i];
 				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-					push(@$replace, @{$inputgenome->{features}}->[$i]);
+					push(@{$replace}, @{$inputgenome->{features}}->[$i]);
 				} 
 			}
 			$inputgenome->{features} = $replace;
@@ -1018,7 +1044,7 @@ sub annotate_process {
 	Bio::KBase::utilities::print_report_message({
 		message => "<pre>".$message."</pre>",
 		append => 0,
-		html => 1
+		html => 0
 	});
 	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
@@ -1371,7 +1397,7 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-	my $htmlmessage = "<pre>\n";
+	my $htmlmessage = "";
 	my $genomes = $params->{input_genomes};
 
 	my $obj_type;
@@ -1423,16 +1449,20 @@ sub annotate_genomes
 			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
 			$obj_type =  $info->[0]->[2];
 		}
+
 		my $currentparams = Bio::KBase::utilities::args({},[],{
 			output_genome => $input.".RAST",
 			input_genome => $genomes->[$i],
 		    input_contigset => undef,
 		    genetic_code => 11,
 		    domain => "Bacteria",
-		    scientific_name => "Unknown species"
+		    scientific_name => "unknown taxon"
 		});
 		my $list = [qw(
 			workspace
+			scientific_name
+			genetic_name
+			domain
 			call_features_rRNA_SEED
 		    call_features_tRNA_trnascan
 		    call_selenoproteins
@@ -1452,13 +1482,10 @@ sub annotate_genomes
 		)];
 
 		for (my $j=0; $j < @{$list}; $j++) {
-			$currentparams->{$list->[$j]} = $params->{$list->[$j]};
+			$currentparams->{$list->[$j]} = $params->{$list->[$j]} if (exists $params->{$list->[$j]});
 		}
 
 		if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
-			$currentparams->{'scientific_name'} = 'unknown taxon';
-			$currentparams->{'domain'} = 'B';
-			$currentparams->{'genetic_code'} = 11;
 			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
 			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
@@ -1487,7 +1514,14 @@ sub annotate_genomes
 	        });
 		}
 
-	$htmlmessage .= "</pre>\n\n";
+
+	my $path = "/kb/module/work/tmp/microbial_genome_report.$params->{output_genome}";
+	open (FH,">$path") || warn("Did not create the output file\n");
+	print FH $htmlmessage;
+	close FH;
+	$htmlmessage .= "<pre>$htmlmessage</pre>\n\n";
+
+
 	Bio::KBase::utilities::print_report_message({
 		message => $htmlmessage,html=>1,append => 0
 	});
