@@ -52,14 +52,23 @@ sub reannotate_genome {
     return make_impl_call("RAST_SDK.annotate_genome", $params);
 }
 
+my $DEBUG = 0;
 my $diff_count   = 0;
 my $num_func_in  = 0;
 my $num_func_out = 0;
 my $genome_obj_name = "Carsonella";
+my $genome_ref = '';
+
 lives_ok {
-    my $genome_gbff_name = "Carsonella.gbk";
-    my ($tmp_genome_obj, $genome_ref) = prepare_gbff($genome_gbff_name,$genome_obj_name);
-#	my $genome_ref = "15792/125010/2";
+	if ($DEBUG) {
+		$genome_ref = "15792/210698/1";
+	} else {
+  		my $tmp_genome_obj;
+	  	my $genome_gbff_name = "Carsonella.gbk";
+    	($tmp_genome_obj, $genome_ref) = prepare_gbff($genome_gbff_name,$genome_obj_name);
+	}
+
+
 	my ($orig_genome,$orig_funcs) = &get_and_prep($genome_ref);
 
 	print "number of input features = ".scalar  @{$orig_genome->{features}}."\n";

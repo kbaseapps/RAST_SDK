@@ -1471,7 +1471,7 @@ sub annotate_genomes
 		my $list = [qw(
 			workspace
 			scientific_name
-			genetic_name
+			genetic_code
 			domain
 			call_features_rRNA_SEED
 		    call_features_tRNA_trnascan
@@ -1506,9 +1506,9 @@ sub annotate_genomes
 			$htmlmessage .= $message;
 		};
 		if ($@) {
-			$htmlmessage .= $input." failed!<br>\n\n";
+			$htmlmessage .= $input." failed!\n\n";
 		} else {
-			$htmlmessage .= $input." succeeded!<br>\n\n";
+			$htmlmessage .= $input." succeeded!\n\n";
 		}
 	}
 		
@@ -1525,20 +1525,20 @@ sub annotate_genomes
 		}
 
 
-	my $path = "/kb/module/work/tmp/microbial_genome_report.$params->{output_genome}";
+	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
 	open (FH,">$path") || warn("Did not create the output file\n");
 	print FH $htmlmessage;
 	close FH;
-	$htmlmessage .= "<pre>$htmlmessage</pre>\n\n";
+	$htmlmessage = "<pre>$htmlmessage</pre>\n\n";
     my $reportfile = Bio::KBase::utilities::add_report_file({
     	workspace_name => $params->{workspace},
-    	name =>  "microbial_genome_report.$params->{output_genome}",
+    	name =>  "annotation_report.$params->{output_genome}",
 		path => $path,
 		description => 'Microbial Annotation Report'
     });
 
 	Bio::KBase::utilities::print_report_message({
-		message => $htmlmessage,html=>1,append => 0
+		message => $htmlmessage,html=>0,append => 0
 	});
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
