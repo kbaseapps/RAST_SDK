@@ -553,7 +553,8 @@ sub annotate_process {
 			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
 				my $ftr = $inputgenome->{features}->[$i];
 				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-					push(@{$replace}, @{$inputgenome->{features}}->[$i]);
+					#push(@{$replace}, @{$inputgenome->{features}}->[$i]);
+					push(@{$replace}, $ftr);
 				} 
 			}
 			$inputgenome->{features} = $replace;
@@ -900,6 +901,8 @@ sub annotate_process {
 			} else {
 				$types{$type} = 1;
 			}
+			delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
+			delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
 		}
 		if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
 			## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
@@ -1016,6 +1019,8 @@ sub annotate_process {
 		}
 	}
 #	print "SEND OFF FOR SAVING\n";
+#	print "***** Domain       = $genome->{domain}\n";
+#	print "***** Genitic_code = $genome->{genetic_code}\n";
 #	print "***** Number of features=".scalar  @{$genome->{features}}."\n";
 #	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
@@ -1408,9 +1413,21 @@ sub annotate_genomes
 	    retain_old_anno_for_hypotheticals => 1
 	});
 	my $htmlmessage = "";
+	my $warn        = "";
 	my $genomes = $params->{input_genomes};
 
 	my $obj_type;
+	#
+	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
+	#
+	# When a set is submitted, the set needs to be unpacked and added to the list
+	# Create a non-redundant replacement list:
+	#	1. Individual genomes and assemblies are added
+	#	2. Iterate over a Set to add to the replacement list
+	#	3. GenomeSets use a HASH and AssemblySets use an ARRAY  
+	#	4. Use perl grep to see if the ref is already in the list
+	#	5. Issue a warning when a duplicate is found so user knows what happened. 
+	#
 	if (ref $genomes eq 'ARRAY') {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
@@ -1422,18 +1439,31 @@ sub annotate_genomes
 
 				if (ref($obj) eq 'HASH') {
 					foreach my $key (keys %$obj) {
-						push(@$replace_genomes,$key);
+						if ( grep( /^$key$/, @$replace_genomes ) ) {
+							$warn .= "WARNING: Found Duplicate Genome $key";
+						} else {
+							push(@$replace_genomes,$key);
+						}
 					}
 				} elsif (ref($obj) eq 'ARRAY') {
 					foreach my $key (@$obj) {
-						push(@$replace_genomes,$key);
+						if ( grep( /^$key$/, @$replace_genomes ) ) {
+							$warn .= "WARNING: Found Duplicate Assembly $key";
+						} else {
+							push(@$replace_genomes,$key);
+						}
 					}
 					
 				}
 			} else {
-				push(@$replace_genomes,$ref);
+				if ( grep( /^$ref$/, @$replace_genomes ) ) {
+					$warn .= "WARNING: Found Duplicate Assembly $ref";
+				} else {
+					push(@$replace_genomes,$ref);
+				}
 			}
 		}
+		print STDERR "WARNiNG $warn\n";
 		$genomes = $replace_genomes;
 	}
 	
@@ -1527,9 +1557,9 @@ sub annotate_genomes
 
 	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
 	open (FH,">$path") || warn("Did not create the output file\n");
-	print FH $htmlmessage;
+	print FH $warn.$htmlmessage;
 	close FH;
-	$htmlmessage = "<pre>$htmlmessage</pre>\n\n";
+	$htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
     my $reportfile = Bio::KBase::utilities::add_report_file({
     	workspace_name => $params->{workspace},
     	name =>  "annotation_report.$params->{output_genome}",
@@ -2001,4 +2031,4 @@ report_ref has a value which is a string
 
 =cut
 
-1;
+
