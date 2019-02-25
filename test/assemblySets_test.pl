@@ -16,6 +16,14 @@ use Bio::KBase::kbaseenv;
 use lib "/kb/module/test";
 use testRASTutil;
 
+print "PURPOSE:\n";
+print "    1.  Test annotate Multiple Assemblies. \n";
+print "        Test two assemblies, an assemblySet, an asseblySet plus singleton, and redundant assemblies\n";
+print "    2.  Minimum test for tRNA\n";
+print "    3.  In debug mode, using a genome reference in CI/prod.\n";
+print "         Otherwise, load an assembly in data dir. This takes more time but every user has access.\n";
+print "         For this reason, the tests aren't for a specific number of changes or names.\n\n";
+
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
@@ -28,48 +36,6 @@ my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
 my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
 my $su = new installed_clients::kb_SetUtilitiesClient($call_back_url);
 
-sub reannotate_genomes {
-    my($genome_obj_name, $genome_upa) = @_;
-    my $params={"input_genomes"=>$genome_upa,
-             "call_features_rRNA_SEED"=>'0',
-             "call_features_tRNA_trnascan"=>'1',
-             "call_selenoproteins"=>'0',
-             "call_pyrrolysoproteins"=>'0',
-             "call_features_repeat_region_SEED"=>'0',
-             "call_features_insertion_sequences"=>'0',
-             "call_features_strep_suis_repeat"=>'0',
-             "call_features_strep_pneumo_repeat"=>'0',
-             "call_features_crispr"=>'0',
-             "call_features_CDS_glimmer3"=>'0',
-             "call_features_CDS_prodigal"=>'1',
-             "annotate_proteins_kmer_v2"=>'0',
-             "kmer_v1_parameters"=>'0',
-             "annotate_proteins_similarity"=>'0',
-             "resolve_overlapping_features"=>'0',
-             "call_features_prophage_phispy"=>'0',
-             "output_genome"=>$genome_obj_name,
-             "workspace"=>get_ws_name()
-           };
-    return make_impl_call("RAST_SDK.annotate_genomes", $params);
-}
-
-sub prepare_assembly {
-    my($assembly_obj_name) = @_;
-    #my $fasta_data_path = "/kb/module/test/data/Clostridium_thermocellum_ATCC27405.fa";
-    my $fasta_data_path = "/kb/module/test/data/$assembly_obj_name";
-    my $fasta_temp_path = "/kb/module/work/tmp/$assembly_obj_name";
-    copy $fasta_data_path, $fasta_temp_path;
-    my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-    my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
-    my $ret = $au->save_assembly_from_fasta({
-        file => {path => $fasta_temp_path},
-        workspace_name => get_ws_name(),
-        assembly_name => $assembly_obj_name
-    });
-    unlink($fasta_temp_path);
-    return $ret;
-}
-
 
 my $DEBUG = 'N';
 my $assembly_obj_name1 = "Dactylopius coccus";
@@ -80,6 +46,8 @@ my $assembly_ref2 = "40046/6/1";
    $assembly_ref2 = "40619/39/1";
 my $assembly_obj_name3 = "Nomada ferruginata";
 my $assembly_ref3 = "40046/7/1";
+my $genome_set_name = "New_GenomeSet";
+
 
 if ($DEBUG ne 'Y') {
 	$assembly_obj_name1 = "bogus.fna";
@@ -91,7 +59,14 @@ if ($DEBUG ne 'Y') {
 	$assembly_obj_name3 = "bogus2.fna";
 	$assembly_ref3 = prepare_assembly($assembly_obj_name2);
 }
+my $params={"input_genomes"=>'',
+             "call_features_tRNA_trnascan"=>'1',
+			"output_genome"=>$genome_set_name
+           };
 
+#
+#	Set up the needed AssemblySet
+#
 my $assembly_set_name = 'new_assembly_set';
 my $assembly_set = $su->KButil_Build_AssemblySet({
      	workspace_name => get_ws_name(),
@@ -106,59 +81,76 @@ my $assembly_set = $su->KButil_Build_AssemblySet({
 print "ASSEMBLYREF1 = $assembly_ref1 and ASSEMBLYREF2 = $assembly_ref2\n";
 lives_ok {
 	if ($DEBUG ne 'Y') {
-		my ($genome_obj,$params) = &submit_multi_annotation('multi_genomes', [$assembly_ref1,$assembly_ref2]);
-		my $gs = get_ws_name() . "/" . $genome_obj ;
-		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-		# If you got this far, the new object was created.
-	}
-	1;
-} "Pipeline Runs";
+		my $genome_refs  = [$assembly_ref1,$assembly_ref2];
+		$params->{input_genomes} = $genome_refs;
+		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $genome_refs, $params);
 
-#
-#	BUILD AND TEST A GENOME SET
-#
-
-lives_ok {
-	if ($DEBUG eq 'Y') {
-		my $gs = get_ws_name() . "/" . $assembly_set_name ;
-		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-
-		my ($assembly_obj,$params) = &submit_set_annotation($assembly_set_name, [$newref]);
-		$info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-	# 	If you got this far, the new object was created.
+		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
+		my $number_genomes = scalar @{ $data};
+    	ok($number_genomes == 2, "Input: Two Assemblies. Output: $number_genomes in output GenomeSet");
 	} else {
 		1;
 	}
-} "Pipeline Runs";
+} "Two Assemblies";
 
 #
-#	BUILD AND TEST A GENOME SET PLUS ANOTHER GENOME
+#	BUILD AND TEST A ASSEMBLY SET
 #
 
 lives_ok {
 	if ($DEBUG ne 'Y') {
-		my $genome_set_name = 'genome_plus_set';
-		my $genome_set = $su->KButil_Build_GenomeSet({
-        	workspace_name => get_ws_name(),
-        	input_refs => [$assembly_ref1,$assembly_ref2],
-        	output_name => $genome_set_name,
-        	desc => 'GenomeSet Description'
-    	});
-
-		my $gs = get_ws_name() . "/" . $genome_set_name ;
+		my $gs = get_ws_name() . "/" . $assembly_set_name ;
 		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
 		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
+		$params->{input_genomes} = [$newref];
 
-		my ($genome_obj,$params) = &submit_set_annotation($genome_set_name, [$newref,$assembly_ref3]);
-		$info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-	# 	If you got this far, the new object was created.
+		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
+		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
+		my $number_genomes = scalar @{ $data};
+    	ok($number_genomes == 2, "Input: AssemblySet with two. Output: $number_genomes in output GenomeSet");
 	} else {
 		1;
 	}
-} "Pipeline Runs";
-done_testing(3);
+} "AssemblySet with two Assemblies";
+
+#
+#	BUILD AND TEST AN ASSEMBLY SET PLUS ANOTHER ASSEMBLY
+#
+
+lives_ok {
+	if ($DEBUG ne 'Y') {
+		my $gs = get_ws_name() . "/" . $assembly_set_name ;
+		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
+		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
+		$params->{input_genomes} = [$newref,$assembly_ref3];
+
+		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
+		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
+		my $number_genomes = scalar @{ $data};
+    	ok($number_genomes == 3, "Input: AssemblySet plus one. Output: $number_genomes in output GenomeSet");
+
+	} else {
+		1;
+	}
+} "AssemblySet plus single assembly";
+
+#
+#	TEST REDUNDANT ASSEMBLIES -
+#
+lives_ok {
+	if ($DEBUG ne 'Y') {
+		$params->{input_genomes} = [$assembly_ref1,$assembly_ref1];
+		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
+		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
+		my $number_genomes = scalar @{ $data};
+    	ok($number_genomes = 1, "Input: Two redundant. Output: $number_genomes in output GenomeSet");
+		
+	} else {
+		1;
+	}
+} "Redundant Assemblies";
+
+done_testing(8);
 
 my $err = undef;
 if ($@) {

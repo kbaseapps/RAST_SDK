@@ -1412,6 +1412,7 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
+
 	my $htmlmessage = "";
 	my $warn        = "";
 	my $genomes = $params->{input_genomes};
@@ -1556,6 +1557,7 @@ sub annotate_genomes
 
 
 	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
+	print "CREATING REPORT $path\n";
 	open (FH,">$path") || warn("Did not create the output file\n");
 	print FH $warn.$htmlmessage;
 	close FH;
