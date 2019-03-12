@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.0
+__Changes__
+Add support of genetic code 25 and unknown domains.
+
 ### Version 0.0.18
 __Changes__
 Add support for AssemblySet and a new app for 'Annotate Multiple Microbial Assemblies'

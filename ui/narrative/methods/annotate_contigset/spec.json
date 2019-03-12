@@ -68,6 +68,12 @@
           "display": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)",
           "id": "fast",
           "ui_name": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)"
+        },
+        {
+          "value": "25",
+          "display": "25 (Candidate Division SR1 and Gracilibacteria Code)",
+          "id": "fast",
+          "ui_name": "25 (Candidate Division SR1 and Gracilibacteria Code)"
         }
       ]
     }
