@@ -446,23 +446,19 @@ sub annotate_process {
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
-		if ($tax_domain ne 'U' ) {
-			if (@{$inputgenome->{features}} > 0) {
-#				$inputgenome->{features} = [];
-				$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-			}
-			if (length($genecalls) == 0) {
-				$genecalls = "Standard gene features were called using: ";
-			} else {
-				$genecalls .= "; ";
-			}
-			$genecalls .= "prodigal";
-			push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
-			if (!defined($contigobj)) {
-				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
-			}
+		if (@{$inputgenome->{features}} > 0) {
+#			$inputgenome->{features} = [];
+			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+		}
+		if (length($genecalls) == 0) {
+			$genecalls = "Standard gene features were called using: ";
 		} else {
-			$message .= "Did not predict prodigal genes because the domain is $parameters->{domain}\n\n";	
+			$genecalls .= "; ";
+		}
+		$genecalls .= "prodigal";
+		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
+		if (!defined($contigobj)) {
+			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
 		}
 	}
 	$genecalls .= ".\n" if (length($genecalls) > 0);
@@ -1021,6 +1017,7 @@ sub annotate_process {
 #	print "SEND OFF FOR SAVING\n";
 #	print "***** Domain       = $genome->{domain}\n";
 #	print "***** Genitic_code = $genome->{genetic_code}\n";
+#	print "***** Scientific_namee = $genome->{scientific_name}\n";
 #	print "***** Number of features=".scalar  @{$genome->{features}}."\n";
 #	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
@@ -1557,7 +1554,6 @@ sub annotate_genomes
 
 
 	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
-	print "CREATING REPORT $path\n";
 	open (FH,">$path") || warn("Did not create the output file\n");
 	print FH $warn.$htmlmessage;
 	close FH;
