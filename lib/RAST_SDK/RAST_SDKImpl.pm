@@ -1550,13 +1550,8 @@ sub annotate_genomes
             desc => 'GenomeSet Description'
         });
 
-        my $newset = Bio::KBase::kbaseenv::get_objects([{
-            workspace => $params->{workspace},
-            name => $output_genomeset
-        }]);
-        my $info = $newset->[0]->{info};
         Bio::KBase::kbaseenv::add_object_created({
-            "ref" => $info->[6]."/".$info->[0]."/".$info->[4],
+            "ref" => $params->{workspace}."/".$output_genomeset,
             "description" => "Genome Set"
         });
     }
