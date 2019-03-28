@@ -1540,18 +1540,21 @@ sub annotate_genomes
 		}
 	}
 		
-		my $output_genomeset;
-		if (defined $params->{output_genome} && $params->{output_genome} gt ' ') { 
-			my $output_genomeset = $params->{output_genome};
-	        my $genome_set_name = $params->{output_genome};
-	        my $genome_set = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
-	            workspace_name => $params->{workspace},
-	            input_refs => $output_genomes,
-	            output_name => $output_genomeset,
-	            desc => 'GenomeSet Description'
-	        });
-		}
+    my $output_genomeset;
+    if (defined $params->{output_genome} && $params->{output_genome} gt ' ') {
+        my $output_genomeset = $params->{output_genome};
+        my $report_reference = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+            workspace_name => $params->{workspace},
+            input_refs => $output_genomes,
+            output_name => $output_genomeset,
+            desc => 'GenomeSet Description'
+        });
 
+        Bio::KBase::kbaseenv::add_object_created({
+            "ref" => $params->{workspace}."/".$output_genomeset,
+            "description" => "Genome Set"
+        });
+    }
 
 	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
 	open (FH,">$path") || warn("Did not create the output file\n");
