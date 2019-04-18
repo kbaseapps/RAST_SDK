@@ -1,0 +1,390 @@
+{
+  "ver" : "1.0.0",
+  "name" : "Annotate multiple microbial assemblies",
+  "authors" : [ "landml"],
+  "contact" : "http://kbase.us/contact-us/",
+  "visble" : true,
+  "categories" : ["active","annotation"],
+  "widgets" : {
+    "input" : null,
+    "output" : "no-display"
+  },
+  "parameters" : [ {
+    "id" : "input_genomes",
+    "optional" : true,
+    "advanced" : false,
+    "allow_multiple" : true,
+    "default_values" : [ "" ],
+    "field_type" : "text",
+    "text_options" : {
+      "valid_ws_types" : [ "KBaseGenomes.ContigSet","KBaseGenomeAnnotations.Assembly", "KBaseSets.AssemblySet" ]
+    }
+  }, {
+        "id": "genome_text",
+        "optional": true,
+        "advanced": false,
+        "allow_multiple": false,
+        "default_values": [ "" ],
+        "field_type": "textarea",
+        "textarea_options" : {
+            "n_rows" : 10
+    	}
+  }, {
+    "id" : "scientific_name",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "unknown taxon" ],
+    "field_type" : "text"
+  }, {
+    "id" : "domain",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "B" ],
+    "field_type" : "dropdown",
+     "dropdown_options":{
+      "options": [
+        {
+          "value": "B",
+          "display": "B (Bacteria)",
+          "id": "B",
+          "ui_name": "B (Bacteria)"
+        },
+        {
+          "value": "A",
+          "display": "A (Archaea)",
+          "id": "fast",
+          "ui_name": "A (Archaea)"
+        },
+        {
+          "value": "U",
+          "display": "U (Unknown)",
+          "id": "fast",
+          "ui_name": "U (Unknown)"
+        }
+      ]
+    }
+  }, {
+    "id" : "genetic_code",
+    "optional" : true,
+    "advanced" : true,
+    "allow_multiple" : false,
+    "default_values" : [ "11" ],
+    "field_type" : "dropdown",
+     "dropdown_options":{
+      "options": [
+        {
+          "value": "11",
+          "display": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)",
+          "id": "11",
+          "ui_name": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)"
+        },
+        {
+          "value": "4",
+          "display": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)",
+          "id": "fast",
+          "ui_name": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)"
+        },
+        {
+          "value": "25",
+          "display": "25 (Candidate Division SR1 and Gracilibacteria Code)",
+          "id": "fast",
+          "ui_name": "25 (Candidate Division SR1 and Gracilibacteria Code)"
+        }
+      ]
+    }
+  }, {
+    "id": "call_features_rRNA_SEED",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_tRNA_trnascan",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_selenoproteins",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_pyrrolysoproteins",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_repeat_region_SEED",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_strep_suis_repeat",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_strep_pneumo_repeat",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_crispr",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_CDS_glimmer3",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_CDS_prodigal",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "annotate_proteins_kmer_v2",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "kmer_v1_parameters",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "annotate_proteins_similarity",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "resolve_overlapping_features",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["1"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }
+  }, {
+    "id": "call_features_prophage_phispy",
+    "optional":false,
+    "advanced":true,
+    "allow_multiple":false,
+    "default_values":["0"],
+    "field_type" : "checkbox",
+    "checkbox_options":{
+      "checked_value": 1,
+      "unchecked_value": 0
+    }  
+  }, {
+    "id": "output_genome",
+    "optional": false,
+    "advanced": false,
+    "allow_multiple": false,
+    "default_values": [ "" ],
+    "field_type": "text",
+    "text_options" : {
+      "valid_ws_types" : [ "KBaseSearch.GenomeSet" ],
+      "is_output_name":true
+    }
+  }],
+  "job_id_output_field": "docker",
+  "behavior" : {
+    "service-mapping" : {
+      "url" : "",
+      "name" : "RAST_SDK",
+      "method" : "annotate_genomes",
+      "input_mapping" : [
+        {
+          "input_parameter": "input_genomes",
+          "target_property": "input_genomes",
+          "target_type_transform": "resolved-ref"
+        },
+        {
+          "input_parameter": "genome_text",
+          "target_property": "genome_text"
+        },
+        {
+          "input_parameter": "scientific_name",
+          "target_property": "scientific_name"
+        },
+        {
+          "input_parameter": "domain",
+          "target_property": "domain"
+        },
+        {
+          "input_parameter": "genetic_code",
+          "target_property": "genetic_code"
+        },
+        {
+          "input_parameter": "call_features_rRNA_SEED",
+          "target_property": "call_features_rRNA_SEED"
+        },
+        {
+          "input_parameter": "call_features_tRNA_trnascan",
+          "target_property": "call_features_tRNA_trnascan"
+        },
+        {
+          "input_parameter": "call_selenoproteins",
+          "target_property": "call_selenoproteins"
+        },
+        {
+          "input_parameter": "call_pyrrolysoproteins",
+          "target_property": "call_pyrrolysoproteins"
+        },
+        {
+          "input_parameter": "call_features_repeat_region_SEED",
+          "target_property": "call_features_repeat_region_SEED"
+        },
+        {
+          "input_parameter": "call_features_strep_suis_repeat",
+          "target_property": "call_features_strep_suis_repeat"
+        },
+        {
+          "input_parameter": "call_features_strep_pneumo_repeat",
+          "target_property": "call_features_strep_pneumo_repeat"
+        },
+        {
+          "input_parameter": "call_features_crispr",
+          "target_property": "call_features_crispr"
+        },
+        {
+          "input_parameter": "call_features_CDS_glimmer3",
+          "target_property": "call_features_CDS_glimmer3"
+        },
+        {
+          "input_parameter": "call_features_CDS_prodigal",
+          "target_property": "call_features_CDS_prodigal"
+        },
+        {
+          "input_parameter": "annotate_proteins_kmer_v2",
+          "target_property": "annotate_proteins_kmer_v2"
+        },
+        {
+          "input_parameter": "kmer_v1_parameters",
+          "target_property": "kmer_v1_parameters"
+        },
+        {
+          "input_parameter": "annotate_proteins_similarity",
+          "target_property": "annotate_proteins_similarity"
+        },
+        {
+          "input_parameter": "resolve_overlapping_features",
+          "target_property": "resolve_overlapping_features"
+        },
+        {
+          "input_parameter": "call_features_prophage_phispy",
+          "target_property": "call_features_prophage_phispy"
+        },
+        {
+          "input_parameter": "output_genome",
+          "generated_value": {
+              "prefix": "genomeset_"
+          },
+          "target_property": "output_genome"
+        },
+        {
+          "narrative_system_variable": "workspace",
+          "target_property": "workspace"
+        }
+      ],
+      "output_mapping" : [
+        {
+          "service_method_output_path": [0, "report_name"],
+          "target_property": "report_name"
+        },
+        {
+          "service_method_output_path": [0, "report_ref"],
+          "target_property": "report_ref"
+        },
+        {
+          "narrative_system_variable": "workspace",
+          "target_property": "workspace_name"
+        }
+      ]
+    }
+  }
+}

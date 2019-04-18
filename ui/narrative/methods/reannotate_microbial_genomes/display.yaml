@@ -4,7 +4,7 @@
 name     : Annotate Multiple Microbial Genomes
 
 tooltip  : |
-    Annotate or re-annotate bacterial or archaeal genomes using RASTtk.
+    Annotate or re-annotate bacterial or archaeal genomes and/or genome sets using RASTtk.
 
 screenshots :
     []
@@ -24,7 +24,7 @@ suggestions :
         related :
             []
         next :
-            [annotate_domains_in_genome_generic]
+            [annotate_domains_in_a_genome]
 
 
 #
@@ -33,166 +33,165 @@ suggestions :
 parameters :
     input_genomes :
         ui-name : |
-            Genomes
+            Genomes/GenomeSets
         short-hint : |
-            Genomes to reannotate
+            Genomes and/or GenomeSets to reannotate
         long-hint  : |
-            Genomes to reannotate
+            Genomes and/or GenomeSets to reannotate
 
     genome_text :
         ui-name : |
             Genome list
         short-hint : |
-            Delimited list of genomes to reannotate
+            List of genomes to reannotate, delimited with semicolon
         long-hint  : |
-            Delimited list of genomes to reannotate
+            List of genomes to reannotate, delimited with semicolon
 
     call_features_rRNA_SEED :
         ui-name : |
-            Call features rRNA SEED
+            Call rRNAs
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call rRNA non-coding features
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_tRNA_trnascan :
         ui-name : |
-            Call features tRNA trnascan
+            Call tRNA trnascan
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call tRNA non-coding feature
         long-hint  : |
-            See manual page for description of annotation pipieline
+           Call tRNA non-coding features with trnascan in RAST. See http://rast.nmpdr.org/ for more information
 
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call new selenoprotein-containing genes
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call new pyrrolysoprotein-containing genes
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_repeat_region_SEED :
         ui-name : |
-            Call features repeat region SEED
+            Call SEED repeat region
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call SEED-defined repeat regions
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information
 
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding features insertion sequences
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_suis_repeat :
         ui-name : |
-            Call features strep suis repeat
+            Call strep suis repeats
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep suis repeats
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_strep_pneumo_repeat :
         ui-name : |
-            Call features strep pneumo repeat
+            Call strep pneumo repeats
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep pneumo repeats
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_crispr :
         ui-name : |
-            Call features crispr
+            Call crisprs
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call non-coding crisprs
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information
 
     call_features_CDS_glimmer3 :
         ui-name : |
-            Call features CDS glimmer3
+            Call glimmer3
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call CDS features with glimmer3
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
 
     call_features_CDS_prodigal :
         ui-name : |
-            Call features CDS prodigal
+            Call prodigal
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call CDS features with prodigal
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://compbio.ornl.gov/prodigal/ for more information. WARNING: Calling new genes will delete existing genes.
 
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
         short-hint : |
-        short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins kmer v2 with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     kmer_v1_parameters :
         ui-name : |
-            Kmer v1 parameters
+            Annotate proteins Kmer v1
         short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins kmer v1 with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
         short-hint : |
-            See manual page for description of annotation pipieline
+            Annotate proteins similarity with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
         short-hint : |
-            See manual page for description of annotation pipieline
+            Retain old annotations for hypotheticals
         long-hint  : |
-            See manual page for description of annotation pipieline
+            Retain old annotations for hypotheticals
 
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
         short-hint : |
-            See manual page for description of annotation pipieline
+            Resolve overlapping features
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy
         short-hint : |
-            See manual page for description of annotation pipieline
+            Call features prophage phispy with RAST
         long-hint  : |
-            See manual page for description of annotation pipieline
+            See http://rast.nmpdr.org/ for more information
 
     output_genome :
         ui-name : |
-            Output Genome Name
+            Optional Output GenomeSet Name
         short-hint : |
-            A genome with updated structural and functional annotations
+            The name of a genome set of the output annotated genomes
         long-hint  : |
-            A genome with updated structural and functional annotations
+            The name of a genome set of the output annotated genomes
         placeholder : |
-            Name to assign genome
+            Name to assign genome set
 
 parameter-groups:
   genomes:
@@ -202,7 +201,7 @@ parameter-groups:
       Genomes to re-annotate
 
 description : |
-    <p>The KBase annotation apps (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a>  and Annotate Microbial Genome) use  components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate a prokaryotic genome, to update the annotations of a genome, or to perform computations on a set of genomes so that they are consistent.The Annotate Microbial Contigs app starts with unannotated microbial sequence in one or more contigs and runs it through an annotation pipeline. The Annotate Microbial Genome app, which takes an annotated genome as input, allows users to re-annotate annotated genomes in order to make the annotations consistent with other KBase genomes and prepare the imported genome for further analysis by other KBase apps. A Genome object can be generated by uploading a GenBank file, importing a GenBank file from NCBI via FTP, retrieving a Genome-typed object from KBase, or using the output of the <a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a> app.</p>
+    <p>The KBase annotation app (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/reannotate_microbial_genomes/">Re-Annotate Multiple Microbial Genomes</a> uses  components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic genomes, to update the annotations of genomes, or to perform computations on a set of genomes so that they are consistent. The Annotate Multiple Microbial Genomes app, which takes annotated genomes as input, allows users to re-annotate annotated genomes in order to make the annotations consistent with other KBase genomes and prepare the imported genomes for further analysis by other KBase apps. A Genome object can be generated by uploading a GenBank file, importing a GenBank file from NCBI via FTP, retrieving a Genome-typed object from KBase, or using the output of the <a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a> app.</p>
 
     <p><strong>The Default Annotation Pipeline</strong><br>
     <p>For a typical 2-5 MBp genome, the default annotation pipeline should take about 5 minutes. Note that the default behavior of this app is to only reannotate the protein-encoding genes. The default pipeline for this app consists of the following steps:</p>

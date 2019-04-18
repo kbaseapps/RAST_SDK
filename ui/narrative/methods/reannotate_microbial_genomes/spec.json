@@ -17,7 +17,7 @@
     "default_values" : [ "" ],
     "field_type" : "text",
     "text_options" : {
-      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation" ]
+      "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation", "KBaseSearch.GenomeSet" ]
     }
   }, {
         "id": "genome_text",
@@ -75,17 +75,6 @@
     }
   }, {
     "id": "call_features_repeat_region_SEED",
-    "optional":false,
-    "advanced":true,
-    "allow_multiple":false,
-    "default_values":["0"],
-    "field_type" : "checkbox",
-    "checkbox_options":{
-      "checked_value": 1,
-      "unchecked_value": 0
-    }
-  }, {
-    "id": "call_features_insertion_sequences",
     "optional":false,
     "advanced":true,
     "allow_multiple":false,
@@ -215,8 +204,18 @@
     "checkbox_options":{
       "checked_value": 1,
       "unchecked_value": 0
+    }  
+  }, {
+    "id": "output_genome",
+    "optional": false,
+    "advanced": false,
+    "allow_multiple": false,
+    "default_values": [ "" ],
+    "field_type": "text",
+    "text_options" : {
+      "valid_ws_types" : [ "KBaseSearch.GenomeSet" ],
+      "is_output_name":true
     }
-
   }],
   "job_id_output_field": "docker",
   "behavior" : {
@@ -253,10 +252,6 @@
         {
           "input_parameter": "call_features_repeat_region_SEED",
           "target_property": "call_features_repeat_region_SEED"
-        },
-        {
-          "input_parameter": "call_features_insertion_sequences",
-          "target_property": "call_features_insertion_sequences"
         },
         {
           "input_parameter": "call_features_strep_suis_repeat",
@@ -301,6 +296,13 @@
         {
           "input_parameter": "retain_old_anno_for_hypotheticals",
           "target_property": "retain_old_anno_for_hypotheticals"
+        },
+        {
+          "input_parameter": "output_genome",
+          "generated_value": {
+              "prefix": "genomeset_"
+          },
+          "target_property": "output_genome"
         },
         {
           "narrative_system_variable": "workspace",
