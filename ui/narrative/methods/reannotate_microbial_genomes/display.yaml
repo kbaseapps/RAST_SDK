@@ -1,10 +1,10 @@
 #
 # Define basic display information
 #
-name     : Annotate Multiple Microbial Genomes
+name     : Annotate Multiple Microbial Genomes with RAST - v1.073
 
 tooltip  : |
-    Annotate or re-annotate bacterial or archaeal genomes and/or genome sets using RASTtk.
+    Annotate or re-annotate bacterial or archaeal genomes and/or genome sets using RASTtk (Rapid Annotations using Subsystems Technology toolkit).
 
 screenshots :
     []
@@ -35,233 +35,203 @@ parameters :
         ui-name : |
             Genomes/GenomeSets
         short-hint : |
-            Genomes and/or GenomeSets to reannotate
-        long-hint  : |
-            Genomes and/or GenomeSets to reannotate
+            One or more Genomes and/or GenomeSets to reannotate.
 
     genome_text :
         ui-name : |
             Genome list
         short-hint : |
-            List of genomes to reannotate, delimited with semicolon
-        long-hint  : |
-            List of genomes to reannotate, delimited with semicolon
+            List of genomes to reannotate, delimited with semicolon (;). This list is in addition to the input genomes above. Example names: Carsonella_rudii_PC;Carsonella_rudii_CE [no spaces] or IDs 21677/17/1;21677/16/1; or delimited by new lines (list each name or ID on a separate line). You can also mix names and IDs as long as there are no spaces (e.g., Carsonella_rudii_PC;21677/18/1).
 
     call_features_rRNA_SEED :
         ui-name : |
             Call rRNAs
         short-hint : |
-            Call rRNA non-coding features
-        long-hint  : |
-            Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information
+            Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_tRNA_trnascan :
         ui-name : |
             Call tRNA trnascan
         short-hint : |
-            Call tRNA non-coding feature
-        long-hint  : |
-           Call tRNA non-coding features with trnascan in RAST. See http://rast.nmpdr.org/ for more information
+            Call tRNA non-coding feature with trnascan in RAST. See http://rast.nmpdr.org/ for more information.
 
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
         short-hint : |
-            Call new selenoprotein-containing genes
-        long-hint  : |
-            Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
+            Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
         short-hint : |
-            Call new pyrrolysoprotein-containing genes
-        long-hint  : |
-            Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information
+            Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_repeat_region_SEED :
         ui-name : |
             Call SEED repeat region
         short-hint : |
-            Call SEED-defined repeat regions
-        long-hint  : |
-            Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information
+            Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information.
 
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
         short-hint : |
-            Call non-coding features insertion sequences
-        long-hint  : |
-            Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information
+            Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_strep_suis_repeat :
         ui-name : |
             Call strep suis repeats
         short-hint : |
-            Call non-coding strep suis repeats
-        long-hint  : |
-            Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information
+            Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_strep_pneumo_repeat :
         ui-name : |
             Call strep pneumo repeats
         short-hint : |
-            Call non-coding strep pneumo repeats
-        long-hint  : |
-            Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information
+            Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_crispr :
         ui-name : |
             Call crisprs
         short-hint : |
-            Call non-coding crisprs
-        long-hint  : |
-            Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information
+            Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information.
 
     call_features_CDS_glimmer3 :
         ui-name : |
             Call glimmer3
         short-hint : |
-            Call CDS features with glimmer3
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
+            Call CDS features with glimmer3. See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
 
     call_features_CDS_prodigal :
         ui-name : |
             Call prodigal
         short-hint : |
-            Call CDS features with prodigal
-        long-hint  : |
-            See http://compbio.ornl.gov/prodigal/ for more information. WARNING: Calling new genes will delete existing genes.
+            Call CDS features with prodigal. See https://github.com/hyattpd/Prodigal for more information. WARNING: Calling new genes will delete existing genes.
 
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
         short-hint : |
-            Annotate proteins kmer v2 with RAST
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information
+            Annotate proteins kmer v2 with RAST. See http://rast.nmpdr.org/ for more information.
 
     kmer_v1_parameters :
         ui-name : |
             Annotate proteins Kmer v1
         short-hint : |
-            Annotate proteins kmer v1 with RAST
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information
+            Annotate proteins kmer v1 with RAST. See http://rast.nmpdr.org/ for more information.
 
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
         short-hint : |
-            Annotate proteins similarity with RAST
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information
+            Annotate proteins similarity with RAST. See http://rast.nmpdr.org/ for more information.
 
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
         short-hint : |
-            Retain old annotations for hypotheticals
-        long-hint  : |
-            Retain old annotations for hypotheticals
+            Retain old annotations for hypotheticals.
 
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
         short-hint : |
-            Resolve overlapping features
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information
+            Resolve overlapping features. See http://rast.nmpdr.org/ for more information.
 
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy
         short-hint : |
-            Call features prophage phispy with RAST
-        long-hint  : |
-            See http://rast.nmpdr.org/ for more information
+            Call features prophage phispy with RAST. See http://rast.nmpdr.org/ for more information.
 
     output_genome :
         ui-name : |
             Optional Output GenomeSet Name
         short-hint : |
-            The name of a genome set of the output annotated genomes
-        long-hint  : |
-            The name of a genome set of the output annotated genomes
+            The name of a genome set of the output annotated genomes.
         placeholder : |
             Name to assign genome set
 
 parameter-groups:
   genomes:
     ui-name: |
-      Genomes to re-annotate
+      Genomes to reannotate
     short-hint: |
-      Genomes to re-annotate
+      Genomes to reannotate.
 
 description : |
-    <p>The KBase annotation app (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/reannotate_microbial_genomes/">Re-Annotate Multiple Microbial Genomes</a> uses  components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic genomes, to update the annotations of genomes, or to perform computations on a set of genomes so that they are consistent. The Annotate Multiple Microbial Genomes app, which takes annotated genomes as input, allows users to re-annotate annotated genomes in order to make the annotations consistent with other KBase genomes and prepare the imported genomes for further analysis by other KBase apps. A Genome object can be generated by uploading a GenBank file, importing a GenBank file from NCBI via FTP, retrieving a Genome-typed object from KBase, or using the output of the <a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Contigs</a> app.</p>
+    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/reannotate_microbial_genomes/">Annotate Multiple Microbial Genomes</a> uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic genomes, to update the annotations of genomes, or to perform computations on a set of genomes so that they are consistent. The newly generated genomes will have the same names as the input genomes with “.RAST” appended.</p>
 
-    <p><strong>The Default Annotation Pipeline</strong><br>
-    <p>For a typical 2-5 MBp genome, the default annotation pipeline should take about 5 minutes. Note that the default behavior of this app is to only reannotate the protein-encoding genes. The default pipeline for this app consists of the following steps:</p>
+    <p>The Annotate Multiple Microbial Genomes App, takes genomes as input and allows users to annotate or re-annotate the genomes. This will make the annotations consistent with other KBase genomes and prepare the genomes for further analysis by other KBase Apps, especially the Metabolic Modeling Apps. A Genome object can be generated by uploading a GenBank file, importing a GenBank file from NCBI via FTP, retrieving a Genome-typed object from KBase, or using the output of the <a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/">Annotate Microbial Assembly</a> App.</p>
 
-    <ol>
-    <li><i>Annotate protein-encoding genes with k-mers (version 2)</i><br>
-    This is a set of signature k-mers (amino acid 8-mers) built from the annotations in the <a href="http://core.theseed.org/FIG/seedviewer.cgi">CoreSEED</a>. The CoreSEED is a database of ~1,000 diverse microbial genomes and is currently the main focus of the RAST manual annotation efforts. Annotating using this k-mer set provides our most stable and best estimate of the core gene functions.</li>
-
-    <li><i>Annotate remaining hypothetical proteins with k-mers (version 1)</i><br>
-    This set of k-mers is built from the <a href="http://www.ncbi.nlm.nih.gov/pubmed/19762480">FigFam collection</a> in the PubSEED,  which is the publically annotated version of the SEED database that consists of ~12,000 microbial genomes. The "classic" version of RAST on the RAST website (rast.nmpdr.org) uses the FigFam-based k-mers (hence the version 1 designation).</li>
-
-    <li><i>Find close neighbors and Annotate proteins similarity</i><br>
-    Annotates remaining hypothetical proteins possibly missed in steps 1) and 2) by searching against close relative genomes. The search uses a combination of BLAT [4] and BLASTP [5].</li>
-    </li>
-    </ol>
+    <p>A Genome object can be <a href=”http://kbase.us/data-upload-download-guide/genome/”>imported</a> or generated with one of the following annotation Apps or their multi-object versions:
+    <ul>
+    <li><a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/annotate_contigset/release">Annotate Microbial Assembly</a></li>
+    <li><a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/reannotate_microbial_genome/release">Annotate Microbial Genome</a></li>
+    <li><a href="https://narrative.kbase.us/#catalog/apps/ProkkaAnnotation/annotate_contigs/release">Annotate Assembly and Re-annotate Genomes with Prokka</a></li>
+    </ul>
     </p>
 
-    <p><strong>Other Non-default Options</strong><br>
-    <p>Note that most of the non-default parameters will re-call features. If you want to re-call rRNA or CDS features we highly recommend turning on the “Resolve overlapping features” option so that you do not end up with duplicate feature calls.</p>
-
+    <p><strong>The Default Annotation Pipeline</strong><br>Clicking &quot;Run&quot; will run the default pipeline. For a typical 2-5 MBp genome, the default annotation pipeline should take about 5 minutes. It is assumed that Genomes already have some annotation. As a result, the default behavior of this App is to use SEED to re-annotate just the protein-encoding genes. The default pipeline for this App consists of the following steps:
+    <ul>
+    <li>DNA/RNA-based predictions
     <ol>
-    <li><i>Call rRNAs (default = off)</i><br>
-    The RAST rRNA finder calls a custom script that uses a hand-curated and phylogenetically diverse set of representative sequences of the 23S (currently 81 representatives), 16S (currently 120 representatives) and 5S (currently 292 representatives) rRNAs. These sets represent the diversity of curated genomes in the SEED. The rRNAs of a new genome are found using a BLASTN [5] search against the curated set. tRNAs are found using an implementation of tRNAscanSE, [6]. This tool uses a secondary structure based searching methodology to find the tRNA genes.</li>
+    <li><i>Call rRNAs (default = off)</i><br>Predict rRNAs in the genome. This is a custom BLAST-based tool for finding rRNAs.</li>
+    <li><i>Call tRNAs with tRNAscan (default = off)</i><br>Predict tRNAs in the genome with tRNAscan-SE [6].</li>
+    <li><i>Call CRISPRs (default = off)</i><br>This is a custom tool that uses a perl regular expression-based search to find CRISPR elements.</li>
+    <li><i>Find prophage elements with phispy (default = off)</i><br>This will use the phispy program to find prophage elements [13].</li>
+    </ol></li>
 
-    <li><i>Call selenoproteins (default = off)</i><br>
-    Selenoproteins are widespread among the sequenced bacterial and archaeal genomes. These proteins occur in ~25% of the genomes in the CoreSEED). Selenoproteins contain the rare amino acid selenocysteine, which is incorporated at a UGA stop codon in frame [7]. To find these proteins, a hand-curated set of known selenoproteins is used. Potential selenoprotein matches prompt a search for the in-frame stop codon. When a stop codon is found,  the respective proteins are annotated as a selenoprotein. This is a custom BLAST-based tool.</li>
+    <li>Gene predictions
+    <ol>
+    <li><i>Call protein-encoding genes with both Prodigal [11] and Glimmer3 [12] (default = off)</i><br><strong>These options will delete all existing genes in the genome object and replace them with the selected predictions</strong>.</li>
+    <li><i>Call selenoproteins and pyrrolysylproteins [7] (default = off)</i><br>These are custom BLAST-based tools.</li>
+     </ol></li>
 
-    <li><i>Call pyrrolysylproteins (default = off)</i><br>
-    Pyrrolysyl proteins are less common than selenoproteins among the currently sequenced genomes. They have been found to occur in ~1% of the sequenced bacterial and archaeal genomes in the CoreSEED. Similar to selenocysteine, pyrrolysine is incorporated at a UAG stop codon [7]. We search for pyrrolysyl proteins using the  strategy described in the previous step. This is a custom BLAST-based tool.</li>
+    <li>Repeats
+    <ol>
+    <li><i>Call <a href="http://www.theseed.org/wiki/Main_Page">SEED</a> large repeat regions (default = off)</i><br>This is a BLASTn search within the genome for regions greater than 95% nucleotide similarity greater than or equal to 100bp in length.</li>
+    <li><i>Find Streptococcus repeat regions [9, 10] (default = off)</i><br>This is a command that should only be implemented if the genus is Streptococcus.</li>
+    </ol></li>
 
-    <li><i>Call features repeat region SEED (default = off)</i><br>
-     Large repeat regions are often characteristic of horizontal gene transfer and are an indication of insertion sequences and other mobile elements. A custom script performs a BLASTN search of the genome against itself, and reports any region that occurs more than once with  > 95% nucleotide identity. These precomputed repeat regions can then be used for comparative analyses and as supporting data for more detailed annotation of mobile elements. </li>
+    <li>Add SEED Functions/Annotation to protein-encoding genes (k-mers needed for Metabolic Modeling)
+    <ol>
+    <li><i>Annotate protein-encoding genes with k-mers (version 2; default = on)</i><br>This is a set of signature k-mers (amino acid 8-mers) built from the annotations in the <a href="http://www.theseed.org/wiki/Main_Page">CoreSEED</a>. The CoreSEED is a database of ~1,000 diverse microbial genomes and is currently the main focus of the RAST manual annotation efforts. Annotating using this k-mer set provides the user with our most stable and best estimate of the core gene functions.</li>
 
-    <li><i>Call insertion sequences (default = off)</i><br>
-    The insertion sequence caller uses a reference set of end sequences and transposase proteins from the SEED [2] and ISfinder [8] databases to search the genome for IS elements. A combination of BLASTN for the end regions and BLASTX for the proteins [5] is used to find potential matches. It also looks for novel insertion sequences by searching for inverted repeats.</li>
+    <li><i>Annotate remaining hypothetical proteins with k-mers (version 1; default = on)</i><br>This set of k-mers is built from the FigFam collection [8] in the PubSEED, which is the publically annotated version of the SEED database that consists of ~12,000 microbial genomes.  The &quot;classic&quot; version of RAST on the RAST website (http://rast.nmpdr.org) uses the FigFam-based k-mers (hence the version 1 designation).</li>
 
-    <li><i>Call features strep suis repeat and Call features strep pneumo repeat (default = conditional)</i><br>
-    Species in the Streptococcus genus have small interspersed repeats that may modulate gene expression. These repeats can be used for epidemiological typing [9]. RASTtk [3] implemented  a set of tools created by Croucher et al. [10] specifically designed for finding these elements. This is a conditional command that will only be implemented if the genus is Streptococcus.</li>
+    <li><i>Annotate remaining hypothetical proteins by protein similarity (default = on)</i><br>We have several non-redundant databases for the most common genera.  If the genus name of your organism matches one of these, a search will be performed against the remaining hypothetical proteins to attempt to find a function. The search uses a combination of BLAT [4] and BLAST [5].</li>
+    </ol></li>
 
-    <li><i>Call CRISPR features (default = off)</i><br>
-    CRISPRs (clustered regularly interspaced short palindromic repeats) are a special type of repeat region found in many bacterial and archaeal genomes.This is a custom tool that uses a perl regular expression-based search to find CRISPR elements.</li>
+    <li>Other
+    <ol>
+    <li><i>Perform a basic gene overlap removal (default = off)</i><br>Using multiple gene calling algorithms can result in overlapping gene calls. This program is a custom tool that attempts to minimize overlaps and gaps to provide a set of calls that has a smaller number of gene calling errors. We do not recommend using overlap removal if you are attempting to annotate phage.</li>
 
-    <li><i>Call the protein-encoding genes with Prodigal and Glimmer3 (default = off)</i><br>
-    In addition to the protein-encoding gene caller provided by default, Prodigal and Glimmer gene callers are also available. Please refer to Prodigal [11] and Glimmer [12] for more info.</li>
-
-    <li><i>Retain old annotations for hypotheticals (default = off)</i><br>
-    In instances where the pipeline fails to find an annotation for a gene, this will retain the original annotation from the input genome typed object.</li>
-
-    <li><i> Resolve overlapping features (default = off)</i><br>
-    Using multiple gene calling algorithms (such as Prodigal [11] and Glimmer [12]) in addition to the default gene caller can result in overlapping gene calls. This program is a custom tool that attempts to minimize overlaps and gaps to provide a set of calls that has a smaller number of gene calling errors. We do not recommend using overlap removal if you are attempting to annotate phage.</li>
-
-    <li><i>Call prophage features  with PhiSpy (default = off)</i><br>
-    To find potential prophage elements we have implemented PhiSpy [13] in the annotation pipeline. PhiSpy uses heuristic methods to identify specific regions in the genome that  may be derived from phages or other mobile elements.</li>
-
-    </li>
-    </ol>
+    <li><i>Retain old annotations for hypotheticals (default = off)</i><br>In instances where the pipeline fails to find an annotation for a gene, this will retain the original annotation from the input Genome-typed object.</li>
+    </ol></li>
+    </ul>
     </p>
+
+    <p><strong>Advanced Annotation Options</strong><br>If you wish to customize the features in your annotation, click the &quot;show advanced options&quot; link. This will display the full set of available annotation options.</p>
+
+    <p><strong>The Results</strong>
+    <ul>
+    <li>The <i>Objects</i> section has a table of all the data objects that were created by the App. Click on the name of the data object to open a data viewer cell (below the currently selected cell).</li>
+    <li>The <i>Summary</i> section gives details about the coding and noncoding features that were created and the average protein length.</li>
+    <li>The <i>Files</i> section has a downloadable version of the Summary.</li>
+    </ul>
+    </p>
+
+    <p><strong>GUI Output</strong><br>The GUI output currently consists of three tabs. The &quot;Overview&quot; tab provides basic information on the annotation job, the &quot;Browse Features&quot; tab allows the user to scroll through the features that were called, and the &quot;Browse Contigs&quot; tab provides information on the contigs in the genome. Users can sort on the various types of features. Note that some features will overlap (e.g., &quot;prophage&quot; and &quot;CDS&quot;).</p>
+
+    <p><strong>Additional Information</strong><br>For more information on the steps of the default RAStk pipeline please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org</a>.</p>
 
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
-    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, Fangfang Xia. For questions, please go to http://kbase.us/contact-us
+    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”http://kbase.us/contact-us/”>contact us</a>.</p>
+
+    <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
+
 
 publications :
     -
@@ -286,8 +256,7 @@ publications :
 
     -
         display-text: |
-            [5] Camacho C, Coulouris G, Avagyan V, Ma N, Papadopoulos J, Bealer K, et al. BLAST+: architecture and applications. BMC Bioinformatics. 2009;10: 421. doi:10.1186/1471-2105-10-421
-        link: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-10-421
+            [5] Altschul SF, Madden TL, Schaffer AA, Zhang J, Zhang Z, Miller W, Lipman DJ. Gapped BLAST and PSI-BLAST: a new generation of protein database search programs. Nucleic Acids Res. 1997;25: 3389-3402. doi:10.1093/nar/25.17.3389
 
     -
         display-text: |
@@ -301,8 +270,9 @@ publications :
 
     -
         display-text: |
-            [8] Siguier P, Perochon J, Lestrade L, Mahillon J, Chandler M. ISfinder: the reference centre for bacterial insertion sequences. Nucleic Acids Res. 2006;34: D32–D36. doi:10.1093/nar/gkj014
-        link: https://academic.oup.com/nar/article/34/suppl_1/D32/1132247
+            [8] Meyer F, Overbeek R, Rodriguez A. FIGfams: yet another set of protein families.
+            Nucleic Acids Res. 2009;37 6643-54. doi:10.1093/nar/gkp698.
+        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2777423/
 
     -
         display-text: |
