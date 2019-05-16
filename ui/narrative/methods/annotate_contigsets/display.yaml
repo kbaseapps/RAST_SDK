@@ -247,7 +247,7 @@ description : |
     <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
 
 publications :
- -
+    -
         display-text: |
             [1] Aziz RK, Bartels D, Best AA, DeJongh M, Disz T, Edwards RA, et al. The RAST Server: Rapid Annotations using Subsystems Technology. BMC Genomics. 2008;9: 75. doi:10.1186/1471-2164-9-75
         link: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-9-75
