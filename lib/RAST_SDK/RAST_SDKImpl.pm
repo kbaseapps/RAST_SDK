@@ -73,7 +73,7 @@ sub util_get_genome {
 }
 
 sub max_contigs {
-	my $max_contigs = 50000;
+	my $max_contigs = 300000;
 	print ("Setting maximum contigs to $max_contigs\n");
 	return $max_contigs;
 }
