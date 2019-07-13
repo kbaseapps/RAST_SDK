@@ -18,7 +18,7 @@ elif [ "${1}" = "async" ] ; then
 elif [ "${1}" = "init" ] ; then
   echo "Initialize module"
   cd /data
-  curl -s http://bioseed.mcs.anl.gov/~chenry/kmer.tgz|tar xzf -
+  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz|tar xzf -
   ln -s /data/kmer/Release70 /data/kmer/ACTIVE/Release70
   ln -s /data/kmer/Release70 /data/kmer/DEFAULT
   if [ -d kmer ] ; then
