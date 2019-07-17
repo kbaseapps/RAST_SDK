@@ -20,6 +20,7 @@ elif [ "${1}" = "init" ] ; then
   cd /data
   curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz.md5 -o kmer.tgz.md5
   curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz -o kmer.tgz
+  wait
   if [ md5sum -c kmer.tgz.md5 ] ; then
         tar xzf kmer.tgz -
         ln -s /data/kmer/Release70 /data/kmer/ACTIVE/Release70
