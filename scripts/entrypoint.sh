@@ -18,13 +18,18 @@ elif [ "${1}" = "async" ] ; then
 elif [ "${1}" = "init" ] ; then
   echo "Initialize module"
   cd /data
-  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz|tar xzf -
-  ln -s /data/kmer/Release70 /data/kmer/ACTIVE/Release70
-  ln -s /data/kmer/Release70 /data/kmer/DEFAULT
-  if [ -d kmer/V2Data ] ; then
-  	touch __READY__
-  else
-    echo "Init failed"
+  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz.md5 -o kmer.tgz.md5
+  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz -o kmer.tgz
+  if [ md5sum -c kmer.tgz.md5 ] ; then
+        tar xzf kmer.tgz -
+        ln -s /data/kmer/Release70 /data/kmer/ACTIVE/Release70
+        ln -s /data/kmer/Release70 /data/kmer/DEFAULT
+        if [ -d kmer/V2Data ] ; then
+            touch __READY__
+        else
+	    echo "Init failed"
+        fi
+        rm kmer.tgz kmer.tgz.md5
   fi
 elif [ "${1}" = "bash" ] ; then
   bash
