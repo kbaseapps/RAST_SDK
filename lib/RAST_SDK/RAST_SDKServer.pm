@@ -30,12 +30,14 @@ our $CallContext;
 our %return_counts = (
         'annotate_genome' => 1,
         'annotate_genomes' => 1,
+        'annotate_proteins' => 1,
         'status' => 1,
 );
 
 our %method_authentication = (
         'annotate_genome' => 'required',
         'annotate_genomes' => 'required',
+        'annotate_proteins' => 'none',
 );
 
 sub _build_valid_methods
@@ -44,6 +46,7 @@ sub _build_valid_methods
     my $methods = {
         'annotate_genome' => 1,
         'annotate_genomes' => 1,
+        'annotate_proteins' => 1,
         'status' => 1,
     };
     return $methods;

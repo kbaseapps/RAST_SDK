@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.0.18';
-our $GIT_URL = 'https://github.com/landml/RAST_SDK';
-our $GIT_COMMIT_HASH = '4be42e6ffcbe0811f68abf19b86c6d2a7407cf98';
+our $VERSION = '0.1.3';
+our $GIT_URL = 'ssh://git@github.com/kbaseapps/RAST_SDK';
+our $GIT_COMMIT_HASH = '913026e502396704cc3240a1b45658b53e3af57d';
 
 =head1 NAME
 
@@ -1597,6 +1597,104 @@ sub annotate_genomes
 
 
 
+=head2 annotate_proteins
+
+  $return = $obj->annotate_proteins($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.AnnotateProteinParams
+$return is a RAST_SDK.AnnotateProteinResults
+AnnotateProteinParams is a reference to a hash where the following keys are defined:
+	proteins has a value which is a reference to a list where each element is a string
+AnnotateProteinResults is a reference to a hash where the following keys are defined:
+	functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.AnnotateProteinParams
+$return is a RAST_SDK.AnnotateProteinResults
+AnnotateProteinParams is a reference to a hash where the following keys are defined:
+	proteins has a value which is a reference to a list where each element is a string
+AnnotateProteinResults is a reference to a hash where the following keys are defined:
+	functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+
+=end text
+
+
+
+=item Description
+
+annotate proteins - returns a list of the RAST annotations for the input protein sequences
+
+=back
+
+=cut
+
+sub annotate_proteins
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to annotate_proteins:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_proteins');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($return);
+    #BEGIN annotate_proteins
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,["proteins"],{});
+    my $inputgenome = {
+    		features => []
+    };
+    for (my $i=1; $i <= @{$params->{proteins}}; $i++) {
+    		push(@{$inputgenome->{features}},{
+    			id => "peg.".$i,
+    			protein_translation => $params->{proteins}->[$i]
+    		});
+    }
+    my $genome = $gaserv->run_pipeline($inputgenome,[
+		{ name => 'annotate_proteins_kmer_v2', kmer_v2_parameters => {} },
+		#{ name => 'annotate_proteins_kmer_v1', kmer_v1_parameters => { annotate_hypothetical_only => 1 } },
+		{ name => 'annotate_proteins_similarity', similarity_parameters => { annotate_hypothetical_only => 1 } }
+	]);
+	my $ftrs = $genome->{features};
+	$return->{functions} = [];
+	for (my $i=0; $i < @{$genome->{features}}; $i++) {
+		$return->{functions}->[$i] = [];
+		if (defined($genome->{features}->[$i]->{function})) {
+			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$genome->{features}->[$i]->{function})];
+		}
+	}
+    #END annotate_proteins
+    my @_bad_returns;
+    (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to annotate_proteins:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_proteins');
+    }
+    return($return);
+}
+
+
+
+
 =head2 status 
 
   $return = $obj->status()
@@ -2030,6 +2128,66 @@ report_ref has a value which is a string
 
 
 
+=head2 AnnotateProteinParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+proteins has a value which is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+proteins has a value which is a reference to a list where each element is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 AnnotateProteinResults
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+
+=end text
+
+=back
+
+
+
 =cut
 
-
+1;

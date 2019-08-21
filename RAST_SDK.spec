@@ -113,4 +113,17 @@ module RAST_SDK {
 		params - a param hash that includes the workspace id and options
 	*/
 	funcdef annotate_genomes(AnnotateGenomesParams params) returns (AnnotateGenomesResults) authentication required;
+	
+	typedef structure {
+		list<string> proteins;
+	} AnnotateProteinParams;
+	
+	typedef structure {
+	    list<list<string> > functions;
+	} AnnotateProteinResults;
+	
+	/*
+		annotate proteins - returns a list of the RAST annotations for the input protein sequences
+	*/
+	funcdef annotate_proteins(AnnotateProteinParams params) returns (AnnotateProteinResults);
 };
