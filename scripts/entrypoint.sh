@@ -18,8 +18,8 @@ elif [ "${1}" = "async" ] ; then
 elif [ "${1}" = "init" ] ; then
   echo "Initialize module"
   cd /data
-  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz.md5 -o kmer.tgz.md5
-  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/kmer.tgz -o kmer.tgz
+  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/core.2019-0712/kmer.tgz.md5 -o kmer.tgz.md5
+  curl -s http://bioseed.mcs.anl.gov/~qzhang/kmer_classification/core.2019-0712/kmer.tgz -o kmer.tgz
   wait
   if [ md5sum -c kmer.tgz.md5 ] ; then
         tar xzf kmer.tgz -
