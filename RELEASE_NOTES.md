@@ -1,6 +1,18 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.4
+__Changes__
+Updated the scientific name selector for annotating contigsets to query the RE API for taxon names.
+
+### Version 0.1.3
+__Changes__
+Unknown
+
+### Version 0.1.2
+__Changes__
+Unknown
+
 ### Version 0.1.1
 __Changes__
 Add the GenomeSet to the objects created when doing Multiple Assemblies or Multiple Genomes
