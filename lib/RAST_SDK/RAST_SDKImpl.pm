@@ -1668,6 +1668,8 @@ sub annotate_proteins
     			protein_translation => $params->{proteins}->[$i]
     		});
     }
+
+    my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     my $genome = $gaserv->run_pipeline($inputgenome,[
 		{ name => 'annotate_proteins_kmer_v2', kmer_v2_parameters => {} },
 		#{ name => 'annotate_proteins_kmer_v1', kmer_v1_parameters => { annotate_hypothetical_only => 1 } },
