@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.5
+__Changes__
+Prepended the scientific name display in the UI with NCBI.
+
 ### Version 0.1.4
 __Changes__
 Updated the scientific name selector for annotating contigsets to query the RE API for taxon names.
