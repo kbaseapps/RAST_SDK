@@ -33,6 +33,8 @@
             {
                 "search_text": "prefix:{{dynamic_dropdown_input}}",
                 "ns": "ncbi_taxonomy",
+                "ranks": ["species"],
+                "include_strains": true,
                 "limit": 1000
             }
         ],
