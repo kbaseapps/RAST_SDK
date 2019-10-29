@@ -30,6 +30,8 @@ use Data::Dumper;
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
+use LWP::UserAgent;
+use HTTP::Request;
 
 
 #Initialization function for call
@@ -180,6 +182,9 @@ sub annotate_process {
   		contigs => [],
   		features => []
   	};
+	if ($parameters->{ncbi_taxon_id}) {
+		$inputgenome->{taxon_assignments} = {'ncbi' => "" . $parameters->{ncbi_taxon_id}};
+	}
   	my $contigobj;
   	my $message = "";
 	my %types = ();
@@ -1050,6 +1055,36 @@ sub annotate_process {
 	});
 	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
+
+# Get the scientific name for a NCBI taxon.
+#   Takes two arguments:
+#      The taxon ID
+#      The timestamp to send to the RE in milliseconds since the epoch. This will determine which
+#        version of the NCBI tree is queried.
+sub get_scientific_name_for_NCBI_taxon {
+    my ($self, $tax_id, $timestamp) = @_;
+    my $url = $self->{_re_url} . "/api/v1/query_results?stored_query=ncbi_fetch_taxon";
+    my $content = encode_json({
+        'ts' => $timestamp,
+        'id'=> $tax_id
+        });
+    my $req = HTTP::Request->new(POST => $url);
+    $req->header('content-type', 'application/json');
+    $req->content($content);
+    my $ua = LWP::UserAgent->new();
+    
+    my $ret = $ua->request($req);
+    if (!$ret->is_success()) {
+        die "Error contacting Relation Engine: " . $ret->status_line();
+    }
+    my $retjsonref = $ret->decoded_content({'raise_error' => 1, 'ref' => 1});
+    my $retjson = decode_json($retjsonref);
+
+    if (!$retjson->count) {
+        die "No result from Relation Engine for NCBI taxonomy ID " . $tax_id;
+    }
+    return $retjson->{'results'}[0]{'scientific_name'};
+}
 #END_HEADER
 
 sub new
@@ -1059,10 +1094,14 @@ sub new
     };
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
-	Bio::KBase::utilities::read_config({
+	my $cfg = Bio::KBase::utilities::read_config({
 		service => "RAST_SDK",
-		mandatory => ['workspace-url']
+		mandatory => ['workspace-url', 'relation-engine-url']
 	});
+	# check this. Probably need to print cfg
+	$self->{_re_url} = $cfg->{'relation-engine-url'};
+	# TODO check url is ok by querying RE root
+
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
@@ -1224,6 +1263,10 @@ sub annotate_genome
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
     my $output = $self->annotate_process($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
@@ -1410,6 +1453,10 @@ sub annotate_genomes
 	    retain_old_anno_for_hypotheticals => 1
 	});
 
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
 	my $htmlmessage = "";
 	my $warn        = "";
 	my $genomes = $params->{input_genomes};

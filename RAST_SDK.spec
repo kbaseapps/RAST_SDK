@@ -24,12 +24,24 @@ module RAST_SDK {
 	*/
 	typedef string workspace_name;
 	
+	/* Parameters for the annotate_genome method.
+
+		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+			is included scientific_name is ignored.
+		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+			up taxon information in milliseconds since the epoch.
+		scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+		TODO: document remainder of parameters.
+	*/
 	typedef structure {
 	    string workspace;
 	    genome_id input_genome;
 	    contigset_id input_contigset;
 	    int genetic_code;
 	    string domain;
+		int ncbi_taxon_id;
+		int relation_engine_timestamp_ms;
 	    string scientific_name;
 	    string output_genome;
 	    bool call_features_rRNA_SEED;
@@ -74,11 +86,23 @@ module RAST_SDK {
 	    string scientific_name;
 	} GenomeParams;
 	
+	/* Parameters for the annotate_genomes method.
+
+		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+			is included scientific_name is ignored.
+		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+			up taxon information in milliseconds since the epoch.
+		scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+		
+		TODO: document remainder of parameters.
+	*/
 	typedef structure {
 	    string workspace;
 	    list<GenomeParams> input_genomes;
 		int genetic_code;
 		string domain;
+		int ncbi_taxon_id;
+		int relation_engine_timestamp_ms;
 	    string scientific_name;
 		string genome_text;
 	    string output_genome;
