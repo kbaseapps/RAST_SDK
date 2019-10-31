@@ -43,6 +43,7 @@ my $params={"input_contigset"=>$assembly_obj_name,
 
 $params = &set_params($genome_obj_name,$params);
 
+# Test processing a single assembly and saving as a genome.
 lives_ok {
 	print("######## Running RAST annotation ########\n");
 	my $ret = &make_impl_call("RAST_SDK.annotate_genome", $params);
@@ -63,9 +64,7 @@ lives_ok {
 }, "test_annotate_assembly";
 print "Summary for $assembly_obj_name\n";
 
-#
-#	TEST ONE ASSEMBLY -
-#
+# Test processing a single assembly and saving as a genome set.
 print "ASSEMBLYREF = $assembly_ref\n";
 lives_ok {
 
@@ -78,6 +77,10 @@ lives_ok {
 	my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 	my $number_genomes = scalar @{ $data};
     ok($number_genomes == 1, "Input: One Assembly. Output: $number_genomes in output GenomeSet");
+    
+    my $genome_obj = $ws_client->get_objects([{ref=>$data->[0]}])->[0]->{data};
+    ok($genome_obj->{scientific_name} eq "unknown taxon", "Sci name is correct");
+    ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
 
 	my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
 	my $local_path = "/kb/module/test/report_output/annotation_report.$genome_set_name";
@@ -85,7 +88,7 @@ lives_ok {
 
 	ok(-e $local_path,'File found');
 } "Create a Report";
-done_testing(12);
+done_testing(14);
 
 my $err = undef;
 if ($@) {
