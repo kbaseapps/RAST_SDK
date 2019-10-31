@@ -58,6 +58,8 @@ lives_ok {
     ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
     ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
     ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
+    ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
+    ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
 }, "test_annotate_assembly";
 print "Summary for $assembly_obj_name\n";
 
@@ -83,7 +85,7 @@ lives_ok {
 
 	ok(-e $local_path,'File found');
 } "Create a Report";
-done_testing(10);
+done_testing(12);
 
 my $err = undef;
 if ($@) {
