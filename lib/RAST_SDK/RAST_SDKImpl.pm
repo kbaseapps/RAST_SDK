@@ -1097,12 +1097,12 @@ sub new
     };
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
-	my $cfg = Bio::KBase::utilities::read_config({
+	Bio::KBase::utilities::read_config({
 		service => "RAST_SDK",
 		mandatory => ['workspace-url', 'relation-engine-url']
 	});
-	# check this. Probably need to print cfg
-	$self->{_re_url} = $cfg->{'relation-engine-url'};
+	$self->{_re_url} = Bio::KBase::utilities::conf(
+		$ENV{KB_SERVICE_NAME} or "RAST_SDK", "relation-engine-url");
 	# TODO check url is ok by querying RE root
 
     #END_CONSTRUCTOR
