@@ -1075,9 +1075,9 @@ sub get_scientific_name_for_NCBI_taxon {
     
     my $ret = $ua->request($req);
     if (!$ret->is_success()) {
-		print("Error body from Relation Engine on NCBI taxa query:\n" .
-			$ret->decoded_content({'raise_error' => 1}));
-		# might want to try to parse content to json and extract error, try this for now
+        print("Error body from Relation Engine on NCBI taxa query:\n" .
+            $ret->decoded_content({'raise_error' => 1}));
+        # might want to try to parse content to json and extract error, try this for now
         die "Error contacting Relation Engine: " . $ret->status_line();
     }
     my $retjsonref = $ret->decoded_content({'raise_error' => 1, 'ref' => 1});
