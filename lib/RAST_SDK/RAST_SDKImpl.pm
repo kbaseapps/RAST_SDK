@@ -1066,7 +1066,7 @@ sub get_scientific_name_for_NCBI_taxon {
     my $url = $self->{_re_url} . "/api/v1/query_results?stored_query=ncbi_fetch_taxon";
     my $content = encode_json({
         'ts' => $timestamp,
-        'id'=> $tax_id
+        'id'=> $tax_id . '' # make sure tax id is a string
         });
     my $req = HTTP::Request->new(POST => $url);
     $req->header('content-type', 'application/json');
@@ -1083,7 +1083,7 @@ sub get_scientific_name_for_NCBI_taxon {
     my $retjsonref = $ret->decoded_content({'raise_error' => 1, 'ref' => 1});
     my $retjson = decode_json($retjsonref);
 
-    if (!$retjson->count) {
+    if (!$retjson->{count}) {
         die "No result from Relation Engine for NCBI taxonomy ID " . $tax_id;
     }
     return $retjson->{'results'}[0]{'scientific_name'};
