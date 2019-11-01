@@ -179,8 +179,22 @@ lives_ok {
         "Correct error message");
 } "Fail contacting RE";
 
+# Test sending a non-existant taxon to the RE.
+lives_ok {
+    print("######## Running RAST annotation fail with bad tax ID ########\n");
+    my $params_copy = { %$params };
+    $params_copy->{ncbi_taxon_id} = '1000000000000'; # pretty sure there aren't 1T taxa
+    $params_copy->{relation_engine_timestamp_ms} = 1572648527000;
+    eval {
+        &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
+    };
+    # the error here is a JSON string appended with a file and line number, and so can't be
+    # decoded. Arrg.
+    ok(index($@, "No result from Relation Engine for NCBI taxonomy ID 1000000000000") != -1,
+        "Correct error message");
+} "Fail bad taxon ID";
 
-done_testing(30);
+done_testing(32);
 
 my $err = undef;
 if ($@) {
