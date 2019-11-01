@@ -115,9 +115,14 @@ lives_ok {
     ok($genome_obj->{scientific_name} eq "unknown taxon", "Sci name is correct");
     ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
 
-	my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
-	my $local_path = "/kb/module/test/report_output/annotation_report.$genome_set_name";
-    copy $report, $local_path;
+    # I have no idea what this test is supposed to prove - 19/10/30
+    my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
+    my $directory = "/kb/module/test/report_output/";
+    my $local_path = $directory . "annotation_report.$genome_set_name";
+
+    unless (mkdir $directory) {die "Unable to create directory " . $directory;}
+
+    copy $report, $local_path or die "copy failed: $!";
 
 	ok(-e $local_path,'File found');
 } "Create a Report";
