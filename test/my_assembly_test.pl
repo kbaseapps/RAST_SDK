@@ -164,7 +164,23 @@ lives_ok {
 	ok(-e $local_path,'File found');
 } "Create a Report";
 
-done_testing(28);
+# Test failing to contact the RE with bad input.
+lives_ok {
+    print("######## Running RAST annotation fail with bad RE input ########\n");
+    my $params_copy = { %$params };
+    $params_copy->{ncbi_taxon_id} = '32'; 
+    $params_copy->{relation_engine_timestamp_ms} = 'Sept 19 2020';  # oops
+    eval {
+        &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
+    };
+    # the error here is a JSON string appended with a file and line number, and so can't be
+    # decoded. Arrg.
+    ok(index($@, "Error contacting Relation Engine: 400 BAD REQUEST") != -1,
+        "Correct error message");
+} "Fail contacting RE";
+
+
+done_testing(30);
 
 my $err = undef;
 if ($@) {
