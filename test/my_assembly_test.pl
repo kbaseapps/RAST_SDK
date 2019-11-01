@@ -77,9 +77,14 @@ lives_ok {
 	my $number_genomes = scalar @{ $data};
     ok($number_genomes == 1, "Input: One Assembly. Output: $number_genomes in output GenomeSet");
 
-	my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
-	my $local_path = "/kb/module/test/report_output/annotation_report.$genome_set_name";
-    copy $report, $local_path;
+    # I have no idea what this test is supposed to prove - 19/10/30
+    my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
+    my $directory = "/kb/module/test/report_output/";
+    my $local_path = $directory . "annotation_report.$genome_set_name";
+
+    unless (mkdir $directory) {die "Unable to create directory " . $directory;}
+
+    copy $report, $local_path or die "copy failed: $!";
 
 	ok(-e $local_path,'File found');
 } "Create a Report";
