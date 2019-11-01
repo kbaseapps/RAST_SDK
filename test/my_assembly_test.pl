@@ -36,7 +36,6 @@ my $gaa = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
 my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
 my $assembly_ref = prepare_assembly($assembly_obj_name);
 my $genome_obj_name = 'Acidilobus_sp_CIS';
-my $genome_set_name = "New_GenomeSet";
 
 my $params={"input_contigset"=>$assembly_obj_name,
              "scientific_name"=>'Acidilobus sp 7',
@@ -97,10 +96,11 @@ lives_ok {
 }, "test_annotate_assembly";
 print "Summary for $assembly_obj_name\n";
 
-# Test processing a single assembly and saving as a genome set.
 print "ASSEMBLYREF = $assembly_ref\n";
+# Test processing a single assembly and saving as a genome set.
 lives_ok {
-
+    print("######## Running RAST annotation into GenomeSet ########\n");
+    my $genome_set_name = "New_GenomeSet";
 	my $params={"input_genomes"=>[$assembly_ref],
              "call_features_tRNA_trnascan"=>'1',
 			"output_genome"=>$genome_set_name
@@ -126,7 +126,45 @@ lives_ok {
 
 	ok(-e $local_path,'File found');
 } "Create a Report";
-done_testing(23);
+
+# Test processing a single assembly with a taxon ID and saving as a genome set.
+lives_ok {
+    print("######## Running RAST annotation into GenomeSet with Taxon ID ########\n");
+    my $genome_set_name = "New_GenomeSet2";
+    my $params={"input_genomes"=>[$assembly_ref],
+                "call_features_tRNA_trnascan"=>'1',
+                "output_genome"=>$genome_set_name,
+                # this tax ID's species name changed in the 2018-12 NCBI dump and again in
+                # the 2019-02 dump so it is a good test case for making sure the timestamp
+                # is passed to the RE correctly. It depends on the RE containing 2018 NCBI
+                # data, which it currently does
+                "ncbi_taxon_id"=>2448083,  # spec says this must be a string, we're sloppy tho
+                "relation_engine_timestamp_ms"=>1545000000000  # epoch ms
+                };
+
+	my ($genome_set_obj,$params) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
+	my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
+	my $number_genomes = scalar @{ $data};
+    ok($number_genomes == 1, "Input: One Assembly. Output: $number_genomes in output GenomeSet");
+    
+    my $genome_obj = $ws_client->get_objects([{ref=>$data->[0]}])->[0]->{data};
+    ok($genome_obj->{scientific_name} eq "Metarhizium sp. MJH 2018c", "Sci name is correct");
+    cmp_deeply($genome_obj->{taxon_assignments}, {'ncbi' => '2448083'},
+        "Taxon assignments is correct");
+
+    # I have no idea what this test is supposed to prove - 19/10/30
+    my $report = "/kb/module/work/tmp/annotation_report.$genome_set_name";
+    my $directory = "/kb/module/test/report_output2/";
+    my $local_path = $directory . "annotation_report.$genome_set_name";
+
+    unless (mkdir $directory) {die "Unable to create directory " . $directory;}
+
+    copy $report, $local_path or die "copy failed: $!";
+
+	ok(-e $local_path,'File found');
+} "Create a Report";
+
+done_testing(28);
 
 my $err = undef;
 if ($@) {

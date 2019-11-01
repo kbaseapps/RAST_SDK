@@ -1549,6 +1549,8 @@ sub annotate_genomes
 		my $list = [qw(
 			workspace
 			scientific_name
+			ncbi_taxon_id
+			relation_engine_timestamp_ms
 			genetic_code
 			domain
 			call_features_rRNA_SEED
