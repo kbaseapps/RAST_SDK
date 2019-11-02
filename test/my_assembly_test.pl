@@ -74,7 +74,7 @@ lives_ok {
     # this tax ID's species name changed in the 2018-12 NCBI dump and again in the 2019-02 dump
     # so it is a good test case for making sure the timestamp is passed to the RE correctly.
     # It depends on the RE containing 2018 NCBI data, which it currently does
-    $params_copy->{ncbi_taxon_id} = 2448083;  # spec says this must be a string, we're sloppy tho
+    $params_copy->{ncbi_taxon_id} = 2448083;
     $params_copy->{relation_engine_timestamp_ms} = 1545000000000;  # epoch ms
 
 	my $ret = &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
@@ -138,7 +138,7 @@ lives_ok {
                 # the 2019-02 dump so it is a good test case for making sure the timestamp
                 # is passed to the RE correctly. It depends on the RE containing 2018 NCBI
                 # data, which it currently does
-                "ncbi_taxon_id"=>2448083,  # spec says this must be a string, we're sloppy tho
+                "ncbi_taxon_id"=>2448083,
                 "relation_engine_timestamp_ms"=>1545000000000  # epoch ms
                 };
 
@@ -168,7 +168,7 @@ lives_ok {
 lives_ok {
     print("######## Running RAST annotation fail with bad RE input ########\n");
     my $params_copy = { %$params };
-    $params_copy->{ncbi_taxon_id} = '32'; 
+    $params_copy->{ncbi_taxon_id} = 32; 
     $params_copy->{relation_engine_timestamp_ms} = 'Sept 19 2020';  # oops
     eval {
         &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
@@ -183,7 +183,7 @@ lives_ok {
 lives_ok {
     print("######## Running RAST annotation fail with bad tax ID ########\n");
     my $params_copy = { %$params };
-    $params_copy->{ncbi_taxon_id} = '1000000000000'; # pretty sure there aren't 1T taxa
+    $params_copy->{ncbi_taxon_id} = 1000000000000; # pretty sure there aren't 1T taxa
     $params_copy->{relation_engine_timestamp_ms} = 1572648527000;
     eval {
         &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
