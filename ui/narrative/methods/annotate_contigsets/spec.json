@@ -32,9 +32,9 @@
   }, {
     "id": "scientific_name",
     "optional": true,
-    "advanced": true,
+    "advanced": false,
     "allow_multiple": false,
-    "default_values": ["unknown taxon"],
+    "default_values": [""],
     "field_type": "dynamic_dropdown",
     "dynamic_dropdown_options": {
         "data_source": "custom",
