@@ -5,9 +5,9 @@ This wraps genome_annotation which is based off of the SEED annotations.
 
 module RAST_SDK {
 	/*
-        A binary boolean
-    */
-    typedef int bool;
+		A binary boolean
+	*/
+	typedef int bool;
 	
 	/*
 		A string representing a genome id.
@@ -24,39 +24,51 @@ module RAST_SDK {
 	*/
 	typedef string workspace_name;
 	
+	/* Parameters for the annotate_genome method.
+
+		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+			is included scientific_name is ignored.
+		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+			up taxon information in milliseconds since the epoch.
+		scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+		TODO: document remainder of parameters.
+	*/
 	typedef structure {
-	    string workspace;
-	    genome_id input_genome;
-	    contigset_id input_contigset;
-	    int genetic_code;
-	    string domain;
-	    string scientific_name;
-	    string output_genome;
-	    bool call_features_rRNA_SEED;
-	    bool call_features_tRNA_trnascan;
-	    bool call_selenoproteins;
-	    bool call_pyrrolysoproteins;
-	    bool call_features_repeat_region_SEED;
-	    bool call_features_insertion_sequences;
-	    bool call_features_strep_suis_repeat;
-	    bool call_features_strep_pneumo_repeat;
-	    bool call_features_crispr;
-	    bool call_features_CDS_glimmer3;
-	    bool call_features_CDS_prodigal;
-	    bool call_features_CDS_genemark;
-	    bool annotate_proteins_kmer_v2;
-	    bool kmer_v1_parameters;
-	    bool annotate_proteins_similarity;
-	    bool resolve_overlapping_features;
-	    bool call_features_prophage_phispy;
-	    bool retain_old_anno_for_hypotheticals;
+		string workspace;
+		genome_id input_genome;
+		contigset_id input_contigset;
+		int genetic_code;
+		string domain;
+		int ncbi_taxon_id;
+		int relation_engine_timestamp_ms;
+		string scientific_name;
+		string output_genome;
+		bool call_features_rRNA_SEED;
+		bool call_features_tRNA_trnascan;
+		bool call_selenoproteins;
+		bool call_pyrrolysoproteins;
+		bool call_features_repeat_region_SEED;
+		bool call_features_insertion_sequences;
+		bool call_features_strep_suis_repeat;
+		bool call_features_strep_pneumo_repeat;
+		bool call_features_crispr;
+		bool call_features_CDS_glimmer3;
+		bool call_features_CDS_prodigal;
+		bool call_features_CDS_genemark;
+		bool annotate_proteins_kmer_v2;
+		bool kmer_v1_parameters;
+		bool annotate_proteins_similarity;
+		bool resolve_overlapping_features;
+		bool call_features_prophage_phispy;
+		bool retain_old_anno_for_hypotheticals;
 	} AnnotateGenomeParams;
 	
 	typedef structure {
-	    workspace_name workspace;
-	    string id;
-	    string report_name;
-        string report_ref;
+		workspace_name workspace;
+		string id;
+		string report_name;
+		string report_ref;
 	} AnnotateGenomeResults;
 	
 	/*
@@ -71,41 +83,53 @@ module RAST_SDK {
 		genome_id output_genome;
 		int genetic_code;
 		string domain;
-	    string scientific_name;
+		string scientific_name;
 	} GenomeParams;
 	
+	/* Parameters for the annotate_genomes method.
+
+		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+			is included scientific_name is ignored.
+		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+			up taxon information in milliseconds since the epoch.
+		scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+		
+		TODO: document remainder of parameters.
+	*/
 	typedef structure {
-	    string workspace;
-	    list<GenomeParams> input_genomes;
+		string workspace;
+		list<GenomeParams> input_genomes;
 		int genetic_code;
 		string domain;
-	    string scientific_name;
+		int ncbi_taxon_id;
+		int relation_engine_timestamp_ms;
+		string scientific_name;
 		string genome_text;
-	    string output_genome;
-	    bool call_features_rRNA_SEED;
-	    bool call_features_tRNA_trnascan;
-	    bool call_selenoproteins;
-	    bool call_pyrrolysoproteins;
-	    bool call_features_repeat_region_SEED;
-	    bool call_features_insertion_sequences;
-	    bool call_features_strep_suis_repeat;
-	    bool call_features_strep_pneumo_repeat;
-	    bool call_features_crispr;
-	    bool call_features_CDS_glimmer3;
-	    bool call_features_CDS_prodigal;
-	    bool call_features_CDS_genemark;
-	    bool annotate_proteins_kmer_v2;
-	    bool kmer_v1_parameters;
-	    bool annotate_proteins_similarity;
-	    bool resolve_overlapping_features;
-	    bool call_features_prophage_phispy;
-	    bool retain_old_anno_for_hypotheticals;
+		string output_genome;
+		bool call_features_rRNA_SEED;
+		bool call_features_tRNA_trnascan;
+		bool call_selenoproteins;
+		bool call_pyrrolysoproteins;
+		bool call_features_repeat_region_SEED;
+		bool call_features_insertion_sequences;
+		bool call_features_strep_suis_repeat;
+		bool call_features_strep_pneumo_repeat;
+		bool call_features_crispr;
+		bool call_features_CDS_glimmer3;
+		bool call_features_CDS_prodigal;
+		bool call_features_CDS_genemark;
+		bool annotate_proteins_kmer_v2;
+		bool kmer_v1_parameters;
+		bool annotate_proteins_similarity;
+		bool resolve_overlapping_features;
+		bool call_features_prophage_phispy;
+		bool retain_old_anno_for_hypotheticals;
 	} AnnotateGenomesParams;
 	
 	typedef structure {
-	    workspace_name workspace;
-	    string report_name;
-        string report_ref;
+		workspace_name workspace;
+		string report_name;
+		string report_ref;
 	} AnnotateGenomesResults;
 	
 	/*
@@ -119,7 +143,7 @@ module RAST_SDK {
 	} AnnotateProteinParams;
 	
 	typedef structure {
-	    list<list<string> > functions;
+		list<list<string> > functions;
 	} AnnotateProteinResults;
 	
 	/*
