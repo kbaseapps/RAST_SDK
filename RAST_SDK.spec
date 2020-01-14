@@ -126,4 +126,42 @@ module RAST_SDK {
 		annotate proteins - returns a list of the RAST annotations for the input protein sequences
 	*/
 	funcdef annotate_proteins(AnnotateProteinParams params) returns (AnnotateProteinResults);
+
+
+        /*
+            For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation moduel)
+        /*
+            Reference to an Assembly or Genome object in the workspace
+            @id ws KBaseGenomeAnnotations.Assembly
+            @id ws KBaseGenomes.Genome
+        */
+        typedef string data_obj_ref;
+
+        /*
+            Reference to a Annotated Metagenome Assembly object in the workspace
+            @id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
+        */
+        typedef string metagenome_ref;
+
+        /*
+            Required parameters:
+                object_ref - reference to Assembly or Genome object,
+                output_workspace - output workspace name,
+                output_metagenome_name - output object name,
+        */
+
+        typedef structure {
+            data_obj_ref object_ref;
+            string output_workspace;
+            string output_metagenome_name;
+        } MetagenomeAnnotateParams;
+
+        typedef structure {
+            metagenome_ref output_metagenome_ref;
+            string report_name;
+            string report_ref;
+        } MetagenomeAnnotateOutput;
+
+        funcdef annotate_metagenome(MetagenomeAnnotateParams params) 
+                returns (MetagenomeAnnotateOutput output) authentication required;
 };

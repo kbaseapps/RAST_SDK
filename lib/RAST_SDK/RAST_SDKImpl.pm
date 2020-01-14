@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.1.3';
-our $GIT_URL = 'ssh://git@github.com/kbaseapps/RAST_SDK';
-our $GIT_COMMIT_HASH = '913026e502396704cc3240a1b45658b53e3af57d';
+our $VERSION = '0.1.6';
+our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
+our $GIT_COMMIT_HASH = 'ddf76aad271c968a43b52c7dacf7ce5fb7451807';
 
 =head1 NAME
 
@@ -1095,6 +1095,8 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1139,6 +1141,8 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1269,6 +1273,8 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	genome_text has a value which is a string
 	output_genome has a value which is a string
@@ -1319,6 +1325,8 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	genome_text has a value which is a string
 	output_genome has a value which is a string
@@ -1697,6 +1705,92 @@ sub annotate_proteins
 
 
 
+=head2 annotate_metagenome
+
+  $output = $obj->annotate_metagenome($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.MetagenomeAnnotateParams
+$output is a RAST_SDK.MetagenomeAnnotateOutput
+MetagenomeAnnotateParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_metagenome_name has a value which is a string
+data_obj_ref is a string
+MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	report_name has a value which is a string
+	report_ref has a value which is a string
+metagenome_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.MetagenomeAnnotateParams
+$output is a RAST_SDK.MetagenomeAnnotateOutput
+MetagenomeAnnotateParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_metagenome_name has a value which is a string
+data_obj_ref is a string
+MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	report_name has a value which is a string
+	report_ref has a value which is a string
+metagenome_ref is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub annotate_metagenome
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to annotate_metagenome:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenome');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN annotate_metagenome
+    #END annotate_metagenome
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to annotate_metagenome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenome');
+    }
+    return($output);
+}
+
+
+
+
 =head2 status 
 
   $return = $obj->status()
@@ -1881,6 +1975,8 @@ input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1914,6 +2010,8 @@ input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1946,6 +2044,19 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 =over 4
 
+
+
+=item Description
+
+Parameters for the annotate_genome method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+                TODO: document remainder of parameters.
 
 
 =item Definition
@@ -2034,6 +2145,8 @@ workspace has a value which is a string
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 genome_text has a value which is a string
 output_genome has a value which is a string
@@ -2067,6 +2180,8 @@ workspace has a value which is a string
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 genome_text has a value which is a string
 output_genome has a value which is a string
@@ -2100,6 +2215,19 @@ retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
 
 =over 4
 
+
+
+=item Description
+
+Parameters for the annotate_genomes method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+                
+                TODO: document remainder of parameters.
 
 
 =item Definition
@@ -2182,6 +2310,149 @@ functions has a value which is a reference to a list where each element is a ref
 
 a reference to a hash where the following keys are defined:
 functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 data_obj_ref
+
+=over 4
+
+
+
+=item Description
+
+For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation moduel)
+        /*
+Reference to an Assembly or Genome object in the workspace
+@id ws KBaseGenomeAnnotations.Assembly
+@id ws KBaseGenomes.Genome
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 metagenome_ref
+
+=over 4
+
+
+
+=item Description
+
+Reference to a Annotated Metagenome Assembly object in the workspace
+@id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 MetagenomeAnnotateParams
+
+=over 4
+
+
+
+=item Description
+
+Required parameters:
+    object_ref - reference to Assembly or Genome object,
+    output_workspace - output workspace name,
+    output_metagenome_name - output object name,
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_metagenome_name has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_metagenome_name has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 MetagenomeAnnotateOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+report_name has a value which is a string
+report_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+report_name has a value which is a string
+report_ref has a value which is a string
 
 
 =end text
