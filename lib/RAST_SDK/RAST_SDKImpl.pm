@@ -1476,7 +1476,7 @@ sub annotate_genomes
 	#	4. Use perl grep to see if the ref is already in the list
 	#	5. Issue a warning when a duplicate is found so user knows what happened. 
 	#
-	if (ref $genomes eq 'ARRAY') {
+	if (ref $genomes eq 'ARRAY' && scalar @{ $genomes } > 0) {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
@@ -1513,6 +1513,11 @@ sub annotate_genomes
 		}
 		print STDERR "WARNiNG $warn\n";
 		$genomes = $replace_genomes;
+	}
+	else {
+                my $empty_input_msg = "Genomes expected in an array with at least one genome as input objects.";
+                Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $empty_input_msg,
+							               method_name => 'annotate_genomes');
 	}
 	
 	if (defined($params->{genome_text})) {
