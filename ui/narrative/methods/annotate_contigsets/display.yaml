@@ -33,15 +33,15 @@ suggestions :
 parameters :
     input_genomes :
         ui-name : |
-            Assemblies/AssemblySets
+            Assemblies/AssemblySets<font color=red>*</font>
         short-hint : |
-            One or more Assemblies and/or AssemblySets to annotate.
+            One or more Assemblies and/or AssemblySets <font color=red>REQUIRED</font> to annotate IF genome_text is blank.
 
     genome_text :
         ui-name : |
-            Assembly list
+            Assembly list<font color=red>*</font>
         short-hint : |
-            List of assemblies to annotate, delimited with semicolon (;). This list is in addition to the input assemblies above. Example names: Carsonella_rudii_PC;Carsonella_rudii_CE [no spaces] or IDs: 21677/17/1;21677/16/1; or delimited by new lines (list each name or ID on a separate line). You can also mix names and IDs as long as there are no spaces (e.g., Carsonella_rudii_PC;21677/18/1).
+            List of assemblies to annotate, delimited with semicolon (;). This list is in addition to the input assemblies above. Example names: Carsonella_rudii_PC;Carsonella_rudii_CE [no spaces] or IDs: 21677/17/1;21677/16/1; or delimited by new lines (list each name or ID on a separate line). You can also mix names and IDs as long as there are no spaces (e.g., Carsonella_rudii_PC;21677/18/1).<font color=red>REQUIRED</font> to annotate IF input_genomes is not specified.
 
     scientific_name :
         ui-name : |

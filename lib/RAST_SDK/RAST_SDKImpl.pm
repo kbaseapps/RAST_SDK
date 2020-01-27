@@ -32,7 +32,7 @@ use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 use LWP::UserAgent;
 use HTTP::Request;
-
+use Ref::Util;
 
 #Initialization function for call
 sub util_initialize_call {
@@ -1454,148 +1454,145 @@ sub annotate_genomes
 	    resolve_overlapping_features => 1,
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
-	});
+    });
 
-	if ($params->{ncbi_taxon_id}) {
-		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
-			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
-	}
-	my $htmlmessage = "";
-	my $warn        = "";
-	my $genomes = $params->{input_genomes};
+    if ($params->{ncbi_taxon_id}) {
+        $params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+            $params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
+    my $htmlmessage = "";
+    my $warn        = "";
+    my $genomes     = $params->{input_genomes};
+    my $obj_type;
 
-	my $obj_type;
-	#
-	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
-	#
-	# When a set is submitted, the set needs to be unpacked and added to the list
-	# Create a non-redundant replacement list:
-	#	1. Individual genomes and assemblies are added
-	#	2. Iterate over a Set to add to the replacement list
-	#	3. GenomeSets use a HASH and AssemblySets use an ARRAY  
-	#	4. Use perl grep to see if the ref is already in the list
-	#	5. Issue a warning when a duplicate is found so user knows what happened. 
-	#
-	if (ref $genomes eq 'ARRAY' && scalar @{ $genomes } > 0) {
-		my $replace_genomes = [];
-		foreach my $ref (@$genomes) {
-	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
-			$obj_type = $info->[0]->[2];
-			if ($obj_type =~ /KBaseSearch\.GenomeSet/ || $obj_type =~ /KBaseSets\.AssemblySet/) {
-				my $obj = Bio::KBase::kbaseenv::get_objects([{
-					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{'refs'};
+    #
+    # If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
+    #
+    # When a set is submitted, the set needs to be unpacked and added to the list
+    # Create a non-redundant replacement list:
+    #	1. Individual genomes and assemblies are added
+    #	2. Iterate over a Set to add to the replacement list
+    #	3. GenomeSets use a HASH and AssemblySets use an ARRAY
+    #	4. Use perl grep to see if the ref is already in the list
+    #	5. Issue a warning when a duplicate is found so user knows what happened.
+    #
+    my $empty_input_msg = "Genomes expected in an array with at least one genome as input objects,";
+    $empty_input_msg .= " and/or in a semicolon (;) delimited string of genome names/ids.";
+    Bio::KBase::Exceptions::ArgumentValidationError->throw(
+	error        => $empty_input_msg,
+	method_name  => 'annotate_genomes'
+    ) unless (is_arrayref( $genomes ) && @$genomes) || defined($params->{genome_text});
 
-				if (ref($obj) eq 'HASH') {
-					foreach my $key (keys %$obj) {
-						if ( grep( /^$key$/, @$replace_genomes ) ) {
-							$warn .= "WARNING: Found Duplicate Genome $key";
-						} else {
-							push(@$replace_genomes,$key);
-						}
-					}
-				} elsif (ref($obj) eq 'ARRAY') {
-					foreach my $key (@$obj) {
-						if ( grep( /^$key$/, @$replace_genomes ) ) {
-							$warn .= "WARNING: Found Duplicate Assembly $key";
-						} else {
-							push(@$replace_genomes,$key);
-						}
-					}
-					
-				}
-			} else {
-				if ( grep( /^$ref$/, @$replace_genomes ) ) {
-					$warn .= "WARNING: Found Duplicate Assembly $ref";
-				} else {
-					push(@$replace_genomes,$ref);
-				}
-			}
-		}
-		print STDERR "WARNiNG $warn\n";
-		$genomes = $replace_genomes;
-	}
-	else {
-                my $empty_input_msg = "Genomes expected in an array with at least one genome as input objects.";
-                Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $empty_input_msg,
-							               method_name => 'annotate_genomes');
-	}
+    my $replace_genomes = [];
+    foreach my $ref (@$genomes) {
+        my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+        $obj_type = $info->[0]->[2];
+	if ($obj_type =~ /KBaseSearch\.GenomeSet/ || $obj_type =~ /KBaseSets\.AssemblySet/) {
+            my $obj = Bio::KBase::kbaseenv::get_objects([{
+                ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{'refs'};
+
+            if (ref($obj) eq 'HASH') {
+                foreach my $key (keys %$obj) {
+                    if ( grep( /^$key$/, @$replace_genomes ) ) {
+                        $warn .= "WARNING: Found Duplicate Genome $key";
+                    } else {
+                        push(@$replace_genomes,$key);
+                    }
+                }
+            } elsif (ref($obj) eq 'ARRAY') {
+                foreach my $key (@$obj) {
+                    if ( grep( /^$key$/, @$replace_genomes ) ) {
+                        $warn .= "WARNING: Found Duplicate Assembly $key";
+                    } else {
+                        push(@$replace_genomes,$key);
+		    }
+                }
+            }
+        } else {
+            if ( grep( /^$ref$/, @$replace_genomes ) ) {
+                $warn .= "WARNING: Found Duplicate Assembly $ref";
+            } else {
+                push(@$replace_genomes,$ref);
+            }
+        }
+    }
+    print STDERR "WARNiNG $warn\n";
+    $genomes = $replace_genomes;
 	
-	if (defined($params->{genome_text})) {
-		my $new_genome_list = [split(/[\n;\|]+/,$params->{genome_text})];
-		for (my $i=0; $i < @{$new_genome_list}; $i++) {
-			push(@{$genomes},$new_genome_list->[$i]);
-		}
-	}
+    if (defined($params->{genome_text})) {
+        my $new_genome_list = [split(/[\n;\|]+/,$params->{genome_text})];
+        for (my $i=0; $i < @{$new_genome_list}; $i++) {
+            push(@{$genomes}, $new_genome_list->[$i]);
+        }
+    }
 
-	my $output_genomes = [];
-	for (my $i=0; $i < @{$genomes}; $i++) {
-		my $obj_type = '';
-		my $input = $genomes->[$i];
-		if ($input =~ m/\//) {
-			my $array = [split(/\//,$input)];
-			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>
-				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}
-			],0);
-			$input = $info->[0]->[1];
-			$obj_type =  $info->[0]->[2];
-		} else {
-			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
-			$obj_type =  $info->[0]->[2];
-		}
+    my $output_genomes = [];
+    for (my $i=0; $i < @{$genomes}; $i++) {
+        my $obj_type = '';
+        my $input = $genomes->[$i];
+        if ($input =~ m/\//) {
+            my $array = [split(/\//,$input)];
+            my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>
+                Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}],0);
+            $input = $info->[0]->[1];
+            $obj_type = $info->[0]->[2];
+        } else {
+            my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
+            $obj_type = $info->[0]->[2];
+        }
 
-		my $currentparams = Bio::KBase::utilities::args({},[],{
-			output_genome => $input.".RAST",
-			input_genome => $genomes->[$i],
-		    input_contigset => undef,
-		    genetic_code => 11,
-		    domain => "Bacteria",
-		    scientific_name => "unknown taxon"
-		});
-		my $list = [qw(
-			workspace
-			scientific_name
-			ncbi_taxon_id
-			relation_engine_timestamp_ms
-			genetic_code
-			domain
-			call_features_rRNA_SEED
-		    call_features_tRNA_trnascan
-		    call_selenoproteins
-		    call_pyrrolysoproteins
-		    call_features_repeat_region_SEED
-		    call_features_strep_suis_repeat
-		    call_features_strep_pneumo_repeat
-		    call_features_crispr
-		    call_features_CDS_glimmer3
-		    call_features_CDS_prodigal
-		    annotate_proteins_kmer_v2
-		    kmer_v1_parameters
-		    annotate_proteins_similarity
-		    resolve_overlapping_features
-		    call_features_prophage_phispy
-		    retain_old_anno_for_hypotheticals
-		)];
+        my $currentparams = Bio::KBase::utilities::args({},[],{
+            output_genome => $input.".RAST",
+            input_genome => $genomes->[$i],
+            input_contigset => undef,
+            genetic_code => 11,
+            domain => "Bacteria",
+            scientific_name => "unknown taxon"
+        });
+        my $list = [qw(
+                    workspace
+                    scientific_name
+                    ncbi_taxon_id
+                    relation_engine_timestamp_ms
+                    genetic_code
+                    domain
+                    call_features_rRNA_SEED
+                    call_features_tRNA_trnascan
+                    call_selenoproteins
+                    call_pyrrolysoproteins
+                    call_features_repeat_region_SEED
+                    call_features_strep_suis_repeat
+                    call_features_strep_pneumo_repeat
+                    call_features_crispr
+                    call_features_CDS_glimmer3
+                    call_features_CDS_prodigal
+                    annotate_proteins_kmer_v2
+                    kmer_v1_parameters
+                    annotate_proteins_similarity
+                    resolve_overlapping_features
+                    call_features_prophage_phispy
+                    retain_old_anno_for_hypotheticals)];
 
-		for (my $j=0; $j < @{$list}; $j++) {
-			$currentparams->{$list->[$j]} = $params->{$list->[$j]} if (exists $params->{$list->[$j]});
-		}
+        for (my $j=0; $j < @{$list}; $j++) {
+            $currentparams->{$list->[$j]} = $params->{$list->[$j]} if (exists $params->{$list->[$j]});
+        }
 
-		if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
-			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
-			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
-		}
-			
-		eval {
-			my ($output,$message) = $self->annotate_process($currentparams);
-			push(@$output_genomes,$output->{ref});
-			$htmlmessage .= $message;
-		};
-		if ($@) {
-			$htmlmessage .= $input." failed!\n\n";
-		} else {
-			$htmlmessage .= $input." succeeded!\n\n";
-		}
-	}
+        if ($obj_type =~ /KBaseGenomeAnnotations\.Assembly/) {
+            $currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
+            delete $currentparams->{'retain_old_anno_for_hypotheticals'};
+        }
+
+        eval {
+            my ($output,$message) = $self->annotate_process($currentparams);
+            push(@$output_genomes,$output->{ref});
+            $htmlmessage .= $message;
+        };
+        if ($@) {
+            $htmlmessage .= $input." failed!\n\n";
+        } else {
+            $htmlmessage .= $input." succeeded!\n\n";
+        }
+    }
 		
     my $output_genomeset;
     if (defined $params->{output_genome} && $params->{output_genome} gt ' ') {
@@ -1613,31 +1610,30 @@ sub annotate_genomes
         });
     }
 
-	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
-	open (FH,">$path") || warn("Did not create the output file\n");
-	print FH $warn.$htmlmessage;
-	close FH;
-	$htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
+    my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
+    open (FH,">$path") || warn("Did not create the output file\n");
+    print FH $warn.$htmlmessage;
+    close FH;
+    $htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
     my $reportfile = Bio::KBase::utilities::add_report_file({
-    	workspace_name => $params->{workspace},
-    	name =>  "annotation_report.$params->{output_genome}",
-		path => $path,
-		description => 'Microbial Annotation Report'
+        workspace_name => $params->{workspace},
+        name =>  "annotation_report.$params->{output_genome}",
+        path => $path,
+        description => 'Microbial Annotation Report'
     });
 
-	Bio::KBase::utilities::print_report_message({
-		message => $htmlmessage,html=>0,append => 0
-	});
+    Bio::KBase::utilities::print_report_message({
+        message => $htmlmessage,html=>0,append => 0});
     my $reportout = Bio::KBase::kbaseenv::create_report({
-    	workspace_name => $params->{workspace},
-    	report_object_name => Bio::KBase::utilities::processid().".report",
+        workspace_name => $params->{workspace},
+        report_object_name => Bio::KBase::utilities::processid().".report",
     });
-	$return = {
-    	workspace => $params->{workspace},
-    	id => $params->{output_genome},
-    	report_ref => $reportout->{"ref"},
-    	report_name =>  Bio::KBase::utilities::processid().".report",
-    	ws_report_id => Bio::KBase::utilities::processid().".report"
+    $return = {
+        workspace => $params->{workspace},
+        id => $params->{output_genome},
+        report_ref => $reportout->{"ref"},
+        report_name =>  Bio::KBase::utilities::processid().".report",
+        ws_report_id => Bio::KBase::utilities::processid().".report"
     };
     Bio::KBase::utilities::close_debug();
     #END annotate_genomes
