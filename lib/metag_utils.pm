@@ -69,20 +69,20 @@ sub build_prodigal_params {
     my $output = $au->get_assembly_as_fasta({"ref" => $ref});
 
     copy($output->{path}, $fasta_file) || die "Could not find file:".$output->{path};
-	# print("Genome is smaller than 25000 bp -- using 'metagenome' mode\n");
+    # print("Genome is smaller than 25000 bp -- using 'metagenome' mode\n");
     my $mode = 'meta';
 
     $prd_params = {
         input_file => $fasta_file,       # -i (FASTA/Genbank file)
         trans_fle => $trans_file,        # -a (Write protein translations to $trans_file)
         nuc_file => $nuc_file,           # -d (Write nucleotide sequences of genes to $nuc_file)
-        output_type => 'gff',          # -f (gbk, gff, or sco, default to gbk)
+        output_type => 'sco',            # -f (gbk, gff, or sco, default to gbk)
         output_file => $output_file,     # -o (Specify output file (default writes to stdout).) 
-        closed_ends => 1,              # -c (Closed ends.  Do not allow genes to run off edges.)
-        N_as_masked_seq => 1,          # -m (Treat runs of N as masked sequence; don't build genes across them.)
-        trans_table => 11,             # -g (Specify a translation table to use (default 11).)
-        procedure => $mode,            # -p (Select procedure (single or meta).  Default is single.)
-        quiet => 0,                    # -q (Run quietly)
+        closed_ends => 1,                # -c (Closed ends.  Do not allow genes to run off edges.)
+        N_as_masked_seq => 1,            # -m (Treat runs of N as masked sequence; don't build genes across them.)
+        trans_table => 11,               # -g (Specify a translation table to use (default 11).)
+        procedure => $mode,              # -p (Select procedure (single or meta).  Default is single.)
+        quiet => 0,                      # -q (Run quietly)
         start_file => $start_file,       # -s (Write all potential genes (with scores) to $start_file)
         training_file => $training_file  # -t (Write a training file (if none exists); otherwise, read and use $training_file)
     }
@@ -137,6 +137,57 @@ sub run_prodigal {
     return system(@cmd);  # success if return 0
 }
 
+#--From https://github.com/hyattpd/prodigal/wiki/understanding-the-prodigal-output---
+# By default, Prodigal produces one output file, which consists of gene coordinates
+# and some metadata associated with each gene.
+# However, the program can produce four more output files at the user's request:
+#       protein translations (with the -a option),
+#       nucleotide sequences (with the -d option),
+#       a complete listing of all start/stop pairs along with score information (with the -s option),
+#       a summary of statistical information about the genome or metagenome (with the -w option).
+#
+# By default, Prodigal produces a Genbank-like feature table; however, the user can
+# specify some other output types via the -f option:
+#       gbk:  Genbank-like format (Default)
+#       gff:  GFF format
+#       sqn:  Sequin feature table format
+#       sco:  Simple coordinate output
+#
+# In the following parsing method, we assume "sco" is the output_type together
+# with a translation file (protein translations) and a nucleotide file (sequences).
+#
+# An sco file has a head portion like:
+#-----------------------------------------------------------
+# # Sequence Data: seqnum=1;seqlen=4641652;seqhdr="Escherichia coli str. K-12 substr. MG1655, complete genome."
+# Model Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=50.79;transl_table=11;uses_sd=1
+# >1_337_2799_+
+# >2_2801_3733_+
+# >3_3734_5020_+
+# >4_5234_5530_+
+# >5_5683_6459_-
+# >6_6529_7959_-
+# >7_8238_9191_+
+# ...
+#
+# Protein Translations:
+# The protein translation file consists of all the proteins from all the sequences
+# in multiple FASTA format. The FASTA header begins with a text id consisting of
+# the first word of the original FASTA sequence header followed by an underscore
+# followed by the ordinal ID of the protein. This text id is not guaranteed to be
+# unique (it depends on the FASTA headers supplied by the user), which is why we
+# recommend using the "ID" field in the final semicolon-delimited string instead.
+#
+# A translation file has an entry like;
+#-----------------------------------------------------------
+# >Escherichia_2 # 2801 # 3733 # 1 # ID=1_2;partial=00;start_type=ATG;rbs_motif=AGGAG;rbs_spacer=5-10bp;gc_cont=0.563
+# MVKVYAPASSANMSVGFDVLGAAVTPVDGALLGDVVTVEAAETFSLNNLGRFADKLPSEP
+# RENIVYQCWERFCQELGKQIPVAMTLEKNMPIGSGLGSSACSVVAALMAMNEHCGKPLND
+# TRLLALMGELEGRISGSIHYDNVAPCFLGGMQLMIEENDIISQQVPGFDEWLWVLAYPGI
+# KVSTAEARAILPAQYRRQDCIAHGRHLAGFIHACYSRQPELAAKLMKDVIAEPYRERLLP
+# GFRQARQAVAEIGAVASGISGSGPTLFALCDKPETAQRVADWLGKNYLQNQEGFVHICRL
+# DTAGARVLEN*
+# ...
+#--------------------------------------------------------------------------------
 sub parse_prodigal_results {
     my ($trans_file, $nuc_file, $output_file) = @_;
 
@@ -216,7 +267,7 @@ sub rast_metagenome {
     my ($scratch, $params) = @_;
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
-  		features => []
+        features => []
     }
 
     my $fasta_file = catfile($scratch, 'input_contigs.fasta');
@@ -226,7 +277,7 @@ sub rast_metagenome {
     # my $start_file = catfile($scratch, 'start_file');
     my $training_file = '';  # catfile($scratch, 'training_file');
 
-	my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
+    my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
 
     # Check if input is an assembly, if so run Prodigal and parse for proteins
     my $protein_tbl = [];
@@ -275,18 +326,20 @@ sub rast_metagenome {
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
     my $genome = $rast_client->run_pipeline($inputgenome,
-            {stages => [{name => ‘annotate_proteins_kmer_v2’, kmer_v2_parameters => {}},
-		                {name => ‘annotate_proteins_similarity’,
+            {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
+		        {name => "annotate_proteins_similarity",
                          similarity_parameters => { annotate_hypothetical_only => 1 }}]}
-	);
-	my $ftrs = $genome->{features};
-	my $return = {};
-	$return->{functions} = [];
-	for (my $i=0; $i < @{$genome->{features}}; $i++) {
-		$return->{functions}->[$i] = [];
-		if (defined($genome->{features}->[$i]->{function})) {
-			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$genome->{features}->[$i]->{function})];
-		}
-	}
+    );
+    ## TODO: call $gfu->save_one_genome({}) to save the annotated (meta)genome
+
+    my $ftrs = $genome->{features};
+    my $return = {};
+    $return->{functions} = [];
+    for (my $i=0; $i < @{$genome->{features}}; $i++) {
+        $return->{functions}->[$i] = [];
+        if (defined($genome->{features}->[$i]->{function})) {
+            $return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$genome->{features}->[$i]->{function})];
+        }
+    }
 }
 
