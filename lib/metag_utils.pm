@@ -263,6 +263,76 @@ sub parse_prodigal_results {
     return $encoded_tbl;
 }
 
+
+sub write_genome_to_fasta {
+    my ($fasta_filename, $genome_ref) = @_;
+
+    my $genome_data = $genome_api.get_genome_v1(
+        {"genomes" => [{"ref" => $genome_ref}], "downgrade" => 0})->{genomes}->[0];
+    my $g_features = $genome_data->{data}->{features};
+
+    my $fh;
+    open( $fh, '>', $fasta_filename ) || die "Could not open file '$fasta_filename' $!";
+
+    for (my $i=0; $i < @{$g_features}; $i++) {
+        my $gf = $g_features->[$i];
+        if (!defined($gf->{id}) || !defined($gf->{dna_sequence})) {
+            die "This feature does not have a valid dna sequence.";
+        }
+        else {
+            print $fh ">" . $gf->{id} . "\n" . $gf->{dna_sequence} . "\n";
+        }
+    }
+    close($fh);
+    if (-s $fasta_filename) {
+        print "Finished writing to " . $fasta_filename;
+    }
+    else {
+        print "This genome does not contain features with DNA_SEQUENCES. Fasta file is empty.";
+    }
+    return $fasta_filename;
+}
+
+sub write_genome_to_gff {
+    my ($gff_filename, $genome_ref) = @_;
+
+    my $gff_result = $gfu.genome_to_gff({"genome_ref" => $genome_ref});
+    move($gff_result->{file_path}, $gff_filename) or die "The GFF move operation failed: $!";
+
+    unless (-s $gff_filename) {
+        die "Failed to write GFF to " . $gff_filename;
+    }
+
+    return $gff_filename;
+}
+
+sub add_functions_to_gff {
+    my ($gff_filename, $functions) = @_;
+
+    my ($fh, $count);
+    # Open $gff_filename to read into an array
+    my @readin_arr;
+    unless (open( $fh, '<', $gff_filename )) {
+        warn "Could not open file '$gff_filename' $!";
+    }
+    chomp(@readin_arr = <$fh>);
+    close($fh);
+
+    # TODO: insert the functions into the array @readin_arr
+
+    # Open $gff_filename to write the @readin_array back to the file
+    my $new_gff_filename = "new" . $gff_filename;
+    open( $fh, '>', $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
+    # Loop over the array
+    foreach (@readin_arr)
+    {
+        print $fh "$_\n";
+    }
+    close $fh;
+
+    return $new_gff_filename;
+}
+
 sub rast_metagenome {
     my ($scratch, $params) = @_;
     my $input_obj_ref = $params->{object_ref};
@@ -316,11 +386,11 @@ sub rast_metagenome {
             die "Prodigal run failed.";
         }
     }
-    elsif ($info->[0]->[2] =~ /KBaseGenomes.Genome/) { 
+    else {
         # input is a (meta)genome, get the genome proteins directly from the input
-        my $in_genome = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
+        my $genome_obj = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
         if (defined($genome_obj->{features})) {
-            push(@{$inputgenome->{features}}, $in_genome->{features};);
+            push(@{$inputgenome->{features}}, $genome_obj->{features};);
         }
     }
     # Call RAST to annotate the proteins/genome
@@ -330,7 +400,12 @@ sub rast_metagenome {
                         {name => "annotate_proteins_similarity",
                          similarity_parameters => { annotate_hypothetical_only => 1 }}]}
     );
-    ## TODO: call $gfu->save_one_genome({}) or $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
+
+    # generating the fasta and gff files for saving the annotated genome
+    my $gn_fasta_file = catfile($scratch, 'genome.fasta');
+    my $gn_gff_file = catfile($scratch, 'genome.gff');
+    $gn_fasta_file = write_genome_to_fasta($gn_fasta_file, $input_obj_ref);
+    $gn_gff_file =  write_genome_to_gff($gn_gff_file, $input_obj_ref);
 
     my $ftrs = $rasted_genome->{features};
     my $return = {};
@@ -341,5 +416,15 @@ sub rast_metagenome {
 			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$ftrs->[$i]->{function})];
 		}
 	}
+    my $new_gff_file = add_functions_to_gff($gn_gff_file, $return->{functions});
+
+    ## TODO: call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
+    my $annotated_metag_ref = $gfu->fasta_gff_to_metagenome {
+            "fasta_file" => {'path' => $gn_fasta_file},
+            "gff_file" => {'path'=> $new_gff_file},
+            "genome_name" => $params -> {output_metagenome_name},
+            "workspace_name" => $params -> {output_workspace},
+            "generate_missing_genes" => True
+    })->{genome_ref};
 }
 
