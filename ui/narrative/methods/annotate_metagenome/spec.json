@@ -1,0 +1,76 @@
+{
+    "ver" : "0.0.1",
+    "name" : "Annotate a metagenome",
+    "authors" : [ "chenry", "qzhang" ],
+    "contact" : "help@kbase.us",
+    "categories" : ["active","annotation"],
+    "widgets" : {
+        "input" : "kbaseNarrativeMethodInput",
+        "output" : "kbaseGenomeView"
+    },
+    "parameters" : [
+        {
+            "id" : "input_genome",
+            "optional" : false,
+            "advanced" : false,
+            "allow_multiple" : false,
+            "default_values" : [ "" ],
+            "field_type" : "text",
+            "text_options" : {
+            "valid_ws_types" : [ "KBaseGenomeAnnotations.Assembly", "KBaseMetagenomes.AnnotatedMetagenomeAssembly", "KBaseGenomes.Genome", "KBaseGenomeAnnotations.GenomeAnnotation" ]
+            }
+        }, {
+            "id" : "output_metagenome_name",
+            "optional" : false,
+            "advanced" : false,
+            "allow_multiple" : false,
+            "default_values" : [ "" ],
+            "field_type" : "text",
+            "text_options" : {
+            "valid_ws_types" : [ "KBaseMetagenomes.AnnotatedMetagenomeAssembly" ],
+            "is_output_name":true
+            }
+        }
+    ],
+    "behavior": {
+        "service-mapping": {
+            "url": "",
+            "name": "RAST_SDK",
+            "method": "annotate_metagenome",
+            "input_mapping": [
+                {
+                    "narrative_system_variable": "workspace",
+                    "target_property": "output_workspace"
+                },
+                {
+                    "input_parameter": "object_ref",
+                    "target_property": "object_ref",
+                    "target_type_transform": "ref"
+                },
+                {
+                    "input_parameter": "output_metagenome_name",
+                    "target_property": "output_metagenome_name"
+                }
+            ],
+            "output_mapping": [
+                {
+                    "service_method_output_path": [0,"report_name"],
+                    "target_property": "report_name"
+                },
+                {
+                    "service_method_output_path": [0,"report_ref"],
+                    "target_property": "report_ref"
+                },
+                {
+                    "input_parameter": "output_metagenome_name",
+                    "target_property": "id"
+                },
+                {
+                    "narrative_system_variable": "workspace",
+                    "target_property": "ws"
+                }
+            ]
+        }
+    },
+    "job_id_output_field": "docker"
+}
