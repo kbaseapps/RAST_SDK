@@ -325,21 +325,21 @@ sub rast_metagenome {
     }
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
-    my $genome = $rast_client->run_pipeline($inputgenome,
+    my $rasted_genome = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
-		        {name => "annotate_proteins_similarity",
+                        {name => "annotate_proteins_similarity",
                          similarity_parameters => { annotate_hypothetical_only => 1 }}]}
     );
-    ## TODO: call $gfu->save_one_genome({}) to save the annotated (meta)genome
+    ## TODO: call $gfu->save_one_genome({}) or $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
 
-    my $ftrs = $genome->{features};
+    my $ftrs = $rasted_genome->{features};
     my $return = {};
     $return->{functions} = [];
-    for (my $i=0; $i < @{$genome->{features}}; $i++) {
-        $return->{functions}->[$i] = [];
-        if (defined($genome->{features}->[$i]->{function})) {
-            $return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$genome->{features}->[$i]->{function})];
-        }
-    }
+    for (my $i=0; $i < @{$ftrs}; $i++) {
+		$return->{functions}->[$i] = [];
+		if (defined($ftrs->[$i]->{function})) {
+			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$ftrs->[$i]->{function})];
+		}
+	}
 }
 

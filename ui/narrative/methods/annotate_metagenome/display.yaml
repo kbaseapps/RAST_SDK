@@ -4,7 +4,8 @@
 name     : Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk - v1.073
 
 tooltip  : |
-Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk (Rapid Annotations using Subsystems Technology toolkit).
+    Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk (Rapid Annotations using Subsystems Technology toolkit).
+
 screenshots :
     []
 
