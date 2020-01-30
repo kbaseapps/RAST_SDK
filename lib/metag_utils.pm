@@ -33,8 +33,6 @@ my $ws_url = $config->{'workspace-url'};
 
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
-my $genome_api = new installed_clients::GenomeAnnotationAPIClient($call_back_url);
-my $au = new installed_clients::AssemblyUtilClient($call_back_url);
 my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
 my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 
