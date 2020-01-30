@@ -17,6 +17,7 @@ use Config::IniFiles;
 use Data::Dumper;
 use File::Spec::Functions qw(catfile);
 use File::Copy;
+use Carp qw( croak );
 
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::AssemblyUtilClient;
@@ -67,7 +68,7 @@ sub build_prodigal_params {
 
     my $mode = 'meta';
 
-    $prd_params = {
+    my $prd_params = {
         input_file => $fasta_file,       # -i (FASTA/Genbank file)
         trans_fle => $trans_file,        # -a (Write protein translations to $trans_file)
         nuc_file => $nuc_file,           # -d (Write nucleotide sequences of genes to $nuc_file)
@@ -80,7 +81,7 @@ sub build_prodigal_params {
         quiet => 0,                      # -q (Run quietly)
         start_file => $start_file,       # -s (Write all potential genes (with scores) to $start_file)
         training_file => $training_file  # -t (Write a training file (if none exists); otherwise, read and use $training_file)
-    }
+    };
     return $prd_params;
 }
 
@@ -216,8 +217,9 @@ sub parse_prodigal_results {
     my $fh_sco;
     my $encoded_tbl = [];
     open($fh_sco, q(<), $output_file) or die qq(Could not read-open sco_file=\"$output_file\");
-    while (defined($line = <$fh_sco>)) {
+    while (defined(my $line = <$fh_sco>)) {
         chomp $line;
+        my $contig_id;
         if ($line =~ m/^\# Sequence Data:.*seqhdr=\"([^\"]+)\"/o) {
             $contig_id = $1;
             next;
@@ -246,11 +248,11 @@ sub parse_prodigal_results {
                 push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
             }
             else {
-                warn "No translation found for \"$sco_file\" line: $line\n";
+                warn "No translation found for \"$output_file\" line: $line\n";
             }
         }
         else {
-            warn "Could not parse calls for \"$sco_file\" line: $line\n";
+            warn "Could not parse calls for \"$output_file\" line: $line\n";
         }
     }
     close($fh_sco);
@@ -273,7 +275,7 @@ sub write_fasta_from_metagenome {
     my $fa_file = get_fasta_from_assembly($genome_obj->{assembly_ref});
     copy($fa_file, $fasta_filename);
 
-    unless (-s $fasta_filename) print "Fasta file is empty.";
+    unless (-s $fasta_filename) { print "Fasta file is empty.";}
     return $fasta_filename;
 }
 
@@ -283,7 +285,7 @@ sub write_gff_from_metagenome {
     my $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
     move($gff_result->{file_path}, $gff_filename);
 
-    unless (-s $gff_filename) print "GFF is empty ";
+    unless (-s $gff_filename) {print "GFF is empty ";}
     return $gff_filename;
 }
 
@@ -409,14 +411,14 @@ sub rast_metagenome {
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
-    }
+    };
 
     my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
     my $input_fasta_file = catfile($rast_scratch, 'input.fasta');
     my $trans_file = catfile($rast_scratch, 'protein_translation');
     my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
     my $output_file = catfile($rast_scratch, 'prodigal_out');
-    # my $start_file = catfile($rast_scratch, 'start_file');
+    my $start_file = catfile($rast_scratch, 'start_file');
     my $training_file = '';  # catfile($rast_scratch, 'training_file');
 
     my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
@@ -434,7 +436,7 @@ sub rast_metagenome {
 
         if (run_prodigal($prodigal_params) == 0) {
             # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file/$start_file/$training_file
-            $prodigal_result = parse_prodigal_results($trans_file, $nuc_file, $output_file);
+            my $prodigal_result = parse_prodigal_results($trans_file, $nuc_file, $output_file);
 
             my $count = @$prodigal_result;
             my $cur_id_suffix = 1;
@@ -442,7 +444,7 @@ sub rast_metagenome {
                 # print Data::Dumper->Dump($entry)."\n";
                 my ($contig, $beg, undef, $strand, $length, $translation) = @$entry;
 
-                my $id = join(".", “peg“, $cur_id_suffix);
+                my $id = join(".", "peg", $cur_id_suffix);
                 $cur_id_suffix++;
                 push(@{$inputgenome->{features}}, {
                         id                  => $id,
@@ -486,14 +488,14 @@ sub rast_metagenome {
     my $new_gff_file = add_functions_to_gff($gn_gff_file, $ftrs);
 
     ## call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
-    my $annotated_metag_ref = $gfu->fasta_gff_to_metagenome {
-            "fasta_file" => {'path' => $gn_fasta_file},
-            "gff_file" => {'path'=> $new_gff_file},
+    my $annotated_metag = $gfu->fasta_gff_to_metagenome {
+            "fasta_file" => {'path' => $input_fasta_file},
+            "gff_file" => {'path' => $new_gff_file},
             "genome_name" => $params -> {output_metagenome_name},
             "workspace_name" => $params -> {output_workspace},
             "generate_missing_genes" => True
-    })->{genome_ref};
+    });
 
-    return $annotated_metag_ref;
+    return $annotated_metag->{genome_ref};
 }
 
