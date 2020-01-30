@@ -393,7 +393,7 @@ sub add_functions_to_gff {
     }
 
     # Open a new file to write the @readout_arr back to the file
-    my $new_gff_filename = "new" . $gff_filename;
+    my $new_gff_filename = catfile($rast_scratch, 'new_genome.gff');
     open( $fh, q(>), $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
     # Loop over the array
     foreach (@readout_arr)
@@ -412,6 +412,8 @@ sub rast_metagenome {
     my $inputgenome = {
         features => []
     };
+    my $out_metag_name = $params -> {output_metagenome_name};
+    my $ws = $params -> {output_workspace};
 
     my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
     my $input_fasta_file = catfile($rast_scratch, 'input.fasta');
@@ -491,8 +493,8 @@ sub rast_metagenome {
     my $annotated_metag = $gfu->fasta_gff_to_metagenome {
             "fasta_file" => {'path' => $input_fasta_file},
             "gff_file" => {'path' => $new_gff_file},
-            "genome_name" => $params -> {output_metagenome_name},
-            "workspace_name" => $params -> {output_workspace},
+            "genome_name" => $out_metag_name,
+            "workspace_name" => $ws,
             "generate_missing_genes" => True
     });
 
