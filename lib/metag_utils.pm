@@ -305,7 +305,7 @@ sub write_genome_to_gff {
 }
 
 sub add_functions_to_gff {
-    my ($gff_filename, $functions) = @_;
+    my ($gff_filename, $features) = @_;
 
     my ($fh, $count);
     # Open $gff_filename to read into an array
@@ -414,7 +414,7 @@ sub rast_metagenome {
 			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$ftrs->[$i]->{function})];
 		}
 	}
-    my $new_gff_file = add_functions_to_gff($gn_gff_file, $return->{functions});
+    my $new_gff_file = add_functions_to_gff($gn_gff_file, $ftrs);
 
     ## TODO: call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
     my $annotated_metag_ref = $gfu->fasta_gff_to_metagenome {
