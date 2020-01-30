@@ -305,9 +305,9 @@ sub write_genome_to_gff {
 }
 
 sub add_functions_to_gff {
-    my ($gff_filename, $features) = @_;
+    my ($gff_filename, $ftrs) = @_;
 
-    my ($fh, $count);
+    my $fh;
     # Open $gff_filename to read into an array
     my @readin_arr;
     unless (open( $fh, '<', $gff_filename )) {
@@ -316,13 +316,93 @@ sub add_functions_to_gff {
     chomp(@readin_arr = <$fh>);
     close($fh);
 
-    # TODO: insert the functions into the array @readin_arr
+    ## -- by Seaver: insert the functions into the array @readout_arr
+    # Feature Lookup Hash
+    my %ftrs_function_lookup = ();
+    foreach my $ftr (@$ftrs){
+        next if !exists($ftr->{'functions'});
+        $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
 
-    # Open $gff_filename to write the @readin_array back to the file
+        # Use these lines if the feature is an old type using singular 'function' field
+        #next if !exists($ftr->{'function'});
+        #$ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+    }
+
+    my @readout_arr = ();
+    foreach my $current_line (@readin_arr){
+        my ($contig_id, $source_id, $feature_type, $start, $end,
+	        $score, $strand, $phase, $attributes) = split("\t",$current_line);
+
+        # Some lines in a GFF can be completely empty
+        if(!defined($attributes) || $attributes =~ /^s\s*$/){
+	        push(@readout_arr, $current_line);
+	        next;
+        }
+
+        # Populating with attribute key-value pair
+        # This is where the feature id is from
+        my %ftr_attributes=();
+        my @attr_order=();
+        my $delimiter="=";
+
+        foreach my $attribute (split(";",$attributes)){
+	        chomp $attribute;
+
+            # Sometimes empty string
+	        next if $attribute =~ /^\s*$/;
+
+	        # Use of 1 to limit split as '=' character can also be made available later
+	        # Sometimes lack of "=", assume spaces instead
+	        my ($key,$value)=(undef,undef);
+	        $delimiter="=";
+	        if($attribute =~ /=/){
+	            ($key, $value) = split("=", $attribute, 2);
+	        }elsif($attribute =~ /\s/){
+	            ($key, $value) = split(" ", $attribute, 2);
+	            $delimiter=" ";
+	        }
+
+	        if(!defined($key)){
+	            print "Warning: $attribute not parsed right\n";
+	        }
+
+	        #Force to lowercase in case changes in lookup
+	        $ftr_attributes{lc($key)}=$value;
+	        push(@attr_order,lc($key));
+        }
+
+        # According to the genome loading code, the function must be added to the product attribute (go figure)
+        # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
+        if(!exists($ftr_attributes{'product'})){
+	        push(@attr_order,'product');
+        }
+ 
+        # Note that this overwrites anything that was originally in the 'product' field it it previously existed
+        # Also note that I'm forcing every feature to have at least an empty product field
+        $ftr_attributes{'product'}="";
+
+        #Look for, and add function
+        if(exists($ftrs_function_lookup{$ftr_attributes{'id'}})){
+	        $ftr_attributes{'product'}=$ftrs_function_lookup{$ftr_attributes{'id'}};
+        }
+
+        # Reform the attributes string
+        my @new_attributes=();
+        foreach my $attr (@attr_order){
+	        $attr.=$delimiter.$ftr_attributes{$attr};
+	        push(@new_attributes,$attr);
+        }
+        my $new_attributes=join(";",@new_attributes);
+        my $new_line = join("\t",($contig_id, $source_id, $feature_type, $start, $end,
+			                  $score, $strand, $phase, $new_attributes));
+        push(@readout_arr,$new_line);
+    }
+
+    # Open a new file to write the @readout_arr back to the file
     my $new_gff_filename = "new" . $gff_filename;
     open( $fh, '>', $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
     # Loop over the array
-    foreach (@readin_arr)
+    foreach (@readout_arr)
     {
         print $fh "$_\n";
     }
@@ -330,6 +410,7 @@ sub add_functions_to_gff {
 
     return $new_gff_filename;
 }
+
 
 sub rast_metagenome {
     my $params = @_;
