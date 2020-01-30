@@ -16,7 +16,7 @@ use Bio::KBase::kbaseenv;
 use Config::IniFiles;
 use Data::Dumper;
 use File::Spec::Functions qw(catfile);
-use File::Copy
+use File::Copy;
 
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::AssemblyUtilClient;
