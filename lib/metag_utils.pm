@@ -338,7 +338,8 @@ sub rast_metagenome {
         features => []
     }
 
-    my $fasta_file = catfile($rast_scratch, 'input_contigs.fasta');
+    my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
+    my $input_fasta_file = catfile($rast_scratch, 'input.fasta');
     my $trans_file = catfile($rast_scratch, 'protein_translation');
     my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
     my $output_file = catfile($rast_scratch, 'prodigal_out');
@@ -351,7 +352,7 @@ sub rast_metagenome {
     my $protein_tbl = [];
     if ($info->[0]->[2] =~ /Assembly/) {
         my $prodigal_params = build_prodigal_params($input_obj_ref,
-                                                    $fasta_file,
+                                                    $input_fasta_file,
                                                     $trans_file,
                                                     $nuc_file,
                                                     $output_file,
@@ -390,6 +391,10 @@ sub rast_metagenome {
         if (defined($genome_obj->{features})) {
             push(@{$inputgenome->{features}}, $genome_obj->{features};);
         }
+
+        # generating the fasta and gff files for saving the annotated genome
+        $input_fasta_file = write_genome_to_fasta($input_fasta_file, $input_obj_ref);
+        $gn_gff_file =  write_genome_to_gff($gn_gff_file, $input_obj_ref);
     }
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
@@ -399,11 +404,6 @@ sub rast_metagenome {
                          similarity_parameters => { annotate_hypothetical_only => 1 }}]}
     );
 
-    # generating the fasta and gff files for saving the annotated genome
-    my $gn_fasta_file = catfile($rast_scratch, 'genome.fasta');
-    my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
-    $gn_fasta_file = write_genome_to_fasta($gn_fasta_file, $input_obj_ref);
-    $gn_gff_file =  write_genome_to_gff($gn_gff_file, $input_obj_ref);
 
     my $ftrs = $rasted_genome->{features};
     my $return = {};
