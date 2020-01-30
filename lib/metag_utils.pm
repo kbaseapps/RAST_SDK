@@ -64,10 +64,9 @@ my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 sub build_prodigal_params {
     my ($ref, $fasta_file, $trans_file, $nuc_file, $output_file, $start_file, $training_file) = @_;
 
-    my $output = $au->get_assembly_as_fasta({"ref" => $ref});
+    my $out_file = get_fasta_from_assembly($ref);
+    copy($out_file, $fasta_file) || die "Could not find file: ".$out_file;
 
-    copy($output->{path}, $fasta_file) || die "Could not find file:".$output->{path};
-    # print("Genome is smaller than 25000 bp -- using 'metagenome' mode\n");
     my $mode = 'meta';
 
     $prd_params = {
@@ -261,48 +260,41 @@ sub parse_prodigal_results {
     return $encoded_tbl;
 }
 
+sub get_fasta_from_assembly {
+    my $assembly_ref = @_;
 
-sub write_genome_to_fasta {
-    my ($fasta_filename, $genome_ref) = @_;
+    my $au = new installed_clients::AssemblyUtilClient($call_back_url);
+    my $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
+    return $output->{path};
+}
 
-    my $genome_data = $genome_api.get_genome_v1(
-        {"genomes" => [{"ref" => $genome_ref}], "downgrade" => 0})->{genomes}->[0];
-    my $g_features = $genome_data->{data}->{features};
+sub write_fasta_from_metagenome {
+    my ($fasta_filename, $input_obj_ref) = @_;
 
-    my $fh;
-    open( $fh, '>', $fasta_filename ) || die "Could not open file '$fasta_filename' $!";
+    my $genome_obj = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
+    my $fa_file = get_fasta_from_assembly($genome_obj->{assembly_ref});
+    copy($fa_file, $fasta_filename);
 
-    for (my $i=0; $i < @{$g_features}; $i++) {
-        my $gf = $g_features->[$i];
-        if (!defined($gf->{id}) || !defined($gf->{dna_sequence})) {
-            die "This feature does not have a valid dna sequence.";
-        }
-        else {
-            print $fh ">" . $gf->{id} . "\n" . $gf->{dna_sequence} . "\n";
-        }
-    }
-    close($fh);
-    if (-s $fasta_filename) {
-        print "Finished writing to " . $fasta_filename;
-    }
-    else {
-        print "This genome does not contain features with DNA_SEQUENCES. Fasta file is empty.";
-    }
+    unless (-s $fasta_filename) print "Fasta file is empty.";
     return $fasta_filename;
 }
 
-sub write_genome_to_gff {
+sub write_gff_from_metagenome {
     my ($gff_filename, $genome_ref) = @_;
 
-    my $gff_result = $gfu.genome_to_gff({"genome_ref" => $genome_ref});
-    move($gff_result->{file_path}, $gff_filename) or die "The GFF move operation failed: $!";
+    my $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
+    move($gff_result->{file_path}, $gff_filename);
 
-    unless (-s $gff_filename) {
-        die "Failed to write GFF to " . $gff_filename;
-    }
-
+    unless (-s $gff_filename) print "GFF is empty ";
     return $gff_filename;
 }
+
+## TODO: Given the assembly fasta file and gff file, fetch the protein sequences
+sub assemblyfasta_gff_to_proteins {
+    my ($fa_assembly, $gff, $proteins) = @_;
+
+}
+
 
 sub add_functions_to_gff {
     my ($gff_filename, $ftrs) = @_;
@@ -310,8 +302,8 @@ sub add_functions_to_gff {
     my $fh;
     # Open $gff_filename to read into an array
     my @readin_arr;
-    unless (open( $fh, '<', $gff_filename )) {
-        warn "Could not open file '$gff_filename' $!";
+    unless (open( $fh, q(<), $gff_filename )) {
+        croak "Could not open file '$gff_filename' $!";
     }
     chomp(@readin_arr = <$fh>);
     close($fh);
@@ -379,7 +371,9 @@ sub add_functions_to_gff {
  
         # Note that this overwrites anything that was originally in the 'product' field it it previously existed
         # Also note that I'm forcing every feature to have at least an empty product field
-        $ftr_attributes{'product'}="";
+        if (!defined($ftr_attributes{'product'})) {
+            $ftr_attributes{'product'}="";
+        }
 
         #Look for, and add function
         if(exists($ftrs_function_lookup{$ftr_attributes{'id'}})){
@@ -400,7 +394,7 @@ sub add_functions_to_gff {
 
     # Open a new file to write the @readout_arr back to the file
     my $new_gff_filename = "new" . $gff_filename;
-    open( $fh, '>', $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
+    open( $fh, q(>), $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
     # Loop over the array
     foreach (@readout_arr)
     {
@@ -466,16 +460,20 @@ sub rast_metagenome {
             die "Prodigal run failed.";
         }
     }
-    else {
-        # input is a (meta)genome, get the genome proteins directly from the input
-        my $genome_obj = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
-        if (defined($genome_obj->{features})) {
-            push(@{$inputgenome->{features}}, $genome_obj->{features};);
-        }
+    else {# TODO input is a (meta)genome, get its protein sequences and gene IDs
 
-        # generating the fasta and gff files for saving the annotated genome
-        $input_fasta_file = write_genome_to_fasta($input_fasta_file, $input_obj_ref);
-        $gn_gff_file =  write_genome_to_gff($gn_gff_file, $input_obj_ref);
+        # 1. generating the fasta and gff files for saving the annotated metagenome
+        $input_fasta_file = write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
+        $gn_gff_file = write_gff_from_metagenome($gn_gff_file, $input_obj_ref);
+
+        # 2. fetch protein sequences and gene IDs from the above fasta and gff files
+        my $proteins = assemblyfasta_gff_to_proteins($input_fasta_file, $gn_gff_file);
+        for (my $i=1; $i <= @{$proteins}; $i++) {
+            push(@{$inputgenome->{features}},{
+                id => "peg".$i,
+                protein_translation => $proteins->[$i]
+            });
+        }
     }
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
@@ -487,17 +485,9 @@ sub rast_metagenome {
 
 
     my $ftrs = $rasted_genome->{features};
-    my $return = {};
-    $return->{functions} = [];
-    for (my $i=0; $i < @{$ftrs}; $i++) {
-		$return->{functions}->[$i] = [];
-		if (defined($ftrs->[$i]->{function})) {
-			$return->{functions}->[$i] = [split(/\s*;\s+|\s+[\@\/]\s+/,$ftrs->[$i]->{function})];
-		}
-	}
     my $new_gff_file = add_functions_to_gff($gn_gff_file, $ftrs);
 
-    ## TODO: call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
+    ## call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
     my $annotated_metag_ref = $gfu->fasta_gff_to_metagenome {
             "fasta_file" => {'path' => $gn_fasta_file},
             "gff_file" => {'path'=> $new_gff_file},
