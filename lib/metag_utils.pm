@@ -1,6 +1,6 @@
 # -*- perl -*-
 
-# package metag_utils;
+package metag_utils;
 
 ########################################################################
 # This module is built to handle the annotation of an Assembly
@@ -14,16 +14,14 @@ use warnings;
 
 use Bio::KBase::kbaseenv;
 use Config::IniFiles;
-use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
-use Bio::KBase::GenomeAnnotation::Service;
-use Workspace::WorkspaceClient;
-use AssemblyUtil::AssemblyUtilClient;
-use GenomeFileUtil::GenomeFileUtilClient;
-
 use Data::Dumper;
-use Carp;
 use File::Spec::Functions qw(catfile);
-use File::Copy;
+use File::Copy
+
+use installed_clients::GenomeAnnotationAPIClient;
+use installed_clients::AssemblyUtilClient;
+use installed_clients::GenomeFileUtilClient;
+use installed_clients::WorkspaceClient;
 
 use gjoseqlib;
 
@@ -33,10 +31,10 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = Config::IniFiles->new(-file=>$config_file);
 my $ws_url = $config->{'workspace-url'};
 
-my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-
-my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
+my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
+my $genome_api = new installed_clients::GenomeAnnotationAPIClient($call_back_url);
+my $au = new installed_clients::AssemblyUtilClient($call_back_url);
 my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
 my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 
@@ -334,18 +332,18 @@ sub add_functions_to_gff {
 }
 
 sub rast_metagenome {
-    my ($scratch, $params) = @_;
+    my $params = @_;
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
     }
 
-    my $fasta_file = catfile($scratch, 'input_contigs.fasta');
-    my $trans_file = catfile($scratch, 'protein_translation');
-    my $nuc_file = catfile($scratch, 'nucleotide_seq');
-    my $output_file = catfile($scratch, 'prodigal_out');
-    # my $start_file = catfile($scratch, 'start_file');
-    my $training_file = '';  # catfile($scratch, 'training_file');
+    my $fasta_file = catfile($rast_scratch, 'input_contigs.fasta');
+    my $trans_file = catfile($rast_scratch, 'protein_translation');
+    my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
+    my $output_file = catfile($rast_scratch, 'prodigal_out');
+    # my $start_file = catfile($rast_scratch, 'start_file');
+    my $training_file = '';  # catfile($rast_scratch, 'training_file');
 
     my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
 
@@ -402,8 +400,8 @@ sub rast_metagenome {
     );
 
     # generating the fasta and gff files for saving the annotated genome
-    my $gn_fasta_file = catfile($scratch, 'genome.fasta');
-    my $gn_gff_file = catfile($scratch, 'genome.gff');
+    my $gn_fasta_file = catfile($rast_scratch, 'genome.fasta');
+    my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
     $gn_fasta_file = write_genome_to_fasta($gn_fasta_file, $input_obj_ref);
     $gn_gff_file =  write_genome_to_gff($gn_gff_file, $input_obj_ref);
 
@@ -426,5 +424,7 @@ sub rast_metagenome {
             "workspace_name" => $params -> {output_workspace},
             "generate_missing_genes" => True
     })->{genome_ref};
+
+    return $annotated_metag_ref;
 }
 

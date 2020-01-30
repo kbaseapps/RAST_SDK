@@ -33,6 +33,8 @@ use Bio::KBase::GenomeAnnotation::Service;
 use LWP::UserAgent;
 use HTTP::Request;
 
+use metag_utils;
+
 
 #Initialization function for call
 sub util_initialize_call {
@@ -1828,6 +1830,12 @@ sub annotate_metagenome
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($output);
     #BEGIN annotate_metagenome
+    $metag_ref = metag_utils::rast_metagenome($params);
+    $output = {
+        "output_metagenome_ref" => $metag_ref,
+        "report_name" => "report_name",
+        "report_ref" => undef
+    };
     #END annotate_metagenome
     my @_bad_returns;
     (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
