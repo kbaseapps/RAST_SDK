@@ -1779,7 +1779,7 @@ sub annotate_metagenome
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($output);
     #BEGIN annotate_metagenome
-    $metag_ref = metag_utils::rast_metagenome($params);
+    my $metag_ref = metag_utils::rast_metagenome($params);
     $output = {
         "output_metagenome_ref" => $metag_ref,
         "report_name" => "report_name",
