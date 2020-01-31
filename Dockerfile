@@ -5,7 +5,9 @@ MAINTAINER KBase Developer
 # Insert apt-get instructions here to install
 # any required dependencies for your module.
 
-# RUN apt-get update
+RUN apt-get update && \
+    apt-get install bioperl
+
 RUN cpanm -i Config::IniFiles && \
     cpanm -i UUID::Random && \
     cpanm -i HTML::SimpleLinkExtor && \

@@ -328,22 +328,23 @@ sub fasta_cut {
         while($start < $len)
         {
             $return_str .= substr $fa_str, $start, $line_wrap;
+            $return_str .="\n";
             $start += $line_wrap;
         }
-        return $return_str;
+        return chomp($return_str);
     }
     return "$fa_str";
 }
 
 sub parse_proteins_from_gff_fasta {
-    my ($f_gff, $f_fasta, $f_out, $ftr) = @_;
+    my ($f_gff, $f_fasta, $f_out, $prot_codon_code, $ftr) = @_;
     my %gff_orfs = ();
     my $reject_length = 50;
     my $keep_non_orfs = 0;
-    my $protein_code = 0;
+    my $protein_codon_code = defined($prot_codon_code) ? $prot_codon_code : 11;
     my $include_nulls = 0;
     my $seq_desc = 0;
-    if((0 != $keep_non_orfs) and (0 != $protein_code))
+    if((0 != $keep_non_orfs) and (0 != $protein_codon_code))
     {
         print "**WARNING: $0 : non_orfs flag is invalid when translating into protein space --> ignoring\n";
         $keep_non_orfs = 0;
@@ -403,7 +404,7 @@ sub parse_proteins_from_gff_fasta {
                     }
                     push @proteins, $pro_entry;
                     print $out_fh $pro_entry."\n";
-                    $pro_entry = fasta_cut($this_seq, $protein_code, $line_wrap);
+                    $pro_entry = fasta_cut($this_seq, $protein_codon_code, $line_wrap);
                     push @proteins, $pro_entry;
                     print $out_fh $pro_entry."\n";
                 }
@@ -416,7 +417,7 @@ sub parse_proteins_from_gff_fasta {
                     }
                     push @proteins, $pro_entry;
                     print $out_fh $pro_entry."\n";
-                    $pro_entry = fasta_cut(revcompl($this_seq), $protein_code, $line_wrap);
+                    $pro_entry = fasta_cut(revcompl($this_seq), $protein_codon_code, $line_wrap);
                     push @proteins, $pro_entry;
                     print $out_fh $pro_entry."\n";
                 }
@@ -424,7 +425,7 @@ sub parse_proteins_from_gff_fasta {
         }
         elsif($include_nulls) {
             # include anyway
-            $pro_entry =">$seqid"."_1_$seq_length"."_X\n".fasta_cut($seq, $protein_code, $line_wrap);
+            $pro_entry =">$seqid"."_1_$seq_length"."_X\n".fasta_cut($seq, $protein_codon_code, $line_wrap);
             push @proteins, $pro_entry;
             print $out_fh $pro_entry."\n";
         }
@@ -603,7 +604,8 @@ sub rast_metagenome {
         # 2) fetch protein sequences and gene IDs from the above fasta and gff files
         my @proteins = parse_proteins_from_gff_fasta($gn_gff_file,
                                                      $input_fasta_file,
-                                                     $trans_file);
+                                                     $trans_file,
+                                                     11);
         my $i = 1;
         foreach my $prot (@proteins) {
             push(@{$inputgenome->{features}},{
