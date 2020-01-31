@@ -348,6 +348,7 @@ sub parse_proteins_from_gff_fasta {
     my $gff_fh;
     unless (open( $gff_fh, q(<), $f_gff )) {
         croak "Could not open file $f_gff $!";
+    }
 
     while(<$gff_fh>){
         next if ($_ =~ m/^#/);
