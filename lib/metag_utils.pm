@@ -35,9 +35,7 @@ my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = Config::IniFiles->new(-file=>$config_file);
 my $ws_url = $config->{'workspace-url'};
-
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
 my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 
 
@@ -63,17 +61,18 @@ my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 #              the specified training file.
 #         -v:  Print version number and exit.
 #--------------------------------------------------------------------------------
-sub build_prodigal_params {
-    my ($ref, $fasta_file, $trans_file, $nuc_file, $output_file, $start_file, $training_file) = @_;
+sub _build_prodigal_params {
+    my ($ref, $fasta_file, $trans_file, $nuc_file, $output_file,
+        $mode, $start_file, $training_file) = @_;
 
-    my $out_file = get_fasta_from_assembly($ref);
+    my $out_file = _get_fasta_from_assembly($ref);
     copy($out_file, $fasta_file) || die "Could not find file: ".$out_file;
 
     my $prd_params = {
         input_file => $fasta_file,       # -i (FASTA/Genbank file)
         trans_fle => $trans_file,        # -a (Write protein translations to $trans_file)
         nuc_file => $nuc_file,           # -d (Write nucleotide sequences of genes to $nuc_file)
-        output_type => 'sco',            # -f (gbk, gff, or sco, default to gbk)
+        output_type => $mode,            # -f (gbk, gff, or sco, default to gbk)
         output_file => $output_file,     # -o (Specify output file (default writes to stdout).) 
         closed_ends => 1,                # -c (Closed ends.  Do not allow genes to run off edges.)
         N_as_masked_seq => 1,            # -m (Treat runs of N as masked sequence; don't build genes across them.)
@@ -86,7 +85,7 @@ sub build_prodigal_params {
     return $prd_params;
 }
 
-sub run_prodigal {
+sub _run_prodigal {
     my $prodigal_params = @_;
 
     my @cmd = ('/kb/runtime/prodigal');
@@ -166,6 +165,12 @@ sub run_prodigal {
 # >7_8238_9191_+
 # ...
 #
+# ##gff-version  3
+# Sequence Data: seqnum=1;seqlen=4639675;seqhdr="NC_000913 # Escherichia coli str. K-12 substr. MG1655, complete genome."
+# Model Data: version=Prodigal.v3.0.0-devel.1.0;run_type=Normal;model="Ab initio";gc_cont=50.79;transl_table=11;uses_sd=1
+# NC_000913	Prodigal_v3.0.0-devel.1.0	CDS	337	2799	338.7	+	0	ID=1_2;partial=00;start_type=ATG;stop_type=TGA;rbs_motif=GGAG/GAGG;rbs_spacer=5-10bp;gc_cont=0.531;conf=99.99;score=338.70;cscore=322.16;sscore=16.54;rscore=11.24;uscore=1.35;tscore=3.95;
+# ...
+#
 # Protein Translations:
 # The protein translation file consists of all the proteins from all the sequences
 # in multiple FASTA format. The FASTA header begins with a text id consisting of
@@ -185,12 +190,27 @@ sub run_prodigal {
 # DTAGARVLEN*
 # ...
 #--------------------------------------------------------------------------------
-sub parse_prodigal_results {
-    my ($trans_file, $nuc_file, $output_file) = @_;
+sub _parse_prodigal_results {
+    my ($trans_file, $output_file, $mode) = @_;
+    my %transH;
+    if ($mode == 'gff') {
+        my ($gff_contents, $attr_del) = _parse_gff($output_file, '=');
+        return $gff_contents;
+    }
+    elsif ($mode == 'sco') {
+        %transH = _parse_translation($trans_file);
+        my $sco_tbl = _parse_sco($output_file, %transH);
+        return $sco_tbl;
+    }
+    return [];
+}
+
+sub _parse_translation {
+    my ($trans_file) = @_;
 
     my %transH;
     my ($fh_trans, $trans_id, $comment, $seq);
-    $fh_trans = openRead($trans_file);
+    $fh_trans = _openRead($trans_file);
 
     while (($trans_id, $comment, $seq) = &gjoseqlib::read_next_fasta_seq($fh_trans)) {
         my ($contig_id) = ($trans_id =~ m/^(\S+)_\d+$/o);
@@ -214,9 +234,14 @@ sub parse_prodigal_results {
             );
         }
     }
+    return %transH;
+}
+
+sub _parse_sco {
+    my ($sco_file, %transH) = @_;
 
     my $encoded_tbl = [];
-    my $fh_sco = opentRead($output_file);
+    my $fh_sco = openRead($sco_file);
     while (defined(my $line = <$fh_sco>)) {
         chomp $line;
         my $contig_id;
@@ -247,18 +272,20 @@ sub parse_prodigal_results {
                 push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
             }
             else {
-                warn "No translation found for \"$output_file\" line: $line\n";
+                warn "No translation found for \"$sco_file\" line: $line\n";
             }
         }
         else {
-            warn "Could not parse calls for \"$output_file\" line: $line\n";
+            warn "Could not parse calls for \"$sco_file\" line: $line\n";
         }
     }
     close $fh_sco;
     return $encoded_tbl;
 }
 
-sub get_fasta_from_assembly {
+
+
+sub _get_fasta_from_assembly {
     my $assembly_ref = @_;
 
     my $au = new installed_clients::AssemblyUtilClient($call_back_url);
@@ -266,18 +293,19 @@ sub get_fasta_from_assembly {
     return $output->{path};
 }
 
-sub write_fasta_from_metagenome {
+sub _write_fasta_from_metagenome {
     my ($fasta_filename, $input_obj_ref) = @_;
 
+    my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     my $genome_obj = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
-    my $fa_file = get_fasta_from_assembly($genome_obj->{assembly_ref});
+    my $fa_file = _get_fasta_from_assembly($genome_obj->{assembly_ref});
     copy($fa_file, $fasta_filename);
 
-    unless (-s $fasta_filename) { print "Fasta file is empty.";}
+    unless (-s $fasta_filename) {print "Fasta file is empty.";}
     return $fasta_filename;
 }
 
-sub write_gff_from_metagenome {
+sub _write_gff_from_metagenome {
     my ($gff_filename, $genome_ref) = @_;
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
@@ -289,181 +317,38 @@ sub write_gff_from_metagenome {
 }
 
 #----FILE IO ----#
-sub openWrite {
+sub _openWrite {
     # Open a file for writing
     my ($fn) = @_;
     open my $fh, qw(>), $fn or croak "**ERROR: could not open file: $fn for writing $!\n";
     return $fh;
 }
 
-sub openRead {
+sub _openRead {
     # Open a file for reading
     my ($fn) = @_;
     open my $fh, qw(<), $fn or croak "**ERROR: could not open file: $fn for reading $!\n";
     return $fh;
 }
 
-##------ subs for converting fasta and gff files into protein sequences
-sub revcompl {
-    my ($seq) = @_;
-    $seq =~ tr/ACGTacgt/TGCAtgca/;
-    return scalar reverse $seq;
-}
-
-sub fasta_cut {
-    # Cut up a fasta sequence
-    my ($fa_str, $prot, $line_wrap) =  @_;
-
-    # translate if need be
-    if(0 != $prot) {
-        my $codon_table  = Bio::Tools::CodonTable -> new ( -id => $prot );
-        $fa_str = $codon_table->translate($fa_str);
-    }
-
-    # wrap the line if need be
-    if(0 != $line_wrap) {
-        my $return_str = "";
-        my $len = length $fa_str;
-        my $start = 0;
-        while($start < $len)
-        {
-            $return_str .= substr $fa_str, $start, $line_wrap;
-            $return_str .="\n";
-            $start += $line_wrap;
-        }
-        return chomp($return_str);
-    }
-    return "$fa_str";
-}
-
-sub parse_proteins_from_gff_fasta {
-    my ($f_gff, $f_fasta, $f_out, $prot_codon_code, $ftr) = @_;
-    my %gff_orfs = ();
-    my $reject_length = 50;
-    my $keep_non_orfs = 0;
-    my $protein_codon_code = defined($prot_codon_code) ? $prot_codon_code : 11;
-    my $include_nulls = 0;
-    my $seq_desc = 0;
-    if((0 != $keep_non_orfs) and (0 != $protein_codon_code))
-    {
-        print "**WARNING: $0 : non_orfs flag is invalid when translating into protein space --> ignoring\n";
-        $keep_non_orfs = 0;
-    }
-    my $line_wrap = 80;
-
-    my @proteins = ();
-
-    # Open $f_gff to read in the gff into %gff_orfs
-    my $gff_fh = opentRead($f_gff);
-    while(<$gff_fh>){
-        next if ($_ =~ m/^#/);
-        my ($seqid, undef, $feature, $start, $end,
-            undef, $strand, undef, $attributes) = split;
-        ($attributes) = ($attributes =~ m/(ID|Alias)=([^;]*)/i)[1];
-        push @{$gff_orfs{$seqid}}, [$start, $end, $strand, $attributes, $feature];
-    }
-    close $gff_fh;
-
-    # open the output file
-    my $out_fh = openWrite($f_out);
-
-    # Read in the fasta
-    my $seqio = Bio::SeqIO->new( -file => $f_fasta, -format => 'fasta' ) or croak "**ERROR: Could not open FASTA file: $f_fasta $!\n";
-    while(my $sobj = $seqio->next_seq)
-    {
-        my $seqid = $sobj->id;
-        my $seq = $sobj->seq;
-        my $seq_length = $sobj->length;
-        my $pro_entry;
-
-        # make sure this guy has an annotation
-        if(defined($gff_orfs{$seqid})) {
-            for(@{$gff_orfs{$seqid}}) {
-                my ($start, $end, $strand, $attributes, $feature) = @$_;
-
-                next if (defined $ftr && $ftr !~ m/$feature/);
-
-                # work out the length of the sub string
-                my $length = $end - $start + 1;
-
-                # check if he's long enough
-                if($length < $reject_length)
-                {
-                    print "Rejecting: $seqid -> ($start, $end) on $strand. $length is shorter than cutoff!\n";
-                    next;
-                }
-
-                my $this_seq = substr($seq, $start-1, $length);
-                if($strand eq "+")
-                {
-                    if ($seq_desc) {
-                        $pro_entry = ">$attributes | $seqid:$start-$end FORWARD";
-                    }
-                    else {
-                        $pro_entry = ">$seqid"."_$start"."_$end"."_F";
-                    }
-                    push @proteins, $pro_entry;
-                    print $out_fh $pro_entry."\n";
-                    $pro_entry = fasta_cut($this_seq, $protein_codon_code, $line_wrap);
-                    push @proteins, $pro_entry;
-                    print $out_fh $pro_entry."\n";
-                }
-                else {
-                    if ($seq_desc) {
-                        $pro_entry = ">$attributes | $seqid:$start-$end REVERSE";
-                    }
-                    else {
-                        $pro_entry = ">$seqid"."_$start"."_$end"."_R";
-                    }
-                    push @proteins, $pro_entry;
-                    print $out_fh $pro_entry."\n";
-                    $pro_entry = fasta_cut(revcompl($this_seq), $protein_codon_code, $line_wrap);
-                    push @proteins, $pro_entry;
-                    print $out_fh $pro_entry."\n";
-                }
-            }
-        }
-        elsif($include_nulls) {
-            # include anyway
-            $pro_entry =">$seqid"."_1_$seq_length"."_X\n".fasta_cut($seq, $protein_codon_code, $line_wrap);
-            push @proteins, $pro_entry;
-            print $out_fh $pro_entry."\n";
-        }
-    }
-    close $out_fh;
-    return @proteins;
-}
-
-
-sub add_functions_to_gff {
-    my ($gff_filename, $ftrs) = @_;
+##----subs for parsing GFF by Seaver----##
+sub _parse_gff {
+    my ($gff_filename, $attr_delimiter) = shift;
 
     # Open $gff_filename to read into an array
-    my @readin_arr;
-    my $fh = openRead( $gff_filename);
-    chomp(@readin_arr = <$fh>);
-    close $fh;
+    my $fh = _openRead($gff_filename);
+    my @gff_lines=();
+    chomp(@gff_lines = <$fh>);
+    close($fh);
 
-    ## -- by Seaver: insert the functions into the array @readout_arr
-    # Feature Lookup Hash
-    my %ftrs_function_lookup = ();
-    foreach my $ftr (@$ftrs){
-        next if !exists($ftr->{'functions'});
-        $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
-
-        # Use these lines if the feature is an old type using singular 'function' field
-        #next if !exists($ftr->{'function'});
-        #$ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
-    }
-
-    my @readout_arr = ();
-    foreach my $current_line (@readin_arr){
+    my @gff_contents=();
+    foreach my $current_line (@gff_lines){
         my ($contig_id, $source_id, $feature_type, $start, $end,
             $score, $strand, $phase, $attributes) = split("\t",$current_line);
 
-        # Some lines in a GFF can be completely empty
+        #Some lines in a GFF can have an empty attributes column
         if(!defined($attributes) || $attributes =~ /^s\s*$/) {
-            push(@readout_arr, $current_line);
+            push(@gff_contents,[split("\t",$current_line)]);
             next;
         }
 
@@ -471,8 +356,6 @@ sub add_functions_to_gff {
         # This is where the feature id is from
         my %ftr_attributes=();
         my @attr_order=();
-        my $delimiter="=";
-
         foreach my $attribute (split(";",$attributes)) {
             chomp $attribute;
 
@@ -482,12 +365,12 @@ sub add_functions_to_gff {
             # Use of 1 to limit split as '=' character can also be made available later
             # Sometimes lack of "=", assume spaces instead
             my ($key,$value)=(undef,undef);
-            $delimiter="=";
-            if($attribute =~ /=/) {
+            $attr_delimiter="=";
+            if ($attribute =~ /=/) {
                 ($key, $value) = split("=", $attribute, 2);
-            }elsif($attribute =~ /\s/) {
+            } elsif($attribute =~ /\s/) {
                 ($key, $value) = split(" ", $attribute, 2);
-                $delimiter=" ";
+                $attr_delimiter=" ";
             }
 
             if(!defined($key)) {
@@ -499,46 +382,154 @@ sub add_functions_to_gff {
             push(@attr_order,lc($key));
         }
 
-        # According to the genome loading code, the function must be added to the product attribute (go figure)
-        # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
-        if(!exists($ftr_attributes{'product'})) {
-            push(@attr_order,'product');
-        }
+        my $gff_line_contents = [$contig_id, $source_id, $feature_type, $start, $end,
+                                 $score, $strand, $phase, \%ftr_attributes];
+        push(@gff_contents, $gff_line_contents);
+    }
+    return (\@gff_contents, $attr_delimiter);
+}
+
+
+sub _update_gff_functions_from_features {
+    my ($gff_contents, $features) = @_;
+
+    #Feature Lookup Hash
+    my %ftrs_function_lookup = ();
+    foreach my $ftr (@$features){
+        next if !exists($ftr->{'functions'});
+        $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
  
+        # Use these lines if the feature is an old type using singular 'function' field
+        #next if !exists($ftr->{'function'});
+        #$ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+    }
+
+    my @new_gff_contents=();
+    foreach my $gff_line (@$gff_contents) {
+        if(scalar(@$gff_line) < 9){
+            #No attributes column
+            push(@new_gff_contents,$gff_line);
+            next;
+        }
+
+        my $ftr_attributes = $gff_line->[8];
+
+        # According to the genome loading code, the function must be added to the produce attribute (go figure)
+        # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
         # Note that this overwrites anything that was originally in the 'product' field it it previously existed
         # Also note that I'm forcing every feature to have at least an empty product field
-        if (!defined($ftr_attributes{'product'})) {
-            $ftr_attributes{'product'}="";
-        }
+        $ftr_attributes->{'product'}="";
 
         #Look for, and add function
-        if(exists($ftrs_function_lookup{$ftr_attributes{'id'}})) {
-            $ftr_attributes{'product'}=$ftrs_function_lookup{$ftr_attributes{'id'}};
+        if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
+            $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
         }
 
-        # Reform the attributes string
-        my @new_attributes=();
-        foreach my $attr (@attr_order) {
-            $attr.=$delimiter.$ftr_attributes{$attr};
-            push(@new_attributes,$attr);
-        }
-        my $new_attributes=join(";",@new_attributes);
-        my $new_line = join("\t",($contig_id, $source_id, $feature_type, $start, $end,
-			                  $score, $strand, $phase, $new_attributes));
-        push(@readout_arr,$new_line);
+        $gff_line->[8] = $ftr_attributes;
+        push(@new_gff_contents,$gff_line);
     }
 
-    # Open a new file to write the @readout_arr back to the file
-    my $new_gff_filename = catfile($rast_scratch, 'new_genome.gff');
-    my $new_fh = openWrite($new_gff_filename);
-    # Loop over the array
-    foreach (@readout_arr) {
-        print $new_fh "$_\n";
-    }
-    close $new_fh;
-
-    return $new_gff_filename;
+    return \@new_gff_contents;
 }
+
+sub _write_gff {
+    my ($gff_contents, $gff_filename, $attr_delimiter) = @_;
+
+    # Open $gff_filename to write the @readin_array back to the file
+    my $fh = _openWrite($gff_filename);
+
+    # Loop over the array
+    foreach (@$gff_contents) {
+        if(scalar(@$_)>=9){
+            # Reform the attributes string
+            my $attributes = $_->[8];
+            my @attributes = ();
+            foreach my $key ( sort keys %$attributes ) {
+                my $attr=$key.$attr_delimiter.$attributes->{$key};
+                push(@attributes,$attr);
+            }
+            $_->[8] = join(";",@attributes);
+        }
+
+	print $fh join("\t", @$_)."\n";
+    }
+    close $fh;
+}
+
+
+sub _parse_fasta {
+    my ($fasta_filename) = @_;
+
+    my @fasta_lines = ();
+    # Open $fasta_filename to read into an array
+    my $fh = openRead($fasta_filename);
+    chomp(@fasta_lines = <$fh>);
+    close($fh);
+
+    # Read in the fasta
+    my %fasta_contents = ();
+    my $seqio = Bio::SeqIO->new( -file => $fasta_filename, -format => 'fasta' );
+    while(my $seq_obj = $seqio->next_seq) {
+        $fasta_contents{$seq_obj->id}=$seq_obj->seq;
+    }
+    return \%fasta_contents;
+}
+
+
+sub _extract_cds_sequences_from_fasta {
+    my ($fasta_contents, $gff_contents) = @_;
+
+    my %gene_seqs = ();
+    foreach my $gff_line (@$gff_contents) {
+        #First, there are gff "lines" that are empty
+        if(scalar(@$gff_line)<9) {
+            next;
+        }
+
+        #Secondly, and this is critical, this is assuming that we are looking at the CDS subtype
+        #You really must check with the MAG folks about the subtypes in the GFF file
+        next if $gff_line->[2] !~ /CDS/i;
+
+        #Thirdly, you have to check the contig id
+        my $contig_id = $gff_line->[0];
+        if(!exists($fasta_contents->{$contig_id})) {
+            print "Warning: the contig id $contig_id in the gff file doesn't exist in the fasta file!\n";
+            next;
+        }
+        my $contig_seq = $fasta_contents->{$contig_id};
+
+        my ($start, $end, $strand) = ($gff_line->[3],$gff_line->[4],$gff_line->[6]);
+
+        my $gene_length = $end - $start + 1;
+        my $gene_seq = substr($contig_seq, $start-1, $gene_length);
+
+        # Before 'storing' the sequence, check strand and return reverse complement if necessary
+        # Lifted from BioPerl
+            # https://github.com/bioperl/bioperl-live/blob/master/lib/Bio/PrimarySeqI.pm#L421-L422
+        if($strand eq '-') {
+            $gene_seq =~ tr/acgtrymkswhbvdnxACGTRYMKSWHBVDNX/tgcayrkmswdvbhnxTGCAYRKMSWDVBHNX/;
+            $gene_seq = scalar reverse $gene_seq;
+        }
+
+        $gene_seqs{$gff_line->[8]{'id'}}=$gene_seq;
+    }
+    return \%gene_seqs;
+}
+
+sub _translate_gene_to_protein_sequences {
+    my $gene_seqs = shift;
+    my $codon_table  = Bio::Tools::CodonTable -> new ( -id => 'protein' );
+
+    my %protein_seqs = ();
+    foreach my $gene (sort keys %$gene_seqs){
+        my $gene_seq = $gene_seqs->{$gene};
+            my $protein_seq  = $codon_table->translate($gene_seq);
+        $protein_seqs{$gene}=$protein_seq;
+    }
+    return \%protein_seqs;
+}
+
+##----end from Seaver----##
 
 sub rast_metagenome {
     my $params = @_;
@@ -549,7 +540,8 @@ sub rast_metagenome {
     my $out_metag_name = $params -> {output_metagenome_name};
     my $ws = $params -> {output_workspace};
 
-    my $gn_gff_file = catfile($rast_scratch, 'genome.gff');
+    my $gff_filename = catfile($rast_scratch, 'genome.gff');
+    my $new_gff_file = catfile($rast_scratch, 'new_genome.gff');
     my $input_fasta_file = catfile($rast_scratch, 'input.fasta');
     my $trans_file = catfile($rast_scratch, 'protein_translation');
     my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
@@ -557,21 +549,25 @@ sub rast_metagenome {
     my $start_file = catfile($rast_scratch, 'start_file');
     my $training_file = '';  # catfile($rast_scratch, 'training_file');
 
+    my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
 
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
     # Check if input is an assembly, if so run Prodigal and parse for proteins
     if ($info->[0]->[2] =~ /Assembly/) {
-        my $prodigal_params = build_prodigal_params($input_obj_ref,
+        my $mode = 'gff';
+        my $prodigal_params = _build_prodigal_params($input_obj_ref,
                                                     $input_fasta_file,
                                                     $trans_file,
                                                     $nuc_file,
                                                     $output_file,
+                                                    $mode,
                                                     $start_file,
                                                     $training_file);
 
-        if (run_prodigal($prodigal_params) == 0) {
+        if (_run_prodigal($prodigal_params) == 0) {
             # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file/$start_file/$training_file
-            my $prodigal_result = parse_prodigal_results($trans_file, $nuc_file, $output_file);
+            my $prodigal_result = _parse_prodigal_results($trans_file, $output_file, $mode);
 
             my $count = @$prodigal_result;
             my $cur_id_suffix = 1;
@@ -590,30 +586,36 @@ sub rast_metagenome {
                         protein_translation => $translation
                 });
             }
+            $gff_filename = $output_file;  # assuming Prodigal generates a GFF file
+            $fasta_contents = _parse_fasta($input_fasta_file);
+            ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
         }
         else {
             die "Prodigal run failed.";
         }
     }
     else {# input is a (meta)genome, get its protein sequences and gene IDs
-
-        # 1) generating the fasta and gff files for saving the annotated metagenome
-        $input_fasta_file = write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
-        $gn_gff_file = write_gff_from_metagenome($gn_gff_file, $input_obj_ref);
+        # generating the fasta and gff files for saving the annotated metagenome
+        $input_fasta_file = _write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
+        $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
 
         # 2) fetch protein sequences and gene IDs from the above fasta and gff files
-        my @proteins = parse_proteins_from_gff_fasta($gn_gff_file,
-                                                     $input_fasta_file,
-                                                     $trans_file,
-                                                     11);
-        my $i = 1;
-        foreach my $prot (@proteins) {
+        my $fasta_contents = _parse_fasta($input_fasta_file);
+        ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
+
+        my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
+        my $protein_seqs = _translate_gene_to_protein_sequences($gene_seqs);
+
+        my %gene_id_index=();
+        my $i=1;
+        foreach my $gene (sort keys %$protein_seqs){
             push(@{$inputgenome->{features}},{
                 id => "peg".$i,
-                protein_translation => $prot
+                protein_translation => $protein_seqs->{$gene}
             });
+            $gene_id_index{$i}=$gene;
             $i++;
-        }
+		}
     }
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
@@ -624,9 +626,11 @@ sub rast_metagenome {
     );
 
     my $ftrs = $rasted_genome->{features};
-    my $new_gff_file = add_functions_to_gff($gn_gff_file, $ftrs);
+    my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
 
     # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
+    _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
+
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
     my $annotated_metag = $gfu->fasta_gff_to_metagenome ({
             "fasta_file" => {'path' => $input_fasta_file},
