@@ -190,7 +190,7 @@ sub parse_prodigal_results {
 
     my %transH;
     my ($fh_trans, $trans_id, $comment, $seq);
-    open($fh_trans, q(<), $trans_file) or die qq(Could not read-open \"$trans_file\");
+    $fh_trans = openRead($trans_file);
 
     while (($trans_id, $comment, $seq) = &gjoseqlib::read_next_fasta_seq($fh_trans)) {
         my ($contig_id) = ($trans_id =~ m/^(\S+)_\d+$/o);
@@ -214,10 +214,9 @@ sub parse_prodigal_results {
             );
         }
     }
-    
-    my $fh_sco;
+
     my $encoded_tbl = [];
-    open($fh_sco, q(<), $output_file) or die qq(Could not read-open sco_file=\"$output_file\");
+    my $fh_sco = opentRead($output_file);
     while (defined(my $line = <$fh_sco>)) {
         chomp $line;
         my $contig_id;
@@ -233,8 +232,7 @@ sub parse_prodigal_results {
         if (my ($num, $left, $right, $strand) = ($line =~ m/^\>(\d+)_(\d+)_(\d+)_([+-])/o)) {
             my ($beg, $end, $trunc_flag);
             
-            if (my ($seq, $trunc_left, $trunc_right) = @ { $transH{"$contig_id\t$left\t$right\t$strand"} })
-            {
+            if (my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig_id\t$left\t$right\t$strand"}}) {
                 my $len = 1 + $right - $left;
             
                 if ($strand eq q(+)) {
@@ -256,8 +254,7 @@ sub parse_prodigal_results {
             warn "Could not parse calls for \"$output_file\" line: $line\n";
         }
     }
-    close($fh_sco);
-    
+    close $fh_sco;
     return $encoded_tbl;
 }
 
@@ -285,10 +282,25 @@ sub write_gff_from_metagenome {
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
     my $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
-    move($gff_result->{file_path}, $gff_filename);
+    copy($gff_result->{file_path}, $gff_filename);
 
     unless (-s $gff_filename) {print "GFF is empty ";}
     return $gff_filename;
+}
+
+#----FILE IO ----#
+sub openWrite {
+    # Open a file for writing
+    my ($fn) = @_;
+    open my $fh, qw(>), $fn or croak "**ERROR: could not open file: $fn for writing $!\n";
+    return $fh;
+}
+
+sub openRead {
+    # Open a file for reading
+    my ($fn) = @_;
+    open my $fh, qw(<), $fn or croak "**ERROR: could not open file: $fn for reading $!\n";
+    return $fh;
 }
 
 ##------ subs for converting fasta and gff files into protein sequences
@@ -299,21 +311,17 @@ sub revcompl {
 }
 
 sub fasta_cut {
-    #-----
     # Cut up a fasta sequence
-    #
     my ($fa_str, $prot, $line_wrap) =  @_;
 
     # translate if need be
-    if(0 != $prot)
-    {
+    if(0 != $prot) {
         my $codon_table  = Bio::Tools::CodonTable -> new ( -id => $prot );
         $fa_str = $codon_table->translate($fa_str);
     }
 
     # wrap the line if need be
-    if(0 != $line_wrap)
-    {
+    if(0 != $line_wrap) {
         my $return_str = "";
         my $len = length $fa_str;
         my $start = 0;
@@ -345,11 +353,7 @@ sub parse_proteins_from_gff_fasta {
     my @proteins = ();
 
     # Open $f_gff to read in the gff into %gff_orfs
-    my $gff_fh;
-    unless (open( $gff_fh, q(<), $f_gff )) {
-        croak "Could not open file $f_gff $!";
-    }
-
+    my $gff_fh = opentRead($f_gff);
     while(<$gff_fh>){
         next if ($_ =~ m/^#/);
         my ($seqid, undef, $feature, $start, $end,
@@ -360,10 +364,7 @@ sub parse_proteins_from_gff_fasta {
     close $gff_fh;
 
     # open the output file
-    my $out_fh;
-    unless (open( $out_fh, q(>), $f_out )) {
-        croak "Could not open file $f_out $!";
-    }
+    my $out_fh = openWrite($f_out);
 
     # Read in the fasta
     my $seqio = Bio::SeqIO->new( -file => $f_fasta, -format => 'fasta' ) or croak "**ERROR: Could not open FASTA file: $f_fasta $!\n";
@@ -421,8 +422,7 @@ sub parse_proteins_from_gff_fasta {
                 }
             }
         }
-        elsif($include_nulls)
-        {
+        elsif($include_nulls) {
             # include anyway
             $pro_entry =">$seqid"."_1_$seq_length"."_X\n".fasta_cut($seq, $protein_code, $line_wrap);
             push @proteins, $pro_entry;
@@ -437,14 +437,11 @@ sub parse_proteins_from_gff_fasta {
 sub add_functions_to_gff {
     my ($gff_filename, $ftrs) = @_;
 
-    my $fh;
     # Open $gff_filename to read into an array
     my @readin_arr;
-    unless (open( $fh, q(<), $gff_filename )) {
-        croak "Could not open file '$gff_filename' $!";
-    }
+    my $fh = openRead( $gff_filename);
     chomp(@readin_arr = <$fh>);
-    close($fh);
+    close $fh;
 
     ## -- by Seaver: insert the functions into the array @readout_arr
     # Feature Lookup Hash
@@ -461,12 +458,12 @@ sub add_functions_to_gff {
     my @readout_arr = ();
     foreach my $current_line (@readin_arr){
         my ($contig_id, $source_id, $feature_type, $start, $end,
-	        $score, $strand, $phase, $attributes) = split("\t",$current_line);
+            $score, $strand, $phase, $attributes) = split("\t",$current_line);
 
         # Some lines in a GFF can be completely empty
-        if(!defined($attributes) || $attributes =~ /^s\s*$/){
-	        push(@readout_arr, $current_line);
-	        next;
+        if(!defined($attributes) || $attributes =~ /^s\s*$/) {
+            push(@readout_arr, $current_line);
+            next;
         }
 
         # Populating with attribute key-value pair
@@ -475,36 +472,36 @@ sub add_functions_to_gff {
         my @attr_order=();
         my $delimiter="=";
 
-        foreach my $attribute (split(";",$attributes)){
-	        chomp $attribute;
+        foreach my $attribute (split(";",$attributes)) {
+            chomp $attribute;
 
             # Sometimes empty string
-	        next if $attribute =~ /^\s*$/;
+            next if $attribute =~ /^\s*$/;
 
-	        # Use of 1 to limit split as '=' character can also be made available later
-	        # Sometimes lack of "=", assume spaces instead
-	        my ($key,$value)=(undef,undef);
-	        $delimiter="=";
-	        if($attribute =~ /=/){
-	            ($key, $value) = split("=", $attribute, 2);
-	        }elsif($attribute =~ /\s/){
-	            ($key, $value) = split(" ", $attribute, 2);
-	            $delimiter=" ";
-	        }
+            # Use of 1 to limit split as '=' character can also be made available later
+            # Sometimes lack of "=", assume spaces instead
+            my ($key,$value)=(undef,undef);
+            $delimiter="=";
+            if($attribute =~ /=/) {
+                ($key, $value) = split("=", $attribute, 2);
+            }elsif($attribute =~ /\s/) {
+                ($key, $value) = split(" ", $attribute, 2);
+                $delimiter=" ";
+            }
 
-	        if(!defined($key)){
-	            print "Warning: $attribute not parsed right\n";
-	        }
+            if(!defined($key)) {
+                print "Warning: $attribute not parsed right\n";
+            }
 
-	        #Force to lowercase in case changes in lookup
-	        $ftr_attributes{lc($key)}=$value;
-	        push(@attr_order,lc($key));
+            #Force to lowercase in case changes in lookup
+            $ftr_attributes{lc($key)}=$value;
+            push(@attr_order,lc($key));
         }
 
         # According to the genome loading code, the function must be added to the product attribute (go figure)
         # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
-        if(!exists($ftr_attributes{'product'})){
-	        push(@attr_order,'product');
+        if(!exists($ftr_attributes{'product'})) {
+            push(@attr_order,'product');
         }
  
         # Note that this overwrites anything that was originally in the 'product' field it it previously existed
@@ -514,15 +511,15 @@ sub add_functions_to_gff {
         }
 
         #Look for, and add function
-        if(exists($ftrs_function_lookup{$ftr_attributes{'id'}})){
-	        $ftr_attributes{'product'}=$ftrs_function_lookup{$ftr_attributes{'id'}};
+        if(exists($ftrs_function_lookup{$ftr_attributes{'id'}})) {
+            $ftr_attributes{'product'}=$ftrs_function_lookup{$ftr_attributes{'id'}};
         }
 
         # Reform the attributes string
         my @new_attributes=();
-        foreach my $attr (@attr_order){
-	        $attr.=$delimiter.$ftr_attributes{$attr};
-	        push(@new_attributes,$attr);
+        foreach my $attr (@attr_order) {
+            $attr.=$delimiter.$ftr_attributes{$attr};
+            push(@new_attributes,$attr);
         }
         my $new_attributes=join(";",@new_attributes);
         my $new_line = join("\t",($contig_id, $source_id, $feature_type, $start, $end,
@@ -532,17 +529,15 @@ sub add_functions_to_gff {
 
     # Open a new file to write the @readout_arr back to the file
     my $new_gff_filename = catfile($rast_scratch, 'new_genome.gff');
-    open( $fh, q(>), $new_gff_filename ) || die "Could not open file '$new_gff_filename' $!";
+    my $new_fh = openWrite($new_gff_filename);
     # Loop over the array
-    foreach (@readout_arr)
-    {
-        print $fh "$_\n";
+    foreach (@readout_arr) {
+        print $new_fh "$_\n";
     }
-    close $fh;
+    close $new_fh;
 
     return $new_gff_filename;
 }
-
 
 sub rast_metagenome {
     my $params = @_;
