@@ -419,7 +419,7 @@ sub _update_gff_functions_from_features {
 	#
 	# If the gene already has a function and RAST fails to reannotate it, keep the original function.
 	if (!defined($ftr_attributes{'product'})) {
-            $ftr_attributes{'product'} = “”;
+            $ftr_attributes{'product'} = "";
         }
 
         #Look for, and add function
