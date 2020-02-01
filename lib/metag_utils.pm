@@ -283,8 +283,6 @@ sub _parse_sco {
     return $encoded_tbl;
 }
 
-
-
 sub _get_fasta_from_assembly {
     my $assembly_ref = @_;
 
@@ -599,7 +597,7 @@ sub rast_metagenome {
         $input_fasta_file = _write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
         $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
 
-        # 2) fetch protein sequences and gene IDs from the above fasta and gff files
+        # fetch protein sequences and gene IDs from the above fasta and gff files
         my $fasta_contents = _parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
 
@@ -615,8 +613,9 @@ sub rast_metagenome {
             });
             $gene_id_index{$i}=$gene;
             $i++;
-		}
+        }
     }
+
     # Call RAST to annotate the proteins/genome
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
     my $rasted_genome = $rast_client->run_pipeline($inputgenome,
