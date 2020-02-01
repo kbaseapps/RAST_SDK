@@ -416,11 +416,7 @@ sub _update_gff_functions_from_features {
         # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
         # Note that this overwrites anything that was originally in the 'product' field it it previously existed
         # Also note that I'm forcing every feature to have at least an empty product field
-	#
-	# If the gene already has a function and RAST fails to reannotate it, keep the original function.
-	if (!defined($ftr_attributes{‘product’})) {
-            $ftr_attributes{‘product’} = “”;
-        }
+        $ftr_attributes->{'product'}="";
 
         #Look for, and add function
         if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
