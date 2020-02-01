@@ -62,8 +62,11 @@ my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 #         -v:  Print version number and exit.
 #--------------------------------------------------------------------------------
 sub _build_prodigal_params {
-    my ($fasta_file, $trans_file, $nuc_file, $output_file,
+    my ($ref, $fasta_file, $trans_file, $nuc_file, $output_file,
         $mode, $start_file, $training_file) = @_;
+
+    my $out_file = _get_fasta_from_assembly($ref);
+    copy($out_file, $fasta_file) || die "Could not find file: ".$out_file;
 
     my $prd_params = {
         input_file => $fasta_file,       # -i (FASTA/Genbank file)
@@ -554,17 +557,15 @@ sub rast_metagenome {
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
     # Check if input is an assembly, if so run Prodigal and parse for proteins
     if ($info->[0]->[2] =~ /Assembly/) {
-	my $out_file = _get_fasta_from_assembly($input_obj_ref);
-	copy($out_file, $input_fasta_file) || die "Could not find file: ".$out_file;
-
         my $mode = 'gff';
-        my $prodigal_params = _build_prodigal_params($input_fasta_file,
-                                                     $trans_file,
-                                                     $nuc_file,
-                                                     $output_file,
-                                                     $mode,
-                                                     $start_file,
-                                                     $training_file);
+        my $prodigal_params = _build_prodigal_params($input_obj_ref,
+                                                    $input_fasta_file,
+                                                    $trans_file,
+                                                    $nuc_file,
+                                                    $output_file,
+                                                    $mode,
+                                                    $start_file,
+                                                    $training_file);
 
         if (_run_prodigal($prodigal_params) == 0) {
             # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file/$start_file/$training_file
