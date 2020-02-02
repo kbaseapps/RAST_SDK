@@ -27,6 +27,7 @@ use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
+use installed_clients::KBaseReportClient;
 
 require 'gjoseqlib.pm';
 
@@ -115,7 +116,7 @@ sub _run_prodigal {
     my @cmd = @_;
     my $ret = system(@cmd);
     unless ($ret == 0) {
-        die "Prodigal run failed.";
+        croak "**ERROR: Prodigal run failed: $!\n"
     }
     return 0;
 }
@@ -308,7 +309,34 @@ sub _write_gff_from_metagenome {
     return $gff_filename;
 }
 
-#----FILE IO ----#
+sub _save_metagenome {
+    # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
+    my ($params, $fasta_file, $gff_file) = @_;
+
+    my $out_metag_name = $params -> {output_metagenome_name};
+    my $ws = $params -> {output_workspace};
+    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+
+    my $annotated_metag = $gfu->fasta_gff_to_metagenome ({
+            "fasta_file" => {'path' => $fasta_file},
+            "gff_file" => {'path' => $gff_file},
+            "genome_name" => $out_metag_name,
+            "workspace_name" => $ws,
+            "generate_missing_genes" => 1
+    });
+
+    return $annotated_metag->{genome_ref};
+}
+
+
+sub _generate_report {
+    my $gn_ref = @_;
+
+    my $kbr = new installed_clients::KBaseReportClient($call_back_url);
+    #TODO
+}
+
+##----FILE IO ----##
 sub _openWrite {
     # Open a file for writing
     my ($fn) = @_;
@@ -522,20 +550,16 @@ sub _translate_gene_to_protein_sequences {
     return \%protein_seqs;
 }
 
-##----end from Seaver----##
-
+##----main function----##
 sub rast_metagenome {
     my $params = @_;
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
     };
-    my $out_metag_name = $params -> {output_metagenome_name};
-    my $ws = $params -> {output_workspace};
 
     my $output_type = 'gff';
     my $gff_filename = catfile($rast_scratch, 'genome.gff');
-    my $new_gff_file = catfile($rast_scratch, 'new_genome.gff');
     my $input_fasta_file = catfile($rast_scratch, 'prodigal_input.fasta');
     my $trans_file = catfile($rast_scratch, 'protein_translation');
     my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
@@ -595,11 +619,11 @@ sub rast_metagenome {
         }
     }
     else {# input is a (meta)genome, get its protein sequences and gene IDs
-        # generating the fasta and gff files for saving the annotated metagenome
+        # generating the fasta and gff files
         $input_fasta_file = _write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
         $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
 
-        # fetch protein sequences and gene IDs from the above fasta and gff files
+        # fetch protein sequences and gene IDs from fasta and gff files
         $fasta_contents = _parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
 
@@ -628,18 +652,10 @@ sub rast_metagenome {
 
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
+
+    my $new_gff_file = catfile($rast_scratch, 'new_genome.gff');
     _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-    my $annotated_metag = $gfu->fasta_gff_to_metagenome ({
-            "fasta_file" => {'path' => $input_fasta_file},
-            "gff_file" => {'path' => $new_gff_file},
-            "genome_name" => $out_metag_name,
-            "workspace_name" => $ws,
-            "generate_missing_genes" => 1
-    });
-
-    return $annotated_metag->{genome_ref};
+    return _save_metagenome($params,$input_fasta_file, $$new_gff_file);
 }
 
