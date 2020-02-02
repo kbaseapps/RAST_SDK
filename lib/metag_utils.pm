@@ -28,7 +28,7 @@ use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
 
-use gjoseqlib;
+require 'gjoseqlib.pm';
 
 
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -61,73 +61,63 @@ my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 #              the specified training file.
 #         -v:  Print version number and exit.
 #--------------------------------------------------------------------------------
-sub _build_prodigal_params {
-    my ($fasta_file, $trans_file, $nuc_file, $output_file,
+sub _build_prodigal_cmd {
+    my ($input_file, $trans_file, $nuc_file, $output_file, $output_type,
         $mode, $start_file, $training_file) = @_;
 
-    my $prd_params = {
-        input_file => $fasta_file,       # -i (FASTA/Genbank file)
-        trans_fle => $trans_file,        # -a (Write protein translations to $trans_file)
-        nuc_file => $nuc_file,           # -d (Write nucleotide sequences of genes to $nuc_file)
-        output_type => $mode,            # -f (gbk, gff, or sco, default to gbk)
-        output_file => $output_file,     # -o (Specify output file (default writes to stdout).) 
-        closed_ends => 1,                # -c (Closed ends.  Do not allow genes to run off edges.)
-        N_as_masked_seq => 1,            # -m (Treat runs of N as masked sequence; don't build genes across them.)
-        trans_table => 11,               # -g (Specify a translation table to use (default 11).)
-        procedure => 'meta',             # -p (Select procedure (single or meta).  Default is single.)
-        quiet => 0,                      # -q (Run quietly)
-        start_file => $start_file,       # -s (Write all potential genes (with scores) to $start_file)
-        training_file => $training_file  # -t (Write a training file (if none exists); otherwise, read and use $training_file)
-    };
-    return $prd_params;
+    if (!defined($input_file)) {
+       die "An input FASTA/Genbank file is required for Prodigal to run.\n";
+    }
+    # setting defaults
+    if (!defined($output_type)) {
+        $output_type = 'gff';
+    }
+    if (!defined($mode)) {
+        $output_type = 'meta';
+    }
+    my $pos = rindex($input_file, '/');
+    my $f_path = substr $input_file, 0, $pos;
+    if (!defined($output_file)) {
+        $output_file = join("/", $f_path, 'prodigal_output.'.$output_type);
+    }
+    if (!defined($trans_file)) {
+        $trans_file = join("/", $f_path, 'protein_translation');
+    }
+    if (!defined($nuc_file)) {
+        $nuc_file = join("/", $f_path, '/nucleotide_seq');
+    }
+
+    # building the Prodigal command
+    my @cmd = ('/kb/runtime/prodigal');
+    push @cmd, '-i'; push @cmd, "$input_file";
+    push @cmd, '-f'; push @cmd, "$output_type";
+    push @cmd, '-o'; push @cmd, "$output_file";
+    push @cmd, '-a'; push @cmd, "$trans_file";
+    push @cmd, '-d'; push @cmd, "$nuc_file";
+    push @cmd, '-c';
+    push @cmd, '-g'; push @cmd, 11;
+    push @cmd, '-q';
+    push @cmd, '-p'; push @cmd, "$mode";
+    push @cmd, '-m';
+    if ($start_file) {
+        push @cmd, '-s';
+        push @cmd, "$start_file";
+    }
+    if ($training_file) {
+        push @cmd, '-t';
+        push @cmd, "$training_file";
+    }
+    return @cmd;
 }
 
-sub _run_prodigal {
-    my $prodigal_params = @_;
 
-    my @cmd = ('/kb/runtime/prodigal');
-    if ($prodigal_params->{input_file}) {
-        push @cmd, '-i $prodigal_params->{input_file}';
+sub _run_prodigal {
+    my @cmd = @_;
+    my $ret = system(@cmd);
+    unless ($ret == 0) {
+        die "Prodigal run failed.";
     }
-    else {
-        die "An input FASTA/Genbank file is required for Prodigal to run.\n";
-    }
-    my $out_type = 'gbk';
-    if ($prodigal_params->{output_type}) {
-        $out_type = $prodigal_params->{output_type};
-    }
-    push @cmd, '-f $out_type';
-    if ($prodigal_params->{output_file}) {
-        push @cmd, '-o $prodigal_params->{output_file}.' . $out_type;
-    }
-    else {
-        push @cmd, '-o prodigal_output.' . $out_type;
-    }
-    if ($prodigal_params->{trans_file}) {
-        push @cmd, '-a $prodigal_params->{trans_file}';
-    }
-    if ($prodigal_params->{nuc_file}) {
-        push @cmd, '-d $prodigal_params->{nuc_file}';
-    }
-    if ($prodigal_params->{closed_ends} != 0) {
-        push @cmd, '-c';
-    }
-    if ($prodigal_params->{trans_table} != 11) {
-        push @cmd, '-g $prodigal_params->{trans_table}';
-    }
-    if ($prodigal_params->{procedure} != 'single') {
-        push @cmd, '-p $prodigal_params->{procedure}';
-    }
-    if ($prodigal_params->{start_file}) {
-        push @cmd, '-s $prodigal_params->{start_file}';
-    }
-    if ($prodigal_params->{training_file}) {
-        push @cmd, '-t $prodigal_params->{training_file}';
-    }
-    if ($prodigal_params->{quiet} != 0) {
-        push @cmd, '-q';
-    }
-    return system(@cmd);  # success if return 0
+    return 0;
 }
 
 #--From https://github.com/hyattpd/prodigal/wiki/understanding-the-prodigal-output---
@@ -188,13 +178,13 @@ sub _run_prodigal {
 # ...
 #--------------------------------------------------------------------------------
 sub _parse_prodigal_results {
-    my ($trans_file, $output_file, $mode) = @_;
+    my ($trans_file, $output_file, $output_type) = @_;
     my %transH;
-    if ($mode == 'gff') {
+    if ($output_type == 'gff') {
         my ($gff_contents, $attr_del) = _parse_gff($output_file, '=');
         return $gff_contents;
     }
-    elsif ($mode == 'sco') {
+    elsif ($output_type == 'sco') {
         %transH = _parse_translation($trans_file);
         my $sco_tbl = _parse_sco($output_file, %transH);
         return $sco_tbl;
@@ -234,51 +224,58 @@ sub _parse_translation {
     return %transH;
 }
 
+
 sub _parse_sco {
     my ($sco_file, %transH) = @_;
 
     my $encoded_tbl = [];
-    my $fh_sco = openRead($sco_file);
+    my $fh_sco = _openRead($sco_file);
+    my $contig_id;
     while (defined(my $line = <$fh_sco>)) {
         chomp $line;
-        my $contig_id;
         if ($line =~ m/^\# Sequence Data:.*seqhdr=\"([^\"]+)\"/o) {
-            $contig_id = $1;
+            my @words = split / /, $1;
+            $contig_id = $words[0];
             next;
         }
         
         if ($line =~ m/^\# Model Data/o) {
             next;
         }
-        
-        if (my ($num, $left, $right, $strand) = ($line =~ m/^\>(\d+)_(\d+)_(\d+)_([+-])/o)) {
-            my ($beg, $end, $trunc_flag);
-            
-            if (my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig_id\t$left\t$right\t$strand"}}) {
-                my $len = 1 + $right - $left;
-            
-                if ($strand eq q(+)) {
-                    ($beg, $end) = ($left, $right);
-                    $trunc_flag = "$trunc_left,$trunc_right";
+        if ($contig_id) {
+            if (my ($num, $left, $right, $strand) = ($line =~ m/^\>(\d+)_(\d+)_(\d+)_([+-])/o)) {
+                my ($beg, $end, $trunc_flag);
+                if ($transH{"$contig_id\t$left\t$right\t$strand"}) {
+                    if (my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig_id\t$left\t$right\t$strand"}}) {
+                        my $len = 1 + $right - $left;
+                        if ($strand eq q(+)) {
+                            ($beg, $end) = ($left, $right);
+                            $trunc_flag = "$trunc_left,$trunc_right";
+                        }
+                        else {
+                            ($beg, $end) = ($right, $left);
+                            $trunc_flag = "$trunc_right,$trunc_left";
+                        }
+                        push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
+                    }
+                    else {
+                        warn "No translation found for \"$sco_file\" line: $line\n";
+                    }
                 }
                 else {
-                    ($beg, $end) = ($right, $left);
-                    $trunc_flag = "$trunc_right,$trunc_left";
+                    warn "No key \"$contig_id\t$left\t$right\t$strand\" found for \"$sco_file\" line: $line\n";
                 }
-            
-                push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
             }
             else {
-                warn "No translation found for \"$sco_file\" line: $line\n";
+                warn "Could not parse calls for \"$sco_file\" line: $line\n";
             }
-        }
-        else {
-            warn "Could not parse calls for \"$sco_file\" line: $line\n";
         }
     }
     close $fh_sco;
     return $encoded_tbl;
 }
+
+##----end for prodigal parsing----##
 
 sub _get_fasta_from_assembly {
     my $assembly_ref = @_;
@@ -536,14 +533,15 @@ sub rast_metagenome {
     my $out_metag_name = $params -> {output_metagenome_name};
     my $ws = $params -> {output_workspace};
 
+    my $output_type = 'gff';
     my $gff_filename = catfile($rast_scratch, 'genome.gff');
     my $new_gff_file = catfile($rast_scratch, 'new_genome.gff');
-    my $input_fasta_file = catfile($rast_scratch, 'input.fasta');
+    my $input_fasta_file = catfile($rast_scratch, 'prodigal_input.fasta');
     my $trans_file = catfile($rast_scratch, 'protein_translation');
     my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
-    my $output_file = catfile($rast_scratch, 'prodigal_out');
-    my $start_file = catfile($rast_scratch, 'start_file');
-    my $training_file = '';  # catfile($rast_scratch, 'training_file');
+    my $output_file = catfile($rast_scratch, 'prodigal_output').'.'.$output_type;
+    # my $start_file = catfile($rast_scratch, 'start_file');
+    # my $training_file = '';  # catfile($rast_scratch, 'training_file');
 
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
@@ -554,42 +552,46 @@ sub rast_metagenome {
 
         my $out_file = _get_fasta_from_assembly($input_obj_ref);
         copy($out_file, $input_fasta_file) || die "Could not find file: ".$out_file;
-        my $mode = 'gff';
-        my $prodigal_params = _build_prodigal_params($input_fasta_file,
+        my $mode = 'meta';
+        # cannot specify metagenomic sequence with a training file
+        my @prodigal_cmd = _build_prodigal_cmd($input_fasta_file,
                                                      $trans_file,
                                                      $nuc_file,
                                                      $output_file,
-                                                     $mode,
-                                                     $start_file,
-                                                     $training_file);
+                                                     $output_type,
+                                                     $mode);
 
-        if (_run_prodigal($prodigal_params) == 0) {
-            # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file/$start_file/$training_file
-            my $prodigal_result = _parse_prodigal_results($trans_file, $output_file, $mode);
+        if (_run_prodigal(@prodigal_cmd) == 0) {
+            # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file
+            my $prodigal_result = _parse_prodigal_results($trans_file,
+                                                          $output_file,
+                                                          $output_type);
 
             my $count = @$prodigal_result;
             my $cur_id_suffix = 1;
             foreach my $entry (@$prodigal_result) {
                 # print Data::Dumper->Dump($entry)."\n";
-                my ($contig, $beg, undef, $strand, $length, $translation) = @$entry;
+                my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
+                    $phase, $translation) = @$entry;
 
+                if ($contig =~ /##gff-version/ || $contig =~ /# Model Data:/
+                    || $contig =~ /# Sequence Data:/) {
+                    next;
+                }
                 my $id = join(".", "peg", $cur_id_suffix);
                 $cur_id_suffix++;
                 push(@{$inputgenome->{features}}, {
                         id                  => $id,
-                        type                => 'CDS',
-                        location            => [[ $contig, $beg, $strand, $length ]],
-                        annotator           => 'prodigal',
+                        type                => $ftr_type,
+                        location            => [[ $contig, $beg, $strand, $end ]],
+                        annotator           => $source,
                         annotation          => 'Add feature called by PRODIGAL',
                         protein_translation => $translation
                 });
             }
-            $gff_filename = $output_file;  # assuming Prodigal generates a GFF file
+            copy($output_file, $gff_filename);  # assuming Prodigal generates a GFF file
             $fasta_contents = _parse_fasta($input_fasta_file);
             ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
-        }
-        else {
-            die "Prodigal run failed.";
         }
     }
     else {# input is a (meta)genome, get its protein sequences and gene IDs
@@ -598,7 +600,7 @@ sub rast_metagenome {
         $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
 
         # fetch protein sequences and gene IDs from the above fasta and gff files
-        my $fasta_contents = _parse_fasta($input_fasta_file);
+        $fasta_contents = _parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
 
         my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
@@ -626,10 +628,9 @@ sub rast_metagenome {
 
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
-
-    # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
     _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
+    # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
     my $annotated_metag = $gfu->fasta_gff_to_metagenome ({
             "fasta_file" => {'path' => $input_fasta_file},
