@@ -15,9 +15,10 @@ use warnings;
 use Bio::KBase::kbaseenv;
 use Config::IniFiles;
 use Data::Dumper;
-use File::Spec::Functions qw(catfile);
+use File::Spec::Functions qw(catfile splitpath);
+use File::Path qw(make_path);
 use File::Copy;
-use Carp qw( croak );
+use Carp qw(croak);
 use Bio::SeqIO;
 use Bio::Perl;
 use Bio::Tools::CodonTable;
@@ -37,7 +38,6 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = Config::IniFiles->new(-file=>$config_file);
 my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 
 
 #-------------------------Reference from prodigal command line-------------------
@@ -70,22 +70,21 @@ sub _build_prodigal_cmd {
        die "An input FASTA/Genbank file is required for Prodigal to run.\n";
     }
     # setting defaults
-    if (!defined($output_type)) {
+    if (!defined($output_type) || $output_type eq '') {
         $output_type = 'gff';
     }
-    if (!defined($mode)) {
-        $output_type = 'meta';
+    if (!defined($mode) || $mode eq '') {
+        $mode = 'meta';
     }
-    my $pos = rindex($input_file, '/');
-    my $f_path = substr $input_file, 0, $pos;
-    if (!defined($output_file)) {
-        $output_file = join("/", $f_path, 'prodigal_output.'.$output_type);
+    my($vol, $f_path, $file) = splitpath($input_file);
+    if (!defined($output_file) || $output_file eq '') {
+        $output_file = catfile($f_path, 'prodigal_output.'.$output_type);
     }
-    if (!defined($trans_file)) {
-        $trans_file = join("/", $f_path, 'protein_translation');
+    if (!defined($trans_file) || $trans_file eq '') {
+       $trans_file = catfile($f_path, 'protein_translation');
     }
-    if (!defined($nuc_file)) {
-        $nuc_file = join("/", $f_path, '/nucleotide_seq');
+    if (!defined($nuc_file) || $nuc_file eq '') {
+       $nuc_file = catfile($f_path, 'nucleotide_seq');
     }
 
     # building the Prodigal command
@@ -211,7 +210,7 @@ sub _parse_translation {
             $transH{"$contig_id\t$left\t$right\t$strand"} = [ $seq, $left_trunc, $right_trunc ];
         }
         else {
-            die ("Could not parse record:\n",
+            croak ("Could not parse record:\n",
                  "trans_id=$trans_id\n",
                  "comment=$comment",
                  "left=$left\n",
@@ -349,6 +348,15 @@ sub _openRead {
     my ($fn) = @_;
     open my $fh, qw(<), $fn or croak "**ERROR: could not open file: $fn for reading $!\n";
     return $fh;
+}
+
+sub _create_metag_dir {
+    # create the project directory for metagenome annotation
+    my $rast_scratch = $config->val('RAST_SDK', 'scratch');
+    my $dir = catfile($rast_scratch, "metag_annotation_dir");
+
+    make_path $dir; # it won't make a directory that already exists
+    return $dir;
 }
 
 ##----subs for parsing GFF by Seaver----##
@@ -553,29 +561,32 @@ sub _translate_gene_to_protein_sequences {
 ##----main function----##
 sub rast_metagenome {
     my $params = @_;
+
+    my $metag_dir = _create_metag_dir();
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
     };
 
     my $output_type = 'gff';
-    my $gff_filename = catfile($rast_scratch, 'genome.gff');
-    my $input_fasta_file = catfile($rast_scratch, 'prodigal_input.fasta');
-    my $trans_file = catfile($rast_scratch, 'protein_translation');
-    my $nuc_file = catfile($rast_scratch, 'nucleotide_seq');
-    my $output_file = catfile($rast_scratch, 'prodigal_output').'.'.$output_type;
-    # my $start_file = catfile($rast_scratch, 'start_file');
-    # my $training_file = '';  # catfile($rast_scratch, 'training_file');
+    my $gff_filename = catfile($metag_dir, 'genome.gff');
+    my $input_fasta_file = catfile($metag_dir, 'prodigal_input.fasta');
+    my $trans_file = catfile($metag_dir, 'protein_translation');
+    my $nuc_file = catfile($metag_dir, 'nucleotide_seq');
+    my $output_file = catfile($metag_dir, 'prodigal_output').'.'.$output_type;
+    # my $start_file = catfile($metag_dir, 'start_file');
+    # my $training_file = '';  # catfile($metag_dir, 'training_file');
 
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
 
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+
     # Check if input is an assembly, if so run Prodigal and parse for proteins
     if ($info->[0]->[2] =~ /Assembly/) {
 
         my $out_file = _get_fasta_from_assembly($input_obj_ref);
-        copy($out_file, $input_fasta_file) || die "Could not find file: ".$out_file;
+        copy($out_file, $input_fasta_file) || croak "Copy file failed: $!\n";
         my $mode = 'meta';
         # cannot specify metagenomic sequence with a training file
         my @prodigal_cmd = _build_prodigal_cmd($input_fasta_file,
@@ -653,7 +664,7 @@ sub rast_metagenome {
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
 
-    my $new_gff_file = catfile($rast_scratch, 'new_genome.gff');
+    my $new_gff_file = catfile($metag_dir, 'new_genome.gff');
     _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
     return _save_metagenome($params,$input_fasta_file, $$new_gff_file);
