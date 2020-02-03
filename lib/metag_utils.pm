@@ -327,6 +327,28 @@ sub _save_metagenome {
     return $annotated_metag->{genome_ref};
 }
 
+sub _check_annotation_params {
+    my ($v, $params) = @_;
+    print "Checking parameters:\n". encode_json($params). "\n";
+
+    if (!defined($params->{output_workspace}) || $params->{output_workspace} eq '') {
+        croak "'output_workspace' is required for running rast_metagenome.\n";
+    }
+    elsif ($params->{output_workspace} !~ m/^\w[^:-]*$/) {
+        croak 'Invalid workspace name:"'.$params->{output_workspace}.'"';
+    }
+    if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
+        croak "'object_ref' is required for running rast_metagenome.\n";
+    }
+    elsif ($params->{object_ref} !~ m/^\d+\/\d+\/\d+$/) {
+        croak 'Invalid workspace object reference:"'.$params->{object_ref}.'"';
+    }
+    if (!defined($params->{output_metagenome_name})
+        || $params->{output_metagenome_name} eq '') {
+        $params->{output_metagenome_name} = "rast_annotated_metagenome";
+    }
+    return $params;
+}
 
 sub _generate_report {
     my $gn_ref = @_;
@@ -560,8 +582,9 @@ sub _translate_gene_to_protein_sequences {
 
 ##----main function----##
 sub rast_metagenome {
-    my $params = @_;
+    my $inparams = @_;
 
+    my $params = _check_annotation_params($inparams);
     my $metag_dir = _create_metag_dir();
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
