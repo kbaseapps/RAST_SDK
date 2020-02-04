@@ -9,7 +9,7 @@ use warnings;
 use Workspace::WorkspaceClient;
 use JSON;
 #use File::Copy;
-#use AssemblyUtil::AssemblyUtilClient;
+use installed_clients::AssemblyUtilClient;
 use GenomeFileUtil::GenomeFileUtilClient;
 #use Storable qw(dclone);
 #use Bio::KBase::kbaseenv;
@@ -22,7 +22,6 @@ my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-#my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
 my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
 
 sub get_ws_name {
@@ -83,7 +82,7 @@ sub prepare_assembly {
     my $fasta_temp_path = "/kb/module/work/tmp/$assembly_obj_name";
     copy $fasta_data_path, $fasta_temp_path;
     my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-    my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
+    my $au = new installed_clients::AssemblyUtilClient($call_back_url);
     my $ret = $au->save_assembly_from_fasta({
         file => {path => $fasta_temp_path},
         workspace_name => get_ws_name(),

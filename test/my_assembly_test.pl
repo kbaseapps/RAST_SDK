@@ -8,7 +8,6 @@ use Time::HiRes qw(time);
 use Workspace::WorkspaceClient;
 use JSON;
 use File::Copy;
-use AssemblyUtil::AssemblyUtilClient;
 use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
 use Storable qw(dclone);
 use File::Slurp;
