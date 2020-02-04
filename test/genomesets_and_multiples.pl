@@ -7,7 +7,7 @@ use Time::HiRes qw(time);
 use Workspace::WorkspaceClient;
 use JSON;
 use File::Copy;
-use AssemblyUtil::AssemblyUtilClient;
+use installed_clients::AssemblyUtilClient;
 use GenomeFileUtil::GenomeFileUtilClient;
 use installed_clients::kb_SetUtilitiesClient;
 use Storable qw(dclone);
@@ -35,7 +35,7 @@ my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
+my $au = new installed_clients::AssemblyUtilClient($call_back_url);
 my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
 my $su = new installed_clients::kb_SetUtilitiesClient($call_back_url);
 
