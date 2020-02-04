@@ -1,18 +1,10 @@
 use strict;
 use warnings;
- 
-#use Data::Dumper;
-#use Test::More;
-#use Test::Exception;
-#use Config::Simple;
-#use Time::HiRes qw(time);
-use Workspace::WorkspaceClient;
 use JSON;
-#use File::Copy;
+
+use installed_clients::WorkspaceClient;
 use installed_clients::AssemblyUtilClient;
-use GenomeFileUtil::GenomeFileUtilClient;
-#use Storable qw(dclone);
-#use Bio::KBase::kbaseenv;
+use installed_clients::GenomeFileUtilClient;
 
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -20,9 +12,9 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
+my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
+my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 
 sub get_ws_name {
     if (!defined($ws_name)) {
