@@ -315,8 +315,7 @@ sub _save_metagenome {
     my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
     my $req2 = "Both 'fasta_file' and 'gff_file' are required.\n";
     unless (defined($ws) && defined($out_metag_name) &&
-            defined($fasta_file) && defined($gff_file) &&
-            defined($dir)) {
+            defined($fasta_file) && defined($gff_file)) {
         croak $req_params;
     }
 
