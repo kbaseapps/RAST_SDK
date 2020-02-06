@@ -9,9 +9,10 @@ use installed_clients::GenomeFileUtilClient;
 
 
 use_ok "metag_utils";
-
 use testRASTutil;
 
+
+## global variables
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
@@ -20,7 +21,6 @@ my $ws = undef;
 my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 
-## global variables
 $ws = get_ws_name();
 my $out_name = 'annotated_metag';
 my $scratch = metag_utils::_create_metag_dir();
@@ -30,6 +30,7 @@ my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_shk = 'fasta_file.fa';
 my $gff_shk = 'gff_file.gff';
+my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
 
 sub generate_metagenome {
@@ -51,10 +52,74 @@ sub generate_metagenome {
     return $mg;
 }
 
+
+##-----------------Test Blocks--------------------##
+subtest '_run_prodigal' => sub {
+    my $run_ok = '_run_prodigal_cmd runs ok.\n';
+    my $run_err = 'ERROR Prodigal run failed';
+    my $seq_too_short = 'Error:  Sequence must be 20000 characters';
+    my $cannot_open = "Prodigal returned Error: can't open input file";
+    my $prd_ret = 0;
+
+    my $infile = '';
+    my @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+
+    isnt(metag_utils::_run_prodigal(@p_cmd), 0, $cannot_open);
+
+    $infile = $fasta1;
+    @p_cmd = (
+          'wrong_path/prodigal',
+          '-i',
+          $infile
+    );
+
+    isnt(metag_utils::_run_prodigal(@p_cmd), 0, "Can't exec wrong prodigal cmd.\n");
+
+    @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+    lives_ok {
+        $prd_ret = metag_utils::_run_prodigal(@p_cmd)
+    } $run_ok;
+    isnt($prd_ret, 0, 'Prodigal returned: '.$seq_too_short.'\n');
+
+    @p_cmd = (
+        $prodigal_cmd,
+	'-i',
+	$infile,
+	'-p',
+	'meta'
+    );
+    lives_ok {
+        $prd_ret = metag_utils::_run_prodigal(@p_cmd)
+    } $run_ok;
+    is($prd_ret, 0, 'Prodigal runs ok with -p meta option.\n');
+
+    ##---------A long file takes much longer time!!!!!---------##
+    $infile = $fasta2;
+    @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+    lives_ok {
+        $prd_ret = metag_utils::_run_prodigal(@p_cmd)
+    } $run_ok;
+
+    is($prd_ret, 0, '_run_prodigal successfully returned.\n');
+
+};
+
+
 subtest '_build_prodigal_cmd' => sub {
     my $req = "An input FASTA/Genbank file is required for Prodigal to run.";
     my $set_default_ok = '_build_prodigal_cmd sets the default values ok.';
-    my $prodigal_cmd = '/kb/runtime/prodigal';
     my $outfile_default = 'prodigal_output.gff';
     my $outtype_default = 'gff';
     my $mode_default = 'meta';
@@ -64,7 +129,8 @@ subtest '_build_prodigal_cmd' => sub {
     my $p_input = $fasta1;
     my ($v, $fpath, $f) = splitpath($p_input);
 
-    my @exp_cmd_default = ('/kb/runtime/prodigal',
+    my @exp_cmd_default = (
+          $prodigal_cmd,
           '-i',
           $p_input,
           '-f',
@@ -128,7 +194,6 @@ subtest '_build_prodigal_cmd' => sub {
     cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
 };
 
-
 subtest '_save_metagenome' => sub {
     my $req_params = "Missing required parameters for saving metagenome.\n";
     my $not_found = "file not found.\n";
@@ -173,19 +238,26 @@ subtest '_save_metagenome' => sub {
         $mymetag = metag_utils::_save_metagenome(
              $ws, $out_name, $fasta1, $gff1, $scratch)
     } '__save_metagenome run without errors on short_one.\n';
+    ok (exists $mymetag->{metagenome_ref},
+        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
+    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
+    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
+    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
     
-    my $save_ok = '_save_metagenome runs ok with given parameters';
-    # cmp_deeply($mymetag1->{metagenome_ref}, $exp_metag, $save_ok);
-
     lives_ok {
         $mymetag = metag_utils::_save_metagenome(
              $ws, $out_name, $fasta2, $gff2, $scratch)
-    } '__save_metagenome run without errors on 59111.assembled.\n';
-    # print Dumper($mymetag);
-    
+    } '_save_metagenome runs without errors on 59111.assembled.\n';
+    ok (exists $mymetag->{metagenome_ref},
+        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
+    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
+    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
+    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
+
+    my $save_ok = '_save_metagenome runs ok with given parameters';
     my $ret_metag = generate_metagenome(
              $ws, $out_name, $fasta1, $gff1);
-    print Dumper($ret_metag);
+    # print Dumper($ret_metag);
     # cmp_deeply($ret_metag, $exp_metag, $save_ok);
 
 };
