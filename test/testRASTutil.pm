@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use JSON;
+use File::Copy;
 
 use installed_clients::WorkspaceClient;
 use installed_clients::AssemblyUtilClient;

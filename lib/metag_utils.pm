@@ -14,7 +14,7 @@ use warnings;
 
 use Bio::KBase::kbaseenv;
 use Config::IniFiles;
-use Data::Dumper;
+use Data::Dumper qw(Dumper);
 use File::Spec::Functions qw(catfile splitpath);
 use File::Path qw(make_path);
 use File::Copy;
@@ -22,7 +22,7 @@ use Carp qw(croak);
 use Bio::SeqIO;
 use Bio::Perl;
 use Bio::Tools::CodonTable;
-
+use JSON;
 
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::AssemblyUtilClient;
@@ -309,39 +309,95 @@ sub _write_gff_from_metagenome {
 }
 
 sub _save_metagenome {
-    # call $gfu->fasta_gff_to_metagenome() to save the annotated (meta)genome
-    my ($params, $fasta_file, $gff_file) = @_;
+    my ($ws, $out_metag_name, $fasta_file, $gff_file, $dir) = @_;
 
-    my $out_metag_name = $params -> {output_metagenome_name};
-    my $ws = $params -> {output_workspace};
+    my $req_params = "Missing required parameters for saving metagenome.\n";
+    my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
+    my $req2 = "Both 'fasta_file' and 'gff_file' are required.\n";
+    unless (defined($ws) && defined($out_metag_name) &&
+            defined($fasta_file) && defined($gff_file) &&
+            defined($dir)) {
+        croak $req_params;
+    }
+
+    print "Parameters for saving metegenome-----------------\n";
+    print "Workspace name: $_[0]\n";
+    print "Metagenome name: $_[1]\n";
+    print "Fasta file: $_[2]\n";
+    print "GFF file: $_[3]\n";
+    print "Metagenome dir: $_[4]\n";
+
+    unless (defined($out_metag_name) && defined($ws)) {
+        croak $req1;
+    }
+    unless (defined($fasta_file) && defined($gff_file)) {
+        croak $req2;
+    }
+    unless (-e $fasta_file) {
+        croak "Fasta file not found.\n";
+    }
+    unless (-e $gff_file) {
+        croak "GFF file not found.\n";
+    }
+    unless (-e $dir and -d $dir) {
+        $dir = _create_metag_dir();
+    }
+
+    my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
+    my $gff_path = catfile($dir, "tmp_gff_file.gff");
+
+    copy($fasta_file, $fasta_path) || croak "Copy file failed: $!\n";
+    copy($gff_file, $gff_path) || croak "Copy file failed: $!\n";
+
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-
-    my $annotated_metag = $gfu->fasta_gff_to_metagenome ({
-            "fasta_file" => {'path' => $fasta_file},
-            "gff_file" => {'path' => $gff_file},
+    my $annotated_metag;
+    eval {
+        $annotated_metag = $gfu->fasta_gff_to_metagenome ({
+            "fasta_file" => {'path' => $fasta_path},
+            "gff_file" => {'path' => $gff_path},
             "genome_name" => $out_metag_name,
             "workspace_name" => $ws,
-            "generate_missing_genes" => 1
-    });
-
-    return $annotated_metag->{genome_ref};
+            "generate_missing_genes" => 1});
+    };
+    if ($@) {
+        croak "ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
+    }
+    else {
+        return $annotated_metag;
+    }
 }
 
 sub _check_annotation_params {
-    my ($v, $params) = @_;
-    print "Checking parameters:\n". encode_json($params). "\n";
+    my ($params) = @_;
 
+    my $missing_params = "Missing required parameters for annotating metagenome.\n";
+    unless (defined($params)) {
+        print "params is not defined!!!!\n";
+        croak $missing_params;
+    }
+    # print out the content of hash reference
+    print "Checking parameters:\n". Dumper($params). "\n";
+
+    if (!keys %$params) {
+        print "params is empty!!!!\n";
+        croak $missing_params;
+    }
+    my $req1 = "'output_workspace' is required for running rast_metagenome.\n";
+    my $invald1 = "Invalid workspace name:";
     if (!defined($params->{output_workspace}) || $params->{output_workspace} eq '') {
-        croak "'output_workspace' is required for running rast_metagenome.\n";
+        croak $req1;
     }
-    elsif ($params->{output_workspace} !~ m/^\w[^:-]*$/) {
-        croak 'Invalid workspace name:"'.$params->{output_workspace}.'"';
+    elsif ($params->{output_workspace} =~ m/[\\w:.-]/) {
+        croak $invald1.$params->{output_workspace}.'\n';
     }
+
+    my $req2 = "'object_ref' is required for running rast_metagenome.\n";
+    my $invald2 = "Invalid workspace object reference:";
     if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
-        croak "'object_ref' is required for running rast_metagenome.\n";
+        croak $req2;
     }
     elsif ($params->{object_ref} !~ m/^\d+\/\d+\/\d+$/) {
-        croak 'Invalid workspace object reference:"'.$params->{object_ref}.'"';
+        croak $invald2 .$params->{object_ref}.'\n';
     }
     if (!defined($params->{output_metagenome_name})
         || $params->{output_metagenome_name} eq '') {
@@ -349,6 +405,7 @@ sub _check_annotation_params {
     }
     return $params;
 }
+
 
 sub _generate_report {
     my $gn_ref = @_;
@@ -690,6 +747,9 @@ sub rast_metagenome {
     my $new_gff_file = catfile($metag_dir, 'new_genome.gff');
     _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    return _save_metagenome($params,$input_fasta_file, $$new_gff_file);
+    my $out_metag =_save_metagenome($params->{output_workspace},
+                                    $params->{output_metagenome_name},
+                                    $input_fasta_file, $$new_gff_file,$metag_dir);
+    return $out_metag->{genome_ref};
 }
 
