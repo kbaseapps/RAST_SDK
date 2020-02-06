@@ -9,7 +9,7 @@
 }, {
   "module_name" : "GenomeFileUtil",
   "type" : "sdk",
-  "version_tag" : "release"
+  "version_tag" : "dev"
 }, {
   "module_name" : "kb_SetUtilities",
   "type" : "sdk",

@@ -13,6 +13,7 @@ RUN cpanm -i Config::IniFiles && \
     cpanm -i HTML::SimpleLinkExtor && \
     cpanm -i WWW::Mechanize --force && \
     cpanm -i MIME::Base64 && \
+    cpanm -i Test::Most && \
     apt-get -y install nano
 
 ADD ./bootstrap bootstrap
