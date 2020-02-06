@@ -67,7 +67,7 @@ sub _build_prodigal_cmd {
         $mode, $start_file, $training_file) = @_;
 
     if (!defined($input_file)) {
-       die "An input FASTA/Genbank file is required for Prodigal to run.\n";
+       croak "An input FASTA/Genbank file is required for Prodigal to run.\n";
     }
     # setting defaults
     if (!defined($output_type) || $output_type eq '') {
@@ -88,7 +88,7 @@ sub _build_prodigal_cmd {
     }
 
     # building the Prodigal command
-    my @cmd = ('/kb/runtime/prodigal');
+    my @cmd = ('/kb/runtime/bin/prodigal');
     push @cmd, '-i'; push @cmd, "$input_file";
     push @cmd, '-f'; push @cmd, "$output_type";
     push @cmd, '-o'; push @cmd, "$output_file";
@@ -113,11 +113,16 @@ sub _build_prodigal_cmd {
 
 sub _run_prodigal {
     my @cmd = @_;
-    my $ret = system(@cmd);
-    unless ($ret == 0) {
-        croak "**ERROR: Prodigal run failed: $!\n"
+    my $ret = 0;
+    eval {
+        $ret = system(@cmd);
+    };
+    if ($@) {
+        print Dumper($@);
+        croak "ERROR Prodigal run failed: ".$@."\n";
     }
-    return 0;
+    print "Prodigal returns: $ret\n";
+    return $ret;
 }
 
 #--From https://github.com/hyattpd/prodigal/wiki/understanding-the-prodigal-output---
