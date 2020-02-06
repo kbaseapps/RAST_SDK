@@ -20,15 +20,22 @@ my $ws = undef;
 my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 
-
+## global variables
 $ws = get_ws_name();
 my $out_name = 'annotated_metag';
 my $scratch = metag_utils::_create_metag_dir();
+my $fasta1 = 'data/short_one.fa';
+my $gff1 = 'data/short_one.gff';
+my $fasta2 = 'data/metag_test/59111.assembled.fna';
+my $gff2 = 'data/metag_test/59111.assembled.gff';
+my $fasta_shk = 'fasta_file.fa';
+my $gff_shk = 'gff_file.gff';
+
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
-    my $fasta_path = catfile($scratch, "fasta_file.fa");
-    my $gff_path = catfile($scratch, "gff_file.gff");
+    my $fasta_path = catfile($scratch, $fasta_shk);
+    my $gff_path = catfile($scratch, $gff_shk);
 
     copy($fasta, $fasta_path) || croak "Copy file failed: $!\n";
     copy($gff, $gff_path) || croak "Copy file failed: $!\n";
@@ -44,10 +51,87 @@ sub generate_metagenome {
     return $mg;
 }
 
+subtest '_build_prodigal_cmd' => sub {
+    my $req = "An input FASTA/Genbank file is required for Prodigal to run.";
+    my $set_default_ok = '_build_prodigal_cmd sets the default values ok.';
+    my $prodigal_cmd = '/kb/runtime/prodigal';
+    my $outfile_default = 'prodigal_output.gff';
+    my $outtype_default = 'gff';
+    my $mode_default = 'meta';
+    my $trans_default = 'protein_translation';
+    my $nuc_default = 'nucleotide_seq';
+
+    my $p_input = $fasta1;
+    my ($v, $fpath, $f) = splitpath($p_input);
+
+    my @exp_cmd_default = ('/kb/runtime/prodigal',
+          '-i',
+          $p_input,
+          '-f',
+          $outtype_default,
+          '-o',
+          catfile($fpath, $outfile_default),
+          '-a',
+          catfile($fpath, $trans_default),
+          '-d',
+          catfile($fpath, $nuc_default),
+          '-c',
+          '-g',
+          11,
+          '-q',
+          '-p',
+          $mode_default,
+          '-m'
+    );
+
+    throws_ok {
+        metag_utils::_build_prodigal_cmd()
+    } qr/$req/,
+        '_build_prodigal_cmd dies missing required fasta or gbk or gff file.';
+
+    # set default values correctly
+    my @ret_cmd = metag_utils::_build_prodigal_cmd($p_input);
+    isa_ok( \@ret_cmd, 'ARRAY' );
+    #print Dumper(\@ret_cmd);
+    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
+
+    # with specified output file name and the rest default
+    my $out_file = 'out_dir_path/your_outfile';
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, '', '', $out_file, '', '');
+    is($ret_cmd[0], $exp_cmd_default[0], 'Prodigal command set correctly');
+    is($ret_cmd[2], $p_input, 'input file name set correctly');
+    is($ret_cmd[6], $out_file, 'output file name set correctly');
+
+    # with specified output type
+    my $out_type = 'sco';
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, '', '', $out_file, $out_type, '');
+    is($ret_cmd[4], $out_type, 'output type set correctly');
+
+    # with specified translation file name
+    my $trans = 'out_dir_path/your_translation';
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, $trans, '', $out_file, $out_type, '');
+    is($ret_cmd[8], $trans, 'translation file set correctly');
+
+    # with specified nucleotide sequence file name
+    my $nuc = 'out_dir_path/your_nuc';
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, '');
+    is($ret_cmd[10], $nuc, 'nucleotide sequence file set correctly');
+
+    # with specified procedure mode
+    my $md = 'single';
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, $md);
+    is($ret_cmd[16], $md, 'nucleotide sequence file set correctly');
+
+    # set default values for '' and undef inputs
+    @ret_cmd = metag_utils::_build_prodigal_cmd($p_input, undef, '', undef, undef, '');
+    isa_ok( \@ret_cmd, 'ARRAY' );
+    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
+};
+
+
 subtest '_save_metagenome' => sub {
     my $req_params = "Missing required parameters for saving metagenome.\n";
     my $not_found = "file not found.\n";
-    my $gff_not_found = "GFF file not found.\n";
     my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
     my $req2 = "Both 'fasta_file' and 'gff_file' are required.\n";
 
@@ -73,15 +157,13 @@ subtest '_save_metagenome' => sub {
 
     throws_ok {
         metag_utils::_save_metagenome($ws, $out_name,
-             'data/metag_test/nosuchfile.fna',
-             'data/metag_test/59111.assembled.gff')
+                                      'data/nosuchfile.fna', $gff2)
     } qr/$not_found/,
       '_save_metagenome dies because fasta file not found';
 
     throws_ok {
         metag_utils::_save_metagenome($ws, $out_name,
-             'data/metag_test/59111.assembled.fna',
-             'data/metag_test/nosuchfile.gff')
+                                      $fasta2, 'data/nosuchfile.gff')
     } qr/$not_found/,
       '_save_metagenome dies because GFF file not found';
 
@@ -89,10 +171,7 @@ subtest '_save_metagenome' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = metag_utils::_save_metagenome(
-             $ws, $out_name,
-             'data/short_one.fa',
-             'data/short_one.gff',
-             $scratch)
+             $ws, $out_name, $fasta1, $gff1, $scratch)
     } '__save_metagenome run without errors on short_one.\n';
     
     my $save_ok = '_save_metagenome runs ok with given parameters';
@@ -100,25 +179,17 @@ subtest '_save_metagenome' => sub {
 
     lives_ok {
         $mymetag = metag_utils::_save_metagenome(
-             $ws, $out_name,
-             'data/metag_test/59111.assembled.fna',
-             'data/metag_test/59111.assembled.gff',
-             $scratch)
+             $ws, $out_name, $fasta2, $gff2, $scratch)
     } '__save_metagenome run without errors on 59111.assembled.\n';
     # print Dumper($mymetag);
     
     my $ret_metag = generate_metagenome(
-             $ws, $out_name,
-             'data/short_one.fa',
-             'data/short_one.gff');
-
+             $ws, $out_name, $fasta1, $gff1);
     print Dumper($ret_metag);
     # cmp_deeply($ret_metag, $exp_metag, $save_ok);
 
 };
 
-
-=begin
 subtest '_check_annotation_params' => sub {
     my $obj = '1234/56/7';
 
@@ -215,7 +286,6 @@ subtest '_check_annotation_params' => sub {
 
 };
 
-=cut
 
 done_testing();
 
