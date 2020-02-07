@@ -673,7 +673,8 @@ sub _translate_gene_to_protein_sequences {
 ##----main function----##
 sub rast_metagenome {
     my $inparams = @_;
-
+    print "Impl passed rast_metagenome input parameter=\n". Dumper($inparams). "\n";
+    
     my $params = _check_annotation_params($inparams);
     my $metag_dir = _create_metag_dir();
     my $input_obj_ref = $params->{object_ref};
