@@ -1,5 +1,5 @@
 module-name:
-    RAST_SDK
+    RAST_SDK_metaG
 
 module-description:
     SDK version of Genome Annotation which is based on SEED and RAST.
@@ -13,7 +13,7 @@ module-version:
     0.1.6
 
 owners:
-    [chenry,scanon,olson,jjeffryes,umaganapathyswork,landml,gaprice]
+    [chenry,scanon,olson,jjeffryes,umaganapathyswork,landml,gaprice,qzhang]
 
 data-version:
     0.4
