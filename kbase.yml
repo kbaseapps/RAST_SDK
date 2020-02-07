@@ -1,5 +1,5 @@
 module-name:
-    RAST_SDK_metaG
+    RAST_SDK
 
 module-description:
     SDK version of Genome Annotation which is based on SEED and RAST.
