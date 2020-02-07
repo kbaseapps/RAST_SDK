@@ -26,7 +26,7 @@ use Config::IniFiles;
 use warnings;
 use JSON::XS;
 use Digest::MD5;
-use Data::Dumper;
+use Data::Dumper qw(Dumper);
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
