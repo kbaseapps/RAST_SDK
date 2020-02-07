@@ -406,7 +406,7 @@ sub _check_annotation_params {
     if (!defined($params->{output_workspace}) || $params->{output_workspace} eq '') {
         croak $req1;
     }
-    elsif ($params->{output_workspace} =~ m/[\\w:.-]/) {
+    elsif ($params->{output_workspace} !~ m/[^\\w:._-]/) {
         croak $invald1.$params->{output_workspace}.'\n';
     }
 
@@ -415,7 +415,7 @@ sub _check_annotation_params {
     if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
         croak $req2;
     }
-    elsif ($params->{object_ref} !~ m/^\d+\/\d+\/\d+$/) {
+    elsif ($params->{object_ref} !~ m/[^\\w\\|._-]/) {
         croak $invald2 .$params->{object_ref}.'\n';
     }
     if (!defined($params->{output_metagenome_name})

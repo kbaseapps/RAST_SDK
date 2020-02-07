@@ -318,9 +318,7 @@ subtest '_check_annotation_params' => sub {
 
     my $missing_params = "Missing required parameters for annotating metagenome.\n";
     my $req1 = "'output_workspace' is required for running rast_metagenome.\n";
-    my $invald1 = "Invalid workspace name:";
     my $req2 = "'object_ref' is required for running rast_metagenome.\n";
-    my $invald2 = "Invalid workspace object reference:";
 
     throws_ok {
         metag_utils::_check_annotation_params()
@@ -372,21 +370,19 @@ subtest '_check_annotation_params' => sub {
     } qr/$req1/,
         '_check_annotation_params dies with blank workspace name';
 
-    throws_ok {
+    lives_ok {
         metag_utils::_check_annotation_params(
             {output_workspace => $ws,
              output_metagenome_name => $out_name,
              object_ref => 'abc/1/2'})
-    } qr/$invald2/,
-      '_check_annotation_params dies because of invalid object reference format';
+    } '_check_annotation_params object_ref check ok';
 
-    throws_ok {
+    lives_ok {
         metag_utils::_check_annotation_params(
             {output_workspace => 'ab:c',
              output_metagenome_name => $out_name,
              object_ref => '456/1/2'})
-    } qr/$invald1/,
-      '_check_annotation_params dies because of invalid workspace name format';
+    } '_check_annotation_params workspace name check ok';
 
     # _check_annotation_params passed
     my $expected = {
