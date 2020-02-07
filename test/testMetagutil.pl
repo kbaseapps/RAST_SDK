@@ -30,7 +30,7 @@ my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_shk = 'fasta_file.fa';
 my $gff_shk = 'gff_file.gff';
-my $prodigal_cmd = '/kb/runtime/bin/prodigal';
+
 
 
 sub generate_metagenome {
@@ -54,6 +54,63 @@ sub generate_metagenome {
 
 
 ##-----------------Test Blocks--------------------##
+
+subtest '_run_rast' => sub {
+    my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
+    print Dumper($ret_metag);
+    my $inputgenome = {
+        features => []
+    };
+
+    my $input_obj_ref = $ret_metag->{metagenome_ref};
+    my $input_fasta_file = catfile($metag_dir, 'prodigal_input.fasta');
+    my $gff_filename = catfile($scratch, 'genome.gff');
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+    
+    $input_fasta_file = metag_utils::_write_fasta_from_metagenome(
+                           $input_fasta_file, $input_obj_ref);
+    $gff_filename = metag_utils::_write_gff_from_metagenome(
+                       $gff_filename, $input_obj_ref);
+
+    # fetch protein sequences and gene IDs from fasta and gff files
+    $fasta_contents = metag_utils::_parse_fasta($input_fasta_file);
+    ($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
+                                          $gff_filename, $attr_delimiter);
+
+    my $gene_seqs = metag_utils::_extract_cds_sequences_from_fasta(
+                    $fasta_contents, $gff_contents);
+    my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs);
+
+    my %gene_id_index=();
+    my $i=1;
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+             id => "peg".$i,
+                protein_translation => $protein_seqs->{$gene}
+        });
+        $gene_id_index{$i}=$gene;
+        $i++;
+    }
+
+    my $rast_ret = metag_utils::_run_rast($inputgenome);
+    print Dumper($rast_ret);
+};
+
+=begin
+subtest 'rast_metagenome' => sub {
+    my $input_params = {
+        object_ref => $ret_metag->{metagenome_ref},
+        output_metagenome_name => 'rast_metagenome',
+        output_workspace => $ws
+    };
+ 
+    my $rast_mg = metag_utils::rast_metagenome($input_params);
+
+
+};
+=cut
+
+=begin
 subtest '_run_prodigal' => sub {
     my $run_ok = '_run_prodigal_cmd runs ok.\n';
     my $run_err = 'ERROR Prodigal run failed';
@@ -254,12 +311,6 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 
-    my $save_ok = '_save_metagenome runs ok with given parameters';
-    my $ret_metag = generate_metagenome(
-             $ws, $out_name, $fasta1, $gff1);
-    # print Dumper($ret_metag);
-    # cmp_deeply($ret_metag, $exp_metag, $save_ok);
-
 };
 
 subtest '_check_annotation_params' => sub {
@@ -358,10 +409,11 @@ subtest '_check_annotation_params' => sub {
 
 };
 
+=cut
 
 done_testing();
 
-=begin
+
 my $err = undef;
 if ($@) {
     $err = $@;
@@ -379,4 +431,3 @@ if (defined($err)) {
         die $err;
     }
 }
-=cut

@@ -286,8 +286,16 @@ sub _get_fasta_from_assembly {
     my $assembly_ref = @_;
 
     my $au = new installed_clients::AssemblyUtilClient($call_back_url);
-    my $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
-    return $output->{path};
+    my $output = {};
+    eval {
+        $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
+    };
+    if ($@) {
+        croak "ERROR calling AssemblyUtil.get_assembly_as_fasta: ".$@."\n";
+    }
+    else {
+        return $output->{path};
+    }
 }
 
 sub _write_fasta_from_metagenome {
@@ -306,11 +314,18 @@ sub _write_gff_from_metagenome {
     my ($gff_filename, $genome_ref) = @_;
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-    my $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
-    copy($gff_result->{file_path}, $gff_filename);
-
-    unless (-s $gff_filename) {print "GFF is empty ";}
-    return $gff_filename;
+    my $gff_result = '';
+    eval {
+        $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
+        copy($gff_result->{file_path}, $gff_filename);
+        unless (-s $gff_filename) {print "GFF is empty ";}
+    };
+    if ($@) {
+        croak "ERROR calling GenomeFileUtil.metagenome_to_gff: ".$@."\n";
+    }
+    else {
+        return $gff_filename;
+    }
 }
 
 sub _save_metagenome {
@@ -409,6 +424,20 @@ sub _check_annotation_params {
     }
     return $params;
 }
+
+
+# Call RAST to annotate the proteins/genome
+sub _run_rast {
+    my $inputgenome = @_;
+
+    my $rast_client = Bio::kbase::kbaseenv::ga_client();
+    my $rasted_gn = $rast_client->run_pipeline($inputgenome,
+            {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
+                        {name => "annotate_proteins_similarity",
+                         similarity_parameters => { annotate_hypothetical_only => 1 }}]}
+    );
+    return $rasted_gn;
+};
 
 
 sub _generate_report {
@@ -738,13 +767,7 @@ sub rast_metagenome {
     }
 
     # Call RAST to annotate the proteins/genome
-    my $rast_client = Bio::kbase::kbaseenv::ga_client();
-    my $rasted_genome = $rast_client->run_pipeline($inputgenome,
-            {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
-                        {name => "annotate_proteins_similarity",
-                         similarity_parameters => { annotate_hypothetical_only => 1 }}]}
-    );
-
+    my $rasted_genome = _run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
 
