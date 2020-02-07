@@ -112,7 +112,7 @@ sub _build_prodigal_cmd {
 
 
 sub _run_prodigal {
-    my @cmd = @_;
+    my (@cmd) = @_;
     my $ret = 0;
     eval {
         $ret = system(@cmd);
@@ -283,7 +283,7 @@ sub _parse_sco {
 ##----end for prodigal parsing----##
 
 sub _get_fasta_from_assembly {
-    my $assembly_ref = @_;
+    my ($assembly_ref) = @_;
 
     my $au = new installed_clients::AssemblyUtilClient($call_back_url);
     my $output = {};
@@ -428,7 +428,7 @@ sub _check_annotation_params {
 
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
-    my $inputgenome = @_;
+    my ($inputgenome) = @_;
 
     my $rast_client = Bio::kbase::kbaseenv::ga_client();
     my $rasted_gn = $rast_client->run_pipeline($inputgenome,
@@ -441,7 +441,7 @@ sub _run_rast {
 
 
 sub _generate_report {
-    my $gn_ref = @_;
+    my ($gn_ref) = @_;
 
     my $kbr = new installed_clients::KBaseReportClient($call_back_url);
     #TODO
@@ -672,7 +672,7 @@ sub _translate_gene_to_protein_sequences {
 
 ##----main function----##
 sub rast_metagenome {
-    my $inparams = @_;
+    my ($inparams) = @_;
     print "Impl passed rast_metagenome input parameter=\n". Dumper($inparams). "\n";
     
     my $params = _check_annotation_params($inparams);
