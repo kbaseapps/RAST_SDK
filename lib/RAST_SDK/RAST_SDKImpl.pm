@@ -1779,6 +1779,10 @@ sub annotate_metagenome
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($output);
     #BEGIN annotate_metagenome
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["object_ref", "output_workspace", "output_metagenome_name"], {}); 
+    print "rast_metagenome input parameter=\n". Dumper($params). "\n";
     my $metag_ref = metag_utils::rast_metagenome($params);
     $output = {
         "output_metagenome_ref" => $metag_ref,
