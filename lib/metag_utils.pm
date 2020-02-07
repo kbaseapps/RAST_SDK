@@ -38,6 +38,7 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = Config::IniFiles->new(-file=>$config_file);
 my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $rast_scratch = $config->val('RAST_SDK', 'scratch');
 
 
 #-------------------------Reference from prodigal command line-------------------
@@ -363,7 +364,7 @@ sub _save_metagenome {
         croak "GFF file not found.\n";
     }
     unless (-e $dir and -d $dir) {
-        $dir = _create_metag_dir();
+        $dir = _create_metag_dir($rast_scratch);
     }
 
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
@@ -467,9 +468,9 @@ sub _openRead {
 }
 
 sub _create_metag_dir {
+    my ($rast_dir) = @_;
     # create the project directory for metagenome annotation
-    my $rast_scratch = $config->val('RAST_SDK', 'scratch');
-    my $dir = catfile($rast_scratch, "metag_annotation_dir");
+    my $dir = catfile($rast_dir, "metag_annotation_dir");
 
     make_path $dir; # it won't make a directory that already exists
     return $dir;
@@ -679,7 +680,7 @@ sub rast_metagenome {
     my ($inparams) = @_;
     
     my $params = _check_annotation_params($inparams);
-    my $metag_dir = _create_metag_dir();
+    my $metag_dir = _create_metag_dir($rast_scratch);
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
@@ -694,7 +695,7 @@ sub rast_metagenome {
     # my $start_file = catfile($metag_dir, 'start_file');
     # my $training_file = '';  # catfile($metag_dir, 'training_file');
 
-    print "Getting info for the input object: $inpupt_obj_ref\n";
+    print "Getting info for the input object: $input_obj_ref\n";
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     my $info = $ws_client->get_object_info3(
                     {objects=>[{ref=>$input_obj_ref}]}
