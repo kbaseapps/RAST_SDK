@@ -3,6 +3,8 @@ use Data::Dumper qw(Dumper);
 use File::Spec::Functions qw(catfile splitpath);
 use File::Copy;
 use Carp qw(croak);
+use File::Compare;
+
 
 use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
@@ -20,23 +22,24 @@ my $ws_url = $config->{"workspace-url"};
 my $ws = undef;
 my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $scratch = $config->val('RAST_SDK', 'scratch');
 
 $ws = get_ws_name();
 my $out_name = 'annotated_metag';
-my $scratch = metag_utils::_create_metag_dir();
+my $rast_dir = metag_utils::_create_metag_dir($scratch);
 my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
-my $fasta_shk = 'fasta_file.fa';
-my $gff_shk = 'gff_file.gff';
+my $fasta_scrt = 'fasta_file.fa';
+my $gff_scrt = 'gff_file.gff';
 
 
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
-    my $fasta_path = catfile($scratch, $fasta_shk);
-    my $gff_path = catfile($scratch, $gff_shk);
+    my $fasta_path = catfile($rast_dir, $fasta_scrt);
+    my $gff_path = catfile($rast_dir, $gff_scrt);
 
     copy($fasta, $fasta_path) || croak "Copy file failed: $!\n";
     copy($gff, $gff_path) || croak "Copy file failed: $!\n";
@@ -57,10 +60,13 @@ my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
 my $input_obj_ref = $ret_metag->{metagenome_ref};
 
-my $input_fasta_file = catfile($scratch, 'prodigal_input.fasta');
-my $gff_filename = catfile($scratch, 'genome.gff');
+my $input_fasta_file = catfile($rast_dir, 'prodigal_input.fasta');
+my $gff_filename = catfile($rast_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+
+
 =begin
+
 $input_fasta_file = metag_utils::_write_fasta_from_metagenome(
 		   $input_fasta_file, $input_obj_ref);
 $gff_filename = metag_utils::_write_gff_from_metagenome(
@@ -79,21 +85,23 @@ my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs)
 ##-----------------Test Blocks--------------------##
 
 subtest '_write_fasta_from_metagenome' => sub {
-    my $fa_test1 = = catfile($scratch, 'fasta1.fasta');
+    my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
     $fa_test1 = metag_utils::_write_fasta_from_metagenome(
 		   $fa_test1, $input_obj_ref);
 
     ok((-e $fa_test1), 'fasta file created');
     ok((-s $fa_test1), 'fasta file has data');
+    ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
 };
 
 subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = = catfile($scratch, 'gff1.fasta');
+    my $gff_test1 = catfile($rast_dir, 'gff1.fasta');
     $gff_test1 = metag_utils::_write_fasta_from_metagenome(
 		   $gff_test1, $input_obj_ref);
 
     ok((-e $gff_test1), 'gff file created');
     ok((-s $gff_test1), 'gff file has data');
+    ok(compare($gff_test1, $gff1) == 0, 'GFF file written correctly');
 
 };
 
@@ -311,7 +319,7 @@ subtest '_save_metagenome' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = metag_utils::_save_metagenome(
-             $ws, $out_name, $fasta1, $gff1, $scratch)
+             $ws, $out_name, $fasta1, $gff1, $rast_dir)
     } '__save_metagenome run without errors on short_one.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
@@ -321,7 +329,7 @@ subtest '_save_metagenome' => sub {
     
     lives_ok {
         $mymetag = metag_utils::_save_metagenome(
-             $ws, $out_name, $fasta2, $gff2, $scratch)
+             $ws, $out_name, $fasta2, $gff2, $rast_dir)
     } '_save_metagenome runs without errors on 59111.assembled.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
