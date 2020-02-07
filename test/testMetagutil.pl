@@ -52,43 +52,62 @@ sub generate_metagenome {
     return $mg;
 }
 
+## global objects/variables for multiple subtests
+my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
+print Dumper($ret_metag);
+my $input_obj_ref = $ret_metag->{metagenome_ref};
+
+my $input_fasta_file = catfile($scratch, 'prodigal_input.fasta');
+my $gff_filename = catfile($scratch, 'genome.gff');
+my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+=begin
+$input_fasta_file = metag_utils::_write_fasta_from_metagenome(
+		   $input_fasta_file, $input_obj_ref);
+$gff_filename = metag_utils::_write_gff_from_metagenome(
+	       $gff_filename, $input_obj_ref);
+# fetch protein sequences and gene IDs from fasta and gff files
+$fasta_contents = metag_utils::_parse_fasta($input_fasta_file);
+($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
+				  $gff_filename, $attr_delimiter);
+
+my $gene_seqs = metag_utils::_extract_cds_sequences_from_fasta(
+	    $fasta_contents, $gff_contents);
+my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs);
+
+=cut
 
 ##-----------------Test Blocks--------------------##
 
+subtest '_write_fasta_from_metagenome' => sub {
+    my $fa_test1 = = catfile($scratch, 'fasta1.fasta');
+    $fa_test1 = metag_utils::_write_fasta_from_metagenome(
+		   $fa_test1, $input_obj_ref);
+
+    ok((-e $fa_test1), 'fasta file created');
+    ok((-s $fa_test1), 'fasta file has data');
+};
+
+subtest '_write_gff_from_metagenome' => sub {
+    my $gff_test1 = = catfile($scratch, 'gff1.fasta');
+    $gff_test1 = metag_utils::_write_fasta_from_metagenome(
+		   $gff_test1, $input_obj_ref);
+
+    ok((-e $gff_test1), 'gff file created');
+    ok((-s $gff_test1), 'gff file has data');
+
+};
+
+=begin
 subtest '_run_rast' => sub {
-    my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
-    print Dumper($ret_metag);
     my $inputgenome = {
         features => []
     };
-
-    my $input_obj_ref = $ret_metag->{metagenome_ref};
-    my $input_fasta_file = catfile($metag_dir, 'prodigal_input.fasta');
-    my $gff_filename = catfile($scratch, 'genome.gff');
-    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
-    
-    $input_fasta_file = metag_utils::_write_fasta_from_metagenome(
-                           $input_fasta_file, $input_obj_ref);
-    $gff_filename = metag_utils::_write_gff_from_metagenome(
-                       $gff_filename, $input_obj_ref);
-
-    # fetch protein sequences and gene IDs from fasta and gff files
-    $fasta_contents = metag_utils::_parse_fasta($input_fasta_file);
-    ($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
-                                          $gff_filename, $attr_delimiter);
-
-    my $gene_seqs = metag_utils::_extract_cds_sequences_from_fasta(
-                    $fasta_contents, $gff_contents);
-    my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs);
-
-    my %gene_id_index=();
     my $i=1;
     foreach my $gene (sort keys %$protein_seqs){
         push(@{$inputgenome->{features}},{
              id => "peg".$i,
-                protein_translation => $protein_seqs->{$gene}
+             protein_translation => $protein_seqs->{$gene}
         });
-        $gene_id_index{$i}=$gene;
         $i++;
     }
 
@@ -96,7 +115,6 @@ subtest '_run_rast' => sub {
     print Dumper($rast_ret);
 };
 
-=begin
 subtest 'rast_metagenome' => sub {
     my $input_params = {
         object_ref => $ret_metag->{metagenome_ref},
