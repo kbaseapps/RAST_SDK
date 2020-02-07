@@ -302,11 +302,17 @@ sub _write_fasta_from_metagenome {
     my ($fasta_filename, $input_obj_ref) = @_;
 
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
-    my $genome_obj = $ws_client->get_objects([{ref=>$input_obj_ref}])->[0]->{data};
-    my $fa_file = _get_fasta_from_assembly($genome_obj->{assembly_ref});
-    copy($fa_file, $fasta_filename);
-
-    unless (-s $fasta_filename) {print "Fasta file is empty.";}
+    eval {
+        my $genome_obj = $ws_client->get_objects2(
+                             {'objects'=>[{ref=>$input_obj_ref}]}
+                         )->{data}->[0]->{data};
+        my $fa_file = _get_fasta_from_assembly($genome_obj->{assembly_ref});
+        copy($fa_file, $fasta_filename);
+        unless (-s $fasta_filename) {print "Fasta file is empty.";}
+    };
+    if ($@) {
+        croak "ERROR calling Workspace.get_objects2: ".$@."\n";
+    }
     return $fasta_filename;
 }
 
@@ -323,9 +329,7 @@ sub _write_gff_from_metagenome {
     if ($@) {
         croak "ERROR calling GenomeFileUtil.metagenome_to_gff: ".$@."\n";
     }
-    else {
-        return $gff_filename;
-    }
+    return $gff_filename;
 }
 
 sub _save_metagenome {
@@ -673,7 +677,6 @@ sub _translate_gene_to_protein_sequences {
 ##----main function----##
 sub rast_metagenome {
     my ($inparams) = @_;
-    print "Impl passed rast_metagenome input parameter=\n". Dumper($inparams). "\n";
     
     my $params = _check_annotation_params($inparams);
     my $metag_dir = _create_metag_dir();
@@ -691,13 +694,16 @@ sub rast_metagenome {
     # my $start_file = catfile($metag_dir, 'start_file');
     # my $training_file = '';  # catfile($metag_dir, 'training_file');
 
+    print "Getting info for the input object: $inpupt_obj_ref\n";
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
-    my $info = $ws_client->get_object_info([{ref=>$input_obj_ref}],0);
+    my $info = $ws_client->get_object_info3(
+                    {objects=>[{ref=>$input_obj_ref}]}
+                )->{infos}->[0];
 
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
     # Check if input is an assembly, if so run Prodigal and parse for proteins
-    if ($info->[0]->[2] =~ /Assembly/) {
+    if ($info->[2] =~ /Assembly/) {
 
         my $out_file = _get_fasta_from_assembly($input_obj_ref);
         copy($out_file, $input_fasta_file) || croak "Copy file failed: $!\n";
