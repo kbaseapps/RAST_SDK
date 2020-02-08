@@ -71,9 +71,9 @@ my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 =begin
 
 $input_fasta_file = metag_utils::_write_fasta_from_metagenome(
-		   $input_fasta_file, $input_obj_ref);
+		    $input_fasta_file, $input_obj_ref, $token);
 $gff_filename = metag_utils::_write_gff_from_metagenome(
-	       $gff_filename, $input_obj_ref);
+	        $gff_filename, $input_obj_ref);
 # fetch protein sequences and gene IDs from fasta and gff files
 $fasta_contents = metag_utils::_parse_fasta($input_fasta_file);
 ($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
@@ -143,7 +143,7 @@ subtest 'rast_metagenome' => sub {
 
 =begin
 subtest '_write_fasta_from_metagenome' => sub {
-    my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
+    my $fa_test1 = catfile($rast_dir, 'test1.fasta');
     $fa_test1 = metag_utils::_write_fasta_from_metagenome(
                     $fa_test1, $input_obj_ref, $token);
 
@@ -153,8 +153,8 @@ subtest '_write_fasta_from_metagenome' => sub {
 };
 
 subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = catfile($rast_dir, 'gff1.fasta');
-    $gff_test1 = metag_utils::_write_fasta_from_metagenome(
+    my $gff_test1 = catfile($rast_dir, 'test1.gff');
+    $gff_test1 = metag_utils::_write_gff_from_metagenome(
 		   $gff_test1, $input_obj_ref);
 
     ok((-e $gff_test1), 'gff file created');

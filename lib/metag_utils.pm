@@ -434,13 +434,19 @@ sub _run_rast {
     my ($inputgenome) = @_;
     print "**********Running RAST pipeline on genome************\n" . Dumper($inputgenome);
 
-    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-    #my $rast_client = Bio::KBase::kbaseenv::ga_client();
-    my $rasted_gn = $rast_client->run_pipeline($inputgenome,
+    my $rasted_gn = undef;
+    eval {
+        my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+        $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
                         {name => "annotate_proteins_similarity",
                          similarity_parameters => { annotate_hypothetical_only => 1 }}]}
-    );
+        );
+    };
+    if ($@) {
+        croak "ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline: ".$@."\n";
+
+    }
     return $rasted_gn;
 };
 
@@ -776,6 +782,11 @@ sub rast_metagenome {
     }
 
     # Call RAST to annotate the proteins/genome
+    unless ({@{$inputgenome->{features}} >= 1) {
+        print "Empty input genome features, skip rasting\n";
+        return undef;
+    }
+
     my $rasted_genome = _run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
