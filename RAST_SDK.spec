@@ -134,6 +134,7 @@ module RAST_SDK {
             Reference to an Assembly or Genome object in the workspace
             @id ws KBaseGenomeAnnotations.Assembly
             @id ws KBaseGenomes.Genome
+            @id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
         */
         typedef string data_obj_ref;
 
