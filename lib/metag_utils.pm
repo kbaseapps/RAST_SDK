@@ -264,11 +264,11 @@ sub _parse_sco {
                         push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
                     }
                     else {
-                        warn "No translation found for \"$sco_file\" line: $line\n";
+                        # warn "No translation found for \"$sco_file\" line: $line\n";
                     }
                 }
                 else {
-                    warn "No key \"$contig_id\t$left\t$right\t$strand\" found for \"$sco_file\" line: $line\n";
+                    # warn "No key \"$contig_id\t$left\t$right\t$strand\" found for \"$sco_file\" line: $line\n";
                 }
             }
             else {
