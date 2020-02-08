@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'ddf76aad271c968a43b52c7dacf7ce5fb7451807';
+our $GIT_COMMIT_HASH = 'a2c98ac88c86143862bc60e289d04aa91dfd0939';
 
 =head1 NAME
 
@@ -2395,6 +2395,7 @@ For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation mod
 Reference to an Assembly or Genome object in the workspace
 @id ws KBaseGenomeAnnotations.Assembly
 @id ws KBaseGenomes.Genome
+@id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
 
 
 =item Definition
