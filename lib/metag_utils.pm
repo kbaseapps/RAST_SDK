@@ -33,7 +33,6 @@ use installed_clients::KBaseReportClient;
 require 'gjoseqlib.pm';
 
 
-my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{'workspace-url'};
@@ -299,7 +298,7 @@ sub _get_fasta_from_assembly {
 }
 
 sub _write_fasta_from_metagenome {
-    my ($fasta_filename, $input_obj_ref) = @_;
+    my ($fasta_filename, $input_obj_ref, $token) = @_;
 
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     eval {
@@ -676,7 +675,7 @@ sub _translate_gene_to_protein_sequences {
 
 ##----main function----##
 sub rast_metagenome {
-    my ($inparams) = @_;
+    my ($inparams, $token) = @_;
     
     my $params = _check_annotation_params($inparams);
     my $metag_dir = _create_metag_dir($rast_scratch);
@@ -751,7 +750,8 @@ sub rast_metagenome {
     }
     else {# input is a (meta)genome, get its protein sequences and gene IDs
         # generating the fasta and gff files
-        $input_fasta_file = _write_fasta_from_metagenome($input_fasta_file, $input_obj_ref);
+        $input_fasta_file = _write_fasta_from_metagenome(
+                                $input_fasta_file, $input_obj_ref, $token);
         $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
 
         # fetch protein sequences and gene IDs from fasta and gff files
