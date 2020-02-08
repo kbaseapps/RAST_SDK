@@ -38,8 +38,7 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $rast_scratch = '/kb/module/work/tmp';
-print Dumper($config)."\n";
+my $rast_scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
@@ -323,7 +322,7 @@ sub _write_gff_from_metagenome {
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
     my $gff_result = '';
     eval {
-        $gff_result = $gfu.metagenome_to_gff({"genome_ref" => $genome_ref});
+        $gff_result = $gfu->metagenome_to_gff({"genome_ref" => $genome_ref});
         copy($gff_result->{file_path}, $gff_filename);
         unless (-s $gff_filename) {print "GFF is empty ";}
     };
