@@ -373,7 +373,7 @@ sub _save_metagenome {
     copy($gff_file, $gff_path) || croak "Copy file failed: $!\n";
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-    my $annotated_metag;
+    my $annotated_metag = {};
     eval {
         $annotated_metag = $gfu->fasta_gff_to_metagenome ({
             "fasta_file" => {'path' => $fasta_path},
@@ -435,7 +435,7 @@ sub _run_rast {
     my ($inputgenome) = @_;
     print "**********Running RAST pipeline on genome************\n" . Dumper($inputgenome);
 
-    my $rasted_gn = undef;
+    my $rasted_gn = {};
     eval {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
@@ -477,7 +477,8 @@ sub _openRead {
 sub _create_metag_dir {
     my ($rast_dir) = @_;
     # create the project directory for metagenome annotation
-    my $dir = catfile($rast_dir, "metag_annotation_dir");
+    my $mg_dir = "metag_annotation_dir";
+    my $dir = catfile($rast_dir, $mg_dir);
 
     make_path $dir; # it won't make a directory that already exists
     return $dir;
@@ -792,7 +793,7 @@ sub rast_metagenome {
 
     my $out_metag =_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
-                                    $input_fasta_file, $$new_gff_file,$metag_dir);
+                                    $input_fasta_file, $$new_gff_file, $metag_dir);
     return $out_metag->{genome_ref};
 }
 
