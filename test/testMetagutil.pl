@@ -30,8 +30,6 @@ my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
-my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
-my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 
@@ -67,9 +65,6 @@ my $input_fasta_file = catfile($rast_dir, 'prodigal_input.fasta');
 my $gff_filename = catfile($rast_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-
-=begin
-
 $input_fasta_file = metag_utils::_write_fasta_from_metagenome(
 		    $input_fasta_file, $input_obj_ref, $token);
 $gff_filename = metag_utils::_write_gff_from_metagenome(
@@ -84,10 +79,13 @@ my $gene_seqs = metag_utils::_extract_cds_sequences_from_fasta(
 print "**********Gene sequences************\n" . Dumper($gene_seqs);
 my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs);
 print "**********Protein sequences************\n" . Dumper($protein_seqs);
-=cut
+
+
 
 ##-----------------Test Blocks--------------------##
 
+my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
+my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
 my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
@@ -97,18 +95,39 @@ subtest '_parse_translation' => sub {
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     %trans_tab = metag_utils::_parse_translation($trans_path);
-    print Dumper(%trans_tab);
+    ok( keys %trans_tab , 'Prodigal translation parsing returns result.');
 };
 
 subtest '_parse_sco' => sub {
     $sco_tab = metag_utils::_parse_sco($ecoli_sco, %trans_tab);
-    print Dumper($sco_tab);
+    ok( @{$sco_tab} >0, 'Prodigal SCO parsing returns result.');
 };
 
 subtest '_parse_gff' => sub {
     my ($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
                                               $ecoli_gff, '=');
-    print Dumper($gff_contents);
+    ok( @{$gff_contents} >0, 'Parsing GFF returns result.');
+};
+
+subtest '_parse_prodigal_results' => sub {
+    my $prd_out_path = catfile($rast_dir, 'prd_out');
+    my $trans_path = catfile($rast_dir, 'trans_scrt');
+    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
+
+    # Prodigal generate a GFF output file
+    my $out_type = 'gff';
+    copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
+    my $prd_results = metag_utils::_parse_prodigal_results(
+                          $trans_path, $prd_out_path, $out_type);
+    ok( @{$prd_results} >0, 'Prodigal GFF parsing returns result.');
+
+    # Prodigal generate an SCO output file
+    my $out_type = 'sco';
+    copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
+    my $prd_results = metag_utils::_parse_prodigal_results(
+                          $trans_path, $prd_out_path, $out_type);
+    ok( @{$prd_results} >0, 'Prodigal SCO parsing returns result.');
+
 };
 
 subtest '_run_rast' => sub {
@@ -125,7 +144,7 @@ subtest '_run_rast' => sub {
     }
 
     my $rast_ret = metag_utils::_run_rast($inputgenome);
-    print Dumper($rast_ret);
+    isnt($rast_ret, undef, 'RAST run_pipeline call returns results');
 };
 
 =begin
