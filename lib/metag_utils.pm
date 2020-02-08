@@ -793,7 +793,7 @@ sub rast_metagenome {
 
     my $out_metag =_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
-                                    $input_fasta_file, $$new_gff_file, $metag_dir);
+                                    $input_fasta_file, $$new_gff_file, \$metag_dir);
     return $out_metag->{genome_ref};
 }
 
