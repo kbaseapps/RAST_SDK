@@ -432,6 +432,7 @@ sub _check_annotation_params {
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
     my ($inputgenome) = @_;
+    print "**********Running RAST pipeline on genome************\n" . Dumper($inputgenome);
 
     my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     #my $rast_client = Bio::KBase::kbaseenv::ga_client();

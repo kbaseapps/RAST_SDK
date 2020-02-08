@@ -93,7 +93,10 @@ my %trans_tab;
 my $sco_tab = [];
 
 subtest '_parse_translation' => sub {
-    %trans_tab = metag_utils::_parse_translation($trans_file);
+    my $trans_path = catfile($rast_dir, 'trans_scrt');
+    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
+
+    %trans_tab = metag_utils::_parse_translation($trans_path);
     print Dumper(%trans_tab);
 };
 
