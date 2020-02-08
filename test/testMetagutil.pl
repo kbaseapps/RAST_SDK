@@ -30,7 +30,6 @@ my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
-my $trans_file = 'data/metag_test/translationfile';
 my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
 my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
 my $fasta_scrt = 'fasta_file.fa';
@@ -89,8 +88,10 @@ print "**********Protein sequences************\n" . Dumper($protein_seqs);
 
 ##-----------------Test Blocks--------------------##
 
+my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
+
 subtest '_parse_translation' => sub {
     %trans_tab = metag_utils::_parse_translation($trans_file);
     print Dumper(%trans_tab);
@@ -132,7 +133,7 @@ subtest 'rast_metagenome' => sub {
         output_workspace => $ws
     };
  
-    my $rast_mg = metag_utils::rast_metagenome($input_params);
+    my $rast_mg = metag_utils::rast_metagenome($input_params, $token);
 
 };
 =cut
@@ -141,7 +142,7 @@ subtest 'rast_metagenome' => sub {
 subtest '_write_fasta_from_metagenome' => sub {
     my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
     $fa_test1 = metag_utils::_write_fasta_from_metagenome(
-		   $fa_test1, $input_obj_ref);
+                    $fa_test1, $input_obj_ref, $token);
 
     ok((-e $fa_test1), 'fasta file created');
     ok((-s $fa_test1), 'fasta file has data');
