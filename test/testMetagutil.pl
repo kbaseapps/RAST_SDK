@@ -122,9 +122,9 @@ subtest '_parse_prodigal_results' => sub {
     ok( @{$prd_results} >0, 'Prodigal GFF parsing returns result.');
 
     # Prodigal generate an SCO output file
-    my $out_type = 'sco';
+    $out_type = 'sco';
     copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
-    my $prd_results = metag_utils::_parse_prodigal_results(
+    $prd_results = metag_utils::_parse_prodigal_results(
                           $trans_path, $prd_out_path, $out_type);
     ok( @{$prd_results} >0, 'Prodigal SCO parsing returns result.');
 
