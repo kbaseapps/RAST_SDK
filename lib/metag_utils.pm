@@ -13,7 +13,7 @@ use strict;
 use warnings;
 
 use Bio::KBase::kbaseenv;
-use Config::IniFiles;
+use Config::Simple;
 use Data::Dumper qw(Dumper);
 use File::Spec::Functions qw(catfile splitpath);
 use File::Path qw(make_path);
@@ -35,11 +35,11 @@ require 'gjoseqlib.pm';
 
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = Config::IniFiles->new(-file=>$config_file);
+my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $rast_scratch = $config->val('RAST_SDK', 'scratch');
-
+my $rast_scratch = '/kb/module/work/tmp';
+print Dumper($config)."\n";
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
