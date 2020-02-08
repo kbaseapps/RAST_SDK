@@ -760,7 +760,7 @@ sub rast_metagenome {
     # fetch protein sequences and gene IDs from fasta and gff files
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-    fasta_contents = _parse_fasta($input_fasta_file);
+    $fasta_contents = _parse_fasta($input_fasta_file);
     ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
 
     my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
