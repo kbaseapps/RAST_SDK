@@ -34,11 +34,6 @@ use installed_clients::KBaseReportClient;
 require 'gjoseqlib.pm';
 
 
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $rast_scratch = $config->{'scratch'};
-
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
 #                 [-g tr_table] [-h] [-i input_file] [-m] [-n] [-o output_file]
@@ -62,7 +57,7 @@ my $rast_scratch = $config->{'scratch'};
 #         -v:  Print version number and exit.
 #--------------------------------------------------------------------------------
 sub _build_prodigal_cmd {
-    my ($input_file, $trans_file, $nuc_file, $output_file, $output_type,
+    my ($self, $input_file, $trans_file, $nuc_file, $output_file, $output_type,
         $mode, $start_file, $training_file) = @_;
 
     if (!defined($input_file)) {
@@ -111,7 +106,7 @@ sub _build_prodigal_cmd {
 
 
 sub _run_prodigal {
-    my (@cmd) = @_;
+    my ($self, @cmd) = @_;
     my $ret = 0;
     eval {
         $ret = system(@cmd);
@@ -182,22 +177,22 @@ sub _run_prodigal {
 # ...
 #--------------------------------------------------------------------------------
 sub _parse_prodigal_results {
-    my ($trans_file, $output_file, $output_type) = @_;
+    my ($self, $trans_file, $output_file, $output_type) = @_;
     my %transH;
     if ($output_type eq 'gff') {
-        my ($gff_contents, $attr_del) = _parse_gff($output_file, '=');
+        my ($gff_contents, $attr_del) = $self->_parse_gff($output_file, '=');
         return $gff_contents;
     }
     elsif ($output_type eq 'sco') {
-        %transH = _parse_translation($trans_file);
-        my $sco_tbl = _parse_sco($output_file, %transH);
+        %transH = $self->_parse_translation($trans_file);
+        my $sco_tbl = $self->_parse_sco($output_file, %transH);
         return $sco_tbl;
     }
     return [];
 }
 
 sub _parse_translation {
-    my ($trans_file) = @_;
+    my ($self, $trans_file) = @_;
 
     my %transH;
     my ($fh_trans, $trans_id, $comment, $seq);
@@ -230,7 +225,7 @@ sub _parse_translation {
 
 
 sub _parse_sco {
-    my ($sco_file, %transH) = @_;
+    my ($self, $sco_file, %transH) = @_;
 
     my $encoded_tbl = [];
     my $fh_sco = _openRead($sco_file);
@@ -282,7 +277,7 @@ sub _parse_sco {
 ##----end for prodigal parsing----##
 
 sub _get_fasta_from_assembly {
-    my ($assembly_ref) = @_;
+    my ($self, $assembly_ref) = @_;
 
     my $au = new installed_clients::AssemblyUtilClient($call_back_url);
     my $output = {};
@@ -298,15 +293,13 @@ sub _get_fasta_from_assembly {
 }
 
 sub _write_fasta_from_metagenome {
-    my ($fasta_filename, $input_obj_ref, $token) = @_;
+    my ($self, $fasta_filename, $input_obj_ref) = @_;
 
-    my $ws_url = $config->{'workspace-url'};
-    my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     eval {
-        my $genome_obj = $ws_client->get_objects2(
+        my $genome_obj = $self->{ws_client}->get_objects2(
                              {'objects'=>[{ref=>$input_obj_ref}]}
                          )->{data}->[0]->{data};
-        my $fa_file = _get_fasta_from_assembly($genome_obj->{assembly_ref});
+        my $fa_file = $self->_get_fasta_from_assembly($genome_obj->{assembly_ref});
         copy($fa_file, $fasta_filename);
         unless (-s $fasta_filename) {print "Fasta file is empty.";}
     };
@@ -317,7 +310,7 @@ sub _write_fasta_from_metagenome {
 }
 
 sub _write_gff_from_metagenome {
-    my ($gff_filename, $genome_ref) = @_;
+    my ($self, $gff_filename, $genome_ref) = @_;
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
     my $gff_result = '';
@@ -333,7 +326,7 @@ sub _write_gff_from_metagenome {
 }
 
 sub _save_metagenome {
-    my ($ws, $out_metag_name, $fasta_file, $gff_file, $dir) = @_;
+    my ($self, $ws, $out_metag_name, $fasta_file, $gff_file, $dir) = @_;
 
     my $req_params = "Missing required parameters for saving metagenome.\n";
     my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
@@ -363,7 +356,7 @@ sub _save_metagenome {
         croak "GFF file not found.\n";
     }
     unless (-e $dir and -d $dir) {
-        $dir = _create_metag_dir($rast_scratch);
+        $dir = $self->_create_metag_dir($self->{rast_scratch});
     }
 
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
@@ -391,7 +384,7 @@ sub _save_metagenome {
 }
 
 sub _check_annotation_params {
-    my ($params) = @_;
+    my ($self, $params) = @_;
 
     my $missing_params = "Missing required parameters for annotating metagenome.\n";
     unless (defined($params)) {
@@ -432,7 +425,7 @@ sub _check_annotation_params {
 
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
-    my ($inputgenome) = @_;
+    my ($self, $inputgenome) = @_;
     print "**********Running RAST pipeline on genome************\n" . Dumper($inputgenome);
 
     my $rasted_gn = {};
@@ -453,7 +446,7 @@ sub _run_rast {
 
 
 sub _generate_report {
-    my ($gn_ref) = @_;
+    my ($self, $gn_ref) = @_;
 
     my $kbr = new installed_clients::KBaseReportClient($call_back_url);
     #TODO
@@ -544,7 +537,7 @@ sub _parse_gff {
 
 
 sub _update_gff_functions_from_features {
-    my ($gff_contents, $features) = @_;
+    my ($self, $gff_contents, $features) = @_;
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
@@ -587,7 +580,7 @@ sub _update_gff_functions_from_features {
 }
 
 sub _write_gff {
-    my ($gff_contents, $gff_filename, $attr_delimiter) = @_;
+    my ($self, $gff_contents, $gff_filename, $attr_delimiter) = @_;
 
     # Open $gff_filename to write the @readin_array back to the file
     my $fh = _openWrite($gff_filename);
@@ -612,7 +605,7 @@ sub _write_gff {
 
 
 sub _parse_fasta {
-    my ($fasta_filename) = @_;
+    my ($self, $fasta_filename) = @_;
 
     my @fasta_lines = ();
     # Open $fasta_filename to read into an array
@@ -631,7 +624,7 @@ sub _parse_fasta {
 
 
 sub _extract_cds_sequences_from_fasta {
-    my ($fasta_contents, $gff_contents) = @_;
+    my ($self, $fasta_contents, $gff_contents) = @_;
 
     my %gene_seqs = ();
     foreach my $gff_line (@$gff_contents) {
@@ -671,6 +664,7 @@ sub _extract_cds_sequences_from_fasta {
 }
 
 sub _translate_gene_to_protein_sequences {
+    my $self = shift;
     my $gene_seqs = shift;
     my $codon_table  = Bio::Tools::CodonTable -> new ( -id => 'protein' );
 
@@ -685,48 +679,48 @@ sub _translate_gene_to_protein_sequences {
 
 ##----main function----##
 sub rast_metagenome {
-    my ($inparams, $token) = @_;
+    my $self = shift;
+    my($inparams) = @_;
+
+    $inparams = $self->doInitialization($inparams);
     
-    my $params = _check_annotation_params($inparams);
-    my $metag_dir = _create_metag_dir($rast_scratch);
+    my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
     my $inputgenome = {
         features => []
     };
 
     my $output_type = 'gff';
-    my $gff_filename = catfile($metag_dir, 'genome.gff');
-    my $input_fasta_file = catfile($metag_dir, 'prodigal_input.fasta');
-    my $trans_file = catfile($metag_dir, 'protein_translation');
-    my $nuc_file = catfile($metag_dir, 'nucleotide_seq');
-    my $output_file = catfile($metag_dir, 'prodigal_output').'.'.$output_type;
-    # my $start_file = catfile($metag_dir, 'start_file');
-    # my $training_file = catfile($metag_dir, 'training_file');
+    my $gff_filename = catfile($self->{metag_dir}, 'genome.gff');
+    my $input_fasta_file = catfile($self->{metag_dir}, 'prodigal_input.fasta');
+    my $trans_file = catfile($self->{metag_dir}, 'protein_translation');
+    my $nuc_file = catfile($self->{metag_dir}, 'nucleotide_seq');
+    my $output_file = catfile($self->{metag_dir}, 'prodigal_output').'.'.$output_type;
+    # my $start_file = catfile($self->{metag_dir}, 'start_file');
+    # my $training_file = catfile($self->{metag_dir}, 'training_file');
 
     #print "Getting info for the input object: $input_obj_ref\n";
-    #my $ws_url = $config->{'workspace-url'};
-    #my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
-    #my $info = $ws_client->get_object_info3(
+    #my $info = $self->{ws_client}->get_object_info3(
     #                {objects=>[{ref=>$input_obj_ref}]}
     #            )->{infos}->[0];
 
-    $input_fasta_file = _write_fasta_from_metagenome(
-                            $input_fasta_file, $input_obj_ref, $token);
+    $input_fasta_file = $self->_write_fasta_from_metagenome(
+                            $input_fasta_file, $input_obj_ref);
 
     my $run_prodigal = 0; # TODO $params->{run_prodigal}
     if ($run_prodigal) {# assuming Prodigal generates a GFF file
         my $mode = 'meta';
         # cannot specify metagenomic sequence with a training file
-        my @prodigal_cmd = _build_prodigal_cmd($input_fasta_file,
+        my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
                                                      $trans_file,
                                                      $nuc_file,
                                                      $output_file,
                                                      $output_type,
                                                      $mode);
 
-        if (_run_prodigal(@prodigal_cmd) == 0) {
+        if ($self->_run_prodigal(@prodigal_cmd) == 0) {
             # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file
-            my $prodigal_result = _parse_prodigal_results($trans_file,
+            my $prodigal_result = $self->_parse_prodigal_results($trans_file,
                                                           $output_file,
                                                           $output_type);
 
@@ -756,17 +750,17 @@ sub rast_metagenome {
         }
     }
     else {# generating the gff file directly from metagenome
-        $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
+        $gff_filename = $self->_write_gff_from_metagenome($gff_filename, $input_obj_ref);
     }
 
     # fetch protein sequences and gene IDs from fasta and gff files
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-    $fasta_contents = _parse_fasta($input_fasta_file);
-    ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
+    $fasta_contents = $self->_parse_fasta($input_fasta_file);
+    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
 
-    my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
-    my $protein_seqs = _translate_gene_to_protein_sequences($gene_seqs);
+    my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
+    my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
 
     my %gene_id_index=();
     my $i=1;
@@ -787,14 +781,54 @@ sub rast_metagenome {
 
     my $rasted_genome = _run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
-    my $updated_gff_contents = _update_gff_functions_from_features($gff_contents, $ftrs);
+    my $updated_gff_contents = $self->_update_gff_functions_from_features($gff_contents, $ftrs);
 
-    my $new_gff_file = catfile($metag_dir, 'new_genome.gff');
-    _write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
+    my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
+    $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    my $out_metag =_save_metagenome($params->{output_workspace},
+    my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
-                                    $input_fasta_file, $new_gff_file, $metag_dir);
+                                    $input_fasta_file, $new_gff_file,
+                                    $self->{metag_dir});
     return $out_metag->{genome_ref};
 }
+
+sub doInitialization {
+    my ($self, $params) = @_;
+
+    $self->{_token} = $self->{ctx}->token();
+    $self->{_username} = $self->{ctx}->user_id();
+    $self->{_method} = $self->{ctx}->method();
+    $self->{_provenance} = $self->{ctx}->provenance();
+
+    $self->{ws_url} = $self->{config}->{'workspace-url'};
+    $self->{call_back_url} = $ENV{ SDK_CALLBACK_URL };
+    $self->{rast_scratch} = $self->{config}->{'scratch'};
+    $self->{metag_dir} = $self->_create_metag_dir($self->{rast_scratch});
+
+    die "no workspace-url defined" unless $self->{ws_url};
+
+    $self->{ws_client} = new installed_clients::WorkspaceClient(
+                             $self->{ws_url}, token => $self->{_token});
+
+    return $params;
+}
+
+sub new {
+    my $type = shift;
+
+    my %parm = @_;
+
+    my $this = {};
+
+    $this->{'config'} = $parm{'config'};
+    $this->{'ctx'} = $parm{'ctx'};
+
+    bless $this, $type;
+
+    return $this;             # Return the reference to the hash.
+}
+
+
+1;
 

@@ -1835,7 +1835,11 @@ sub annotate_metagenome
                   ["object_ref", "output_workspace", "output_metagenome_name"], {}); 
     print "rast_metagenome input parameter=\n". Dumper($params). "\n";
 
-    my $metag_ref = metag_utils::rast_metagenome($params, $ctx->token());
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+
+    my $mg_util = metag_utils::new('config'=>$config, 'ctx'=>$ctx);
+    my $metag_ref = $mg_util->rast_metagenome($params);
     $output = {
         "output_metagenome_ref" => $metag_ref,
         "report_name" => "report_name",
