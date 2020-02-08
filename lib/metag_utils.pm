@@ -24,6 +24,7 @@ use Bio::Perl;
 use Bio::Tools::CodonTable;
 use JSON;
 
+use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
@@ -699,21 +700,19 @@ sub rast_metagenome {
     my $nuc_file = catfile($metag_dir, 'nucleotide_seq');
     my $output_file = catfile($metag_dir, 'prodigal_output').'.'.$output_type;
     # my $start_file = catfile($metag_dir, 'start_file');
-    # my $training_file = '';  # catfile($metag_dir, 'training_file');
+    # my $training_file = catfile($metag_dir, 'training_file');
 
-    print "Getting info for the input object: $input_obj_ref\n";
-    my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
-    my $info = $ws_client->get_object_info3(
-                    {objects=>[{ref=>$input_obj_ref}]}
-                )->{infos}->[0];
+    #print "Getting info for the input object: $input_obj_ref\n";
+    #my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
+    #my $info = $ws_client->get_object_info3(
+    #                {objects=>[{ref=>$input_obj_ref}]}
+    #            )->{infos}->[0];
 
-    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+    $input_fasta_file = _write_fasta_from_metagenome(
+                            $input_fasta_file, $input_obj_ref, $token);
 
-    # Check if input is an assembly, if so run Prodigal and parse for proteins
-    if ($info->[2] =~ /Assembly/) {
-
-        my $out_file = _get_fasta_from_assembly($input_obj_ref);
-        copy($out_file, $input_fasta_file) || croak "Copy file failed: $!\n";
+    my $run_prodigal = 0; # TODO $params->{run_prodigal}
+    if ($run_prodigal) {# assuming Prodigal generates a GFF file
         my $mode = 'meta';
         # cannot specify metagenomic sequence with a training file
         my @prodigal_cmd = _build_prodigal_cmd($input_fasta_file,
@@ -751,34 +750,31 @@ sub rast_metagenome {
                         protein_translation => $translation
                 });
             }
-            copy($output_file, $gff_filename);  # assuming Prodigal generates a GFF file
-            $fasta_contents = _parse_fasta($input_fasta_file);
-            ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
+            copy($output_file, $gff_filename);
         }
     }
-    else {# input is a (meta)genome, get its protein sequences and gene IDs
-        # generating the fasta and gff files
-        $input_fasta_file = _write_fasta_from_metagenome(
-                                $input_fasta_file, $input_obj_ref, $token);
+    else {# generating the gff file directly from metagenome
         $gff_filename = _write_gff_from_metagenome($gff_filename, $input_obj_ref);
+    }
 
-        # fetch protein sequences and gene IDs from fasta and gff files
-        $fasta_contents = _parse_fasta($input_fasta_file);
-        ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
+    # fetch protein sequences and gene IDs from fasta and gff files
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-        my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
-        my $protein_seqs = _translate_gene_to_protein_sequences($gene_seqs);
+    fasta_contents = _parse_fasta($input_fasta_file);
+    ($gff_contents, $attr_delimiter) = _parse_gff($gff_filename, $attr_delimiter);
 
-        my %gene_id_index=();
-        my $i=1;
-        foreach my $gene (sort keys %$protein_seqs){
-            push(@{$inputgenome->{features}},{
-                id => "peg".$i,
-                protein_translation => $protein_seqs->{$gene}
-            });
-            $gene_id_index{$i}=$gene;
-            $i++;
-        }
+    my $gene_seqs = _extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
+    my $protein_seqs = _translate_gene_to_protein_sequences($gene_seqs);
+
+    my %gene_id_index=();
+    my $i=1;
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => "peg".$i,
+            protein_translation => $protein_seqs->{$gene}
+        });
+        $gene_id_index{$i}=$gene;
+        $i++;
     }
 
     # Call RAST to annotate the proteins/genome
