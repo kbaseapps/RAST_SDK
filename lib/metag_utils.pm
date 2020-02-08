@@ -783,8 +783,8 @@ sub rast_metagenome {
 
     # Call RAST to annotate the proteins/genome
     unless (@{$inputgenome->{features}} >= 1) {
-        print "Empty input genome features, skip rasting\n";
-        return undef;
+        print "Empty input genome features, skip rasting, return original genome object.\n";
+        return $input_obj_ref;
     }
 
     my $rasted_genome = _run_rast($inputgenome);
