@@ -36,7 +36,6 @@ require 'gjoseqlib.pm';
 
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $rast_scratch = $config->{'scratch'};
 
@@ -301,6 +300,7 @@ sub _get_fasta_from_assembly {
 sub _write_fasta_from_metagenome {
     my ($fasta_filename, $input_obj_ref, $token) = @_;
 
+    my $ws_url = $config->{'workspace-url'};
     my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     eval {
         my $genome_obj = $ws_client->get_objects2(
@@ -704,6 +704,7 @@ sub rast_metagenome {
     # my $training_file = catfile($metag_dir, 'training_file');
 
     #print "Getting info for the input object: $input_obj_ref\n";
+    #my $ws_url = $config->{'workspace-url'};
     #my $ws_client = new installed_clients::WorkspaceClient($ws_url, token => $token);
     #my $info = $ws_client->get_object_info3(
     #                {objects=>[{ref=>$input_obj_ref}]}
@@ -793,7 +794,7 @@ sub rast_metagenome {
 
     my $out_metag =_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
-                                    $input_fasta_file, $$new_gff_file, \$metag_dir);
+                                    $input_fasta_file, $new_gff_file, $metag_dir);
     return $out_metag->{genome_ref};
 }
 
