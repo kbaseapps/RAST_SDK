@@ -4,6 +4,7 @@ use File::Spec::Functions qw(catfile splitpath);
 use File::Copy;
 use Carp qw(croak);
 use File::Compare;
+use Config::Simple;
 
 
 use installed_clients::WorkspaceClient;
@@ -22,11 +23,9 @@ my $ws_url = $config->{"workspace-url"};
 my $ws = undef;
 my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $scratch = $config->val('RAST_SDK', 'scratch');
 
 $ws = get_ws_name();
 my $out_name = 'annotated_metag';
-my $rast_dir = metag_utils::_create_metag_dir($scratch);
 my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
@@ -34,6 +33,8 @@ my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 
+my $scratch = '/kb/module/work/tmp';
+my $rast_dir = metag_utils::_create_metag_dir($scratch);
 
 
 sub generate_metagenome {
@@ -83,7 +84,7 @@ my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs)
 =cut
 
 ##-----------------Test Blocks--------------------##
-
+=begin
 subtest '_write_fasta_from_metagenome' => sub {
     my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
     $fa_test1 = metag_utils::_write_fasta_from_metagenome(
@@ -104,8 +105,8 @@ subtest '_write_gff_from_metagenome' => sub {
     ok(compare($gff_test1, $gff1) == 0, 'GFF file written correctly');
 
 };
+=cut
 
-=begin
 subtest '_run_rast' => sub {
     my $inputgenome = {
         features => []
@@ -123,6 +124,7 @@ subtest '_run_rast' => sub {
     print Dumper($rast_ret);
 };
 
+=begin
 subtest 'rast_metagenome' => sub {
     my $input_params = {
         object_ref => $ret_metag->{metagenome_ref},
