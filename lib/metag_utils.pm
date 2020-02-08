@@ -433,7 +433,8 @@ sub _check_annotation_params {
 sub _run_rast {
     my ($inputgenome) = @_;
 
-    my $rast_client = Bio::KBase::kbaseenv::ga_client();
+    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+    #my $rast_client = Bio::KBase::kbaseenv::ga_client();
     my $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
                         {name => "annotate_proteins_similarity",
