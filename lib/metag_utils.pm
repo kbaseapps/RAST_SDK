@@ -38,7 +38,7 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{'workspace-url'};
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $rast_scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
+my $rast_scratch = $config->{'scratch'};
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
@@ -185,11 +185,11 @@ sub _run_prodigal {
 sub _parse_prodigal_results {
     my ($trans_file, $output_file, $output_type) = @_;
     my %transH;
-    if ($output_type == 'gff') {
+    if ($output_type eq 'gff') {
         my ($gff_contents, $attr_del) = _parse_gff($output_file, '=');
         return $gff_contents;
     }
-    elsif ($output_type == 'sco') {
+    elsif ($output_type eq 'sco') {
         %transH = _parse_translation($trans_file);
         my $sco_tbl = _parse_sco($output_file, %transH);
         return $sco_tbl;
@@ -434,7 +434,7 @@ sub _check_annotation_params {
 sub _run_rast {
     my ($inputgenome) = @_;
 
-    my $rast_client = Bio::kbase::kbaseenv::ga_client();
+    my $rast_client = Bio::KBase::kbaseenv::ga_client();
     my $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
                         {name => "annotate_proteins_similarity",
@@ -607,7 +607,7 @@ sub _parse_fasta {
 
     my @fasta_lines = ();
     # Open $fasta_filename to read into an array
-    my $fh = openRead($fasta_filename);
+    my $fh = _openRead($fasta_filename);
     chomp(@fasta_lines = <$fh>);
     close($fh);
 

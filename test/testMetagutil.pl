@@ -30,6 +30,9 @@ my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
+my $trans_file = 'data/metag_test/translationfile';
+my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
+my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 
@@ -78,34 +81,31 @@ $fasta_contents = metag_utils::_parse_fasta($input_fasta_file);
 				  $gff_filename, $attr_delimiter);
 
 my $gene_seqs = metag_utils::_extract_cds_sequences_from_fasta(
-	    $fasta_contents, $gff_contents);
+                    $fasta_contents, $gff_contents);
+print "**********Gene sequences************\n" . Dumper($gene_seqs);
 my $protein_seqs = metag_utils::_translate_gene_to_protein_sequences($gene_seqs);
-
+print "**********Protein sequences************\n" . Dumper($protein_seqs);
 =cut
 
 ##-----------------Test Blocks--------------------##
-=begin
-subtest '_write_fasta_from_metagenome' => sub {
-    my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
-    $fa_test1 = metag_utils::_write_fasta_from_metagenome(
-		   $fa_test1, $input_obj_ref);
 
-    ok((-e $fa_test1), 'fasta file created');
-    ok((-s $fa_test1), 'fasta file has data');
-    ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
+my %trans_tab;
+my $sco_tab = [];
+subtest '_parse_translation' => sub {
+    %trans_tab = metag_utils::_parse_translation($trans_file);
+    print Dumper(%trans_tab);
 };
 
-subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = catfile($rast_dir, 'gff1.fasta');
-    $gff_test1 = metag_utils::_write_fasta_from_metagenome(
-		   $gff_test1, $input_obj_ref);
-
-    ok((-e $gff_test1), 'gff file created');
-    ok((-s $gff_test1), 'gff file has data');
-    ok(compare($gff_test1, $gff1) == 0, 'GFF file written correctly');
-
+subtest '_parse_sco' => sub {
+    $sco_tab = metag_utils::_parse_sco($ecoli_sco, %trans_tab);
+    print Dumper($sco_tab);
 };
-=cut
+
+subtest '_parse_gff' => sub {
+    my ($gff_contents, $attr_delimiter) = metag_utils::_parse_gff(
+                                              $ecoli_gff, '=');
+    print Dumper($gff_contents);
+};
 
 subtest '_run_rast' => sub {
     my $inputgenome = {
@@ -134,10 +134,31 @@ subtest 'rast_metagenome' => sub {
  
     my $rast_mg = metag_utils::rast_metagenome($input_params);
 
-
 };
 =cut
 
+=begin
+subtest '_write_fasta_from_metagenome' => sub {
+    my $fa_test1 = catfile($rast_dir, 'fasta1.fasta');
+    $fa_test1 = metag_utils::_write_fasta_from_metagenome(
+		   $fa_test1, $input_obj_ref);
+
+    ok((-e $fa_test1), 'fasta file created');
+    ok((-s $fa_test1), 'fasta file has data');
+    # ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
+};
+
+subtest '_write_gff_from_metagenome' => sub {
+    my $gff_test1 = catfile($rast_dir, 'gff1.fasta');
+    $gff_test1 = metag_utils::_write_fasta_from_metagenome(
+		   $gff_test1, $input_obj_ref);
+
+    ok((-e $gff_test1), 'gff file created');
+    ok((-s $gff_test1), 'gff file has data');
+    # ok(compare($gff_test1, $gff1) == 0, 'GFF file written correctly');
+
+};
+=cut
 =begin
 subtest '_run_prodigal' => sub {
     my $run_ok = '_run_prodigal_cmd runs ok.\n';
