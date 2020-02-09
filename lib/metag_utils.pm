@@ -299,12 +299,15 @@ sub _write_fasta_from_metagenome {
         my $genome_obj = $self->{ws_client}->get_objects2(
                              {'objects'=>[{ref=>$input_obj_ref}]}
                          )->{data}->[0]->{data};
+
         my $fa_file = $self->_get_fasta_from_assembly($genome_obj->{assembly_ref});
-        copy($fa_file, $fasta_filename);
+
+        copy($fa_file, $fasta_filename)
+
         unless (-s $fasta_filename) {print "Fasta file is empty.";}
     };
     if ($@) {
-        croak "ERROR calling Workspace.get_objects2: ".$@."\n";
+        croak "**_write_fasta_from_metagenome ERROR: ".$@."\n";
     }
     return $fasta_filename;
 }
@@ -316,11 +319,13 @@ sub _write_gff_from_metagenome {
     my $gff_result = '';
     eval {
         $gff_result = $gfu->metagenome_to_gff({"genome_ref" => $genome_ref});
+
         copy($gff_result->{file_path}, $gff_filename);
+
         unless (-s $gff_filename) {print "GFF is empty ";}
     };
     if ($@) {
-        croak "ERROR calling GenomeFileUtil.metagenome_to_gff: ".$@."\n";
+        croak "**_write_gff_from_metagenome ERROR: ".$@."\n";
     }
     return $gff_filename;
 }
@@ -362,8 +367,8 @@ sub _save_metagenome {
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
     my $gff_path = catfile($dir, "tmp_gff_file.gff");
 
-    copy($fasta_file, $fasta_path) || croak "Copy file failed: $!\n";
-    copy($gff_file, $gff_path) || croak "Copy file failed: $!\n";
+    copy($fasta_file, $fasta_path) || croak "**_save_metagenome-Copy file failed: $!\n";
+    copy($gff_file, $gff_path) || croak "**_save_metagenome-Copy file failed: $!\n";
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
@@ -376,7 +381,7 @@ sub _save_metagenome {
             "generate_missing_genes" => 1});
     };
     if ($@) {
-        croak "ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
+        croak "**_save_metagenome ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
     }
     else {
         return $annotated_metag;
@@ -699,13 +704,12 @@ sub rast_metagenome {
     # my $start_file = catfile($self->{metag_dir}, 'start_file');
     # my $training_file = catfile($self->{metag_dir}, 'training_file');
 
-    #print "Getting info for the input object: $input_obj_ref\n";
-    #my $info = $self->{ws_client}->get_object_info3(
-    #                {objects=>[{ref=>$input_obj_ref}]}
-    #            )->{infos}->[0];
-
     $input_fasta_file = $self->_write_fasta_from_metagenome(
                             $input_fasta_file, $input_obj_ref);
+
+    unless (-e $input_fasta_file) {
+        croak "**rast_metagenome ERROR: could not find FASTA file\n";
+    }
 
     my $run_prodigal = 0; # TODO $params->{run_prodigal}
     if ($run_prodigal) {# assuming Prodigal generates a GFF file
@@ -754,6 +758,10 @@ sub rast_metagenome {
     }
 
     # fetch protein sequences and gene IDs from fasta and gff files
+    unless (-e $gff_filename) {
+        croak "**rast_metagenome ERROR: could not find GFF file\n";
+    }
+
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
     $fasta_contents = $self->_parse_fasta($input_fasta_file);
