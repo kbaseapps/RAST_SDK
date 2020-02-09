@@ -1783,7 +1783,8 @@ sub annotate_metagenome
     $self->util_initialize_call($params,$ctx);
     $params = Bio::KBase::utilities::args($params,
                   ["object_ref", "output_workspace", "output_metagenome_name"], {}); 
-    print "rast_metagenome input parameter=\n". Dumper($params). "\n";
+
+    print "annotate_metagenome input parameter=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
