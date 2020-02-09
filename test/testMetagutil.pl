@@ -9,11 +9,11 @@ use Bio::KBase::AuthToken;
 
 use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
+use RAST_SDK::RAST_SDKImpl;
 
-
+use RAST_SDK::RAST_SDKImpl;
 use_ok "metag_utils";
 use testRASTutil;
-
 
 local $| = 1;
 
@@ -37,11 +37,13 @@ my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 
-my $scratch = '/kb/module/work/tmp';
-my $rast_dir = $mgutil->_create_metag_dir($scratch);
+my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
-my $mgutil = $mgutil->new('ctx' => $ctx);
+my $mgutil = new metag_utils($config, $ctx);
+
+my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
+my $rast_dir = $mgutil->_create_metag_dir($scratch);
 
 
 sub generate_metagenome {
@@ -73,7 +75,7 @@ my $gff_filename = catfile($rast_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
 $input_fasta_file = $mgutil->_write_fasta_from_metagenome(
-		    $input_fasta_file, $input_obj_ref, $token);
+		    $input_fasta_file, $input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_metagenome(
 	        $gff_filename, $input_obj_ref);
 # fetch protein sequences and gene IDs from fasta and gff files
@@ -152,24 +154,46 @@ subtest '_run_rast' => sub {
 
     my $rast_ret = $mgutil->_run_rast($inputgenome);
     isnt($rast_ret, undef, 'RAST run_pipeline call returns results');
+
 };
 
 subtest 'rast_metagenome' => sub {
-    my $input_params = {
+    my $parms = {
         object_ref => $ret_metag->{metagenome_ref},
         output_metagenome_name => 'rasted_metagenome',
         output_workspace => $ws
     };
- 
-    my $rast_mg = $mgutil->rast_metagenome($input_params, $token);
+    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (unless ($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns a ref');
+
+    $parms = {
+        "object_ref" => "37798/7/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (unless ($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns a ref');
+};
+
+subtest 'annotate_metagenome' => sub {
+    my $parms = {
+        "object_ref" => "37798/7/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_ann = $rast_impl->annotate_metagenome($parms);
+    print Dumper($rast_ann);
 
 };
+
 
 =begin
 subtest '_write_fasta_from_metagenome' => sub {
     my $fa_test1 = catfile($rast_dir, 'test1.fasta');
     $fa_test1 = $mgutil->_write_fasta_from_metagenome(
-                    $fa_test1, $input_obj_ref, $token);
+                    $fa_test1, $input_obj_ref);
 
     ok((-e $fa_test1), 'fasta file created');
     ok((-s $fa_test1), 'fasta file has data');

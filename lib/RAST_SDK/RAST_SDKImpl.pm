@@ -31,6 +31,7 @@ use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 
+use lib '../lib';
 use metag_utils;
 
 
@@ -1787,7 +1788,7 @@ sub annotate_metagenome
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 
-    my $mg_util = metag_utils::new('config'=>$config, 'ctx'=>$ctx);
+    my $mg_util = new metag_utils($config, $ctx);
     my $metag_ref = $mg_util->rast_metagenome($params);
     $output = {
         "output_metagenome_ref" => $metag_ref,

@@ -196,7 +196,7 @@ sub _parse_translation {
 
     my %transH;
     my ($fh_trans, $trans_id, $comment, $seq);
-    $fh_trans = _openRead($trans_file);
+    $fh_trans = $self->_openRead($trans_file);
 
     while (($trans_id, $comment, $seq) = &gjoseqlib::read_next_fasta_seq($fh_trans)) {
         my ($contig_id) = ($trans_id =~ m/^(\S+)_\d+$/o);
@@ -228,7 +228,7 @@ sub _parse_sco {
     my ($self, $sco_file, %transH) = @_;
 
     my $encoded_tbl = [];
-    my $fh_sco = _openRead($sco_file);
+    my $fh_sco = $self->_openRead($sco_file);
     my $contig_id;
     while (defined(my $line = <$fh_sco>)) {
         chomp $line;
@@ -279,7 +279,7 @@ sub _parse_sco {
 sub _get_fasta_from_assembly {
     my ($self, $assembly_ref) = @_;
 
-    my $au = new installed_clients::AssemblyUtilClient($call_back_url);
+    my $au = new installed_clients::AssemblyUtilClient($self->{call_back_url});
     my $output = {};
     eval {
         $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
@@ -312,7 +312,7 @@ sub _write_fasta_from_metagenome {
 sub _write_gff_from_metagenome {
     my ($self, $gff_filename, $genome_ref) = @_;
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gff_result = '';
     eval {
         $gff_result = $gfu->metagenome_to_gff({"genome_ref" => $genome_ref});
@@ -365,7 +365,7 @@ sub _save_metagenome {
     copy($fasta_file, $fasta_path) || croak "Copy file failed: $!\n";
     copy($gff_file, $gff_path) || croak "Copy file failed: $!\n";
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
     eval {
         $annotated_metag = $gfu->fasta_gff_to_metagenome ({
@@ -448,27 +448,27 @@ sub _run_rast {
 sub _generate_report {
     my ($self, $gn_ref) = @_;
 
-    my $kbr = new installed_clients::KBaseReportClient($call_back_url);
+    my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     #TODO
 }
 
 ##----FILE IO ----##
 sub _openWrite {
     # Open a file for writing
-    my ($fn) = @_;
+    my ($self, $fn) = @_;
     open my $fh, qw(>), $fn or croak "**ERROR: could not open file: $fn for writing $!\n";
     return $fh;
 }
 
 sub _openRead {
     # Open a file for reading
-    my ($fn) = @_;
+    my ($self, $fn) = @_;
     open my $fh, qw(<), $fn or croak "**ERROR: could not open file: $fn for reading $!\n";
     return $fh;
 }
 
 sub _create_metag_dir {
-    my ($rast_dir) = @_;
+    my ($self, $rast_dir) = @_;
     # create the project directory for metagenome annotation
     my $mg_dir = "metag_annotation_dir";
     my $dir = catfile($rast_dir, $mg_dir);
@@ -479,10 +479,10 @@ sub _create_metag_dir {
 
 ##----subs for parsing GFF by Seaver----##
 sub _parse_gff {
-    my ($gff_filename, $attr_delimiter) = shift;
+    my ($self, $gff_filename, $attr_delimiter) = shift;
 
     # Open $gff_filename to read into an array
-    my $fh = _openRead($gff_filename);
+    my $fh = $self->_openRead($gff_filename);
     my @gff_lines=();
     chomp(@gff_lines = <$fh>);
     close($fh);
@@ -583,7 +583,7 @@ sub _write_gff {
     my ($self, $gff_contents, $gff_filename, $attr_delimiter) = @_;
 
     # Open $gff_filename to write the @readin_array back to the file
-    my $fh = _openWrite($gff_filename);
+    my $fh = $self->_openWrite($gff_filename);
 
     # Loop over the array
     foreach (@$gff_contents) {
@@ -609,7 +609,7 @@ sub _parse_fasta {
 
     my @fasta_lines = ();
     # Open $fasta_filename to read into an array
-    my $fh = _openRead($fasta_filename);
+    my $fh = $self->_openRead($fasta_filename);
     chomp(@fasta_lines = <$fh>);
     close($fh);
 
@@ -779,7 +779,7 @@ sub rast_metagenome {
         return $input_obj_ref;
     }
 
-    my $rasted_genome = _run_rast($inputgenome);
+    my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $updated_gff_contents = $self->_update_gff_functions_from_features($gff_contents, $ftrs);
 
@@ -815,18 +815,16 @@ sub doInitialization {
 }
 
 sub new {
-    my $type = shift;
+    my $class = shift;
 
-    my %parm = @_;
+    my $self = {
+        'config' => shift,
+        'ctx' => shift
+    };
 
-    my $this = {};
+    bless $self, $class;
 
-    $this->{'config'} = $parm{'config'};
-    $this->{'ctx'} = $parm{'ctx'};
-
-    bless $this, $type;
-
-    return $this;             # Return the reference to the hash.
+    return $self;             # Return the reference to the hash.
 }
 
 
