@@ -435,7 +435,7 @@ sub _check_annotation_params {
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
     my ($self, $inputgenome) = @_;
-    print "******Run RAST pipeline on genome with @{$inputgenome} features.******\n";
+    print "******Run RAST pipeline on genome with @{$inputgenome->{features}} features.******\n";
 
     my $rasted_gn = {};
     eval {
