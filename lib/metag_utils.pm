@@ -832,8 +832,8 @@ sub new {
         'ctx' => shift
     };
 
-    $self->doInitialization();
     bless $self, $class;
+    $self->doInitialization();
 
     return $self;             # Return the reference to the hash.
 }
