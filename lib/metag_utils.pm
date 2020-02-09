@@ -485,6 +485,7 @@ sub _create_metag_dir {
 ##----subs for parsing GFF by Seaver----##
 sub _parse_gff {
     my ($self, $gff_filename, $attr_delimiter) = shift;
+    print "Parsing GFF contents from file $gff_filename \n";
 
     # Open $gff_filename to read into an array
     my $fh = $self->_openRead($gff_filename);
@@ -611,6 +612,7 @@ sub _write_gff {
 
 sub _parse_fasta {
     my ($self, $fasta_filename) = @_;
+    print "Parsing FASTA contents from file $fasta_filename \n";
 
     my @fasta_lines = ();
     # Open $fasta_filename to read into an array
@@ -687,7 +689,6 @@ sub rast_metagenome {
     my $self = shift;
     my($inparams) = @_;
 
-    $inparams = $self->doInitialization($inparams);
     print "rast_metagenome input parameter=\n". Dumper($inparams). "\n";
     
     my $params = $self->_check_annotation_params($inparams);
@@ -803,7 +804,7 @@ sub rast_metagenome {
 }
 
 sub doInitialization {
-    my ($self, $params) = @_;
+    my $self = shift;
 
     $self->{_token} = $self->{ctx}->token();
     $self->{_username} = $self->{ctx}->user_id();
@@ -820,7 +821,7 @@ sub doInitialization {
     $self->{ws_client} = new installed_clients::WorkspaceClient(
                              $self->{ws_url}, token => $self->{_token});
 
-    return $params;
+    return 1;
 }
 
 sub new {
@@ -831,6 +832,7 @@ sub new {
         'ctx' => shift
     };
 
+    $self->doInitialization();
     bless $self, $class;
 
     return $self;             # Return the reference to the hash.
