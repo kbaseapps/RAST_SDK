@@ -484,7 +484,7 @@ sub _create_metag_dir {
 
 ##----subs for parsing GFF by Seaver----##
 sub _parse_gff {
-    my ($self, $gff_filename, $attr_delimiter) = shift;
+    my ($self, $gff_filename, $attr_delimiter) = @_;
     print "Parsing GFF contents from file $gff_filename \n";
 
     # Open $gff_filename to read into an array
