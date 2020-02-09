@@ -342,11 +342,11 @@ sub _save_metagenome {
     }
 
     print "Parameters for saving metegenome-----------------\n";
-    print "Workspace name: $_[0]\n";
-    print "Metagenome name: $_[1]\n";
-    print "Fasta file: $_[2]\n";
-    print "GFF file: $_[3]\n";
-    print "Metagenome dir: $_[4]\n";
+    print "Workspace name: $_[1]\n";
+    print "Metagenome name: $_[2]\n";
+    print "Fasta file: $_[3]\n";
+    print "GFF file: $_[4]\n";
+    print "Metagenome dir: $_[5]\n";
 
     unless (defined($out_metag_name) && defined($ws)) {
         croak $req1;
@@ -431,7 +431,7 @@ sub _check_annotation_params {
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
     my ($self, $inputgenome) = @_;
-    print "**********Running RAST pipeline on genome************\n" . Dumper($inputgenome);
+    print "******Run RAST pipeline on genome with @{$inputgenome} features.******\n";
 
     my $rasted_gn = {};
     eval {

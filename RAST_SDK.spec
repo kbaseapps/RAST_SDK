@@ -159,6 +159,7 @@ module RAST_SDK {
 
         typedef structure {
             metagenome_ref output_metagenome_ref;
+            string workspace;
             string report_name;
             string report_ref;
         } MetagenomeAnnotateOutput;
