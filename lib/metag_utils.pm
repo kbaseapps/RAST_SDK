@@ -302,7 +302,7 @@ sub _write_fasta_from_metagenome {
 
         my $fa_file = $self->_get_fasta_from_assembly($genome_obj->{assembly_ref});
 
-        copy($fa_file, $fasta_filename)
+        copy($fa_file, $fasta_filename);
 
         unless (-s $fasta_filename) {print "Fasta file is empty.";}
     };
