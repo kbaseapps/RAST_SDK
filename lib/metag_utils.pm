@@ -688,6 +688,7 @@ sub rast_metagenome {
     my($inparams) = @_;
 
     $inparams = $self->doInitialization($inparams);
+    print "rast_metagenome input parameter=\n". Dumper($inparams). "\n";
     
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
