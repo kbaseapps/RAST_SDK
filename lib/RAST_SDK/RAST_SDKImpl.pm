@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'a2c98ac88c86143862bc60e289d04aa91dfd0939';
+our $GIT_COMMIT_HASH = 'e3cdb89e263e36360c3b822543c372708713227d';
 
 =head1 NAME
 
@@ -1779,6 +1779,7 @@ MetagenomeAnnotateParams is a reference to a hash where the following keys are d
 data_obj_ref is a string
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
 metagenome_ref is a string
@@ -1798,6 +1799,7 @@ MetagenomeAnnotateParams is a reference to a hash where the following keys are d
 data_obj_ref is a string
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
 metagenome_ref is a string
@@ -1842,10 +1844,15 @@ sub annotate_metagenome
 
     my $mg_util = new metag_utils($config, $ctx);
     my $metag_ref = $mg_util->rast_metagenome($params);
+    my $reportout = Bio::KBase::kbaseenv::create_report({
+        workspace_name => $params->{output_workspace},
+        report_object_name => $params->{output_metagenome_name}.".report"
+    });
     $output = {
-        "output_metagenome_ref" => $metag_ref,
-        "report_name" => "report_name",
-        "report_ref" => undef
+        output_metagenome_ref => $metag_ref,
+        workspace => $params->{output_workspace},
+        report_ref => $reportout->{"ref"},
+        report_name => $params->{output_metagenome_name}.".report"
     };
     #END annotate_metagenome
     my @_bad_returns;
@@ -2511,6 +2518,7 @@ output_metagenome_name has a value which is a string
 <pre>
 a reference to a hash where the following keys are defined:
 output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+workspace has a value which is a string
 report_name has a value which is a string
 report_ref has a value which is a string
 
@@ -2522,6 +2530,7 @@ report_ref has a value which is a string
 
 a reference to a hash where the following keys are defined:
 output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+workspace has a value which is a string
 report_name has a value which is a string
 report_ref has a value which is a string
 
