@@ -424,6 +424,10 @@ sub _check_annotation_params {
         || $params->{output_metagenome_name} eq '') {
         $params->{output_metagenome_name} = "rast_annotated_metagenome";
     }
+    if (!defined($params->{run_prodigal})
+        || $params->{run_prodigal} eq '') {
+        $params->{run_prodiagl} = 0;
+    }
     return $params;
 }
 
@@ -704,6 +708,7 @@ sub rast_metagenome {
     my $nuc_file = catfile($self->{metag_dir}, 'nucleotide_seq');
     my $output_file = catfile($self->{metag_dir}, 'prodigal_output').'.'.$output_type;
     # my $start_file = catfile($self->{metag_dir}, 'start_file');
+    # cannot specify metagenomic sequence with a training file
     # my $training_file = catfile($self->{metag_dir}, 'training_file');
 
     $input_fasta_file = $self->_write_fasta_from_metagenome(
@@ -713,10 +718,9 @@ sub rast_metagenome {
         croak "**rast_metagenome ERROR: could not find FASTA file\n";
     }
 
-    my $run_prodigal = 0; # TODO $params->{run_prodigal}
-    if ($run_prodigal) {# assuming Prodigal generates a GFF file
+    my $run_prodigal = 0;  #TODO more testing later: $params->{run_prodigal};
+    if ($run_prodigal) {# Running Prodigal to generate a GFF file and others
         my $mode = 'meta';
-        # cannot specify metagenomic sequence with a training file
         my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
                                                      $trans_file,
                                                      $nuc_file,

@@ -43,6 +43,12 @@ parameters :
         short-hint : |
             Name of the resulting Annotated Metagenome Assembly to be saved in the Narrative
 
+    run_prodigal :
+        ui-name : |
+            Run Prodigal Gene Call
+        short-hint : |
+            Check if Prodigal is expected to run
+
 description : |
     <p>Description content to be filled...</p>
 
