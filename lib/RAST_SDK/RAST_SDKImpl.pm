@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'e3cdb89e263e36360c3b822543c372708713227d';
+our $GIT_COMMIT_HASH = 'e8ac703d07cf7afe76c6daf1e96773e9ca037d1a';
 
 =head1 NAME
 
@@ -1776,7 +1776,9 @@ MetagenomeAnnotateParams is a reference to a hash where the following keys are d
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
 	output_metagenome_name has a value which is a string
+	run_prodigal has a value which is a RAST_SDK.bool
 data_obj_ref is a string
+bool is an int
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
 	workspace has a value which is a string
@@ -1796,7 +1798,9 @@ MetagenomeAnnotateParams is a reference to a hash where the following keys are d
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
 	output_metagenome_name has a value which is a string
+	run_prodigal has a value which is a RAST_SDK.bool
 data_obj_ref is a string
+bool is an int
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
 	workspace has a value which is a string
@@ -2475,6 +2479,8 @@ Required parameters:
     object_ref - reference to Assembly or Genome object,
     output_workspace - output workspace name,
     output_metagenome_name - output object name,
+Optional parameters:
+    run_prodigal - default to 0, set to 1 if expect to run Prodigal
 
 
 =item Definition
@@ -2486,6 +2492,7 @@ a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
 output_metagenome_name has a value which is a string
+run_prodigal has a value which is a RAST_SDK.bool
 
 </pre>
 
@@ -2497,6 +2504,7 @@ a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
 output_metagenome_name has a value which is a string
+run_prodigal has a value which is a RAST_SDK.bool
 
 
 =end text
