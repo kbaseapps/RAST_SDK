@@ -435,7 +435,8 @@ sub _check_annotation_params {
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
     my ($self, $inputgenome) = @_;
-    print "******Run RAST pipeline on genome with @{$inputgenome->{features}} features.******\n";
+    my $count = scalar @{$inputgenome->{features}};
+    print "******Run RAST pipeline on genome with $count features.******\n";
 
     my $rasted_gn = {};
     eval {
@@ -788,7 +789,8 @@ sub rast_metagenome {
     }
 
     # Call RAST to annotate the proteins/genome
-    unless (@{$inputgenome->{features}} >= 1) {
+    my $ftr_count = scalar @{$inputgenome->{features}};
+    unless ($ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
         return $input_obj_ref;
     }
