@@ -68,7 +68,7 @@ sub generate_metagenome {
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
-my $input_obj_ref = $ret_metag->{metagenome_ref};
+my $input_obj_ref = $ret_metag->{genome_ref};
 
 my $input_fasta_file = catfile($rast_dir, 'prodigal_input.fasta');
 my $gff_filename = catfile($rast_dir, 'genome.gff');
@@ -163,9 +163,21 @@ subtest 'rast_metagenome' => sub {
         output_metagenome_name => 'rasted_metagenome',
         output_workspace => $ws
     };
-    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (unless ($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns a ref');
+    my $rast_mg_ref;
+
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    } qr/**rast_metagenome ERROR/,
+        'calling rast_metagenome dies file not found';
+
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+        print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+        if ($rast_mg_ref !~ m/[^\\w\\|._-]/) {
+            croak "Invalid metagenome object reference:$rast_mg_ref.";
+        }
+    } qr/Invalid metagenome object reference/,
+        'calling rast_metagenome fails to generate a valid metagenome';
 
     $parms = {
         "object_ref" => "37798/7/1",
@@ -174,7 +186,7 @@ subtest 'rast_metagenome' => sub {
     };
     $rast_mg_ref = $mgutil->rast_metagenome($parms);
     print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (unless ($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns a ref');
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
 };
 
 subtest 'annotate_metagenome' => sub {
