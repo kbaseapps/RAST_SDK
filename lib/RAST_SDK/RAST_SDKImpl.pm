@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'e8ac703d07cf7afe76c6daf1e96773e9ca037d1a';
+our $GIT_COMMIT_HASH = 'c96f6f6043ac44bf6c3de67ff570f5e0bdeade3a';
 
 =head1 NAME
 
@@ -1730,7 +1730,7 @@ data_obj_ref is a string
 bool is an int
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
-	workspace has a value which is a string
+	output_workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
 metagenome_ref is a string
@@ -1752,7 +1752,7 @@ data_obj_ref is a string
 bool is an int
 MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
-	workspace has a value which is a string
+	output_workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
 metagenome_ref is a string
@@ -1803,7 +1803,7 @@ sub annotate_metagenome
     });
     $output = {
         output_metagenome_ref => $metag_ref,
-        workspace => $params->{output_workspace},
+        output_workspace => $params->{output_workspace},
         report_ref => $reportout->{"ref"},
         report_name => $params->{output_metagenome_name}.".report"
     };
@@ -2475,7 +2475,7 @@ run_prodigal has a value which is a RAST_SDK.bool
 <pre>
 a reference to a hash where the following keys are defined:
 output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
-workspace has a value which is a string
+output_workspace has a value which is a string
 report_name has a value which is a string
 report_ref has a value which is a string
 
@@ -2487,7 +2487,7 @@ report_ref has a value which is a string
 
 a reference to a hash where the following keys are defined:
 output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
-workspace has a value which is a string
+output_workspace has a value which is a string
 report_name has a value which is a string
 report_ref has a value which is a string
 

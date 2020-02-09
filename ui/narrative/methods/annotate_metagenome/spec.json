@@ -81,6 +81,10 @@
                 },
                 {
                     "input_parameter": "output_metagenome_name",
+                    "target_property": "output_metagenome_name"
+                },
+                {
+                    "input_parameter": "output_metagenome_name",
                     "target_property": "id"
                 },
                 {
@@ -93,7 +97,11 @@
                 },
                 {
                     "narrative_system_variable": "workspace",
-                    "target_property": "workspace"
+                    "target_property": "workspace_name"
+                },
+                {
+                    "narrative_system_variable": "workspace",
+                    "target_property": "ws"
                 }
             ]
         }
