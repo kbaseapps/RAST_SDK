@@ -349,29 +349,35 @@ sub _save_metagenome {
     print "Metagenome dir: $_[5]\n";
 
     unless (defined($out_metag_name) && defined($ws)) {
-        croak $req1;
+        croak "**In _save_metagenome: $req1";
     }
     unless (defined($fasta_file) && defined($gff_file)) {
-        croak $req2;
+        croak "**In _save_metagenome: $req2";
     }
     unless (-e $fasta_file) {
-        croak "Fasta file not found.\n";
+        croak "**In _save_metagenome: Fasta file not found.\n";
     }
     unless (-e $gff_file) {
-        croak "GFF file not found.\n";
+        croak "**In _save_metagenome: GFF file not found.\n";
+    }
+    unless (-s $fasta_file) {
+        croak "**In _save_metagenome: Fasta file is empty.\n";
+    }
+    unless (-s $gff_file) {
+        croak "**In _save_metagenome: GFF file is empty.\n";
     }
     unless (-e $dir and -d $dir) {
         $dir = $self->_create_metag_dir($self->{rast_scratch});
     }
 
-    print "First 100 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
+    print "First few 10's lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(100, $gff_file);
 
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
     my $gff_path = catfile($dir, "tmp_gff_file.gff");
 
-    copy($fasta_file, $fasta_path) || croak "**In _save_metagenome-Copy file failed: $!\n";
-    copy($gff_file, $gff_path) || croak "**In _save_metagenome-Copy file failed: $!\n";
+    copy($fasta_file, $fasta_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
+    copy($gff_file, $gff_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
@@ -384,7 +390,7 @@ sub _save_metagenome {
             "generate_missing_genes" => 1});
     };
     if ($@) {
-        croak "**_save_metagenome ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
+        croak "**In _save_metagenome ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
     }
     else {
         return $annotated_metag;
@@ -555,7 +561,7 @@ sub _parse_gff {
 
 sub _update_gff_functions_from_features {
     my ($self, $gff_contents, $features) = @_;
-    print "Updating GFF with rasted feataures: \n".Dumper($features);
+    print "Updating GFF with rasted feataures:\n".Dumper($features);
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
@@ -593,7 +599,7 @@ sub _update_gff_functions_from_features {
         $gff_line->[8] = $ftr_attributes;
         push(@new_gff_contents,$gff_line);
     }
-    print "Updated new_gff_contents: \n".Dumper(\@new_gff_contents);
+    print "Updated new_gff_contents has ". scalar @new_gff_contents . " entries\n";
     return \@new_gff_contents;
 }
 
