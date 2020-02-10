@@ -498,6 +498,8 @@ sub _parse_gff {
     chomp(@gff_lines = <$fh>);
     close($fh);
 
+    print "Read in ". scalar @gff_lines . " lines from $gff_filename\n";
+
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
         my ($contig_id, $source_id, $feature_type, $start, $end,
@@ -698,6 +700,7 @@ sub rast_metagenome {
     
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
+
     my $inputgenome = {
         features => []
     };
@@ -749,8 +752,9 @@ sub rast_metagenome {
                                                      $output_type,
                                                      $mode);
 
+        # 3.1 filing the feature list
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
-            # Prodigal finished run, files are written into $output_file/$trans_file/$nuc_file
+            print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
             my $prodigal_result = $self->_parse_prodigal_results($trans_file,
                                                           $output_file,
                                                           $output_type);
@@ -777,37 +781,35 @@ sub rast_metagenome {
                         protein_translation => $translation
                 });
             }
-            copy($output_file, $gff_filename);
         }
     }
     elsif ($is_meta_assembly) {
         # generating the gff file directly from metagenome
         $gff_filename = $self->_write_gff_from_metagenome($gff_filename, $input_obj_ref);
+        unless (-e $gff_filename) {
+            croak "**rast_metagenome ERROR: could not find GFF file\n";
+        }
+        # 3.2 filing the feature list
+        # fetch protein sequences and gene IDs from fasta and gff files
+        my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+
+        $fasta_contents = $self->_parse_fasta($input_fasta_file);
+        ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
+
+        my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
+        my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
+
+        my %gene_id_index=();
+        my $i=1;
+        foreach my $gene (sort keys %$protein_seqs){
+            push(@{$inputgenome->{features}},{
+                id => "peg".$i,
+                protein_translation => $protein_seqs->{$gene}
+            });
+            $gene_id_index{$i}=$gene;
+            $i++;
+        }
     }
-    unless (-e $gff_filename) {
-        croak "**rast_metagenome ERROR: could not find GFF file\n";
-    }
-
-    # 3. fetch protein sequences and gene IDs from fasta and gff files
-    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
-
-    $fasta_contents = $self->_parse_fasta($input_fasta_file);
-    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
-
-    my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
-    my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
-
-    my %gene_id_index=();
-    my $i=1;
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-            id => "peg".$i,
-            protein_translation => $protein_seqs->{$gene}
-        });
-        $gene_id_index{$i}=$gene;
-        $i++;
-    }
-
     # 4. call RAST to annotate the proteins/genome
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
