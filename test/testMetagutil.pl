@@ -158,12 +158,31 @@ subtest '_run_rast' => sub {
 };
 
 subtest 'rast_metagenome' => sub {
+    # an assembly
     my $parms = {
+        "object_ref" => "37798/6/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+
+    # a genome
+    my $parms = {
+        "object_ref" => "37798/7/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+
+    $parms = {
         object_ref => $ret_metag->{metagenome_ref},
         output_metagenome_name => 'rasted_metagenome',
         output_workspace => $ws
     };
-    my $rast_mg_ref;
 
     throws_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
