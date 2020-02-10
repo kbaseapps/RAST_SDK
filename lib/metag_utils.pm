@@ -364,11 +364,14 @@ sub _save_metagenome {
         $dir = $self->_create_metag_dir($self->{rast_scratch});
     }
 
+    print "First 100 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
+    $self->_print_fasta_gff(100, $gff_file);
+
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
     my $gff_path = catfile($dir, "tmp_gff_file.gff");
 
-    copy($fasta_file, $fasta_path) || croak "**_save_metagenome-Copy file failed: $!\n";
-    copy($gff_file, $gff_path) || croak "**_save_metagenome-Copy file failed: $!\n";
+    copy($fasta_file, $fasta_path) || croak "**In _save_metagenome-Copy file failed: $!\n";
+    copy($gff_file, $gff_path) || croak "**In _save_metagenome-Copy file failed: $!\n";
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
@@ -755,14 +758,20 @@ sub rast_metagenome {
         # 2.1 filing the feature list
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
             print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
+
+            print "First 100 lines of the GFF file from Prodigal-----------\n";
+            $self->_print_fasta_gff(100, $output_file);
+
             my $gff_contents = $self->_parse_prodigal_results($trans_file,
                                                           $output_file,
                                                           $output_type);
 
             my $count = @$gff_contents;
+            # print "Prodigal returned $count lines:\n".Dumper($gff_contents);
+
             my $cur_id_suffix = 1;
             foreach my $entry (@$gff_contents) {
-                # print Data::Dumper->Dump($entry)."\n";
+                # print Dumper($entry)."\n";
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $translation) = @$entry;
 
@@ -781,6 +790,7 @@ sub rast_metagenome {
                         protein_translation => $translation
                 });
             }
+            #print "******inputgenome data:******* \n".Dumper($inputgenome);
         }
     }
     elsif ($is_meta_assembly) {
@@ -832,6 +842,23 @@ sub rast_metagenome {
     return $out_metag->{genome_ref};
 }
 
+sub _print_fasta_gff {
+    my ($self, $num_lines, $f) = @_;
+
+    # Open $gff_filename to read into an array
+    my $fh = $self->_openRead($f);
+    my @read_lines=();
+    chomp(@read_lines = <$fh>);
+    close($fh);
+
+    my $file_lines = scalar @read_lines;
+    print "There are a total of ". $file_lines . " lines from file $f\n";
+
+    $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
+    for (my $i = 0; $i < $num_lines; $i++ ) {
+        print "@read_lines[$i]\n";
+    }
+}
 
 sub doInitialization {
     my $self = shift;

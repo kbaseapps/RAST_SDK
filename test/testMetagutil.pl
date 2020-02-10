@@ -160,7 +160,7 @@ subtest '_run_rast' => sub {
 subtest 'rast_metagenome' => sub {
     # an assembly
     my $parms = {
-        "object_ref" => "37798/6/1",
+        "object_ref" => "37798/14/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
         "output_workspace" => $ws
     };
@@ -170,7 +170,7 @@ subtest 'rast_metagenome' => sub {
 
     # a genome
     my $parms = {
-        "object_ref" => "37798/7/1",
+        "object_ref" => "37798/15/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
         "output_workspace" => $ws
     };
