@@ -300,7 +300,7 @@ sub _write_fasta_from_metagenome {
                              {'objects'=>[{ref=>$input_obj_ref}]}
                          )->{data}->[0]->{data};
 
-        my $fa_file = $self->_get_fasta_from_assembly($genome_obj->{assembly_ref});
+        my $fa_file = $self->_get_fasta_from_assembly($input_obj_ref.";".$genome_obj->{assembly_ref});
 
         copy($fa_file, $fasta_filename);
 
