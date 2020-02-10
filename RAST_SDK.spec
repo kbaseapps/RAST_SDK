@@ -149,15 +149,12 @@ module RAST_SDK {
                 object_ref - reference to Assembly or Genome object,
                 output_workspace - output workspace name,
                 output_metagenome_name - output object name,
-            Optional parameters:
-                run_prodigal - default to 0, set to 1 if expect to run Prodigal
         */
 
         typedef structure {
             data_obj_ref object_ref;
             string output_workspace;
             string output_metagenome_name;
-            bool run_prodigal;
         } MetagenomeAnnotateParams;
 
         typedef structure {

@@ -30,17 +30,6 @@
             "valid_ws_types" : [ "KBaseMetagenomes.AnnotatedMetagenomeAssembly" ],
             "is_output_name":true
            }
-        }, {
-            "id" : "run_prodigal",
-            "optional":false,
-            "advanced":false,
-            "allow_multiple":false,
-            "default_values":["0"],
-            "field_type" : "checkbox",
-            "checkbox_options":{
-                "checked_value": 0,
-                "unchecked_value": 1
-            }
         }
     ],
     "behavior": {
@@ -64,11 +53,7 @@
 		        "prefix": "metagenome_"
 		    },
 		    "target_property": "output_metagenome_name"
-		},
-                {
-                    "input_parameter": "run_prodigal",
-                    "target_property": "run_prodigal"
-                }
+		}
             ],
             "output_mapping": [
                 {
@@ -86,10 +71,6 @@
                 {
                     "input_parameter": "output_metagenome_name",
                     "target_property": "id"
-                },
-                {
-                    "input_parameter": "run_prodigal",
-                    "target_property": "run_prodigal"
                 },
                 {
                     "narrative_system_variable": "workspace",

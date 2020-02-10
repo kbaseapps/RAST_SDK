@@ -712,15 +712,35 @@ sub rast_metagenome {
     # cannot specify metagenomic sequence with a training file
     # my $training_file = catfile($self->{metag_dir}, 'training_file');
 
-    $input_fasta_file = $self->_write_fasta_from_metagenome(
-                            $input_fasta_file, $input_obj_ref);
+    # 1. getting the fasta file from $input_obj_ref according to its type
+    print "Getting info for the input object: $input_obj_ref\n";
+    my $info = $self->{ws_client}->get_object_info3(
+                    {objects=>[{ref=>$input_obj_ref}]}
+                )->{infos}->[0];
 
-    unless (-e $input_fasta_file) {
-        croak "**rast_metagenome ERROR: could not find FASTA file\n";
+    print "Info of input object:\n". Dumper($info);
+    my $is_assembly = $info->[2] =~ /GenomeAnnotations.Assembly/;
+    my $is_meta_assembly = $info->[2] =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    if ($is_assembly) {
+        # object is itself an assembly
+        my $out_file = $self->_get_fasta_from_assembly($input_obj_ref);
+        copy($out_file, $input_fasta_file) || croak "Copy file failed: $!\n";
+    }
+    elsif ($is_meta_assembly) {
+        # input_obj_ref points to a genome
+        $input_fasta_file = $self->_write_fasta_from_metagenome(
+                            $input_fasta_file, $input_obj_ref);
+        unless (-e $input_fasta_file) {
+            croak "**rast_metagenome ERROR: could not find FASTA file\n";
+        }
     }
 
-    my $run_prodigal = 0;  #TODO more testing later: $params->{run_prodigal};
-    if ($run_prodigal) {# Running Prodigal to generate a GFF file and others
+    # 2. for the gff file, if $input_obj_ref points to an assembly, call Prodigal
+    # my $run_prodigal = 0;  #TODO more testing later: $params->{run_prodigal};
+    # if ($run_prodigal) {# Running Prodigal to generate a GFF file and others
+    if ($is_assembly) {
+        # object is itself an assembly
         my $mode = 'meta';
         my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
                                                      $trans_file,
@@ -763,12 +783,11 @@ sub rast_metagenome {
     else {# generating the gff file directly from metagenome
         $gff_filename = $self->_write_gff_from_metagenome($gff_filename, $input_obj_ref);
     }
-
-    # fetch protein sequences and gene IDs from fasta and gff files
     unless (-e $gff_filename) {
         croak "**rast_metagenome ERROR: could not find GFF file\n";
     }
 
+    # 3. fetch protein sequences and gene IDs from fasta and gff files
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
     $fasta_contents = $self->_parse_fasta($input_fasta_file);
@@ -788,7 +807,7 @@ sub rast_metagenome {
         $i++;
     }
 
-    # Call RAST to annotate the proteins/genome
+    # 4. call RAST to annotate the proteins/genome
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
@@ -802,6 +821,7 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
+    # 5. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
                                     $input_fasta_file, $new_gff_file,
