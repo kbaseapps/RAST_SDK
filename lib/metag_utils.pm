@@ -498,7 +498,7 @@ sub _parse_gff {
     chomp(@gff_lines = <$fh>);
     close($fh);
 
-    print "Read in ". scalar @gff_lines . " lines from $gff_filename\n";
+    print "Read in ". scalar @gff_lines . " lines from GFF file $gff_filename\n";
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
@@ -739,9 +739,9 @@ sub rast_metagenome {
         }
     }
 
-    # 2. for the gff file, if $input_obj_ref points to an assembly, call Prodigal
-    # my $run_prodigal = 0;  #TODO more testing later: $params->{run_prodigal};
-    # if ($run_prodigal) {# Running Prodigal to generate a GFF file and others
+    # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+
     if ($is_assembly) {
         # object is itself an assembly
         my $mode = 'meta';
@@ -752,16 +752,16 @@ sub rast_metagenome {
                                                      $output_type,
                                                      $mode);
 
-        # 3.1 filing the feature list
+        # 2.1 filing the feature list
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
             print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
-            my $prodigal_result = $self->_parse_prodigal_results($trans_file,
+            my $gff_contents = $self->_parse_prodigal_results($trans_file,
                                                           $output_file,
                                                           $output_type);
 
-            my $count = @$prodigal_result;
+            my $count = @$gff_contents;
             my $cur_id_suffix = 1;
-            foreach my $entry (@$prodigal_result) {
+            foreach my $entry (@$gff_contents) {
                 # print Data::Dumper->Dump($entry)."\n";
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $translation) = @$entry;
@@ -789,9 +789,8 @@ sub rast_metagenome {
         unless (-e $gff_filename) {
             croak "**rast_metagenome ERROR: could not find GFF file\n";
         }
-        # 3.2 filing the feature list
+        # 2.2 filing the feature list
         # fetch protein sequences and gene IDs from fasta and gff files
-        my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
@@ -810,7 +809,8 @@ sub rast_metagenome {
             $i++;
         }
     }
-    # 4. call RAST to annotate the proteins/genome
+
+    # 3. call RAST to annotate the proteins/genome
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
@@ -824,13 +824,14 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    # 5. save rast re-annotated fasta/gff data
+    # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
                                     $input_fasta_file, $new_gff_file,
                                     $self->{metag_dir});
     return $out_metag->{genome_ref};
 }
+
 
 sub doInitialization {
     my $self = shift;
