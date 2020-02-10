@@ -780,7 +780,8 @@ sub rast_metagenome {
             copy($output_file, $gff_filename);
         }
     }
-    else {# generating the gff file directly from metagenome
+    elsif ($is_meta_assembly) {
+        # generating the gff file directly from metagenome
         $gff_filename = $self->_write_gff_from_metagenome($gff_filename, $input_obj_ref);
     }
     unless (-e $gff_filename) {
