@@ -440,6 +440,7 @@ sub _run_rast {
     my ($self, $inputgenome) = @_;
     my $count = scalar @{$inputgenome->{features}};
     print "******Run RAST pipeline on genome with $count features.******\n";
+    print "For example, first 5 feataures: \n".Dumper(@{$inputgenome->{features}}[0..5]);
 
     my $rasted_gn = {};
     eval {
@@ -554,6 +555,7 @@ sub _parse_gff {
 
 sub _update_gff_functions_from_features {
     my ($self, $gff_contents, $features) = @_;
+    print "Updating GFF with rasted feataures: \n".Dumper($features);
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
@@ -591,14 +593,16 @@ sub _update_gff_functions_from_features {
         $gff_line->[8] = $ftr_attributes;
         push(@new_gff_contents,$gff_line);
     }
-
+    print "Updated new_gff_contents: \n".Dumper(\@new_gff_contents);
     return \@new_gff_contents;
 }
 
 sub _write_gff {
     my ($self, $gff_contents, $gff_filename, $attr_delimiter) = @_;
 
-    # Open $gff_filename to write the @readin_array back to the file
+    print "Writing updated GFF contents: \n".Dumper($gff_contents);
+
+    # Open $gff_filename to write the @$gff_contents array back to the file
     my $fh = $self->_openWrite($gff_filename);
 
     # Loop over the array
@@ -617,6 +621,12 @@ sub _write_gff {
 	print $fh join("\t", @$_)."\n";
     }
     close $fh;
+    unless (-e $gff_filename) {
+        croak "**In _write_gff ERROR: could not find file $gff_filename\n";
+    }
+    unless (-s $gff_filename) {
+        croak "**In _write_gff ERROR: empty file $gff_filename\n";
+    }
 }
 
 
@@ -829,6 +839,8 @@ sub rast_metagenome {
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
+    print "RAST resulted @{$ftrs} feataures.\n";
+
     my $updated_gff_contents = $self->_update_gff_functions_from_features($gff_contents, $ftrs);
 
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
