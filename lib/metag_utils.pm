@@ -568,6 +568,7 @@ sub _update_gff_functions_from_features {
     my %ftrs_function_lookup = ();
     foreach my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
+
         if exists($ftr->{'functions'}) {
             $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
         }
@@ -783,8 +784,9 @@ sub rast_metagenome {
 
             # print "First 100 lines of the GFF file from Prodigal-----------\n";
             # $self->_print_fasta_gff(100, $output_file);
+            my %transH;
 
-            my ($gff_contents, %transH) = $self->_parse_prodigal_results(
+            ($gff_contents, %transH) = $self->_parse_prodigal_results(
                                                   $trans_file,
                                                   $output_file,
                                                   $output_type);
