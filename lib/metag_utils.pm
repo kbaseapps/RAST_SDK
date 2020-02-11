@@ -569,10 +569,10 @@ sub _update_gff_functions_from_features {
     foreach my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
 
-        if exists($ftr->{'functions'}) {
+        if (exists($ftr->{'functions'})) {
             $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
         }
-        elsif exists($ftr->{'function'}) {
+        elsif (exists($ftr->{'function'})) {
             $ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
         }
     }
