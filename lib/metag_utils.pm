@@ -612,8 +612,6 @@ sub _update_gff_functions_from_features {
 sub _write_gff {
     my ($self, $gff_contents, $gff_filename, $attr_delimiter) = @_;
 
-    print "Writing updated GFF contents: \n".Dumper($gff_contents);
-
     # Open $gff_filename to write the @$gff_contents array back to the file
     my $fh = $self->_openWrite($gff_filename);
 
@@ -833,10 +831,6 @@ sub rast_metagenome {
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
-
-        my $pcount = @$protein_seqs;
-        print "There are $pcount protein sequence entries.\n";
-        print "First 5 example of protein sequences:\n".Dumper(@{$protein_seqs}[0..4]);
 
         foreach my $gene (sort keys %$protein_seqs){
             push(@{$inputgenome->{features}},{
