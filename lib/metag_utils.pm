@@ -178,17 +178,16 @@ sub _run_prodigal {
 #--------------------------------------------------------------------------------
 sub _parse_prodigal_results {
     my ($self, $trans_file, $output_file, $output_type) = @_;
-    my %transH;
+    my %transH = $self->_parse_translation($trans_file);
     if ($output_type eq 'gff') {
         my ($gff_contents, $attr_del) = $self->_parse_gff($output_file, '=');
-        return $gff_contents;
+        return ($gff_contents, %transH);
     }
     elsif ($output_type eq 'sco') {
-        %transH = $self->_parse_translation($trans_file);
         my $sco_tbl = $self->_parse_sco($output_file, %transH);
-        return $sco_tbl;
+        return ($sco_tbl, %transH);
     }
-    return [];
+    return ([], %transH);
 }
 
 sub _parse_translation {
@@ -220,9 +219,9 @@ sub _parse_translation {
             );
         }
     }
+    print "Translation table:\n".Dumper(\%transH);
     return %transH;
 }
-
 
 sub _parse_sco {
     my ($self, $sco_file, %transH) = @_;
@@ -446,7 +445,7 @@ sub _run_rast {
     my ($self, $inputgenome) = @_;
     my $count = scalar @{$inputgenome->{features}};
     print "******Run RAST pipeline on genome with $count features.******\n";
-    print "For example, first 5 feataures: \n".Dumper(@{$inputgenome->{features}}[0..5]);
+    print "For example, first 5 features: \n".Dumper(@{$inputgenome->{features}}[0..4]);
 
     my $rasted_gn = {};
     eval {
@@ -561,9 +560,9 @@ sub _parse_gff {
 
 sub _update_gff_functions_from_features {
     my ($self, $gff_contents, $features, $gene_index) = @_;
-    print "Updating GFF with ".scalar @{$features}." rasted feataures.\n";
+    print "Updating GFF with ".scalar @{$features}." rasted features.\n";
     print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
-    print "Updating ".scalar @{$gff_contents}." GFFs with rasted feataures.\n";
+    print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
     print "Gene index hash:\n".Dumper(@{$gene_index}[0,1,2,3,4]."\n";
 
     #Feature Lookup Hash
@@ -596,9 +595,12 @@ sub _update_gff_functions_from_features {
         if (!defined($ftr_attributes->{'product'})) {
             $ftr_attributes->{'product'}="";
         }
+
         #Look for, and add function
         my $gene_id = $ftr_attributes->{'id'};
-        #foreach my $inx (@$gene_index) {}
+        foreach my $inx (@$gene_index) {
+             
+        }
         if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
             $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
         }
@@ -773,11 +775,11 @@ sub rast_metagenome {
         # object is itself an assembly
         my $mode = 'meta';
         my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
-                                                     $trans_file,
-                                                     $nuc_file,
-                                                     $output_file,
-                                                     $output_type,
-                                                     $mode);
+                                                      $trans_file,
+                                                      $nuc_file,
+                                                      $output_file,
+                                                      $output_type,
+                                                      $mode);
 
         # 2.1 filing the feature list
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
@@ -786,9 +788,10 @@ sub rast_metagenome {
             print "First 100 lines of the GFF file from Prodigal-----------\n";
             $self->_print_fasta_gff(100, $output_file);
 
-            my $gff_contents = $self->_parse_prodigal_results($trans_file,
-                                                          $output_file,
-                                                          $output_type);
+            my ($gff_contents, %transH) = $self->_parse_prodigal_results(
+                                                  $trans_file,
+                                                  $output_file,
+                                                  $output_type);
 
             my $count = @$gff_contents;
             # print "Prodigal returned $count lines:\n".Dumper($gff_contents);
@@ -797,21 +800,23 @@ sub rast_metagenome {
             foreach my $entry (@$gff_contents) {
                 # print Dumper($entry)."\n";
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
-                    $phase, $translation) = @$entry;
+                    $phase, $attribs) = @$entry;
 
-                if ($contig =~ /##gff-version/ || $contig =~ /# Model Data:/
-                    || $contig =~ /# Sequence Data:/) {
+                if ($contig =~ m/^##gff-version/ || $contig =~ m/^\# Model Data/)
+                    || $contig =~ m/^\# Sequence Data:/) {
                     next;
                 }
-                my $id = join(".", "peg", $cur_id_suffix);
-                $cur_id_suffix++;
+                #$strand_sign = ($strand == 1) ? q(+) : q(-);
+                my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
+                my $id = $attribs->{id};
+
                 push(@{$inputgenome->{features}}, {
                         id                  => $id,
                         type                => $ftr_type,
                         location            => [[ $contig, $beg, $strand, $end ]],
                         annotator           => $source,
                         annotation          => 'Add feature called by PRODIGAL',
-                        protein_translation => $translation
+                        protein_translation => $seq
                 });
             }
             #print "******inputgenome data:******* \n".Dumper($inputgenome);
@@ -853,7 +858,7 @@ sub rast_metagenome {
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
-    print "RAST resulted ".scalar @{$ftrs}." feataures.\n";
+    print "RAST resulted ".scalar @{$ftrs}." features.\n";
 
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
                                    $gff_contents, $ftrs, $gene_id_index);
