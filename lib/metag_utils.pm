@@ -563,20 +563,20 @@ sub _update_gff_functions_from_features {
     print "Updating GFF with ".scalar @{$features}." rasted features.\n";
     print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
     print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
-    print "First 5 gff_contents examples:\n".Dumper(@{$gff_contents}[0,1,2,3,4]);
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
     foreach my $ftr (@$features){
-        next if !exists($ftr->{'functions'});
-        $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
- 
-        # Use these lines if the feature is an old type using singular 'function' field
-        #next if !exists($ftr->{'function'});
-        #$ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+        next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
+        if exists($ftr->{'functions'}) {
+            $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
+        }
+        elsif exists($ftr->{'function'}) {
+            $ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+        }
     }
     my $ksize = keys %ftrs_function_lookup;
-    print "Look up table contains $ksize entries.\n";
+    print "Feature function look up table contains $ksize entries.\n";
 
     my @new_gff_contents=();
     foreach my $gff_line (@$gff_contents) {
@@ -696,7 +696,7 @@ sub _extract_cds_sequences_from_fasta {
             $gene_seq = scalar reverse $gene_seq;
         }
 
-        $gene_seqs{$gff_line->[8]{'ID'}}=$gene_seq;
+        $gene_seqs{$gff_line->[8]{'id'}}=$gene_seq;
     }
     print "Gene sequence hash example:\n".Dumper(\%gene_seqs);
     return \%gene_seqs;
@@ -790,7 +790,7 @@ sub rast_metagenome {
                                                   $output_type);
 
             my $count = @$gff_contents;
-            # print "Prodigal returned $count lines:\n".Dumper($gff_contents);
+            print "Prodigal returned $count entries.\n";#.Dumper($gff_contents);
 
             my $cur_id_suffix = 1;
             foreach my $entry (@$gff_contents) {
@@ -831,6 +831,10 @@ sub rast_metagenome {
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
+
+        my $pcount = @$protein_seqs;
+        print "There are $pcount protein sequence entries.\n";
+        print "First 5 example of protein sequences:\n".Dumper(@{$protein_seqs}[0..4]);
 
         foreach my $gene (sort keys %$protein_seqs){
             push(@{$inputgenome->{features}},{
