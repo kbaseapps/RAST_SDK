@@ -219,7 +219,7 @@ sub _parse_translation {
             );
         }
     }
-    print "Translation table:\n".Dumper(\%transH);
+    # print "Translation table:\n".Dumper(\%transH);
     return %transH;
 }
 
@@ -695,8 +695,9 @@ sub _extract_cds_sequences_from_fasta {
             $gene_seq = scalar reverse $gene_seq;
         }
 
-        $gene_seqs{$gff_line->[8]{'id'}}=$gene_seq;
+        $gene_seqs{$gff_line->[8]{'ID'}}=$gene_seq;
     }
+    print "Gene sequence hash example:\n".Dumper(\%gene_seqs);
     return \%gene_seqs;
 }
 
@@ -779,8 +780,8 @@ sub rast_metagenome {
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
             print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
 
-            print "First 100 lines of the GFF file from Prodigal-----------\n";
-            $self->_print_fasta_gff(100, $output_file);
+            # print "First 100 lines of the GFF file from Prodigal-----------\n";
+            # $self->_print_fasta_gff(100, $output_file);
 
             my ($gff_contents, %transH) = $self->_parse_prodigal_results(
                                                   $trans_file,
@@ -866,7 +867,7 @@ sub rast_metagenome {
 sub _print_fasta_gff {
     my ($self, $num_lines, $f) = @_;
 
-    # Open $gff_filename to read into an array
+    # Open $f to read into an array
     my $fh = $self->_openRead($f);
     my @read_lines=();
     chomp(@read_lines = <$fh>);
