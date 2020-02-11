@@ -560,8 +560,11 @@ sub _parse_gff {
 
 
 sub _update_gff_functions_from_features {
-    my ($self, $gff_contents, $features) = @_;
-    print "Updating GFF with rasted feataures:\n".Dumper($features);
+    my ($self, $gff_contents, $features, $gene_index) = @_;
+    print "Updating GFF with ".scalar @{$features}." rasted feataures.\n";
+    print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
+    print "Updating ".scalar @{$gff_contents}." GFFs with rasted feataures.\n";
+    print "Gene index hash:\n".Dumper(@{$gene_index}[0,1,2,3,4]."\n";
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
@@ -573,6 +576,8 @@ sub _update_gff_functions_from_features {
         #next if !exists($ftr->{'function'});
         #$ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
     }
+    my $ksize = keys %ftrs_function_lookup;
+    print "Look up table contains $ksize entries.\n";
 
     my @new_gff_contents=();
     foreach my $gff_line (@$gff_contents) {
@@ -592,6 +597,8 @@ sub _update_gff_functions_from_features {
             $ftr_attributes->{'product'}="";
         }
         #Look for, and add function
+        my $gene_id = $ftr_attributes->{'id'};
+        #foreach my $inx (@$gene_index) {}
         if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
             $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
         }
@@ -760,6 +767,7 @@ sub rast_metagenome {
 
     # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+    my %gene_id_index=();
 
     if ($is_assembly) {
         # object is itself an assembly
@@ -824,14 +832,14 @@ sub rast_metagenome {
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
 
-        my %gene_id_index=();
         my $i=1;
         foreach my $gene (sort keys %$protein_seqs){
+            my $fid = "peg".$i;
             push(@{$inputgenome->{features}},{
-                id => "peg".$i,
+                id => $fid,
                 protein_translation => $protein_seqs->{$gene}
             });
-            $gene_id_index{$i}=$gene;
+            $gene_id_index{$fid}=$gene;
             $i++;
         }
     }
@@ -845,9 +853,10 @@ sub rast_metagenome {
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
-    print "RAST resulted @{$ftrs} feataures.\n";
+    print "RAST resulted ".scalar @{$ftrs}." feataures.\n";
 
-    my $updated_gff_contents = $self->_update_gff_functions_from_features($gff_contents, $ftrs);
+    my $updated_gff_contents = $self->_update_gff_functions_from_features(
+                                   $gff_contents, $ftrs, $gene_id_index);
 
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
