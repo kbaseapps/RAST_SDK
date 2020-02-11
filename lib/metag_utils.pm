@@ -563,6 +563,7 @@ sub _update_gff_functions_from_features {
     print "Updating GFF with ".scalar @{$features}." rasted features.\n";
     print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
     print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
+    print "First 5 gff_contents examples:\n".Dumper(@{$gff_contents}[0,1,2,3,4]);
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
