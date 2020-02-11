@@ -369,8 +369,8 @@ sub _save_metagenome {
         $dir = $self->_create_metag_dir($self->{rast_scratch});
     }
 
-    print "First few 10's lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
-    $self->_print_fasta_gff(100, $gff_file);
+    print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
+    $self->_print_fasta_gff(10, $gff_file);
 
     my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
     my $gff_path = catfile($dir, "tmp_gff_file.gff");
@@ -445,7 +445,7 @@ sub _run_rast {
     my ($self, $inputgenome) = @_;
     my $count = scalar @{$inputgenome->{features}};
     print "******Run RAST pipeline on genome with $count features.******\n";
-    print "For example, first 5 features: \n".Dumper(@{$inputgenome->{features}}[0..4]);
+    print "For example, first 3 features: \n".Dumper(@{$inputgenome->{features}}[0..2]);
 
     my $rasted_gn = {};
     eval {
@@ -561,7 +561,7 @@ sub _parse_gff {
 sub _update_gff_functions_from_features {
     my ($self, $gff_contents, $features) = @_;
     print "Updating GFF with ".scalar @{$features}." rasted features.\n";
-    print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
+    print "First 3 rasted feature examples:\n".Dumper(@{$features}[0,1,2]);
     print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
 
     #Feature Lookup Hash
@@ -697,7 +697,7 @@ sub _extract_cds_sequences_from_fasta {
 
         $gene_seqs{$gff_line->[8]{'id'}}=$gene_seq;
     }
-    print "Gene sequence hash example:\n".Dumper(\%gene_seqs);
+    #print "Gene sequence hash example:\n".Dumper(\%gene_seqs);
     return \%gene_seqs;
 }
 
