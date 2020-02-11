@@ -451,9 +451,12 @@ sub _run_rast {
     eval {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
-            {stages => [{name => "annotate_proteins_kmer_v2", kmer_v2_parameters => {}},
-                        {name => "annotate_proteins_similarity",
-                         similarity_parameters => { annotate_hypothetical_only => 1 }}]}
+            {stages => [{name => "annotate_proteins_kmer_v2",
+                         kmer_v2_parameters => {min_hits => "5",
+                                                annotate_hypothetical_only => 0}},
+                        {name => "annotate_proteins_kmer_v1",
+                         kmer_v1_parameters => {dataset_name => "Release70",
+                                                annotate_hypothetical_only => 0}}]}
         );
     };
     if ($@) {
