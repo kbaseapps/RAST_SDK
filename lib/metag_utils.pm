@@ -559,11 +559,10 @@ sub _parse_gff {
 
 
 sub _update_gff_functions_from_features {
-    my ($self, $gff_contents, $features, $gene_index) = @_;
+    my ($self, $gff_contents, $features) = @_;
     print "Updating GFF with ".scalar @{$features}." rasted features.\n";
     print "First 5 rasted feature examples:\n".Dumper(@{$features}[0,1,2,3,4]);
     print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
-    print "Gene index hash:\n".Dumper(@{$gene_index}[0,1,2,3,4]."\n";
 
     #Feature Lookup Hash
     my %ftrs_function_lookup = ();
@@ -597,10 +596,6 @@ sub _update_gff_functions_from_features {
         }
 
         #Look for, and add function
-        my $gene_id = $ftr_attributes->{'id'};
-        foreach my $inx (@$gene_index) {
-             
-        }
         if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
             $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
         }
@@ -713,7 +708,7 @@ sub _translate_gene_to_protein_sequences {
     my %protein_seqs = ();
     foreach my $gene (sort keys %$gene_seqs){
         my $gene_seq = $gene_seqs->{$gene};
-            my $protein_seq  = $codon_table->translate($gene_seq);
+        my $protein_seq  = $codon_table->translate($gene_seq);
         $protein_seqs{$gene}=$protein_seq;
     }
     return \%protein_seqs;
@@ -806,7 +801,6 @@ sub rast_metagenome {
                     || $contig =~ m/^\# Sequence Data:/) {
                     next;
                 }
-                #$strand_sign = ($strand == 1) ? q(+) : q(-);
                 my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
                 my $id = $attribs->{id};
 
@@ -839,9 +833,8 @@ sub rast_metagenome {
 
         my $i=1;
         foreach my $gene (sort keys %$protein_seqs){
-            my $fid = "peg".$i;
             push(@{$inputgenome->{features}},{
-                id => $fid,
+                id => $gene,
                 protein_translation => $protein_seqs->{$gene}
             });
             $gene_id_index{$fid}=$gene;
@@ -861,7 +854,7 @@ sub rast_metagenome {
     print "RAST resulted ".scalar @{$ftrs}." features.\n";
 
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
-                                   $gff_contents, $ftrs, $gene_id_index);
+                                   $gff_contents, $ftrs);
 
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
