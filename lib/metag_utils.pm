@@ -764,7 +764,6 @@ sub rast_metagenome {
 
     # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
-    my %gene_id_index=();
 
     if ($is_assembly) {
         # object is itself an assembly
@@ -797,7 +796,7 @@ sub rast_metagenome {
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $attribs) = @$entry;
 
-                if ($contig =~ m/^##gff-version/ || $contig =~ m/^\# Model Data/)
+                if ($contig =~ m/^##gff-version/ || $contig =~ m/^\# Model Data/
                     || $contig =~ m/^\# Sequence Data:/) {
                     next;
                 }
@@ -831,14 +830,11 @@ sub rast_metagenome {
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
 
-        my $i=1;
         foreach my $gene (sort keys %$protein_seqs){
             push(@{$inputgenome->{features}},{
                 id => $gene,
                 protein_translation => $protein_seqs->{$gene}
             });
-            $gene_id_index{$fid}=$gene;
-            $i++;
         }
     }
 
@@ -881,7 +877,7 @@ sub _print_fasta_gff {
 
     $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
     for (my $i = 0; $i < $num_lines; $i++ ) {
-        print "@read_lines[$i]\n";
+        print "$read_lines[$i]\n";
     }
 }
 
