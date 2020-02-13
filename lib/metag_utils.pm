@@ -514,6 +514,11 @@ sub _parse_gff {
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
+        if ($current_line =~ m/^#.*$/ || $current_line =~ m/'utf-8'/) {
+            print "Skipping this line: $current_line\n";
+            next;
+        }
+
         my ($contig_id, $source_id, $feature_type, $start, $end,
             $score, $strand, $phase, $attributes) = split("\t",$current_line);
 
@@ -804,8 +809,7 @@ sub rast_metagenome {
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $attribs) = @$entry;
 
-                if ($contig =~ m/^##gff-version/ || $contig =~ m/^\# Model Data/
-                    || $contig =~ m/^\# Sequence Data:/) {
+                if ($contig =~ m/^#.*/ || $contig =~ m/'utf-8'/) {
                     next;
                 }
                 my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
@@ -839,7 +843,7 @@ sub rast_metagenome {
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
         print "First 10 items in gff_contents:\n";
-        print Dumper(@gff_contents[0..9]);
+        print Dumper(@{$gff_contents}[0..9]);
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
