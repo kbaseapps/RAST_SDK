@@ -867,6 +867,9 @@ sub rast_metagenome {
         }
     }
 
+    print "***********Print out 1000 lines in the GFF file before RASTing-----------\n";
+    $self->_print_fasta_gff(4200, 100, $gff_filename);
+
     # 3. call RAST to annotate the proteins/genome
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
