@@ -878,8 +878,8 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    print "***********Print out the whole GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
-    $self->_print_fasta_gff(77500, $new_gff_file);
+    print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
+    $self->_print_fasta_gff(77500, $new_gff_file, 'utf-8');
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
@@ -889,7 +889,7 @@ sub rast_metagenome {
 }
 
 sub _print_fasta_gff {
-    my ($self, $num_lines, $f) = @_;
+    my ($self, $num_lines, $f, $k=undef) = @_;
 
     # Open $f to read into an array
     my $fh = $self->_openRead($f);
@@ -902,7 +902,12 @@ sub _print_fasta_gff {
 
     $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
     for (my $i = 0; $i < $num_lines; $i++ ) {
-        print "$read_lines[$i]\n";
+        if (defined($k)) {
+            print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
+        }
+        else {
+            print "$read_lines[$i]\n";
+        }
     }
 }
 
