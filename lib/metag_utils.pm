@@ -837,7 +837,7 @@ sub rast_metagenome {
                 });
             }
             #print "******inputgenome data:******* \n".Dumper($inputgenome);
-            copy($ouput_file, $gff_filename);
+            copy($output_file, $gff_filename);
         }
     }
     elsif ($is_meta_assembly) {
