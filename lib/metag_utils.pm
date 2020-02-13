@@ -557,6 +557,9 @@ sub _parse_gff {
                                  $score, $strand, $phase, \%ftr_attributes];
         push(@gff_contents, $gff_line_contents);
     }
+    print "First 10 items in gff_contents:\n";
+    print Dumper(@gff_contents[0..9]);
+
     return (\@gff_contents, $attr_delimiter);
 }
 
@@ -744,12 +747,12 @@ sub rast_metagenome {
 
     # 1. getting the fasta file from $input_obj_ref according to its type
     print "Getting info for the input object: $input_obj_ref\n";
-    my $info = $self->{ws_client}->get_object_info3(
-                    {objects=>[{ref=>$input_obj_ref}]}
-                )->{infos}->[0];
+    my $input_obj_info = $self->{ws_client}->get_object_info3(
+                             {objects=>[{ref=>$input_obj_ref}]}
+                         )->{infos}->[0];
 
-    print "Info of input object:\n". Dumper($info);
-    my $is_assembly = $info->[2] =~ /GenomeAnnotations.Assembly/;
+    print "Info of input object:\n". Dumper($input_obj_info);
+    my $is_assembly = $input_obj_info->[2] =~ /GenomeAnnotations.Assembly/;
     my $is_meta_assembly = $info->[2] =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
 
     if ($is_assembly) {
@@ -759,6 +762,9 @@ sub rast_metagenome {
     }
     elsif ($is_meta_assembly) {
         # input_obj_ref points to a genome
+        my $num_ftrs = $input_obj_info->[10]->{'Number features'};
+        print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
+
         $input_fasta_file = $self->_write_fasta_from_metagenome(
                             $input_fasta_file, $input_obj_ref);
         unless (-e $input_fasta_file) {
@@ -807,11 +813,12 @@ sub rast_metagenome {
                 }
                 my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
                 my $id = $attribs->{id};
+                my $start = ($strand eq q(+)) ? $beg : $end;
 
                 push(@{$inputgenome->{features}}, {
                         id                  => $id,
                         type                => $ftr_type,
-                        location            => [[ $contig, $beg, $strand, $end ]],
+                        location            => [[ $contig, $start, $strand, $end ]],
                         annotator           => $source,
                         annotation          => 'Add feature called by PRODIGAL',
                         protein_translation => $seq
@@ -826,6 +833,9 @@ sub rast_metagenome {
         unless (-e $gff_filename) {
             croak "**rast_metagenome ERROR: could not find GFF file\n";
         }
+        print "First few 10 lines of the GFF file from the inpute metagenome-----------\n";
+        $self->_print_fasta_gff(10, $gff_filename);
+
         # 2.2 filing the feature list
         # fetch protein sequences and gene IDs from fasta and gff files
 
