@@ -370,7 +370,7 @@ sub _save_metagenome {
     }
 
     print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
-    $self->_print_fasta_gff(10, $gff_file);
+    $self->_print_fasta_gff(0, 10, $gff_file);
 
     #my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
     #my $gff_path = catfile($dir, "tmp_gff_file.gff");
@@ -518,6 +518,9 @@ sub _parse_gff {
             print "Skipping this line: $current_line\n" if $current_line =~ m/'utf-8'/;
             next;
         }
+        if ($current_line =~ m/(id=4201_26;)|(id=4201_31;)/) {
+            print "In GFF, this line : $current_line that has unicode trouble!!!!!\n";
+        }
 
         my ($contig_id, $source_id, $feature_type, $start, $end,
             $score, $strand, $phase, $attributes) = split("\t",$current_line);
@@ -631,6 +634,9 @@ sub _write_gff {
             my $attributes = $_->[8];
             my @attributes = ();
             foreach my $key ( sort keys %$attributes ) {
+                if ($key eq 'id' && $attributes->{$key} =~ m/(id=4201_26;)|(id=4201_31)) {
+                    print "Found the troubling feature line:\n".Dumper(@$_);
+                }
                 my $attr=$key.$attr_delimiter.$attributes->{$key};
                 push(@attributes,$attr);
             }
@@ -799,7 +805,7 @@ sub rast_metagenome {
             print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
 
             # print "First 10 lines of the GFF file from Prodigal-----------\n";
-            # $self->_print_fasta_gff(10, $output_file);
+            # $self->_print_fasta_gff(0, 10, $output_file);
             my %transH;
 
             ($gff_contents, %transH) = $self->_parse_prodigal_results(
@@ -840,7 +846,7 @@ sub rast_metagenome {
             croak "**rast_metagenome ERROR: could not find GFF file\n";
         }
         print "First few 10 lines of the GFF file from the input metagenome-----------\n";
-        $self->_print_fasta_gff(10, $gff_filename);
+        $self->_print_fasta_gff(0, 10, $gff_filename);
 
         # 2.2 filing the feature list for rast call
 
@@ -872,6 +878,11 @@ sub rast_metagenome {
     my $ftrs = $rasted_genome->{features};
     print "RAST resulted ".scalar @{$ftrs}." features.\n";
 
+    #print "***********Print out the first 1000 rasted features***************\n";
+    for (my $j=0; $j <10; $j++) {
+        print $ftrs->[$j];
+    }
+
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
                                    $gff_contents, $ftrs);
 
@@ -879,9 +890,9 @@ sub rast_metagenome {
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
     #print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
-    #$self->_print_fasta_gff(77500, $new_gff_file, 'utf-8');
-    print "***********Print out 200 lines in the GFF file-----------\n";
-    $self->_print_fasta_gff(200, $new_gff_file);
+    #$self->_print_fasta_gff(4000, 10000, $new_gff_file, 'utf-8');
+    print "***********Print out 1000 lines in the GFF file before sending to GFU-----------\n";
+    $self->_print_fasta_gff(4200, 100, $new_gff_file);
 
 
     # 4. save rast re-annotated fasta/gff data
@@ -893,7 +904,7 @@ sub rast_metagenome {
 }
 
 sub _print_fasta_gff {
-    my ($self, $num_lines, $f, $k) = @_;
+    my ($self, $start, $num_lines, $f, $k) = @_;
 
     # Open $f to read into an array
     my $fh = $self->_openRead($f);
@@ -904,8 +915,9 @@ sub _print_fasta_gff {
     my $file_lines = scalar @read_lines;
     print "There are a total of ". $file_lines . " lines from file $f\n";
 
+    $num_lines = $start + $num_lines;
     $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
-    for (my $i = 0; $i < $num_lines; $i++ ) {
+    for (my $i = $start; $i < $num_lines; $i++ ) {
         if (defined($k)) {
             print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
         }
