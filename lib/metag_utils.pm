@@ -880,6 +880,9 @@ sub rast_metagenome {
 
     #print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
     #$self->_print_fasta_gff(77500, $new_gff_file, 'utf-8');
+    print "***********Print out 200 lines in the GFF file-----------\n";
+    $self->_print_fasta_gff(200, $new_gff_file);
+
 
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
