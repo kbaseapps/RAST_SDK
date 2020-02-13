@@ -634,7 +634,7 @@ sub _write_gff {
             my $attributes = $_->[8];
             my @attributes = ();
             foreach my $key ( sort keys %$attributes ) {
-                if ($key eq 'id' && $attributes->{$key} =~ m/(id=4201_26;)|(id=4201_31)) {
+                if ($key eq 'id' && $attributes->{$key} =~ m/(id=4201_26;)|(id=4201_31))/ {
                     print "Found the troubling feature line:\n".Dumper(@$_);
                 }
                 my $attr=$key.$attr_delimiter.$attributes->{$key};
