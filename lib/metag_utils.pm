@@ -330,66 +330,51 @@ sub _write_gff_from_metagenome {
 }
 
 sub _save_metagenome {
-    my ($self, $ws, $out_metag_name, $fasta_file, $gff_file, $dir) = @_;
+    my ($self, $ws, $out_metag_name, $obj_ref, $gff_file) = @_;
 
     my $req_params = "Missing required parameters for saving metagenome.\n";
     my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
-    my $req2 = "Both 'fasta_file' and 'gff_file' are required.\n";
-    unless (defined($ws) && defined($out_metag_name) &&
-            defined($fasta_file) && defined($gff_file)) {
+    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
+    unless (defined($ws) && defined($obj_ref) &&
+            defined($out_metag_name) && defined($gff_file)) {
         croak $req_params;
     }
 
     print "Parameters for saving metegenome-----------------\n";
     print "Workspace name: $_[1]\n";
     print "Metagenome name: $_[2]\n";
-    print "Fasta file: $_[3]\n";
+    print "Object ref: $_[3]\n";
     print "GFF file: $_[4]\n";
     print "Metagenome dir: $_[5]\n";
 
     unless (defined($out_metag_name) && defined($ws)) {
         croak "**In _save_metagenome: $req1";
     }
-    unless (defined($fasta_file) && defined($gff_file)) {
+    unless (defined($obj_ref) && defined($gff_file)) {
         croak "**In _save_metagenome: $req2";
-    }
-    unless (-e $fasta_file) {
-        croak "**In _save_metagenome: Fasta file not found.\n";
     }
     unless (-e $gff_file) {
         croak "**In _save_metagenome: GFF file not found.\n";
     }
-    unless (-s $fasta_file) {
-        croak "**In _save_metagenome: Fasta file is empty.\n";
-    }
     unless (-s $gff_file) {
         croak "**In _save_metagenome: GFF file is empty.\n";
-    }
-    unless (-e $dir and -d $dir) {
-        $dir = $self->_create_metag_dir($self->{rast_scratch});
     }
 
     print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
 
-    #my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
-    #my $gff_path = catfile($dir, "tmp_gff_file.gff");
-
-    #copy($fasta_file, $fasta_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
-    #copy($gff_file, $gff_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
-
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
     eval {
-        $annotated_metag = $gfu->fasta_gff_to_metagenome ({
-            "fasta_file" => {'path' => $fasta_file},
+        $annotated_metag = $gfu->ws_obj_gff_to_metagenome ({
+            "ws_ref" => $obj_ref,
             "gff_file" => {'path' => $gff_file},
             "genome_name" => $out_metag_name,
             "workspace_name" => $ws,
             "generate_missing_genes" => 1});
     };
     if ($@) {
-        croak "**In _save_metagenome ERROR calling GenomeFileUtil.fasta_gff_to_metagenome: ".$@."\n";
+        croak "**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome: ".$@."\n";
     }
     else {
         return $annotated_metag;
@@ -902,9 +887,8 @@ sub rast_metagenome {
 
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
-                                    $params->{output_metagenome_name},
-                                    $input_fasta_file, $new_gff_file,
-                                    $self->{metag_dir});
+                                            $params->{output_metagenome_name},
+                                            $input_obj_ref, $new_gff_file);
     return $out_metag->{genome_ref};
 }
 

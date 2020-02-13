@@ -1237,6 +1237,7 @@ FastaGFFToGenomeParams is a reference to a hash where the following keys are def
 	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1267,6 +1268,7 @@ FastaGFFToGenomeParams is a reference to a hash where the following keys are def
 	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1378,6 +1380,7 @@ FastaGFFToGenomeParams is a reference to a hash where the following keys are def
 	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1406,6 +1409,7 @@ FastaGFFToGenomeParams is a reference to a hash where the following keys are def
 	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1508,9 +1512,9 @@ FastaGFFToMetagenomeParams is a reference to a hash where the following keys are
 	genome_name has a value which is a string
 	workspace_name has a value which is a string
 	source has a value which is a string
-	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1534,9 +1538,9 @@ FastaGFFToMetagenomeParams is a reference to a hash where the following keys are
 	genome_name has a value which is a string
 	workspace_name has a value which is a string
 	source has a value which is a string
-	scientific_name has a value which is a string
 	metadata has a value which is a GenomeFileUtil.usermeta
 	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+	existing_assembly_ref has a value which is a string
 File is a reference to a hash where the following keys are defined:
 	path has a value which is a string
 	shock_id has a value which is a string
@@ -1658,6 +1662,7 @@ Genome is a reference to a hash where the following keys are defined:
 	source_id has a value which is a KBaseGenomes.source_id
 	md5 has a value which is a string
 	taxonomy has a value which is a string
+	taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
 	gc_content has a value which is a float
 	publications has a value which is a reference to a list where each element is a KBaseGenomes.publication
 	ontology_events has a value which is a reference to a list where each element is a KBaseGenomes.Ontology_event
@@ -1694,7 +1699,6 @@ Ontology_event is a reference to a hash where the following keys are defined:
 	method_version has a value which is a string
 	timestamp has a value which is a string
 	eco has a value which is a string
-	description has a value which is a string
 Ontology_ref is a string
 Feature is a reference to a hash where the following keys are defined:
 	id has a value which is a KBaseGenomes.Feature_id
@@ -1891,6 +1895,7 @@ Genome is a reference to a hash where the following keys are defined:
 	source_id has a value which is a KBaseGenomes.source_id
 	md5 has a value which is a string
 	taxonomy has a value which is a string
+	taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
 	gc_content has a value which is a float
 	publications has a value which is a reference to a list where each element is a KBaseGenomes.publication
 	ontology_events has a value which is a reference to a list where each element is a KBaseGenomes.Ontology_event
@@ -1927,7 +1932,6 @@ Ontology_event is a reference to a hash where the following keys are defined:
 	method_version has a value which is a string
 	timestamp has a value which is a string
 	eco has a value which is a string
-	description has a value which is a string
 Ontology_ref is a string
 Feature is a reference to a hash where the following keys are defined:
 	id has a value which is a KBaseGenomes.Feature_id
@@ -2167,6 +2171,278 @@ sub _save_one_genome_submit {
 }
 
  
+
+
+=head2 ws_obj_gff_to_genome
+
+  $returnVal = $obj->ws_obj_gff_to_genome($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a GenomeFileUtil.WsObjGFFToGenomeParams
+$returnVal is a GenomeFileUtil.GenomeSaveResult
+WsObjGFFToGenomeParams is a reference to a hash where the following keys are defined:
+	ws_ref has a value which is a string
+	gff_file has a value which is a GenomeFileUtil.File
+	genome_name has a value which is a string
+	workspace_name has a value which is a string
+	source has a value which is a string
+	taxon_wsname has a value which is a string
+	taxon_id has a value which is a string
+	release has a value which is a string
+	genetic_code has a value which is an int
+	scientific_name has a value which is a string
+	metadata has a value which is a GenomeFileUtil.usermeta
+	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+File is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	shock_id has a value which is a string
+	ftp_url has a value which is a string
+usermeta is a reference to a hash where the key is a string and the value is a string
+boolean is an int
+GenomeSaveResult is a reference to a hash where the following keys are defined:
+	genome_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a GenomeFileUtil.WsObjGFFToGenomeParams
+$returnVal is a GenomeFileUtil.GenomeSaveResult
+WsObjGFFToGenomeParams is a reference to a hash where the following keys are defined:
+	ws_ref has a value which is a string
+	gff_file has a value which is a GenomeFileUtil.File
+	genome_name has a value which is a string
+	workspace_name has a value which is a string
+	source has a value which is a string
+	taxon_wsname has a value which is a string
+	taxon_id has a value which is a string
+	release has a value which is a string
+	genetic_code has a value which is an int
+	scientific_name has a value which is a string
+	metadata has a value which is a GenomeFileUtil.usermeta
+	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+File is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	shock_id has a value which is a string
+	ftp_url has a value which is a string
+usermeta is a reference to a hash where the key is a string and the value is a string
+boolean is an int
+GenomeSaveResult is a reference to a hash where the following keys are defined:
+	genome_ref has a value which is a string
+
+
+=end text
+
+=item Description
+
+This function takes in a workspace object of type KBaseGenomes.Genome or KBaseGenomeAnnotations.Assembly and a gff file and produces a KBaseGenomes.Genome reanotated according to the the input gff file.
+
+=back
+
+=cut
+
+sub ws_obj_gff_to_genome
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_ws_obj_gff_to_genome_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _ws_obj_gff_to_genome_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _ws_obj_gff_to_genome_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _ws_obj_gff_to_genome_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_ws_obj_gff_to_genome_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "GenomeFileUtil._ws_obj_gff_to_genome_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_ws_obj_gff_to_genome_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _ws_obj_gff_to_genome_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_ws_obj_gff_to_genome_submit');
+    }
+}
+
+ 
+
+
+=head2 ws_obj_gff_to_metagenome
+
+  $returnVal = $obj->ws_obj_gff_to_metagenome($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a GenomeFileUtil.WsObjGFFToMetagenomeParams
+$returnVal is a GenomeFileUtil.MetagenomeSaveResult
+WsObjGFFToMetagenomeParams is a reference to a hash where the following keys are defined:
+	ws_ref has a value which is a string
+	gff_file has a value which is a GenomeFileUtil.File
+	genome_name has a value which is a string
+	workspace_name has a value which is a string
+	source has a value which is a string
+	metadata has a value which is a GenomeFileUtil.usermeta
+	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+File is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	shock_id has a value which is a string
+	ftp_url has a value which is a string
+usermeta is a reference to a hash where the key is a string and the value is a string
+boolean is an int
+MetagenomeSaveResult is a reference to a hash where the following keys are defined:
+	metagenome_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a GenomeFileUtil.WsObjGFFToMetagenomeParams
+$returnVal is a GenomeFileUtil.MetagenomeSaveResult
+WsObjGFFToMetagenomeParams is a reference to a hash where the following keys are defined:
+	ws_ref has a value which is a string
+	gff_file has a value which is a GenomeFileUtil.File
+	genome_name has a value which is a string
+	workspace_name has a value which is a string
+	source has a value which is a string
+	metadata has a value which is a GenomeFileUtil.usermeta
+	generate_missing_genes has a value which is a GenomeFileUtil.boolean
+File is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	shock_id has a value which is a string
+	ftp_url has a value which is a string
+usermeta is a reference to a hash where the key is a string and the value is a string
+boolean is an int
+MetagenomeSaveResult is a reference to a hash where the following keys are defined:
+	metagenome_ref has a value which is a string
+
+
+=end text
+
+=item Description
+
+This function takes in a workspace object of type KBaseMetagenomes.AnnotatedMetagenomeAssembly or KBaseGenomeAnnotations.Assembly and a gff file and produces a KBaseMetagenomes.AnnotatedMetagenomeAssembly reanotated according to the the input gff file.
+
+=back
+
+=cut
+
+sub ws_obj_gff_to_metagenome
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_ws_obj_gff_to_metagenome_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _ws_obj_gff_to_metagenome_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _ws_obj_gff_to_metagenome_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _ws_obj_gff_to_metagenome_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_ws_obj_gff_to_metagenome_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "GenomeFileUtil._ws_obj_gff_to_metagenome_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_ws_obj_gff_to_metagenome_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _ws_obj_gff_to_metagenome_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_ws_obj_gff_to_metagenome_submit');
+    }
+}
+
+ 
  
 sub status
 {
@@ -2227,16 +2503,16 @@ sub version {
             Bio::KBase::Exceptions::JSONRPC->throw(
                 error => $result->error_message,
                 code => $result->content->{code},
-                method_name => 'save_one_genome',
+                method_name => 'ws_obj_gff_to_metagenome',
             );
         } else {
             return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
         Bio::KBase::Exceptions::HTTP->throw(
-            error => "Error invoking method save_one_genome",
+            error => "Error invoking method ws_obj_gff_to_metagenome",
             status_line => $self->{client}->status_line,
-            method_name => 'save_one_genome',
+            method_name => 'ws_obj_gff_to_metagenome',
         );
     }
 }
@@ -2970,6 +3246,8 @@ scientific_name - will be used to set the scientific name of the genome
     and link to a taxon
 generate_missing_genes - If the file has CDS or mRNA with no corresponding
     gene, generate a spoofed gene. Off by default
+existing_assembly_ref - a KBase assembly upa, to associate the genome with. 
+    Avoids saving a new assembly when specified.
 
 
 =item Definition
@@ -2990,6 +3268,7 @@ genetic_code has a value which is an int
 scientific_name has a value which is a string
 metadata has a value which is a GenomeFileUtil.usermeta
 generate_missing_genes has a value which is a GenomeFileUtil.boolean
+existing_assembly_ref has a value which is a string
 
 </pre>
 
@@ -3010,6 +3289,7 @@ genetic_code has a value which is an int
 scientific_name has a value which is a string
 metadata has a value which is a GenomeFileUtil.usermeta
 generate_missing_genes has a value which is a GenomeFileUtil.boolean
+existing_assembly_ref has a value which is a string
 
 
 =end text
@@ -3040,6 +3320,8 @@ scientific_name - will be used to set the scientific name of the genome
     and link to a taxon
 generate_missing_genes - If the file has CDS or mRNA with no corresponding
     gene, generate a spoofed gene. Off by default
+existing_assembly_ref - a KBase assembly upa, to associate the metagenome with.
+    Avoids saving a new assembly when specified.
 
 
 =item Definition
@@ -3053,9 +3335,9 @@ gff_file has a value which is a GenomeFileUtil.File
 genome_name has a value which is a string
 workspace_name has a value which is a string
 source has a value which is a string
-scientific_name has a value which is a string
 metadata has a value which is a GenomeFileUtil.usermeta
 generate_missing_genes has a value which is a GenomeFileUtil.boolean
+existing_assembly_ref has a value which is a string
 
 </pre>
 
@@ -3069,9 +3351,9 @@ gff_file has a value which is a GenomeFileUtil.File
 genome_name has a value which is a string
 workspace_name has a value which is a string
 source has a value which is a string
-scientific_name has a value which is a string
 metadata has a value which is a GenomeFileUtil.usermeta
 generate_missing_genes has a value which is a GenomeFileUtil.boolean
+existing_assembly_ref has a value which is a string
 
 
 =end text
@@ -3140,6 +3422,138 @@ info has a value which is a Workspace.object_info
 
 a reference to a hash where the following keys are defined:
 info has a value which is a Workspace.object_info
+
+
+=end text
+
+=back
+
+
+
+=head2 WsObjGFFToGenomeParams
+
+=over 4
+
+
+
+=item Description
+
+gff_file - object containing path to gff_file
+ws_ref - input Assembly or Genome reference
+
+genome_name - becomes the name of the object
+workspace_name - the name of the workspace it gets saved to.
+source - Source of the file typically something like RefSeq or Ensembl
+taxon_ws_name - where the reference taxons are : ReferenceTaxons
+taxon_id - if defined, will try to link the Genome to the specified
+    taxonomy id in lieu of performing the lookup during upload
+release - Release or version number of the data
+      per example Ensembl has numbered releases of all their data: Release 31
+genetic_code - Genetic code of organism. Overwrites determined GC from
+      taxon object
+scientific_name - will be used to set the scientific name of the genome
+    and link to a taxon
+metadata - any user input metadata
+generate_missing_genes - If the file has CDS or mRNA with no corresponding
+    gene, generate a spoofed gene. Off by default
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+ws_ref has a value which is a string
+gff_file has a value which is a GenomeFileUtil.File
+genome_name has a value which is a string
+workspace_name has a value which is a string
+source has a value which is a string
+taxon_wsname has a value which is a string
+taxon_id has a value which is a string
+release has a value which is a string
+genetic_code has a value which is an int
+scientific_name has a value which is a string
+metadata has a value which is a GenomeFileUtil.usermeta
+generate_missing_genes has a value which is a GenomeFileUtil.boolean
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+ws_ref has a value which is a string
+gff_file has a value which is a GenomeFileUtil.File
+genome_name has a value which is a string
+workspace_name has a value which is a string
+source has a value which is a string
+taxon_wsname has a value which is a string
+taxon_id has a value which is a string
+release has a value which is a string
+genetic_code has a value which is an int
+scientific_name has a value which is a string
+metadata has a value which is a GenomeFileUtil.usermeta
+generate_missing_genes has a value which is a GenomeFileUtil.boolean
+
+
+=end text
+
+=back
+
+
+
+=head2 WsObjGFFToMetagenomeParams
+
+=over 4
+
+
+
+=item Description
+
+gff_file - object containing path to gff_file
+ws_ref - input Assembly or AnnotatedMetagenomeAssembly reference
+
+genome_name - becomes the name of the object
+workspace_name - the name of the workspace it gets saved to.
+source - Source of the file typically something like RefSeq or Ensembl
+
+genetic_code - Genetic code of organism. Overwrites determined GC from
+      taxon object
+metadata - any user input metadata
+generate_missing_genes - If the file has CDS or mRNA with no corresponding
+    gene, generate a spoofed gene. Off by default
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+ws_ref has a value which is a string
+gff_file has a value which is a GenomeFileUtil.File
+genome_name has a value which is a string
+workspace_name has a value which is a string
+source has a value which is a string
+metadata has a value which is a GenomeFileUtil.usermeta
+generate_missing_genes has a value which is a GenomeFileUtil.boolean
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+ws_ref has a value which is a string
+gff_file has a value which is a GenomeFileUtil.File
+genome_name has a value which is a string
+workspace_name has a value which is a string
+source has a value which is a string
+metadata has a value which is a GenomeFileUtil.usermeta
+generate_missing_genes has a value which is a GenomeFileUtil.boolean
 
 
 =end text

@@ -99,6 +99,9 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
+my $obj1 = "37798/14/1";
+my $obj2 = "37798/15/1";
+
 subtest '_parse_translation' => sub {
     my $trans_path = catfile($rast_dir, 'trans_scrt');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
@@ -387,7 +390,7 @@ subtest '_save_metagenome' => sub {
     my $req_params = "Missing required parameters for saving metagenome.\n";
     my $not_found = "file not found.\n";
     my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
-    my $req2 = "Both 'fasta_file' and 'gff_file' are required.\n";
+    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
 
     throws_ok {
         $mgutil->_save_metagenome()
@@ -405,19 +408,19 @@ subtest '_save_metagenome' => sub {
         '_save_metagenome dies with no gff file';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, 'abc', 'def')
+        $mgutil->_save_metagenome($ws, $out_name, 'a/b/c', 'def')
     } qr/$not_found/,
         '_save_metagenome dies because input file not found.';
 
     throws_ok {
         $mgutil->_save_metagenome($ws, $out_name,
-                                      'data/nosuchfile.fna', $gff2)
+                                      '123/4/5', $gff2)
     } qr/$not_found/,
-      '_save_metagenome dies because fasta file not found';
+      '_save_metagenome dies because obj_ref not found';
 
     throws_ok {
         $mgutil->_save_metagenome($ws, $out_name,
-                                      $fasta2, 'data/nosuchfile.gff')
+                                  $, 'data/nosuchfile.gff')
     } qr/$not_found/,
       '_save_metagenome dies because GFF file not found';
 
@@ -425,7 +428,7 @@ subtest '_save_metagenome' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-             $ws, $out_name, $fasta1, $gff1, $rast_dir)
+                       $ws, $out_name, $obj1, $gff1)
     } '__save_metagenome run without errors on short_one.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
@@ -435,7 +438,7 @@ subtest '_save_metagenome' => sub {
     
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-             $ws, $out_name, $fasta2, $gff2, $rast_dir)
+                       $ws, $out_name, $obj2, $gff2)
     } '_save_metagenome runs without errors on 59111.assembled.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
