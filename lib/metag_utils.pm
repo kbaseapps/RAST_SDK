@@ -837,6 +837,7 @@ sub rast_metagenome {
                 });
             }
             #print "******inputgenome data:******* \n".Dumper($inputgenome);
+            copy($ouput_file, $gff_filename);
         }
     }
     elsif ($is_meta_assembly) {
@@ -845,8 +846,6 @@ sub rast_metagenome {
         unless (-e $gff_filename) {
             croak "**rast_metagenome ERROR: could not find GFF file\n";
         }
-        print "First few 10 lines of the GFF file from the input metagenome-----------\n";
-        $self->_print_fasta_gff(0, 10, $gff_filename);
 
         # 2.2 filing the feature list for rast call
 
@@ -867,9 +866,6 @@ sub rast_metagenome {
         }
     }
 
-    print "***********Print out 1000 lines in the GFF file before RASTing-----------\n";
-    $self->_print_fasta_gff(4200, 100, $gff_filename);
-
     # 3. call RAST to annotate the proteins/genome
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
@@ -877,12 +873,15 @@ sub rast_metagenome {
         return $input_obj_ref;
     }
 
+    print "--------Print out 1000 (4200~5200) lines in the GFF file before RASTing-------\n";
+    $self->_print_fasta_gff(4200, 1000, $gff_filename);
+
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
     print "RAST resulted ".scalar @{$ftrs}." features.\n";
 
-    #print "***********Print out the first 1000 rasted features***************\n";
-    for (my $j=0; $j <10; $j++) {
+    #print "***********Print out 1000 (4200~5200) rasted features***************\n";
+    for (my $j=4200; $j<5200; $j++) {
         print $ftrs->[$j];
     }
 
@@ -894,8 +893,8 @@ sub rast_metagenome {
 
     #print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
     #$self->_print_fasta_gff(4000, 10000, $new_gff_file, 'utf-8');
-    print "***********Print out 1000 lines in the GFF file before sending to GFU-----------\n";
-    $self->_print_fasta_gff(4200, 100, $new_gff_file);
+    print "***********Print out 1000 lines (4200~5200) in the GFF file before sending to GFU-----------\n";
+    $self->_print_fasta_gff(4200, 1000, $new_gff_file);
 
 
     # 4. save rast re-annotated fasta/gff data
