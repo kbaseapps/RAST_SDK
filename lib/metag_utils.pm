@@ -889,7 +889,7 @@ sub rast_metagenome {
 }
 
 sub _print_fasta_gff {
-    my ($self, $num_lines, $f, $k=undef) = @_;
+    my ($self, $num_lines, $f, $k) = @_;
 
     # Open $f to read into an array
     my $fh = $self->_openRead($f);
