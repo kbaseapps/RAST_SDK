@@ -557,8 +557,6 @@ sub _parse_gff {
                                  $score, $strand, $phase, \%ftr_attributes];
         push(@gff_contents, $gff_line_contents);
     }
-    print "First 10 items in gff_contents:\n";
-    print Dumper(@gff_contents[0..9]);
 
     return (\@gff_contents, $attr_delimiter);
 }
@@ -752,8 +750,9 @@ sub rast_metagenome {
                          )->{infos}->[0];
 
     print "Info of input object:\n". Dumper($input_obj_info);
-    my $is_assembly = $input_obj_info->[2] =~ /GenomeAnnotations.Assembly/;
-    my $is_meta_assembly = $info->[2] =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
+    my $in_type = $input_obj_info->[2];
+    my $is_assembly = $in_type =~ /GenomeAnnotations.Assembly/;
+    my $is_meta_assembly = $in_type =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
 
     if ($is_assembly) {
         # object is itself an assembly
@@ -785,12 +784,12 @@ sub rast_metagenome {
                                                       $output_type,
                                                       $mode);
 
-        # 2.1 filing the feature list
+        # 2.1 filing the feature list for rast call
         if ($self->_run_prodigal(@prodigal_cmd) == 0) {
             print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
 
-            # print "First 100 lines of the GFF file from Prodigal-----------\n";
-            # $self->_print_fasta_gff(100, $output_file);
+            # print "First 10 lines of the GFF file from Prodigal-----------\n";
+            # $self->_print_fasta_gff(10, $output_file);
             my %transH;
 
             ($gff_contents, %transH) = $self->_parse_prodigal_results(
@@ -799,11 +798,9 @@ sub rast_metagenome {
                                                   $output_type);
 
             my $count = @$gff_contents;
-            print "Prodigal returned $count entries.\n";#.Dumper($gff_contents);
+            print "Prodigal returned $count entries.\n";
 
-            my $cur_id_suffix = 1;
             foreach my $entry (@$gff_contents) {
-                # print Dumper($entry)."\n";
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $attribs) = @$entry;
 
@@ -833,14 +830,16 @@ sub rast_metagenome {
         unless (-e $gff_filename) {
             croak "**rast_metagenome ERROR: could not find GFF file\n";
         }
-        print "First few 10 lines of the GFF file from the inpute metagenome-----------\n";
+        print "First few 10 lines of the GFF file from the input metagenome-----------\n";
         $self->_print_fasta_gff(10, $gff_filename);
 
-        # 2.2 filing the feature list
-        # fetch protein sequences and gene IDs from fasta and gff files
+        # 2.2 filing the feature list for rast call
 
+        # fetch protein sequences and gene IDs from fasta and gff files
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
+        print "First 10 items in gff_contents:\n";
+        print Dumper(@gff_contents[0..9]);
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
