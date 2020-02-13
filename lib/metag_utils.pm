@@ -515,7 +515,7 @@ sub _parse_gff {
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
         if ($current_line =~ m/^#.*$/ || $current_line =~ m/'utf-8'/) {
-            print "Skipping this line: $current_line\n";
+            print "Skipping this line: $current_line\n" if $current_line =~ m/'utf-8'/;
             next;
         }
 
@@ -598,12 +598,12 @@ sub _update_gff_functions_from_features {
 
         my $ftr_attributes = $gff_line->[8];
 
-        # According to the genome loading code, the function must be added to the produce attribute (go figure)
+        # According to the genome loading code, the function must be added to the product attribute (go figure)
         # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
-        # Note that this overwrites anything that was originally in the 'product' field it it previously existed
+        # Note that this overwrites anything that was originally in the 'product' field if it previously existed
         # Also note that I'm forcing every feature to have at least an empty product field
         if (!defined($ftr_attributes->{'product'})) {
-            $ftr_attributes->{'product'}="";
+            $ftr_attributes->{'product'}='';
         }
 
         #Look for, and add function
@@ -636,8 +636,13 @@ sub _write_gff {
             }
             $_->[8] = join(";",@attributes);
         }
-
-	print $fh join("\t", @$_)."\n";
+        my $g_line = join("\t", @$_)."\n";
+        # Don't write lines that are corrupted!!
+        if ($g_line =~ m/'utf-8'/) {
+            print "Skip writing this line: $g_line\n";
+            next;
+        }
+	print $fh $g_line;
     }
     close $fh;
     unless (-e $gff_filename) {
