@@ -372,18 +372,18 @@ sub _save_metagenome {
     print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(10, $gff_file);
 
-    my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
-    my $gff_path = catfile($dir, "tmp_gff_file.gff");
+    #my $fasta_path = catfile($dir, "tmp_fasta_file.fa");
+    #my $gff_path = catfile($dir, "tmp_gff_file.gff");
 
-    copy($fasta_file, $fasta_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
-    copy($gff_file, $gff_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
+    #copy($fasta_file, $fasta_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
+    #copy($gff_file, $gff_path) || croak "**In _save_metagenome:Copy file failed-$!\n";
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
     eval {
         $annotated_metag = $gfu->fasta_gff_to_metagenome ({
-            "fasta_file" => {'path' => $fasta_path},
-            "gff_file" => {'path' => $gff_path},
+            "fasta_file" => {'path' => $fasta_file},
+            "gff_file" => {'path' => $gff_file},
             "genome_name" => $out_metag_name,
             "workspace_name" => $ws,
             "generate_missing_genes" => 1});
@@ -878,8 +878,9 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
-    $self->_print_fasta_gff(77500, $new_gff_file, 'utf-8');
+    #print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
+    #$self->_print_fasta_gff(77500, $new_gff_file, 'utf-8');
+
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                     $params->{output_metagenome_name},
