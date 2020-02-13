@@ -882,7 +882,10 @@ sub rast_metagenome {
 
     #print "***********Print out 1000 (4200~5200) rasted features***************\n";
     for (my $j=4200; $j<5200; $j++) {
-        print $ftrs->[$j];
+        my $f_id = $ftrs->[$j]->{id};
+        my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
+        my $f_protein = defined($ftrs->[$j]->{protein_translation}) ? $ftrs->[$j]->{protein_translation} : '';
+        print "$f_id\t$f_func\t$f_protein\n";
     }
 
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
