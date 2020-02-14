@@ -838,8 +838,8 @@ sub rast_metagenome {
         # fetch protein sequences and gene IDs from fasta and gff files
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
-        print "First 10 items in gff_contents:\n";
-        print Dumper(@{$gff_contents}[0..9]);
+        #print "First 10 items in gff_contents:\n";
+        #print Dumper(@{$gff_contents}[0..9]);
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
@@ -859,15 +859,15 @@ sub rast_metagenome {
         return $input_obj_ref;
     }
 
-    print "--------Print out 1000 (4200~5200) lines in the GFF file before RASTing-------\n";
-    $self->_print_fasta_gff(4200, 1000, $gff_filename);
+    #print "--------Print out 1000 (4200~5200) lines in the GFF file before RASTing-------\n";
+    #$self->_print_fasta_gff(4200, 1000, $gff_filename);
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
     print "RAST resulted ".scalar @{$ftrs}." features.\n";
 
-    #print "***********Print out 1000 (4200~5200) rasted features***************\n";
-    for (my $j=4200; $j<5200; $j++) {
+    print "***********The first 100 rasted features, for example***************\n";
+    for (my $j=0; $j<100; $j++) {
         my $f_id = $ftrs->[$j]->{id};
         my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
         my $f_protein = defined($ftrs->[$j]->{protein_translation}) ? $ftrs->[$j]->{protein_translation} : '';
@@ -880,10 +880,8 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    #print "***********Print out the lines in the GFF file that match 'utf-8'-----------\n";
-    #$self->_print_fasta_gff(4000, 10000, $new_gff_file, 'utf-8');
-    print "***********Print out 1000 lines (4200~5200) in the GFF file before sending to GFU-----------\n";
-    $self->_print_fasta_gff(4200, 1000, $new_gff_file);
+    #print "***********Print out 1000 lines (4200~5200) in the GFF file before sending to GFU-----------\n";
+    #$self->_print_fasta_gff(4200, 1000, $new_gff_file);
 
 
     # 4. save rast re-annotated fasta/gff data
