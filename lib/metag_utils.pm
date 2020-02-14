@@ -23,6 +23,7 @@ use Bio::SeqIO;
 use Bio::Perl;
 use Bio::Tools::CodonTable;
 use JSON;
+use Encode qw/encode decode/;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
