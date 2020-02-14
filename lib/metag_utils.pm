@@ -345,7 +345,6 @@ sub _save_metagenome {
     print "Metagenome name: $_[2]\n";
     print "Object ref: $_[3]\n";
     print "GFF file: $_[4]\n";
-    print "Metagenome dir: $_[5]\n";
 
     unless (defined($out_metag_name) && defined($ws)) {
         croak "**In _save_metagenome: $req1";

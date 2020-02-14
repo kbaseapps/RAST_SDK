@@ -55,7 +55,7 @@ sub new
     if (exists $arg_hash{"async_job_check_max_time_ms"}) {
         $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
     }
-    my $service_version = 'release';
+    my $service_version = 'dev';
     if (exists $arg_hash{"service_version"}) {
         $service_version = $arg_hash{"service_version"};
     }
@@ -271,6 +271,119 @@ sub _get_assembly_as_fasta_submit {
         Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_assembly_as_fasta_submit",
                         status_line => $self->{client}->status_line,
                         method_name => '_get_assembly_as_fasta_submit');
+    }
+}
+
+ 
+
+
+=head2 get_fastas
+
+  $output = $obj->get_fastas($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is an AssemblyUtil.KBaseOjbReferences
+$output is a reference to a hash where the key is an AssemblyUtil.ref and the value is an AssemblyUtil.ref_fastas
+KBaseOjbReferences is a reference to a hash where the following keys are defined:
+	ref_lst has a value which is a reference to a list where each element is an AssemblyUtil.ref
+ref is a string
+ref_fastas is a reference to a hash where the following keys are defined:
+	paths has a value which is a reference to a list where each element is a string
+	parent_refs has a value which is a reference to a list where each element is an AssemblyUtil.ref
+	type has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is an AssemblyUtil.KBaseOjbReferences
+$output is a reference to a hash where the key is an AssemblyUtil.ref and the value is an AssemblyUtil.ref_fastas
+KBaseOjbReferences is a reference to a hash where the following keys are defined:
+	ref_lst has a value which is a reference to a list where each element is an AssemblyUtil.ref
+ref is a string
+ref_fastas is a reference to a hash where the following keys are defined:
+	paths has a value which is a reference to a list where each element is a string
+	parent_refs has a value which is a reference to a list where each element is an AssemblyUtil.ref
+	type has a value which is a string
+
+
+=end text
+
+=item Description
+
+Given a reference list of KBase objects constructs a local Fasta file with the sequence data for each ref.
+
+=back
+
+=cut
+
+sub get_fastas
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_get_fastas_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _get_fastas_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _get_fastas_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _get_fastas_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_get_fastas_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._get_fastas_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_get_fastas_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _get_fastas_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_get_fastas_submit');
     }
 }
 
@@ -690,6 +803,116 @@ filename has a value which is a string
 a reference to a hash where the following keys are defined:
 ref has a value which is a string
 filename has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 ref
+
+=over 4
+
+
+
+=item Description
+
+ref: workspace reference.
+
+        KBaseOjbReferences:
+            ref_lst: is an object wrapped array of KBase object references, which can be of the following types:
+                - KBaseGenomes.Genome
+                - KBaseSets.AssemblySet
+                - KBaseMetagenome.BinnedContigs
+                - KBaseGenomes.ContigSet
+                - KBaseGenomeAnnotations.Assembly
+                - KBaseSearch.GenomeSet
+                - KBaseSets.GenomeSet
+
+        ref_fastas
+            paths - list of paths to fasta files associated with workspace object.
+            type - workspace object type
+            parent_refs - (optional) list of associated workspace object references if different from the output key
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 KBaseOjbReferences
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+ref_lst has a value which is a reference to a list where each element is an AssemblyUtil.ref
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+ref_lst has a value which is a reference to a list where each element is an AssemblyUtil.ref
+
+
+=end text
+
+=back
+
+
+
+=head2 ref_fastas
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+paths has a value which is a reference to a list where each element is a string
+parent_refs has a value which is a reference to a list where each element is an AssemblyUtil.ref
+type has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+paths has a value which is a reference to a list where each element is a string
+parent_refs has a value which is a reference to a list where each element is an AssemblyUtil.ref
+type has a value which is a string
 
 
 =end text
