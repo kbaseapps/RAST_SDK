@@ -463,7 +463,7 @@ sub _openWrite {
     # Open a file for writing
     my ($self, $fn) = @_;
     # File encoded using UTF-8.
-    open my $fh, qw(<:encoding(UTF-8)), $fn or croak "**ERROR: could not open file: $fn for writing $!\n";
+    open my $fh, qw(>:encoding(UTF-8)), $fn or croak "**ERROR: could not open file: $fn for writing $!\n";
     return $fh;
 }
 
