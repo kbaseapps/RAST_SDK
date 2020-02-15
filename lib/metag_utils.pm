@@ -113,7 +113,7 @@ sub _run_prodigal {
         $ret = system(@cmd);
     };
     if ($@) {
-        print Dumper($@);
+        print Dumper(\@cmd);
         croak "ERROR Prodigal run failed: ".$@."\n";
     }
     print "Prodigal returns: $ret\n";
@@ -452,11 +452,111 @@ sub _run_rast {
 };
 
 
-sub _generate_report {
+sub _generate_stats {
     my ($self, $gn_ref) = @_;
 
+    my $gn_info = $self->_fetch_object_info($gn_ref);
+    my $is_assembly = $gn_info->[2] =~ m/GenomeAnnotations.Assembly/;
+    my $is_meta_assembly = $gn_info->[2] =~ m/Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    my %gn_stats = ();
+    $gn_stats{workspace} = $gn_info->[7];
+    $gn_stats{id} = $gn_info->[1];
+    $gn_stats{genome_type} = $gn_info->[2];
+
+    if ($is_assembly ) {
+        if (defined($gn_info->[10])) {
+            $gn_stats{gc_content} = $gn_info->[10]->{'GC content'};
+            $gn_stats{contig_count} = $gn_info->[10]->{'N Contigs'};
+        }
+        else {
+            $gn_stats{gc_content} = undef;
+            $gn_stats{contig_count} = undef;
+        }
+        $gn_stats{num_features} = 0;
+        $gn_stats{feature_counts} = {};
+    }
+    elsif ($is_meta_assembly) {
+        my $gn_data = $self->_fetch_object_data($gn_ref);
+        $gn_stats{gc_content} = $gn_data->{gc_content};
+        $gn_stats{contig_count} = $gn_data->{num_contigs};
+        $gn_stats{num_features} = $gn_data->{num_features};
+        $gn_stats{feature_counts} = $gn_data->{feature_counts};
+    }
+    return %gn_stats;
+}
+
+#Create a KBaseReport with brief info/stats on a reannotated metagenome
+sub _generate_report {
+    my ($self, $src_ref, $metag_ref) = @_;
+
+    my $gn_info = $self->_fetch_object_info($metag_ref);
+    my $gn_ws = $gn_info->[7];
+    my $is_assembly = $gn_info->[2] =~ /GenomeAnnotations.Assembly/;
+    my $is_meta_assembly = $gn_info->[2] =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    my $src_stats = $self->_generate_stats($src_ref);
+    my $metag_stats = $self->_generate_stats($metag_ref);
+
+    my ($report_message, $file_links);
+    $report_message = ("Genome Ref: $metag_ref\n".
+		       "Genome type: $metag_stats{genome_type}\n".
+		       "Number of contigs: $metag_stats{contig_count}\n".
+		       "Number of features sent into RAST: $src_stats->{num_features}\n".
+		       "Number of functions before RAST: $src_stats->{role_count}\n".
+		       "Number of features after RAST: $metag_stats->{num_features}\n".
+		       "New functions found by RAST: $metag_stats->{role_count}\n");
+
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
-    #TODO
+    my $report_info = $kbr->create_extended_report(
+        {"message": $report_message,
+         "objects_created": [{"ref": $metag_ref, "description": "RAST re-annotated metagenome"}],
+         "file_links": $file_links,
+         "report_object_name": "kb_RAST_metaG_report_".$self->_create_uuid(),
+         "workspace_name": $metag_ws
+        });
+
+    return {"output_genome_ref": $metag_ref,
+            "report_name": $report_info["name"],
+            "report_ref": $report_info["ref"]};
+}
+
+sub _fetch_object_data {
+    my ($self, $obj_ref) = @_;
+    my $ret_obj_data = {};
+    eval {
+        $ret_obj_data = $self->{ws_client}->get_objects2(
+                             {'objects'=>[{ref=>$obj_ref}]}
+                         )->{data}->[0]->{data};
+    };
+    if ($@) {
+        croak "ERROR Workspace.get_objects2 failed: ".$@."\n";
+    }
+    return $ret_obj_data;
+}
+
+sub _fetch_object_info {
+    my ($self, $obj_ref) = @_;
+    my $ret_obj_info = {};
+    eval {
+        $ret_obj_info = $self->{ws_client}->get_object_info3(
+                                 {objects=>[{ref=>$obj_ref}]}
+                        )->{infos}->[0];
+    };
+    if ($@) {
+        croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
+    }
+    return $ret_obj_info;
+}
+
+# create a 12 char string unique enough here
+sub _create_uuid {
+    my $self = shift;
+
+    my $str_uuid = qx(uuidgen);
+    chomp $str_uuid;
+    $str_uuid = substr($string, -12);
+    return $str_uuid;
 }
 
 ##----FILE IO ----##
@@ -478,11 +578,35 @@ sub _openRead {
 sub _create_metag_dir {
     my ($self, $rast_dir) = @_;
     # create the project directory for metagenome annotation
-    my $mg_dir = "metag_annotation_dir";
+    my $mg_dir = "metag_annotation_dir_".$self->_create_uuid();
     my $dir = catfile($rast_dir, $mg_dir);
 
     make_path $dir; # it won't make a directory that already exists
     return $dir;
+}
+
+sub _print_fasta_gff {
+    my ($self, $start, $num_lines, $f, $k) = @_;
+
+    # Open $f to read into an array
+    my $fh = $self->_openRead($f);
+    my @read_lines=();
+    chomp(@read_lines = <$fh>);
+    close($fh);
+
+    my $file_lines = scalar @read_lines;
+    print "There are a total of ". $file_lines . " lines from file $f\n";
+
+    $num_lines = $start + $num_lines;
+    $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
+    for (my $i = $start; $i < $num_lines; $i++ ) {
+        if (defined($k)) {
+            print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
+        }
+        else {
+            print "$read_lines[$i]\n";
+        }
+    }
 }
 
 ##----subs for parsing GFF by Seaver----##
@@ -763,15 +887,21 @@ sub rast_metagenome {
     }
     elsif ($is_meta_assembly) {
         # input_obj_ref points to a genome
-        my $num_ftrs = $input_obj_info->[10]->{'Number features'};
-        print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
-
+        if (defined($input_obj_info->[10])) {
+            my $num_ftrs = $input_obj_info->[10]->{'Number features'};
+            print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
+        }
         $input_fasta_file = $self->_write_fasta_from_metagenome(
                             $input_fasta_file, $input_obj_ref);
         unless (-e $input_fasta_file) {
             croak "**rast_metagenome ERROR: could not find FASTA file\n";
         }
     }
+    else {
+        croak ("Only KBaseMetagenomes.AnnotatedMetagenomeAssembly and ".
+               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
+    }
+
 
     # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
@@ -838,8 +968,6 @@ sub rast_metagenome {
         # fetch protein sequences and gene IDs from fasta and gff files
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
-        #print "First 10 items in gff_contents:\n";
-        #print Dumper(@{$gff_contents}[0..9]);
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
@@ -889,30 +1017,6 @@ sub rast_metagenome {
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
     return $out_metag->{genome_ref};
-}
-
-sub _print_fasta_gff {
-    my ($self, $start, $num_lines, $f, $k) = @_;
-
-    # Open $f to read into an array
-    my $fh = $self->_openRead($f);
-    my @read_lines=();
-    chomp(@read_lines = <$fh>);
-    close($fh);
-
-    my $file_lines = scalar @read_lines;
-    print "There are a total of ". $file_lines . " lines from file $f\n";
-
-    $num_lines = $start + $num_lines;
-    $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
-    for (my $i = $start; $i < $num_lines; $i++ ) {
-        if (defined($k)) {
-            print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
-        }
-        else {
-            print "$read_lines[$i]\n";
-        }
-    }
 }
 
 sub doInitialization {
