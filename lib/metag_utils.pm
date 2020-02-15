@@ -763,6 +763,11 @@ sub rast_metagenome {
     }
     elsif ($is_meta_assembly) {
         # input_obj_ref points to a genome
+	if (defined($input_obj_info->[10])) {
+            my $num_ftrs = $input_obj_info->[10]->{'Number features'};
+            print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
+        }
+
         my $num_ftrs = $input_obj_info->[10]->{'Number features'};
         print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
 
