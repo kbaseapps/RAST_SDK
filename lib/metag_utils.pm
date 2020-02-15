@@ -864,10 +864,12 @@ sub rast_metagenome {
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};
-    print "RAST resulted ".scalar @{$ftrs}." features.\n";
+    my $rasted_ftr_count = scalar @{$ftrs};
+    print "RAST resulted ".$rasted_ftr_count." features.\n";
 
-    print "***********The first 100 rasted features, for example***************\n";
-    for (my $j=0; $j<100; $j++) {
+    print "***********The first 10 or fewer rasted features, for example***************\n";
+    my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
+    for (my $j=0; $j<$prnt_lines; $j++) {
         my $f_id = $ftrs->[$j]->{id};
         my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
         my $f_protein = defined($ftrs->[$j]->{protein_translation}) ? $ftrs->[$j]->{protein_translation} : '';
