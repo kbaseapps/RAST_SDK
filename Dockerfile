@@ -6,7 +6,8 @@ MAINTAINER KBase Developer
 # any required dependencies for your module.
 
 RUN apt-get update && \
-    apt-get install bioperl
+    apt-get install bioperl && \
+    apt-get install uuid-runtime
 
 RUN cpanm -i Config::IniFiles && \
     cpanm -i UUID::Random && \

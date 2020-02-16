@@ -99,8 +99,77 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
-my $obj1 = "37798/14/1";
-my $obj2 = "37798/15/1";
+my $obj1 = "37798/14/1";  # appdev
+my $obj2 = "37798/15/1";  # appdev
+my $obj3 = "55141/77/1";  # prod assembly
+my $obj4 = "55141/33/1";  # prod metag
+my $obj5 = "55141/50/1";  # prod metag
+my $obj6 = "55141/105/1";  # prod metag
+my $obj7 = "55141/107/1";  # prod metag
+
+subtest '_generate_report' => sub {
+    my $stats_ok = 'stats generation runs ok.\n';
+
+    my $gff_file1 = 'tmp_gff1';
+    my $gff_path1 = catfile($rast_dir, $gff_file1);
+    $gff_path1 = $mgutil->_write_gff_from_metagenome($gff_path1, $obj6);
+
+    my $gff_file2 = 'tmp_gff2';
+    my $gff_path2 = catfile($rast_dir, $gff_file2);
+    $gff_path2 = $mgutil->_write_gff_from_metagenome($gff_path2, $obj7);
+
+    my ($gff_contents1, $attr_delimiter) = ([], '=');
+    my %ret_stats1;
+    lives_ok {
+        ($gff_contents1, $attr_delimiter) = $mgutil->_parse_gff($gff_path1, $attr_delimiter);
+        %ret_stats1 = $mgutil->_generate_stats_from_gffContents($gff_contents1);
+        #print "Stats on $obj6: \n".Dumper(\%ret_stats1);
+    } $stats_ok;
+    is(keys %ret_stats1, 0, "_generate_stats_from_gffContents on $obj6 should return empty.\n");
+
+    my $gff_contents2 = [];
+    my %ret_stats2;
+    lives_ok {
+        ($gff_contents2, $attr_delimiter) = $mgutil->_parse_gff($gff_path2, $attr_delimiter);
+        %ret_stats2 = $mgutil->_generate_stats_from_gffContents($gff_contents2);
+        #print "Stats on $obj7: \n".Dumper(\%ret_stats2);
+    } $stats_ok;
+    is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj7 should return non-empty.\n");
+    ok(exists($ret_stats2->{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
+    ok(exists($ret_stats2->{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
+
+    my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1, $gff_contents2);
+    print "Report return: \n".Dumper($ret_rpt);
+    ok( exists($ret_rpt->{report_info}), 'Report generation returns result.');
+};
+
+subtest '_generate_stats_from_ama' => sub {
+    my %ret_stats = $mgutil->_generate_stats_from_ama($obj4);
+    #print "AMA stats return: \n".Dumper(\%ret_stats);
+    ok( keys %ret_stats , 'Statistics generation from AMA $obj4 returns result.');
+
+    %ret_stats = $mgutil->_generate_stats_from_ama($obj5);
+    #print "AMA stats return: \n".Dumper(\%ret_stats);
+    ok( keys %ret_stats , 'Statistics generation from AMA obj5 returns result.');
+
+    %ret_stats = $mgutil->_generate_stats_from_ama($obj7);
+    #print "AMA stats return: \n".Dumper(\%ret_stats);
+    ok( keys %ret_stats , 'Statistics generation from AMA obj7 returns result.');
+
+};
+
+subtest '_generate_stats_from_gffContents' => sub {
+    my $gff_file = 'tmp_gff';
+    my $gff_path = catfile($rast_dir, $gff_file);
+    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj7);
+
+    my ($gff_contents, $attr_delimiter) = ([], '=');
+    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
+
+    my %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
+    #print "Stats return: \n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
+};
 
 subtest '_parse_translation' => sub {
     my $trans_path = catfile($rast_dir, 'trans_scrt');

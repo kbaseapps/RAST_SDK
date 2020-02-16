@@ -492,8 +492,6 @@ sub _generate_stats_from_gffContents {
     print "INFO: Gathering stats from $gff_count GFFs------\n";
 
     my %gff_stats = ();
-    my %role_counts = ();
-    my %gene_roles = ();
     foreach my $gff_line (@$gff_contents) {
         if(scalar(@$gff_line) < 9){
             #No attributes column
@@ -501,20 +499,24 @@ sub _generate_stats_from_gffContents {
         }
 
         my $ftr_attributes = $gff_line->[8];
-        if (!defined($ftr_attributes->{'product'}) or $ftr_attributes->{'product'} eq '') {
+        if (!defined($ftr_attributes->{'product'})
+                || $ftr_attributes->{'product'} eq '') {
             next;
         }
         #Look for function
         my $gene_id = $ftr_attributes->{'id'};
-        my $func_role = $ftr_attributes->{'product'};
-        if (!exists($role_counts{$func_role})) {
-            $role_counts{$func_role} = 0;
+        my $frole = $ftr_attributes->{'product'};
+        if (!exists($gff_stats{function_roles}{$frole})) {
+            $gff_stats{function_roles}{$frole}{gene_count} = 1;
+            $gff_stats{function_roles}{$frole}{gene_list} = $gene_id;
         }
-        $role_counts{$func_role} = $role_counts{$func_role} + 1;
-        $gene_roles{$gene_id} = $func_role;
+        else {
+            $gff_stats{function_roles}{$frole}{gene_count} += 1;
+            $gff_stats{function_roles}{$frole}{gene_list} = join(";",
+                    $gene_id, $gff_stats{function_roles}{$frole}{gene_list});
+        }
+        $gff_stats{gene_role_map}{$gene_id} = $frole;
     }
-    $gff_stats{'gene_roles'} = $gene_roles;
-    $gff_stats{'role_counts'} = $role_counts;
 
     return %gff_stats;
 }
@@ -523,7 +525,7 @@ sub _generate_stats_from_gffContents {
 sub _generate_report {
     my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts) = @_;
 
-    my $gn_info = $self->_fetch_object_info($metag_ref);
+    my $gn_info = $self->_fetch_object_info($ama_ref);
     my $gn_ws = $gn_info->[7];
 
     my %src_stats = $self->_generate_stats_from_ama($src_ref);
@@ -531,32 +533,49 @@ sub _generate_report {
     my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
     my %ama_gff_stats = $self->_generate_stats_from_gffContents($ama_gff_conts);
 
-    my ($report_message, $file_links);
-
-    my $src_gene_count = keys %$src_gff_stats{gene_roles};
-    my $src_role_count = keys %$src_gff_stats{role_counts};
-    my $ama_gene_count = keys %$ama_gff_stats{gene_roles};
-    my $ama_role_count = keys %$ama_gff_stats{role_counts};
-    $report_message = ("Genome Ref: $ama_ref\n".
-                       "Genome type: $ama_stats{genome_type}\n".
-                       "Number of contigs: $ama_stats{contig_count}\n".
-                       "Number of features before RAST: $src_gene_count\n".
-                       "Number of function roles before RAST: $src_role_count\n".
-                       "Number of features after RAST: $ama_stats{num_features}\n".
-                       "Number of function roles after RAST: $ama_role_count\n");
+    my $report_message;
+    my ($src_gene_count, $src_role_count, $ama_gene_count, $ama_role_count);
+    if (keys %ama_gff_stats) {
+        if (keys %src_gff_stats) {
+            $src_gene_count = keys $src_gff_stats{gene_role_map};
+            $src_role_count = keys $src_gff_stats{function_roles};
+        }
+        else {
+            $src_gene_count = 0;
+            $src_role_count = 0;
+        }
+        $ama_gene_count = keys $ama_gff_stats{gene_role_map};
+        $ama_role_count = keys $ama_gff_stats{function_roles};
+        $report_message = ("Genome Ref: $ama_ref\n".
+                           "Genome type: $ama_stats{genome_type}\n".
+                           "Number of contigs: $ama_stats{contig_count}\n".
+                           "Number of features before RAST: $src_gene_count\n".
+                           "Number of function roles before RAST: $src_role_count\n".
+                           "Number of features after RAST: $ama_stats{num_features}\n".
+                           "Number of function roles after RAST: $ama_role_count\n");
+        # Note that $ama_stats{feature_counts}
+        #           $ama_gff_stats{function_roles}{gene_count}
+        #           $ama_gff_stats{function_roles}{gene_list}
+        # will be reported in the html file.
+    }
+    else {
+        $report_message = ("Genome Ref: $ama_ref\n".
+                           "Genome type: $ama_stats{genome_type}\n".
+                           "Number of features before RAST: $src_stats{num_features}\n".
+                           "No data on functional roles available\n");
+    }
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
-        {"message": $report_message,
-         "objects_created": [{"ref": $metag_ref, "description": "RAST re-annotated metagenome"}],
-         #"file_links": $file_links,
-         "report_object_name": "kb_RAST_metaG_report_".$self->_create_uuid(),
-         "workspace_name": $metag_ws
+        {"message"=>$report_message,
+         "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
+         "report_object_name"=>"kb_RAST_metaG_report_".$self->_create_uuid(),
+         "workspace_name"=>$gn_ws
         });
 
-    return {"output_genome_ref": $metag_ref,
-            "report_name": $report_info["name"],
-            "report_ref": $report_info["ref"]};
+    return {"output_genome_ref"=>$ama_ref,
+            "report_name"=>$report_info->{name},
+            "report_ref"=>$report_info->{ref}};
 }
 
 sub _fetch_object_data {
@@ -593,7 +612,7 @@ sub _create_uuid {
 
     my $str_uuid = qx(uuidgen);
     chomp $str_uuid;
-    $str_uuid = substr($string, -12);
+    $str_uuid = substr($str_uuid, -12);
     return $str_uuid;
 }
 
@@ -1045,15 +1064,14 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    #print "***********Print out 1000 lines (4200~5200) in the GFF file before sending to GFU-----------\n";
-    #$self->_print_fasta_gff(4200, 1000, $new_gff_file);
-
-
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
-    return $out_metag->{genome_ref};
+    my $ama_ref = $out_metag->{genome_ref};
+    my $report_ret = $self->_generate_report(
+                         $input_obj_ref, $ama_ref, $gff_contents, $new_gff_file);
+    return $ama_ref;
 }
 
 sub doInitialization {
