@@ -1,0 +1,68 @@
+<html><head>
+<script type='text/javascript' src='https://www.google.com/jsapi'></script>
+<script type='text/javascript'>
+  google.load('visualization', '1', {packages:['controls'], callback: drawTable});
+  google.setOnLoadCallback(drawTable);
+
+function drawTable() {
+var data = new google.visualization.DataTable();
+<replaceTableData>data.addColumn(...);data.addRows([[],...]);</replaceTableData>
+
+var dashboard = new google.visualization.Dashboard(document.querySelector('#dashboard'));
+
+var filterColumns = [{
+type: 'string',
+calc: function (dt, row) {
+for (var i = 0, vals = [], cols = dt.getNumberOfColumns(); i < cols; i++) {
+    vals.push(dt.getFormattedValue(row, i));
+}
+return vals.join('\n');
+}
+}];
+var tab_columns = [];
+for (var j = 0, dcols = data.getNumberOfColumns(); j < dcols; j++) {
+    filterColumns.push(j);
+    tab_columns.push(j+1);
+}
+var stringFilter = new google.visualization.ControlWrapper({
+    controlType: 'StringFilter',
+    containerId: 'string_filter_div',
+    options: {
+        filterColumnIndex: 0,
+        matchType: 'any',
+        caseSensitive: false,
+        ui: {
+            label: 'Search table:'
+           }
+    },
+    view: {
+               columns: filterColumns
+          }
+});
+
+var table = new google.visualization.ChartWrapper({
+    chartType: 'Table',
+    containerId: 'table_div',
+    options: {
+        showRowNumber: true,
+        page: 'enable',
+        pageSize: 50
+    },
+    view: {
+            columns: tab_columns
+    }
+});
+dashboard.bind([stringFilter], [table]);
+dashboard.draw(data);
+}
+</script></head>
+<body>
+  <replaceHeader><h4>Feature counts stats for GCF_000009605.1_ASM960v1:</h4></replaceHeader>
+  <div id='dashboard'>
+      <div id='string_filter_div'></div>
+      <div id='table_div'></div>
+  </div>
+  <replaceFooter><p><strong>Total Contig Count = 3</strong></p><p><strong>Total Feature Count = 1246</strong></p></replaceFooter>
+</body>
+</html>
+

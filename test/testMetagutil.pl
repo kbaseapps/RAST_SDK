@@ -107,6 +107,24 @@ my $obj5 = "55141/50/1";  # prod metag
 my $obj6 = "55141/105/1";  # prod metag
 my $obj7 = "55141/107/1";  # prod metag
 
+
+my $stats_ok = 'stats generation runs ok.\n';
+subtest '_write_html_from_gffContents' => {
+    my $gff_file2 = 'tmp_gff2';
+    my $gff_path2 = catfile($rast_dir, $gff_file2);
+    $gff_path2 = $mgutil->_write_gff_from_metagenome($gff_path2, $obj7);
+
+    my $gff_contents2 = [];
+    my %ret_stats2;
+    lives_ok {
+        ($gff_contents2, $attr_delimiter) = $mgutil->_parse_gff($gff_path2, $attr_delimiter);
+        %ret_stats2 = $mgutil->_generate_stats_from_gffContents($gff_contents2);
+        print "Stats on $obj7: \n".Dumper(\%ret_stats2);
+    } $stats_ok;
+    my $ret_html = $self->_write_html_from_gffContents(obj7, $gff_contents2);
+    print $ret_html;
+};
+
 subtest '_generate_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
@@ -135,12 +153,12 @@ subtest '_generate_report' => sub {
         #print "Stats on $obj7: \n".Dumper(\%ret_stats2);
     } $stats_ok;
     is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj7 should return non-empty.\n");
-    ok(exists($ret_stats2->{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
-    ok(exists($ret_stats2->{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
+    ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
+    ok(exists($ret_stats2{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
     my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1, $gff_contents2);
     print "Report return: \n".Dumper($ret_rpt);
-    ok( exists($ret_rpt->{report_info}), 'Report generation returns result.');
+    ok( exists($ret_rpt->{report_ref}), 'Report generation returns result.');
 };
 
 subtest '_generate_stats_from_ama' => sub {

@@ -521,6 +521,61 @@ sub _generate_stats_from_gffContents {
     return %gff_stats;
 }
 
+sub _write_html_from_gffContents {
+    my ($self, $obj_ref, $gff_contents, $template_file) = @_;
+
+    $template_file = './html_templates/table_report.html' unless defined($template_file);
+
+    my $gff_count = scalar @{$gff_contents};
+    print "INFO: Gathering stats from $gff_count GFFs------\n";
+
+    my %obj_stats = $self->_generate_stats_from_ama($gff_contents);
+    my %gff_stats = $self->_generate_stats_from_gffContents($obj_ref);
+
+    my $fh1 = $self->_openRead($template_file);
+    read $fh1, my $file_content, -s $fh1; # read the whole file into a string
+    close $fh1;
+
+    my $report_title = "Feature function report for genome $obj_stats{id}";
+    my $rpt_header = "<h4>$report_title:</h4>";
+    my $rpt_data = ("
+                    data.addColumn('string', 'function role');
+                    data.addColumn('number', 'gene count');
+                    data.addColumn('string', 'gene ids');
+                    data.addRows([\n");
+    my $roles = $gff_stats{function_roles};
+    foreach my $role_k ( sort keys %$roles ) {
+        $rpt_data .= "[$role_k, $roles{$role_k}{gene_count}, $roles{$role_k}{gene_list}],\n";
+    }
+    $rpt_data .= "]);\n";
+
+    my $rpt_footer = "<p><strong>Total Contig Count = $obj_stats{contig_count}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Total Feature Count = $obj_stats{num_features}</strong></p>\n";
+    $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
+
+    my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
+    my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
+    my $srch3 = "(<replaceTableData)(.*)(</replaceTableData>)";
+
+    $file_content =~ s/$srch1/$rpt_header/;
+    $file_content =~ s/$srch2/$rpt_footer/;
+    $file_content =~ s/$srch3/$rpt_data/;
+
+    my $report_file_path = catfile($self->metag_dir, 'genome_report.html')
+    my $fh2 = $self->_openWrite($report_file_path);
+    print $fh2 $file_content;
+    close $fh2;
+    print $file_content;
+
+    my($vol, $f_path, $file) = splitpath($report_file_path);
+    my $html_report = ({'path'=> $report_file_path,
+                        'name'=> $file,
+                        'label'=> $file,
+                        'description'=> $report_title});
+    return $html_report;
+}
+
+
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
 sub _generate_report {
     my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts) = @_;
