@@ -24,6 +24,7 @@ use Bio::Perl;
 use Bio::Tools::CodonTable;
 use JSON;
 use Encode qw(encode decode);
+use File::Basename;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -521,32 +522,31 @@ sub _generate_stats_from_gffContents {
     return %gff_stats;
 }
 
-sub _write_html_from_gffContents {
-    my ($self, $obj_ref, $gff_contents, $template_file) = @_;
+sub _write_html_from_stats {
+    my ($self, %obj_stats, %gff_stats, $template_file) = @_;
 
     $template_file = './html_templates/table_report.html' unless defined($template_file);
+    my $dirname = dirname(__FILE__);
+    my $template = catfile($dirname, $template_file);
 
-    my $gff_count = scalar @{$gff_contents};
-    print "INFO: Gathering stats from $gff_count GFFs------\n";
-
-    my %obj_stats = $self->_generate_stats_from_ama($gff_contents);
-    my %gff_stats = $self->_generate_stats_from_gffContents($obj_ref);
-
-    my $fh1 = $self->_openRead($template_file);
+    my $fh1 = $self->_openRead($template);
     read $fh1, my $file_content, -s $fh1; # read the whole file into a string
     close $fh1;
 
     my $report_title = "Feature function report for genome $obj_stats{id}";
     my $rpt_header = "<h4>$report_title:</h4>";
-    my $rpt_data = ("
-                    data.addColumn('string', 'function role');
-                    data.addColumn('number', 'gene count');
-                    data.addColumn('string', 'gene ids');
-                    data.addRows([\n");
+    my $rpt_data = ("data.addColumn('string', 'function role');\n".
+                    "data.addColumn('number', 'gene count');\n".
+                    "data.addColumn('string', 'gene ids');\n".
+                    "data.addRows([\n");
     my $roles = $gff_stats{function_roles};
-    foreach my $role_k ( sort keys %$roles ) {
-        $rpt_data .= "[$role_k, $roles{$role_k}{gene_count}, $roles{$role_k}{gene_list}],\n";
+    foreach my $role_k (sort keys %$roles) {
+        $rpt_data .= "['$role_k',";
+        $rpt_data .= "$roles->{$role_k}->{gene_count},";
+        $rpt_data .= "'$roles->{$role_k}->{gene_list}'],\n";
     }
+    chomp $rpt_data;
+    chop $rpt_data;
     $rpt_data .= "]);\n";
 
     my $rpt_footer = "<p><strong>Total Contig Count = $obj_stats{contig_count}</strong></p>\n";
@@ -555,22 +555,21 @@ sub _write_html_from_gffContents {
 
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
     my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
-    my $srch3 = "(<replaceTableData)(.*)(</replaceTableData>)";
+    my $srch3 = "(<replaceTableData>)(.*)(</replaceTableData>)";
 
     $file_content =~ s/$srch1/$rpt_header/;
     $file_content =~ s/$srch2/$rpt_footer/;
     $file_content =~ s/$srch3/$rpt_data/;
 
-    my $report_file_path = catfile($self->metag_dir, 'genome_report.html')
+    my $report_file_path = catfile($self->metag_dir, 'genome_report.html');
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;
-    print $file_content;
 
-    my($vol, $f_path, $file) = splitpath($report_file_path);
+    my($vol, $f_path, $rfile) = splitpath($report_file_path);
     my $html_report = ({'path'=> $report_file_path,
-                        'name'=> $file,
-                        'label'=> $file,
+                        'name'=> $rfile,
+                        'label'=> $rfile,
                         'description'=> $report_title});
     return $html_report;
 }
@@ -620,10 +619,15 @@ sub _generate_report {
                            "No data on functional roles available\n");
     }
 
+    my $html_files = $self->($ama_ref, $ama_gff_conts);
+
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
         {"message"=>$report_message,
          "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
+         "html_links"=> $html_files,
+         "direct_html_link_index"=> 0,
+         "html_window_height"=> 366,
          "report_object_name"=>"kb_RAST_metaG_report_".$self->_create_uuid(),
          "workspace_name"=>$gn_ws
         });
@@ -1126,7 +1130,7 @@ sub rast_metagenome {
     my $ama_ref = $out_metag->{genome_ref};
     my $report_ret = $self->_generate_report(
                          $input_obj_ref, $ama_ref, $gff_contents, $new_gff_file);
-    return $ama_ref;
+    return $report_ret;
 }
 
 sub doInitialization {

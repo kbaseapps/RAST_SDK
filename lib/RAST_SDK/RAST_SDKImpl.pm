@@ -1843,16 +1843,12 @@ sub annotate_metagenome
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 
     my $mg_util = new metag_utils($config, $ctx);
-    my $metag_ref = $mg_util->rast_metagenome($params);
-    my $reportout = Bio::KBase::kbaseenv::create_report({
-        workspace_name => $params->{output_workspace},
-        report_object_name => $params->{output_metagenome_name}.".report"
-    });
+    my $rast_out = $mg_util->rast_metagenome($params);
     $output = {
-        output_metagenome_ref => $metag_ref,
-        output_workspace => $params->{output_workspace},
-        report_ref => $reportout->{"ref"},
-        report_name => $params->{output_metagenome_name}.".report"
+        output_metagenome_ref => $rast_out->{output_genome_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
     };
     #END annotate_metagenome
     my @_bad_returns;
