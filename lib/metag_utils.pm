@@ -315,6 +315,14 @@ sub _write_fasta_from_metagenome {
 sub _write_gff_from_metagenome {
     my ($self, $gff_filename, $genome_ref) = @_;
 
+    my $obj_info = $self->_fetch_object_info($genome_ref);
+    my $in_type = $obj_info->[2];
+    my $is_meta_assembly = $in_type =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    unless ($is_meta_assembly) {
+        croak "ValueError: Object is not an AnnotatedMetagenomeAssembly, GFU will throw an error.\n";
+    }
+
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gff_result = '';
     eval {
@@ -523,7 +531,17 @@ sub _generate_stats_from_gffContents {
 }
 
 sub _write_html_from_stats {
-    my ($self, %obj_stats, %gff_stats, $template_file) = @_;
+    my $self = shift;
+    my $obj_stats_ref = shift;
+    my $gff_stats_ref = shift;
+    my $template_file = shift;
+    if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH") {
+        croak "You need to pass in hash references!\n";
+    }
+
+    # dereference the hashes
+    my %obj_stats = %{ $obj_stats_ref };
+    my %gff_stats = %{ $gff_stats_ref };
 
     $template_file = './html_templates/table_report.html' unless defined($template_file);
     my $dirname = dirname(__FILE__);
@@ -539,6 +557,7 @@ sub _write_html_from_stats {
                     "data.addColumn('number', 'gene count');\n".
                     "data.addColumn('string', 'gene ids');\n".
                     "data.addRows([\n");
+
     my $roles = $gff_stats{function_roles};
     foreach my $role_k (sort keys %$roles) {
         $rpt_data .= "['$role_k',";
@@ -547,7 +566,7 @@ sub _write_html_from_stats {
     }
     chomp $rpt_data;
     chop $rpt_data;
-    $rpt_data .= "]);\n";
+    $rpt_data .= "\n]);\n";
 
     my $rpt_footer = "<p><strong>Total Contig Count = $obj_stats{contig_count}</strong></p>\n";
     $rpt_footer .= "<p><strong>Total Feature Count = $obj_stats{num_features}</strong></p>\n";
@@ -573,7 +592,6 @@ sub _write_html_from_stats {
                         'description'=> $report_title});
     return $html_report;
 }
-
 
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
 sub _generate_report {
@@ -619,7 +637,7 @@ sub _generate_report {
                            "No data on functional roles available\n");
     }
 
-    my $html_files = $self->($ama_ref, $ama_gff_conts);
+    my $html_files = $self->_write_html_from_stats(\%ama_stats, \%ama_gff_stats);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
@@ -653,16 +671,17 @@ sub _fetch_object_data {
 
 sub _fetch_object_info {
     my ($self, $obj_ref) = @_;
-    my $ret_obj_info = {};
+    my $obj_info = {};
     eval {
-        $ret_obj_info = $self->{ws_client}->get_object_info3(
+        $obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>[{ref=>$obj_ref}]}
                         )->{infos}->[0];
     };
     if ($@) {
         croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
     }
-    return $ret_obj_info;
+    print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
+    return $obj_info;
 }
 
 # create a 12 char string unique enough here
@@ -987,8 +1006,6 @@ sub rast_metagenome {
 
     # 1. getting the fasta file from $input_obj_ref according to its type
     my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
-    print "INFO: object info for $input_obj_ref------\n".Dumper($input_obj_info);
-
     my $in_type = $input_obj_info->[2];
     my $is_assembly = $in_type =~ /GenomeAnnotations.Assembly/;
     my $is_meta_assembly = $in_type =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
