@@ -543,7 +543,7 @@ sub _write_html_from_stats {
     my %obj_stats = %{ $obj_stats_ref };
     my %gff_stats = %{ $gff_stats_ref };
 
-    $template_file = './html_templates/table_report.html' unless defined($template_file);
+    $template_file = './templates_and_data/table_report.html' unless defined($template_file);
     my $dirname = dirname(__FILE__);
     my $template = catfile($dirname, $template_file);
 
@@ -580,7 +580,7 @@ sub _write_html_from_stats {
     $file_content =~ s/$srch2/$rpt_footer/;
     $file_content =~ s/$srch3/$rpt_data/;
 
-    my $report_file_path = catfile($self->metag_dir, 'genome_report.html');
+    my $report_file_path = catfile($self->{metag_dir}, 'genome_report.html');
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;
