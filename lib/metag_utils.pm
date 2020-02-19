@@ -586,11 +586,11 @@ sub _write_html_from_stats {
     close $fh2;
 
     my($vol, $f_path, $rfile) = splitpath($report_file_path);
-    my $html_report = ({'path'=> $report_file_path,
+    my @html_report = ({'path'=> $report_file_path,
                         'name'=> $rfile,
                         'label'=> $rfile,
                         'description'=> $report_title});
-    return $html_report;
+    return @html_report;
 }
 
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
@@ -637,13 +637,13 @@ sub _generate_report {
                            "No data on functional roles available\n");
     }
 
-    my $html_files = $self->_write_html_from_stats(\%ama_stats, \%ama_gff_stats);
+    my @html_files = $self->_write_html_from_stats(\%ama_stats, \%ama_gff_stats);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
         {"message"=>$report_message,
          "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
-         "html_links"=> $html_files,
+         "html_links"=> @html_files,
          "direct_html_link_index"=> 0,
          "html_window_height"=> 366,
          "report_object_name"=>"kb_RAST_metaG_report_".$self->_create_uuid(),
