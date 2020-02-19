@@ -643,7 +643,7 @@ sub _generate_report {
     my $report_info = $kbr->create_extended_report(
         {"message"=>$report_message,
          "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
-         "html_links"=> @html_files,
+         "html_links"=> \@html_files,
          "direct_html_link_index"=> 0,
          "html_window_height"=> 366,
          "report_object_name"=>"kb_RAST_metaG_report_".$self->_create_uuid(),
