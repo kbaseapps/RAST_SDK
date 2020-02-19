@@ -560,7 +560,7 @@ sub _write_html_from_stats {
 
     my $roles = $gff_stats{function_roles};
     foreach my $role_k (sort keys %$roles) {
-        $rpt_data .= "['$role_k',";
+        $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$role_k</span>\",";
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         $rpt_data .= "'$roles->{$role_k}->{gene_list}'],\n";
     }

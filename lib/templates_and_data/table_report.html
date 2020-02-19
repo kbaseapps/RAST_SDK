@@ -44,9 +44,12 @@ var table = new google.visualization.ChartWrapper({
     chartType: 'Table',
     containerId: 'table_div',
     options: {
-        showRowNumber: true,
+        showRowNumber: false,
         page: 'enable',
-        pageSize: 50
+        pageSize: 20,
+        width: '95%',
+        height: '95%',
+        allowHtml: true
     },
     view: {
             columns: tab_columns
@@ -61,7 +64,7 @@ dashboard.draw(data);
   <div id='dashboard'>
       <div id='string_filter_div'></div>
       <div id='table_div'></div>
-  </div>
+  </div><br>
   <replaceFooter><p><strong>Total Contig Count = 3</strong></p><p><strong>Total Feature Count = 1246</strong></p></replaceFooter>
 </body>
 </html>
