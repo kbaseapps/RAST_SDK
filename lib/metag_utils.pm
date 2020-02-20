@@ -368,7 +368,7 @@ sub _save_metagenome {
         croak "**In _save_metagenome: GFF file is empty.\n";
     }
 
-    print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
+    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
@@ -559,8 +559,11 @@ sub _write_html_from_stats {
                     "data.addRows([\n");
 
     my $roles = $gff_stats{function_roles};
+    my $genes = $gff_stats{gene_role_map};
     foreach my $role_k (sort keys %$roles) {
-        $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$role_k</span>\",";
+        # add escape to preserve double quote (")
+        (my $new_role_k = $role_k) =~ s/"/\\"/g;
+        $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         $rpt_data .= "'$roles->{$role_k}->{gene_list}'],\n";
     }
@@ -568,8 +571,9 @@ sub _write_html_from_stats {
     chop $rpt_data;
     $rpt_data .= "\n]);\n";
 
-    my $rpt_footer = "<p><strong>Total Contig Count = $obj_stats{contig_count}</strong></p>\n";
-    $rpt_footer .= "<p><strong>Total Feature Count = $obj_stats{num_features}</strong></p>\n";
+    my $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Gene Total Count = keys %$genes</strong></p>\n";
     $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
 
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";

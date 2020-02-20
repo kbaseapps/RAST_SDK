@@ -263,7 +263,7 @@ subtest '_write_html_from_stats' => sub {
                                                                                 'gene_list' => '17470_2;13111_3;11624_3;11477_1;10224_3;7691_2;6222_4;4405_6;3274_2;2241_4;1632_1;718_3;575_5;256_4;249_3;15_58',
                                                                                 'gene_count' => 16
                                                                               },
-                                'Integrins alpha chain:ASPIC/UnbV' => {
+                                '1"-phosphate phophatase related protein' => {
                                                                         'gene_count' => 2,
                                                                         'gene_list' => '4599_1;627_2'
                                                                       }
@@ -278,9 +278,9 @@ subtest '_write_html_from_stats' => sub {
                                }
 );
 
-    my $ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats, undef);
-    print Dumper($ret_html);
-    ok(exists($ret_html->{path}), "html report written with file path returned.");
+    my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats, undef);
+    print Dumper(\@ret_html);
+    ok(exists(\@ret_html->[0]->{path}), "html report written with file path returned.");
 };
 
 
