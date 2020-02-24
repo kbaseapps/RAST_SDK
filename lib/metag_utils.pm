@@ -326,7 +326,7 @@ sub _write_gff_from_metagenome {
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gff_result = '';
     eval {
-        $gff_result = $gfu->metagenome_to_gff({"genome_ref" => $genome_ref});
+        $gff_result = $gfu->metagenome_to_gff({"metagenome_ref" => $genome_ref});
 
         copy($gff_result->{file_path}, $gff_filename);
 
@@ -371,6 +371,14 @@ sub _save_metagenome {
     print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
 
+    eval {
+        $self->_fetch_object_info($obj_ref);
+    };
+    if ($@) {
+        croak("**In _save_metagenome ERROR trying to access the input object:\n"
+               .$@."\n");
+    }
+
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
     eval {
@@ -382,7 +390,8 @@ sub _save_metagenome {
             "generate_missing_genes" => 1});
     };
     if ($@) {
-        croak "**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome: ".$@."\n";
+        croak("**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome:\n"
+               .$@."\n");
     }
     else {
         return $annotated_metag;

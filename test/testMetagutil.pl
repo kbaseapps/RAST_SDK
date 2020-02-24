@@ -110,315 +110,6 @@ my $obj8 = "55141/114/1";  # prod metag
 my $obj9 = "55141/117/1";  # prod metag
 my $obj10 = "55141/120/1";  # prod metag
 
-=begin
-# test the html writing function using a small portion of a real AMA's stats data#
-subtest '_write_html_from_stats' => sub {
-    my %obj_stats = ('contig_count' => 123, 'id' => 'Test ID',
-                     'num_features' => 456, 'gc_content' => 0.55);
-    my %gff_stats = ('function_roles' => {
-                                'FIG00500935: hypothetical protein' => {
-                                                                         'gene_count' => 1,
-                                                                         'gene_list' => '5785_1'
-                                                                       },
-                                'Respiratory nitrate reductase gamma chain (EC 1.7.99.4)' => {
-                                                                                               'gene_count' => 3,
-                                                                                               'gene_list' => '15370_3;8513_2;15_18'
-                                                                                             },
-                                'Twin-arginine translocation protein TatC' => {
-                                                                                'gene_list' => '17470_2;13111_3;11624_3;11477_1;10224_3;7691_2;6222_4;4405_6;3274_2;2241_4;1632_1;718_3;575_5;256_4;249_3;15_58',
-                                                                                'gene_count' => 16
-                                                                              },
-                                '1"-phosphate phophatase related protein' => {
-                                                                        'gene_count' => 2,
-                                                                        'gene_list' => '4599_1;627_2'
-                                                                      }
-                               },
-            'gene_role_map' => {
-                               '255_8' => 'Uptake hydrogenase small subunit precursor (EC 1.12.99.6)',
-                               '13484_1' => 'Methyltransferase type 11',
-                               '16059_2' => 'Methylated-DNA--protein-cysteine methyltransferase (EC 2.1.1.63)',
-                               '11702_1' => 'Membrane-associated zinc metalloprotease',
-                               '990_3' => 'Mobile element protein',
-                               '11_44' => 'OsmC/Ohr family protein'
-                               }
-);
-
-    my %subsys_info = $mgutil->_fetch_subsystem_info();
-    my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
-                                                   \%subsys_info, undef);
-    print Dumper(\@ret_html);
-    ok(exists($ret_html[0]{path}), "html report written with file path returned.");
-};
-
-# test reading subsystem info
-subtest '_fetch_subsystem_info' => sub {
-    my $subsys_ok = 'subsystem info reading runs ok.\n';
-    my %ret_subsysInfo = ();
-
-    lives_ok {
-        %ret_subsysInfo = $mgutil->_fetch_subsystem_info();
-        print "Subsystem info: \n".Dumper(\%ret_subsysInfo);
-    } $subsys_ok;
-    is(keys %ret_subsysInfo, 920, "_fetch_subsystem_info returns expected data.\n");
-};
-
-subtest '_parse_translation' => sub {
-    my $trans_path = catfile($rast_dir, 'trans_scrt');
-    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
-
-    %trans_tab = $mgutil->_parse_translation($trans_path);
-    ok( keys %trans_tab , 'Prodigal translation parsing returns result.');
-};
-
-subtest '_parse_sco' => sub {
-    $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
-    ok( @{$sco_tab} >0, 'Prodigal SCO parsing returns result.');
-};
-
-subtest '_parse_gff' => sub {
-    my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
-                                              $ecoli_gff, '=');
-    ok( @{$gff_contents} >0, 'Parsing GFF returns result.');
-};
-
-subtest '_parse_prodigal_results' => sub {
-    my $prd_out_path = catfile($rast_dir, 'prodigal_output.gff');
-    my $trans_path = catfile($rast_dir, 'protein_translation');
-    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
-
-    # Prodigal generate a GFF output file
-    my $out_type = 'gff';
-    copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
-    my $prd_results = $mgutil->_parse_prodigal_results(
-                          $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, 'Prodigal GFF parsing returns result.');
-
-    # Prodigal generate an SCO output file
-    $out_type = 'sco';
-    copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
-    $prd_results = $mgutil->_parse_prodigal_results(
-                          $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, 'Prodigal SCO parsing returns result.');
-
-};
-
-subtest '_run_rast' => sub {
-    my $inputgenome = {
-        features => []
-    };
-    my $i=1;
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-             id => "peg".$i,
-             protein_translation => $protein_seqs->{$gene}
-        });
-        $i++;
-    }
-
-    my $rast_ret = $mgutil->_run_rast($inputgenome);
-    isnt($rast_ret, undef, 'RAST run_pipeline call returns results');
-};
-
-subtest '_write_fasta_from_metagenome' => sub {
-    my $fa_test1 = catfile($rast_dir, 'test1.fasta');
-    $fa_test1 = $mgutil->_write_fasta_from_metagenome(
-                    $fa_test1, $input_obj_ref);
-
-    ok((-e $fa_test1), 'fasta file created');
-    ok((-s $fa_test1), 'fasta file has data');
-    # ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
-};
-
-subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = catfile($rast_dir, 'test1.gff');
-    $gff_test1 = $mgutil->_write_gff_from_metagenome(
-		     $gff_test1, $input_obj_ref);
-
-    ok((-e $gff_test1), 'gff file created');
-    ok((-s $gff_test1), 'gff file has data');
-    #ok(compare($gff_test1, $gff1) == 0, 'GFF file written correctly');
-};
-
-
-subtest '_run_prodigal' => sub {
-    my $run_ok = '_run_prodigal_cmd runs ok.\n';
-    my $run_err = 'ERROR Prodigal run failed';
-    my $seq_too_short = 'Error:  Sequence must be 20000 characters';
-    my $cannot_open = "Prodigal returned Error: can't open input file";
-    my $prd_ret = 0;
-
-    my $infile = '';
-    my @p_cmd = (
-          $prodigal_cmd,
-          '-i',
-          $infile
-    );
-
-    isnt($mgutil->_run_prodigal(@p_cmd), 0, $cannot_open);
-
-    $infile = $fasta1;
-    @p_cmd = (
-          'wrong_path/prodigal',
-          '-i',
-          $infile
-    );
-
-    isnt($mgutil->_run_prodigal(@p_cmd), 0, "Can't exec wrong prodigal cmd.\n");
-
-    @p_cmd = (
-          $prodigal_cmd,
-          '-i',
-          $infile
-    );
-    lives_ok {
-        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
-    } $run_ok;
-    isnt($prd_ret, 0, 'Prodigal returned: '.$seq_too_short.'\n');
-
-    @p_cmd = (
-        $prodigal_cmd,
-	'-i',
-	$infile,
-	'-p',
-	'meta'
-    );
-    lives_ok {
-        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
-    } $run_ok;
-    is($prd_ret, 0, 'Prodigal runs ok with -p meta option.\n');
-
-    ##---------A long file takes much longer time!!!!!---------##
-    $infile = $fasta2;
-    @p_cmd = (
-          $prodigal_cmd,
-          '-i',
-          $infile
-    );
-    lives_ok {
-        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
-    } $run_ok;
-
-    is($prd_ret, 0, '_run_prodigal successfully returned.\n');
-
-};
-
-
-subtest '_build_prodigal_cmd' => sub {
-    my $req = "An input FASTA/Genbank file is required for Prodigal to run.";
-    my $set_default_ok = '_build_prodigal_cmd sets the default values ok.';
-    my $outfile_default = 'prodigal_output.gff';
-    my $outtype_default = 'gff';
-    my $mode_default = 'meta';
-    my $trans_default = 'protein_translation';
-    my $nuc_default = 'nucleotide_seq';
-
-    my $p_input = $fasta1;
-    my ($v, $fpath, $f) = splitpath($p_input);
-
-    my @exp_cmd_default = (
-          $prodigal_cmd,
-          '-i',
-          $p_input,
-          '-f',
-          $outtype_default,
-          '-o',
-          catfile($fpath, $outfile_default),
-          '-a',
-          catfile($fpath, $trans_default),
-          '-d',
-          catfile($fpath, $nuc_default),
-          '-c',
-          '-g',
-          11,
-          '-q',
-          '-p',
-          $mode_default,
-          '-m'
-    );
-
-    throws_ok {
-        $mgutil->_build_prodigal_cmd()
-    } qr/$req/,
-        '_build_prodigal_cmd dies missing required fasta or gbk or gff file.';
-
-    # set default values correctly
-    my @ret_cmd = $mgutil->_build_prodigal_cmd($p_input);
-    isa_ok( \@ret_cmd, 'ARRAY' );
-    #print Dumper(\@ret_cmd);
-    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
-
-    # with specified output file name and the rest default
-    my $out_file = 'out_dir_path/your_outfile';
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, '', '', $out_file, '', '');
-    is($ret_cmd[0], $exp_cmd_default[0], 'Prodigal command set correctly');
-    is($ret_cmd[2], $p_input, 'input file name set correctly');
-    is($ret_cmd[6], $out_file, 'output file name set correctly');
-
-    # with specified output type
-    my $out_type = 'sco';
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, '', '', $out_file, $out_type, '');
-    is($ret_cmd[4], $out_type, 'output type set correctly');
-
-    # with specified translation file name
-    my $trans = 'out_dir_path/your_translation';
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, '', $out_file, $out_type, '');
-    is($ret_cmd[8], $trans, 'translation file set correctly');
-
-    # with specified nucleotide sequence file name
-    my $nuc = 'out_dir_path/your_nuc';
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, '');
-    is($ret_cmd[10], $nuc, 'nucleotide sequence file set correctly');
-
-    # with specified procedure mode
-    my $md = 'single';
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, $md);
-    is($ret_cmd[16], $md, 'nucleotide sequence file set correctly');
-
-    # set default values for '' and undef inputs
-    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, undef, '', undef, undef, '');
-    isa_ok( \@ret_cmd, 'ARRAY' );
-    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
-};
-
-subtest '_save_metagenome' => sub {
-    my $req_params = "Missing required parameters for saving metagenome.\n";
-    my $not_found = "file not found.\n";
-    my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
-    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
-
-    throws_ok {
-        $mgutil->_save_metagenome()
-    } qr/$req_params/,
-        '_save_metagenome dies without params';
-
-    throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, undef, 'abc')
-    } qr/$req_params/,
-        '_save_metagenome dies with no fasta file';
-
-    throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, undef)
-    } qr/$req_params/,
-        '_save_metagenome dies with no gff file';
-
-    throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, 'a/b/c', 'def')
-    } qr/$not_found/,
-        '_save_metagenome dies because input file not found.';
-
-    throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, '123/4/5', $gff2)
-    } qr/$not_found/,
-      '_save_metagenome dies because obj_ref not found';
-
-    throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, $fasta2,
-                                  'data/nosuchfile.gff')
-    } qr/$not_found/,
-      '_save_metagenome dies because GFF file not found';
-
-};
-
 subtest '_check_annotation_params' => sub {
     my $obj = '1234/56/7';
 
@@ -501,14 +192,333 @@ subtest '_check_annotation_params' => sub {
             {output_workspace => $ws,
              output_metagenome_name => undef,
              object_ref => '456/1/2'});
-    cmp_deeply($ret, $expected, 'When undefined, '.$set_default_ok);
+    ok ($ret->{output_metagenome_name} eq $expected->{output_metagenome_name},
+        'When undefined, '.$set_default_ok);
 
     $ret = $mgutil->_check_annotation_params(
             {output_workspace => $ws,
              output_metagenome_name => '',
              object_ref => '456/1/2'});
-    cmp_deeply($ret, $expected, 'When blank, '.$set_default_ok);
+    ok ($ret->{output_metagenome_name} eq $expected->{output_metagenome_name},
+        'When blank, '.$set_default_ok);
+};
 
+# test the html writing function using a small portion of a real AMA's stats data#
+subtest '_write_html_from_stats' => sub {
+    my %obj_stats = ('contig_count' => 123, 'id' => 'Test ID',
+                     'num_features' => 456, 'gc_content' => 0.55);
+    my %gff_stats = ('function_roles' => {
+                                'FIG00500935: hypothetical protein' => {
+                                                                         'gene_count' => 1,
+                                                                         'gene_list' => '5785_1'
+                                                                       },
+                                'Respiratory nitrate reductase gamma chain (EC 1.7.99.4)' => {
+                                                                                               'gene_count' => 3,
+                                                                                               'gene_list' => '15370_3;8513_2;15_18'
+                                                                                             },
+                                'Twin-arginine translocation protein TatC' => {
+                                                                                'gene_list' => '17470_2;13111_3;11624_3;11477_1;10224_3;7691_2;6222_4;4405_6;3274_2;2241_4;1632_1;718_3;575_5;256_4;249_3;15_58',
+                                                                                'gene_count' => 16
+                                                                              },
+                                '1"-phosphate phophatase related protein' => {
+                                                                        'gene_count' => 2,
+                                                                        'gene_list' => '4599_1;627_2'
+                                                                      }
+                               },
+            'gene_role_map' => {
+                               '255_8' => 'Uptake hydrogenase small subunit precursor (EC 1.12.99.6)',
+                               '13484_1' => 'Methyltransferase type 11',
+                               '16059_2' => 'Methylated-DNA--protein-cysteine methyltransferase (EC 2.1.1.63)',
+                               '11702_1' => 'Membrane-associated zinc metalloprotease',
+                               '990_3' => 'Mobile element protein',
+                               '11_44' => 'OsmC/Ohr family protein'
+                               }
+);
+
+    my %subsys_info = $mgutil->_fetch_subsystem_info();
+    my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
+                                                   \%subsys_info, undef);
+    print Dumper(\@ret_html);
+    ok(exists($ret_html[0]{path}), "html report written with file path returned.");
+};
+
+# test reading subsystem info
+subtest '_fetch_subsystem_info' => sub {
+    my $subsys_ok = 'subsystem info reading runs ok.\n';
+    my %ret_subsysInfo = ();
+
+    lives_ok {
+        %ret_subsysInfo = $mgutil->_fetch_subsystem_info();
+    } $subsys_ok;
+    is(keys %ret_subsysInfo, 920, "_fetch_subsystem_info returns expected data.\n");
+};
+
+subtest '_build_prodigal_cmd' => sub {
+    my $req = "An input FASTA/Genbank file is required for Prodigal to run.";
+    my $set_default_ok = '_build_prodigal_cmd sets the default values ok.';
+    my $outfile_default = 'prodigal_output.gff';
+    my $outtype_default = 'gff';
+    my $mode_default = 'meta';
+    my $trans_default = 'protein_translation';
+    my $nuc_default = 'nucleotide_seq';
+
+    my $p_input = $fasta1;
+    my ($v, $fpath, $f) = splitpath($p_input);
+
+    my @exp_cmd_default = (
+          $prodigal_cmd,
+          '-i',
+          $p_input,
+          '-f',
+          $outtype_default,
+          '-o',
+          catfile($fpath, $outfile_default),
+          '-a',
+          catfile($fpath, $trans_default),
+          '-d',
+          catfile($fpath, $nuc_default),
+          '-c',
+          '-g',
+          11,
+          '-q',
+          '-p',
+          $mode_default,
+          '-m'
+    );
+
+    throws_ok {
+        $mgutil->_build_prodigal_cmd()
+    } qr/$req/,
+        '_build_prodigal_cmd dies missing required fasta or gbk or gff file.';
+
+    # set default values correctly
+    my @ret_cmd = $mgutil->_build_prodigal_cmd($p_input);
+    isa_ok( \@ret_cmd, 'ARRAY' );
+    #print Dumper(\@ret_cmd);
+    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
+
+    # with specified output file name and the rest default
+    my $out_file = 'out_dir_path/your_outfile';
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, '', '', $out_file, '', '');
+    is($ret_cmd[0], $exp_cmd_default[0], 'Prodigal command set correctly');
+    is($ret_cmd[2], $p_input, 'input file name set correctly');
+    is($ret_cmd[6], $out_file, 'output file name set correctly');
+
+    # with specified output type
+    my $out_type = 'sco';
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, '', '', $out_file, $out_type, '');
+    is($ret_cmd[4], $out_type, 'output type set correctly');
+
+    # with specified translation file name
+    my $trans = 'out_dir_path/your_translation';
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, '', $out_file, $out_type, '');
+    is($ret_cmd[8], $trans, 'translation file set correctly');
+
+    # with specified nucleotide sequence file name
+    my $nuc = 'out_dir_path/your_nuc';
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, '');
+    is($ret_cmd[10], $nuc, 'nucleotide sequence file set correctly');
+
+    # with specified procedure mode
+    my $md = 'single';
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, $trans, $nuc, $out_file, $out_type, $md);
+    is($ret_cmd[16], $md, 'nucleotide sequence file set correctly');
+
+    # set default values for '' and undef inputs
+    @ret_cmd = $mgutil->_build_prodigal_cmd($p_input, undef, '', undef, undef, '');
+    isa_ok( \@ret_cmd, 'ARRAY' );
+    cmp_deeply(\@ret_cmd, \@exp_cmd_default, $set_default_ok);
+};
+
+subtest '_run_prodigal' => sub {
+    my $run_ok = '_run_prodigal_cmd runs ok.\n';
+    my $run_err = 'ERROR Prodigal run failed';
+    my $seq_too_short = 'Error:  Sequence must be 20000 characters';
+    my $cannot_open = "Prodigal returned Error: can't open input file";
+    my $prd_ret = 0;
+
+    my $infile = '';
+    my @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+    isnt($mgutil->_run_prodigal(@p_cmd), 0, $cannot_open);
+
+    $infile = $fasta1;
+    @p_cmd = (
+          'wrong_path/prodigal',
+          '-i',
+          $infile
+    );
+    isnt($mgutil->_run_prodigal(@p_cmd), 0, "Can't exec wrong prodigal cmd.\n");
+
+    @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+    lives_ok {
+        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
+    } $run_ok;
+    isnt($prd_ret, 0, 'Prodigal returned: '.$seq_too_short.'\n');
+
+    @p_cmd = (
+        $prodigal_cmd,
+	'-i',
+	$infile,
+	'-p',
+	'meta'
+    );
+    lives_ok {
+        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
+    } $run_ok;
+    is($prd_ret, 0, 'Prodigal runs ok with -p meta option.\n');
+
+    ##---------A long file takes much longer time!!!!!---------##
+=begin
+    $infile = $fasta2;
+    @p_cmd = (
+          $prodigal_cmd,
+          '-i',
+          $infile
+    );
+    lives_ok {
+        $prd_ret = $mgutil->_run_prodigal(@p_cmd)
+    } $run_ok;
+
+    is($prd_ret, 0, '_run_prodigal successfully returned.\n');
+=cut
+};
+
+subtest '_parse_translation' => sub {
+    my $trans_path = catfile($rast_dir, 'trans_scrt');
+    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
+
+    %trans_tab = $mgutil->_parse_translation($trans_path);
+    ok( keys %trans_tab , 'Prodigal translation parsing returns result.');
+};
+
+subtest '_parse_sco' => sub {
+    $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
+    ok( @{$sco_tab} >0, 'Prodigal SCO parsing returns result.');
+};
+
+subtest '_parse_gff' => sub {
+    my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
+                                              $ecoli_gff, '=');
+    ok( @{$gff_contents} >0, 'Parsing GFF returns result.');
+};
+
+subtest '_parse_prodigal_results' => sub {
+    my $prd_out_path = catfile($rast_dir, 'prodigal_output.gff');
+    my $trans_path = catfile($rast_dir, 'protein_translation');
+    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
+
+    # Prodigal generate a GFF output file
+    my $out_type = 'gff';
+    copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
+    my ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
+                          $trans_path, $prd_out_path, $out_type);
+    ok( @{$prd_results} >0, 'Prodigal GFF parsing returns result.');
+    ok( keys %trans_tab , 'Prodigal GFF parsing returns translation table.');
+
+    # Prodigal generate an SCO output file
+    $out_type = 'sco';
+    copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
+    ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
+                          $trans_path, $prd_out_path, $out_type);
+    ok( @{$prd_results} >0, 'Prodigal SCO parsing returns result.');
+    ok( keys %trans_tab , 'Prodigal GFF parsing returns translation table.');
+
+};
+
+subtest '_write_fasta_from_metagenome' => sub {
+    my $fa_test1 = catfile($rast_dir, 'test1.fasta');
+    $fa_test1 = $mgutil->_write_fasta_from_metagenome(
+                    $fa_test1, $input_obj_ref);
+
+    ok((-e $fa_test1), 'fasta file created');
+    ok((-s $fa_test1), 'fasta file has data');
+    # ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
+};
+
+subtest '_write_gff_from_metagenome' => sub {
+    my $gff_test1 = catfile($rast_dir, 'test1.gff');
+    $gff_test1 = $mgutil->_write_gff_from_metagenome(
+		     $gff_test1, $input_obj_ref);
+
+    ok((-e $gff_test1), 'gff file created');
+    ok((-s $gff_test1), 'gff file has data');
+};
+
+
+subtest '_save_metagenome' => sub {
+    my $req_params = "Missing required parameters for saving metagenome.\n";
+    my $not_found = "file not found.\n";
+    my $req1 = "Both 'output_workspace' and 'output_metagenome_name' are required.\n";
+    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
+
+    throws_ok {
+        $mgutil->_save_metagenome()
+    } qr/$req_params/,
+        '_save_metagenome dies without params';
+
+    throws_ok {
+        $mgutil->_save_metagenome($ws, $out_name, undef, 'abc')
+    } qr/$req_params/,
+        '_save_metagenome dies with no fasta file';
+
+    throws_ok {
+        $mgutil->_save_metagenome($ws, $out_name, undef)
+    } qr/$req_params/,
+        '_save_metagenome dies with no gff file';
+
+    throws_ok {
+        $mgutil->_save_metagenome($ws, $out_name, 'a/b/c', 'def')
+    } qr/$not_found/,
+        '_save_metagenome dies because input file not found.';
+
+    throws_ok {
+        $mgutil->_save_metagenome($ws, $out_name, 'not_readable/4/5', $gff2)
+    } qr/cannot be accessed/,
+      '_save_metagenome dies because given workspace "not_readable" cannot be read';
+
+    throws_ok {
+        $mgutil->_save_metagenome($ws, $out_name, $fasta2,
+                                  'data/nosuchfile.gff')
+    } qr/$not_found/,
+      '_save_metagenome dies because GFF file not found';
+
+    my $gff_path = catfile($rast_dir, $gff_scrt);
+    copy($gff1, $gff_path) || croak "Copy file failed: $!\n";
+    my $mymetag = {};
+    lives_ok {
+        $mymetag = $mgutil->_save_metagenome(
+                       $ws, $out_name, $input_obj_ref, $gff_path)
+    } '__save_metagenome run without errors on short_one.\n';
+    ok (exists $mymetag->{metagenome_ref},
+        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
+    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
+    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
+    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
+};
+
+subtest '_run_rast' => sub {
+    my $inputgenome = {
+        features => []
+    };
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => $gene,
+            protein_translation => $protein_seqs->{$gene}
+        });
+    }
+
+    throws_ok {
+        my $rast_ret = $mgutil->_run_rast($inputgenome);
+    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence.';
 };
 
 
