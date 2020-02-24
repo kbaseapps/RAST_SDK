@@ -113,99 +113,6 @@ my $obj10 = "55141/120/1";  # prod metag
 
 
 
-#----- For checking the stats of a given obj id-----#
-subtest '_generate_stats_from_ama & from_gffContents' => sub {
-    my $gff_file = 'tmp_gff';
-    my $gff_path = catfile($rast_dir, $gff_file);
-    my ($gff_contents, $attr_delimiter) = ([], '=');
-
-    # $obj8
-    my %ret_stats = $mgutil->_generate_stats_from_ama($obj8);
-    print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
-
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj8);
-    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
-    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    #print "Stats from GFF on $obj8: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj8.");
-
-    # $obj9
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj9);
-    print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
-
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj9);
-    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
-    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    #print "Stats from GFF on $obj9: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj9.");
-
-    # $obj10
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj10);
-    print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
-
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj10);
-    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
-    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
-};
-
-subtest 'rast_metagenome' => sub {
-=begin
-    # an appdev assembly
-    my $parms = {
-        "object_ref" => "37798/14/1",
-        "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
-    };
-    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
-
-    # an appdev genome
-    my $parms = {
-        "object_ref" => "37798/15/1",
-        "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
-    };
-    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
-    $parms = {
-        object_ref => $ret_metag->{metagenome_ref},
-        output_metagenome_name => 'rasted_metagenome',
-        output_workspace => $ws
-    };
-
-    throws_ok {
-        $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/**rast_metagenome ERROR/,
-        'calling rast_metagenome dies file not found';
-
-    throws_ok {
-        $rast_mg_ref = $mgutil->rast_metagenome($parms);
-        print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-        if ($rast_mg_ref !~ m/[^\\w\\|._-]/) {
-            croak "Invalid metagenome object reference:$rast_mg_ref.";
-        }
-    } qr/Invalid metagenome object reference/,
-        'calling rast_metagenome fails to generate a valid metagenome';
-=cut
-    # a prod assembly
-    $parms = {
-        "object_ref" => $obj3,
-        "output_metagenome_name" => "rasted_obj3_prod",
-        "output_workspace" => $ws
-    };
-    $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
-};
-
-=begin
 my $stats_ok = 'stats generation runs ok.\n';
 
 subtest '_generate_report' => sub {
@@ -246,10 +153,11 @@ subtest '_generate_report' => sub {
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
 
+=begin
 # test the html writing function using a small portion of a real AMA's stats data#
 subtest '_write_html_from_stats' => sub {
     my %obj_stats = ('contig_count' => 123, 'id' => 'Test ID',
-                     'num_features' => 456, 'gc_content': 0.55);
+                     'num_features' => 456, 'gc_content' => 0.55);
     my %gff_stats = ('function_roles' => {
                                 'FIG00500935: hypothetical protein' => {
                                                                          'gene_count' => 1,
@@ -278,9 +186,116 @@ subtest '_write_html_from_stats' => sub {
                                }
 );
 
-    my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats, undef);
+    my %subsys_info = $mgutil->_fetch_subsystem_info();
+    my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
+                                                   \%subsys_info, undef);
     print Dumper(\@ret_html);
-    ok(exists(\@ret_html->[0]->{path}), "html report written with file path returned.");
+    ok(exists($ret_html[0]{path}), "html report written with file path returned.");
+};
+
+# test reading subsystem info
+subtest '_fetch_subsystem_info' => sub {
+    my $subsys_ok = 'subsystem info reading runs ok.\n';
+    my %ret_subsysInfo = ();
+
+    lives_ok {
+        %ret_subsysInfo = $mgutil->_fetch_subsystem_info();
+        print "Subsystem info: \n".Dumper(\%ret_subsysInfo);
+    } $subsys_ok;
+    is(keys %ret_subsysInfo, 920, "_fetch_subsystem_info returns expected data.\n");
+};
+
+#----- For checking the stats of a given obj id-----#
+subtest '_generate_stats_from_ama & from_gffContents' => sub {
+    my $gff_file = 'tmp_gff';
+    my $gff_path = catfile($rast_dir, $gff_file);
+    my ($gff_contents, $attr_delimiter) = ([], '=');
+
+    # $obj8
+    my %ret_stats = $mgutil->_generate_stats_from_ama($obj8);
+    print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
+
+    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj8);
+    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
+    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
+    #print "Stats from GFF on $obj8: \n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from gffContents on $obj8.");
+
+    # $obj9
+    %ret_stats = $mgutil->_generate_stats_from_ama($obj9);
+    print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
+
+    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj9);
+    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
+    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
+    #print "Stats from GFF on $obj9: \n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from gffContents on $obj9.");
+
+    # $obj10
+    %ret_stats = $mgutil->_generate_stats_from_ama($obj10);
+    print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
+
+    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj10);
+    ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
+    %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
+    print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
+};
+=cut
+
+=begin
+subtest 'rast_metagenome' => sub {
+    # an appdev assembly
+    my $parms = {
+        "object_ref" => "37798/14/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+
+    # an appdev genome
+    my $parms = {
+        "object_ref" => "37798/15/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+    $parms = {
+        object_ref => $ret_metag->{metagenome_ref},
+        output_metagenome_name => 'rasted_metagenome',
+        output_workspace => $ws
+    };
+
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    } qr/**rast_metagenome ERROR/,
+        'calling rast_metagenome dies file not found';
+
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+        print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+        if ($rast_mg_ref !~ m/[^\\w\\|._-]/) {
+            croak "Invalid metagenome object reference:$rast_mg_ref.";
+        }
+    } qr/Invalid metagenome object reference/,
+        'calling rast_metagenome fails to generate a valid metagenome';
+
+    # a prod assembly
+    $parms = {
+        "object_ref" => $obj3,
+        "output_metagenome_name" => "rasted_obj3_prod",
+        "output_workspace" => $ws
+    };
+    $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
+    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
 };
 
 

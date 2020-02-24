@@ -530,20 +530,57 @@ sub _generate_stats_from_gffContents {
     return %gff_stats;
 }
 
+sub _fetch_subsystem_info {
+    my $self = shift;
+    my $subsys_json_file = shift;
+
+    print "INFO: Reading subsystem info from json file------\n";
+
+    $subsys_json_file = './templates_and_data/subsystems_March2018.json' unless defined($subsys_json_file);
+    my $dirname = dirname(__FILE__);
+    my $subsystem = catfile($dirname, $subsys_json_file);
+    my $fh = $self->_openRead($subsystem);
+    my $json_text = do { local $/; <$fh> };
+    close $fh;
+
+    my $json_data = decode_json($json_text);
+    my $subsys_data = $json_data->{response}->{docs};
+    my $subsys_count = scalar @{$subsys_data};
+    #print $subsys_count;  # 920
+
+    my %subsys_info = ();
+    for (my $i=0; $i<$subsys_count; $i++) {
+        my $subsys_id = $subsys_data->[$i]->{subsystem_id};
+        $subsys_info{$subsys_id}{subsys_class} = $subsys_data->[$i]->{class};
+        $subsys_info{$subsys_id}{subclass} = $subsys_data->[$i]->{subclass};
+        $subsys_info{$subsys_id}{superclass} = $subsys_data->[$i]->{superclass};
+        $subsys_info{$subsys_id}{role_names} = $subsys_data->[$i]->{role_name};
+        $subsys_info{$subsys_id}{role_ids} = $subsys_data->[$i]->{role_id};
+        $subsys_info{$subsys_id}{subsys_name} = $subsys_data->[$i]->{subsystem_name};
+        $subsys_info{$subsys_id}{description} = $subsys_data->[$i]->{description};
+        $subsys_info{$subsys_id}{notes} = $subsys_data->[$i]->{notes};
+    }
+
+    return %subsys_info;
+}
+
 sub _write_html_from_stats {
     my $self = shift;
     my $obj_stats_ref = shift;
     my $gff_stats_ref = shift;
+    my $subsys_ref = shift;
     my $template_file = shift;
-    if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH") {
+    if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH"
+             || ref $subsys_ref ne "HASH") {
         croak "You need to pass in hash references!\n";
     }
 
     # dereference the hashes
     my %obj_stats = %{ $obj_stats_ref };
     my %gff_stats = %{ $gff_stats_ref };
-
+    my %subsys_info = %{ $subsys_ref };
     $template_file = './templates_and_data/table_report.html' unless defined($template_file);
+
     my $dirname = dirname(__FILE__);
     my $template = catfile($dirname, $template_file);
 
@@ -555,7 +592,8 @@ sub _write_html_from_stats {
     my $rpt_header = "<h4>$report_title:</h4>";
     my $rpt_data = ("data.addColumn('string', 'function role');\n".
                     "data.addColumn('number', 'gene count');\n".
-                    "data.addColumn('string', 'gene ids');\n".
+                    "data.addColumn('string', 'subsystem name');\n".
+                    "data.addColumn('string', 'subsystem class');\n".
                     "data.addRows([\n");
 
     my $roles = $gff_stats{function_roles};
@@ -565,15 +603,34 @@ sub _write_html_from_stats {
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
-        $rpt_data .= "'$roles->{$role_k}->{gene_list}'],\n";
+        #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
+
+        # search for $role_k in all the $subsys_info items's role_names arrays
+        my $subsys_str = '';
+        my $class_str = '';
+        foreach my $subsys_k (sort keys %subsys_info) {
+            #print $subsys_k."---------\n";
+            #print Dumper($subsys_info{$subsys_k});
+            my $subsys_roles = $subsys_info{$subsys_k}{role_names};
+            if ( grep {$_ eq $role_k} @$subsys_roles ) {
+                #print "Found $role_k in subsystem $subsys_k\n";
+                $subsys_str .= '<br>' unless $subsys_str eq '';
+                $class_str .= '<br>' unless $class_str eq '';
+                $subsys_str .= $subsys_info{$subsys_k}{subsys_name};
+                $class_str .= $subsys_info{$subsys_k}{subsys_class};
+            }
+        }
+        $rpt_data .= "\"$subsys_str\",";
+        $rpt_data .= "\"$class_str\"],\n";
     }
     chomp $rpt_data;
     chop $rpt_data;
     $rpt_data .= "\n]);\n";
 
+    my $gene_count = keys %$genes;
     my $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
     $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
-    $rpt_footer .= "<p><strong>Gene Total Count = keys %$genes</strong></p>\n";
+    $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
     $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
 
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
@@ -588,6 +645,7 @@ sub _write_html_from_stats {
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;
+    #print $file_content;
 
     my($vol, $f_path, $rfile) = splitpath($report_file_path);
     my @html_report = ({'path'=> $report_file_path,
@@ -608,6 +666,7 @@ sub _generate_report {
     my %ama_stats = $self->_generate_stats_from_ama($ama_ref);
     my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
     my %ama_gff_stats = $self->_generate_stats_from_gffContents($ama_gff_conts);
+    my %subsys_info = $self->_fetch_subsystem_info();
 
     my $report_message;
     my ($src_gene_count, $src_role_count, $ama_gene_count, $ama_role_count);
@@ -641,7 +700,9 @@ sub _generate_report {
                            "No data on functional roles available\n");
     }
 
-    my @html_files = $self->_write_html_from_stats(\%ama_stats, \%ama_gff_stats);
+    my @html_files = $self->_write_html_from_stats(\%ama_stats,
+                                                   \%ama_gff_stats,
+                                                   \%subsys_info);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
