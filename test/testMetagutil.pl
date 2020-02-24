@@ -238,7 +238,6 @@ subtest '_write_html_from_stats' => sub {
     my %subsys_info = $mgutil->_fetch_subsystem_info();
     my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
                                                    \%subsys_info, undef);
-    print Dumper(\@ret_html);
     ok(exists($ret_html[0]{path}), "html report written with file path returned.");
 };
 

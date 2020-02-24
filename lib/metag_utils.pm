@@ -368,9 +368,6 @@ sub _save_metagenome {
         croak "**In _save_metagenome: GFF file is empty.\n";
     }
 
-    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
-    $self->_print_fasta_gff(0, 10, $gff_file);
-
     eval {
         $self->_fetch_object_info($obj_ref);
     };
@@ -378,6 +375,9 @@ sub _save_metagenome {
         croak("**In _save_metagenome ERROR trying to access the input object:\n"
                .$@."\n");
     }
+
+    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
+    $self->_print_fasta_gff(0, 10, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_metag = {};
@@ -597,8 +597,8 @@ sub _write_html_from_stats {
     read $fh1, my $file_content, -s $fh1; # read the whole file into a string
     close $fh1;
 
-    my $report_title = "Feature function report for genome $obj_stats{id}";
-    my $rpt_header = "<h4>$report_title:</h4>";
+    my $report_title = "Feature function report for genome <font color=red>$obj_stats{id}</font>";
+    my $rpt_header = "<h3>$report_title:</h3>";
     my $rpt_data = ("data.addColumn('string', 'function role');\n".
                     "data.addColumn('number', 'gene count');\n".
                     "data.addColumn('string', 'subsystem name');\n".
