@@ -1,6 +1,28 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.6
+__Changes__
+annotate_genome(s) now takes a taxon ID and timestamp to allow exact specification of the taxon ID
+rather than submitting a scientific name. The scientific name is retrieved from the Relation
+Engine using the timestamp.
+
+### Version 0.1.5
+__Changes__
+Prepended the scientific name display in the UI with NCBI.
+
+### Version 0.1.4
+__Changes__
+Updated the scientific name selector for annotating contigsets to query the RE API for taxon names.
+
+### Version 0.1.3
+__Changes__
+Unknown
+
+### Version 0.1.2
+__Changes__
+Unknown
+
 ### Version 0.1.1
 __Changes__
 Add the GenomeSet to the objects created when doing Multiple Assemblies or Multiple Genomes

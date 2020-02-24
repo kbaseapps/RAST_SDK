@@ -23,7 +23,8 @@ use Bio::SeqIO;
 use Bio::Perl;
 use Bio::Tools::CodonTable;
 use JSON;
-use Encode qw/encode decode/;
+use Encode qw(encode decode);
+use File::Basename;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -113,7 +114,7 @@ sub _run_prodigal {
         $ret = system(@cmd);
     };
     if ($@) {
-        print Dumper($@);
+        print Dumper(\@cmd);
         croak "ERROR Prodigal run failed: ".$@."\n";
     }
     print "Prodigal returns: $ret\n";
@@ -296,11 +297,10 @@ sub _write_fasta_from_metagenome {
     my ($self, $fasta_filename, $input_obj_ref) = @_;
 
     eval {
-        my $genome_obj = $self->{ws_client}->get_objects2(
-                             {'objects'=>[{ref=>$input_obj_ref}]}
-                         )->{data}->[0]->{data};
+        my $genome_obj = $self->_fetch_object_data($input_obj_ref);
 
-        my $fa_file = $self->_get_fasta_from_assembly($input_obj_ref.";".$genome_obj->{assembly_ref});
+        my $fa_file = $self->_get_fasta_from_assembly(
+                          $input_obj_ref.";".$genome_obj->{assembly_ref});
 
         copy($fa_file, $fasta_filename);
 
@@ -314,6 +314,14 @@ sub _write_fasta_from_metagenome {
 
 sub _write_gff_from_metagenome {
     my ($self, $gff_filename, $genome_ref) = @_;
+
+    my $obj_info = $self->_fetch_object_info($genome_ref);
+    my $in_type = $obj_info->[2];
+    my $is_meta_assembly = $in_type =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    unless ($is_meta_assembly) {
+        croak "ValueError: Object is not an AnnotatedMetagenomeAssembly, GFU will throw an error.\n";
+    }
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gff_result = '';
@@ -360,7 +368,7 @@ sub _save_metagenome {
         croak "**In _save_metagenome: GFF file is empty.\n";
     }
 
-    print "First few 10 lines of the GFF file before call to GFU.fasta_gff_to_metagenome-----------\n";
+    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
@@ -452,11 +460,303 @@ sub _run_rast {
 };
 
 
-sub _generate_report {
+sub _generate_stats_from_ama {
     my ($self, $gn_ref) = @_;
 
+    my $gn_info = $self->_fetch_object_info($gn_ref);
+    my $is_assembly = $gn_info->[2] =~ m/GenomeAnnotations.Assembly/;
+    my $is_meta_assembly = $gn_info->[2] =~ m/Metagenomes.AnnotatedMetagenomeAssembly/;
+
+    my %gn_stats = ();
+    $gn_stats{workspace} = $gn_info->[7];
+    $gn_stats{id} = $gn_info->[1];
+    $gn_stats{genome_type} = $gn_info->[2];
+
+    if ($is_assembly ) {
+        if (defined($gn_info->[10])) {
+            $gn_stats{gc_content} = $gn_info->[10]->{'GC content'};
+            $gn_stats{contig_count} = $gn_info->[10]->{'N Contigs'};
+        }
+        else {
+            $gn_stats{gc_content} = undef;
+            $gn_stats{contig_count} = undef;
+        }
+        $gn_stats{num_features} = 0;
+        $gn_stats{feature_counts} = {};
+    }
+    elsif ($is_meta_assembly) {
+        my $gn_data = $self->_fetch_object_data($gn_ref);
+        $gn_stats{gc_content} = $gn_data->{gc_content};
+        $gn_stats{contig_count} = $gn_data->{num_contigs};
+        $gn_stats{num_features} = $gn_data->{num_features};
+        $gn_stats{feature_counts} = $gn_data->{feature_counts};
+    }
+    return %gn_stats;
+}
+
+sub _generate_stats_from_gffContents {
+    my ($self, $gff_contents) = @_;
+
+    my $gff_count = scalar @{$gff_contents};
+    print "INFO: Gathering stats from $gff_count GFFs------\n";
+
+    my %gff_stats = ();
+    foreach my $gff_line (@$gff_contents) {
+        if(scalar(@$gff_line) < 9){
+            #No attributes column
+            next;
+        }
+
+        my $ftr_attributes = $gff_line->[8];
+        if (!defined($ftr_attributes->{'product'})
+                || $ftr_attributes->{'product'} eq '') {
+            next;
+        }
+        #Look for function
+        my $gene_id = $ftr_attributes->{'id'};
+        my $frole = $ftr_attributes->{'product'};
+        if (!exists($gff_stats{function_roles}{$frole})) {
+            $gff_stats{function_roles}{$frole}{gene_count} = 1;
+            $gff_stats{function_roles}{$frole}{gene_list} = $gene_id;
+        }
+        else {
+            $gff_stats{function_roles}{$frole}{gene_count} += 1;
+            $gff_stats{function_roles}{$frole}{gene_list} = join(";",
+                    $gene_id, $gff_stats{function_roles}{$frole}{gene_list});
+        }
+        $gff_stats{gene_role_map}{$gene_id} = $frole;
+    }
+
+    return %gff_stats;
+}
+
+sub _fetch_subsystem_info {
+    my $self = shift;
+    my $subsys_json_file = shift;
+
+    print "INFO: Reading subsystem info from json file------\n";
+
+    $subsys_json_file = './templates_and_data/subsystems_March2018.json' unless defined($subsys_json_file);
+    my $dirname = dirname(__FILE__);
+    my $subsystem = catfile($dirname, $subsys_json_file);
+    my $fh = $self->_openRead($subsystem);
+    my $json_text = do { local $/; <$fh> };
+    close $fh;
+
+    my $json_data = decode_json($json_text);
+    my $subsys_data = $json_data->{response}->{docs};
+    my $subsys_count = scalar @{$subsys_data};
+    #print $subsys_count;  # 920
+
+    my %subsys_info = ();
+    for (my $i=0; $i<$subsys_count; $i++) {
+        my $subsys_id = $subsys_data->[$i]->{subsystem_id};
+        $subsys_info{$subsys_id}{subsys_class} = $subsys_data->[$i]->{class};
+        $subsys_info{$subsys_id}{subclass} = $subsys_data->[$i]->{subclass};
+        $subsys_info{$subsys_id}{superclass} = $subsys_data->[$i]->{superclass};
+        $subsys_info{$subsys_id}{role_names} = $subsys_data->[$i]->{role_name};
+        $subsys_info{$subsys_id}{role_ids} = $subsys_data->[$i]->{role_id};
+        $subsys_info{$subsys_id}{subsys_name} = $subsys_data->[$i]->{subsystem_name};
+        $subsys_info{$subsys_id}{description} = $subsys_data->[$i]->{description};
+        $subsys_info{$subsys_id}{notes} = $subsys_data->[$i]->{notes};
+    }
+
+    return %subsys_info;
+}
+
+sub _write_html_from_stats {
+    my $self = shift;
+    my $obj_stats_ref = shift;
+    my $gff_stats_ref = shift;
+    my $subsys_ref = shift;
+    my $template_file = shift;
+    if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH"
+             || ref $subsys_ref ne "HASH") {
+        croak "You need to pass in hash references!\n";
+    }
+
+    # dereference the hashes
+    my %obj_stats = %{ $obj_stats_ref };
+    my %gff_stats = %{ $gff_stats_ref };
+    my %subsys_info = %{ $subsys_ref };
+    $template_file = './templates_and_data/table_report.html' unless defined($template_file);
+
+    my $dirname = dirname(__FILE__);
+    my $template = catfile($dirname, $template_file);
+
+    my $fh1 = $self->_openRead($template);
+    read $fh1, my $file_content, -s $fh1; # read the whole file into a string
+    close $fh1;
+
+    my $report_title = "Feature function report for genome $obj_stats{id}";
+    my $rpt_header = "<h4>$report_title:</h4>";
+    my $rpt_data = ("data.addColumn('string', 'function role');\n".
+                    "data.addColumn('number', 'gene count');\n".
+                    "data.addColumn('string', 'subsystem name');\n".
+                    "data.addColumn('string', 'subsystem class');\n".
+                    "data.addRows([\n");
+
+    my $roles = $gff_stats{function_roles};
+    my $genes = $gff_stats{gene_role_map};
+    foreach my $role_k (sort keys %$roles) {
+        # add escape to preserve double quote (")
+        (my $new_role_k = $role_k) =~ s/"/\\"/g;
+        $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
+        $rpt_data .= "$roles->{$role_k}->{gene_count},";
+        #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
+
+        # search for $role_k in all the $subsys_info items's role_names arrays
+        my $subsys_str = '';
+        my $class_str = '';
+        foreach my $subsys_k (sort keys %subsys_info) {
+            #print $subsys_k."---------\n";
+            #print Dumper($subsys_info{$subsys_k});
+            my $subsys_roles = $subsys_info{$subsys_k}{role_names};
+            if ( grep {$_ eq $role_k} @$subsys_roles ) {
+                #print "Found $role_k in subsystem $subsys_k\n";
+                $subsys_str .= '<br>' unless $subsys_str eq '';
+                $class_str .= '<br>' unless $class_str eq '';
+                $subsys_str .= $subsys_info{$subsys_k}{subsys_name};
+                $class_str .= $subsys_info{$subsys_k}{subsys_class};
+            }
+        }
+        $rpt_data .= "\"$subsys_str\",";
+        $rpt_data .= "\"$class_str\"],\n";
+    }
+    chomp $rpt_data;
+    chop $rpt_data;
+    $rpt_data .= "\n]);\n";
+
+    my $gene_count = keys %$genes;
+    my $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
+    $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
+
+    my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
+    my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
+    my $srch3 = "(<replaceTableData>)(.*)(</replaceTableData>)";
+
+    $file_content =~ s/$srch1/$rpt_header/;
+    $file_content =~ s/$srch2/$rpt_footer/;
+    $file_content =~ s/$srch3/$rpt_data/;
+
+    my $report_file_path = catfile($self->{metag_dir}, 'genome_report.html');
+    my $fh2 = $self->_openWrite($report_file_path);
+    print $fh2 $file_content;
+    close $fh2;
+    #print $file_content;
+
+    my($vol, $f_path, $rfile) = splitpath($report_file_path);
+    my @html_report = ({'path'=> $report_file_path,
+                        'name'=> $rfile,
+                        'label'=> $rfile,
+                        'description'=> $report_title});
+    return @html_report;
+}
+
+#Create a KBaseReport with brief info/stats on a reannotated metagenome
+sub _generate_report {
+    my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts) = @_;
+
+    my $gn_info = $self->_fetch_object_info($ama_ref);
+    my $gn_ws = $gn_info->[7];
+
+    my %src_stats = $self->_generate_stats_from_ama($src_ref);
+    my %ama_stats = $self->_generate_stats_from_ama($ama_ref);
+    my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
+    my %ama_gff_stats = $self->_generate_stats_from_gffContents($ama_gff_conts);
+    my %subsys_info = $self->_fetch_subsystem_info();
+
+    my $report_message;
+    my ($src_gene_count, $src_role_count, $ama_gene_count, $ama_role_count);
+    if (keys %ama_gff_stats) {
+        if (keys %src_gff_stats) {
+            $src_gene_count = keys $src_gff_stats{gene_role_map};
+            $src_role_count = keys $src_gff_stats{function_roles};
+        }
+        else {
+            $src_gene_count = 0;
+            $src_role_count = 0;
+        }
+        $ama_gene_count = keys $ama_gff_stats{gene_role_map};
+        $ama_role_count = keys $ama_gff_stats{function_roles};
+        $report_message = ("Genome Ref: $ama_ref\n".
+                           "Genome type: $ama_stats{genome_type}\n".
+                           "Number of contigs: $ama_stats{contig_count}\n".
+                           "Number of features before RAST: $src_gene_count\n".
+                           "Number of function roles before RAST: $src_role_count\n".
+                           "Number of features after RAST: $ama_stats{num_features}\n".
+                           "Number of function roles after RAST: $ama_role_count\n");
+        # Note that $ama_stats{feature_counts}
+        #           $ama_gff_stats{function_roles}{gene_count}
+        #           $ama_gff_stats{function_roles}{gene_list}
+        # will be reported in the html file.
+    }
+    else {
+        $report_message = ("Genome Ref: $ama_ref\n".
+                           "Genome type: $ama_stats{genome_type}\n".
+                           "Number of features before RAST: $src_stats{num_features}\n".
+                           "No data on functional roles available\n");
+    }
+
+    my @html_files = $self->_write_html_from_stats(\%ama_stats,
+                                                   \%ama_gff_stats,
+                                                   \%subsys_info);
+
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
-    #TODO
+    my $report_info = $kbr->create_extended_report(
+        {"message"=>$report_message,
+         "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
+         "html_links"=> \@html_files,
+         "direct_html_link_index"=> 0,
+         "html_window_height"=> 366,
+         "report_object_name"=>"kb_RAST_metaG_report_".$self->_create_uuid(),
+         "workspace_name"=>$gn_ws
+        });
+
+    return {"output_genome_ref"=>$ama_ref,
+            "report_name"=>$report_info->{name},
+            "report_ref"=>$report_info->{ref}};
+}
+
+sub _fetch_object_data {
+    my ($self, $obj_ref) = @_;
+    my $ret_obj_data = {};
+    eval {
+        $ret_obj_data = $self->{ws_client}->get_objects2(
+                             {'objects'=>[{ref=>$obj_ref}]}
+                         )->{data}->[0]->{data};
+    };
+    if ($@) {
+        croak "ERROR Workspace.get_objects2 failed: ".$@."\n";
+    }
+    return $ret_obj_data;
+}
+
+sub _fetch_object_info {
+    my ($self, $obj_ref) = @_;
+    my $obj_info = {};
+    eval {
+        $obj_info = $self->{ws_client}->get_object_info3(
+                                 {objects=>[{ref=>$obj_ref}]}
+                        )->{infos}->[0];
+    };
+    if ($@) {
+        croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
+    }
+    print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
+    return $obj_info;
+}
+
+# create a 12 char string unique enough here
+sub _create_uuid {
+    my $self = shift;
+
+    my $str_uuid = qx(uuidgen);
+    chomp $str_uuid;
+    $str_uuid = substr($str_uuid, -12);
+    return $str_uuid;
 }
 
 ##----FILE IO ----##
@@ -478,11 +778,35 @@ sub _openRead {
 sub _create_metag_dir {
     my ($self, $rast_dir) = @_;
     # create the project directory for metagenome annotation
-    my $mg_dir = "metag_annotation_dir";
+    my $mg_dir = "metag_annotation_dir_".$self->_create_uuid();
     my $dir = catfile($rast_dir, $mg_dir);
 
     make_path $dir; # it won't make a directory that already exists
     return $dir;
+}
+
+sub _print_fasta_gff {
+    my ($self, $start, $num_lines, $f, $k) = @_;
+
+    # Open $f to read into an array
+    my $fh = $self->_openRead($f);
+    my @read_lines=();
+    chomp(@read_lines = <$fh>);
+    close($fh);
+
+    my $file_lines = scalar @read_lines;
+    print "There are a total of ". $file_lines . " lines from file $f\n";
+
+    $num_lines = $start + $num_lines;
+    $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
+    for (my $i = $start; $i < $num_lines; $i++ ) {
+        if (defined($k)) {
+            print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
+        }
+        else {
+            print "$read_lines[$i]\n";
+        }
+    }
 }
 
 ##----subs for parsing GFF by Seaver----##
@@ -500,13 +824,7 @@ sub _parse_gff {
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
-        if ($current_line =~ m/^#.*$/ || $current_line =~ m/'utf-8'/) {
-            print "Skipping this line: $current_line\n" if $current_line =~ m/'utf-8'/;
-            next;
-        }
-        if ($current_line =~ m/(id=4201_26;)|(id=4201_31;)/) {
-            print "In GFF, this line : $current_line that has unicode trouble!!!!!\n";
-        }
+        next if $current_line =~ m/^#.*$/;
 
         my ($contig_id, $source_id, $feature_type, $start, $end,
             $score, $strand, $phase, $attributes) = split("\t",$current_line);
@@ -556,26 +874,41 @@ sub _parse_gff {
 }
 
 
-sub _update_gff_functions_from_features {
-    my ($self, $gff_contents, $features) = @_;
-    print "Updating GFF with ".scalar @{$features}." rasted features.\n";
-    print "First 3 rasted feature examples:\n".Dumper(@{$features}[0,1,2]);
-    print "Updating ".scalar @{$gff_contents}." GFFs with rasted features.\n";
+sub _get_feature_function_lookup {
+    my ($self, $features) = @_;
+    my $ftr_count = scalar @{$features};
+
+    print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
+    if ($ftr_count > 3) {
+        print "INFO: First 3 RAST feature examples:\n".Dumper(@{$features}[0,1,2]);
+    }
+    else {
+        print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
+    }
 
     #Feature Lookup Hash
-    my %ftrs_function_lookup = ();
+    my %function_lookup = ();
     foreach my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
 
         if (exists($ftr->{'functions'})) {
-            $ftrs_function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
+            $function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
         }
         elsif (exists($ftr->{'function'})) {
-            $ftrs_function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+            $function_lookup{$ftr->{'id'}}=$ftr->{'function'};
         }
     }
-    my $ksize = keys %ftrs_function_lookup;
-    print "Feature function look up table contains $ksize entries.\n";
+    my $ksize = keys %function_lookup;
+    print "INFO: Feature function look up table contains $ksize entries.\n";
+    return  %function_lookup;
+}
+
+sub _update_gff_functions_from_features {
+    my ($self, $gff_contents, $features) = @_;
+
+    print "INFO: Updating ".scalar @{$gff_contents}." GFFs with RAST features.\n";
+
+    my %ftrs_function_lookup = $self->_get_feature_function_lookup($features);
 
     my @new_gff_contents=();
     foreach my $gff_line (@$gff_contents) {
@@ -603,7 +936,7 @@ sub _update_gff_functions_from_features {
         $gff_line->[8] = $ftr_attributes;
         push(@new_gff_contents,$gff_line);
     }
-    print "Updated new_gff_contents has ". scalar @new_gff_contents . " entries\n";
+    print "INFO: Updated new_gff_contents has ". scalar @new_gff_contents . " entries\n";
     return \@new_gff_contents;
 }
 
@@ -620,21 +953,12 @@ sub _write_gff {
             my $attributes = $_->[8];
             my @attributes = ();
             foreach my $key ( sort keys %$attributes ) {
-                if ($key eq 'id' && $attributes->{$key} =~ m/(id=4201_26;)|(id=4201_31)/) {
-                    print "Found the troubling feature line:\n".Dumper(@$_);
-                }
                 my $attr=$key.$attr_delimiter.$attributes->{$key};
                 push(@attributes,$attr);
             }
             $_->[8] = join(";",@attributes);
         }
-        my $g_line = join("\t", @$_)."\n";
-        # Don't write lines that are corrupted!!
-        if ($g_line =~ m/'utf-8'/) {
-            print "Skip writing this line: $g_line\n";
-            next;
-        }
-        print $fh $g_line;
+        print $fh join("\t", @$_)."\n";
     }
     close $fh;
     unless (-e $gff_filename) {
@@ -746,12 +1070,7 @@ sub rast_metagenome {
     # my $training_file = catfile($self->{metag_dir}, 'training_file');
 
     # 1. getting the fasta file from $input_obj_ref according to its type
-    print "Getting info for the input object: $input_obj_ref\n";
-    my $input_obj_info = $self->{ws_client}->get_object_info3(
-                             {objects=>[{ref=>$input_obj_ref}]}
-                         )->{infos}->[0];
-
-    print "Info of input object:\n". Dumper($input_obj_info);
+    my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
     my $in_type = $input_obj_info->[2];
     my $is_assembly = $in_type =~ /GenomeAnnotations.Assembly/;
     my $is_meta_assembly = $in_type =~ /Metagenomes.AnnotatedMetagenomeAssembly/;
@@ -763,19 +1082,20 @@ sub rast_metagenome {
     }
     elsif ($is_meta_assembly) {
         # input_obj_ref points to a genome
-	if (defined($input_obj_info->[10])) {
+        if (defined($input_obj_info->[10])) {
             my $num_ftrs = $input_obj_info->[10]->{'Number features'};
             print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
         }
-
-        my $num_ftrs = $input_obj_info->[10]->{'Number features'};
-        print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
 
         $input_fasta_file = $self->_write_fasta_from_metagenome(
                             $input_fasta_file, $input_obj_ref);
         unless (-e $input_fasta_file) {
             croak "**rast_metagenome ERROR: could not find FASTA file\n";
         }
+    }
+    else {
+        croak ("Only KBaseMetagenomes.AnnotatedMetagenomeAssembly and ".
+               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
     }
 
     # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
@@ -811,9 +1131,8 @@ sub rast_metagenome {
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                     $phase, $attribs) = @$entry;
 
-                if ($contig =~ m/^#.*/ || $contig =~ m/'utf-8'/) {
-                    next;
-                }
+                next if $contig =~ m/^#.*/;
+
                 my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
                 my $id = $attribs->{id};
                 my $start = ($strand eq q(+)) ? $beg : $end;
@@ -843,8 +1162,6 @@ sub rast_metagenome {
         # fetch protein sequences and gene IDs from fasta and gff files
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
-        #print "First 10 items in gff_contents:\n";
-        #print Dumper(@{$gff_contents}[0..9]);
 
         my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
         my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
@@ -887,39 +1204,14 @@ sub rast_metagenome {
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    #print "***********Print out 1000 lines (4200~5200) in the GFF file before sending to GFU-----------\n";
-    #$self->_print_fasta_gff(4200, 1000, $new_gff_file);
-
-
     # 4. save rast re-annotated fasta/gff data
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
-    return $out_metag->{genome_ref};
-}
-
-sub _print_fasta_gff {
-    my ($self, $start, $num_lines, $f, $k) = @_;
-
-    # Open $f to read into an array
-    my $fh = $self->_openRead($f);
-    my @read_lines=();
-    chomp(@read_lines = <$fh>);
-    close($fh);
-
-    my $file_lines = scalar @read_lines;
-    print "There are a total of ". $file_lines . " lines from file $f\n";
-
-    $num_lines = $start + $num_lines;
-    $num_lines = $num_lines < $file_lines ? $num_lines : $file_lines;
-    for (my $i = $start; $i < $num_lines; $i++ ) {
-        if (defined($k)) {
-            print "$read_lines[$i]\n" if $read_lines[$i] =~ m/$k/;
-        }
-        else {
-            print "$read_lines[$i]\n";
-        }
-    }
+    my $ama_ref = $out_metag->{genome_ref};
+    my $report_ret = $self->_generate_report(
+                         $input_obj_ref, $ama_ref, $gff_contents, $new_gff_file);
+    return $report_ret;
 }
 
 sub doInitialization {

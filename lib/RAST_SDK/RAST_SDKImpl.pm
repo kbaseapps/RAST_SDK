@@ -30,6 +30,11 @@ use Data::Dumper qw(Dumper);
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
+use LWP::UserAgent;
+use HTTP::Request;
+
+use lib '../lib';
+use metag_utils;
 
 use lib '../lib';
 use metag_utils;
@@ -183,6 +188,9 @@ sub annotate_process {
   		contigs => [],
   		features => []
   	};
+	if ($parameters->{ncbi_taxon_id}) {
+		$inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
+	}
   	my $contigobj;
   	my $message = "";
 	my %types = ();
@@ -1053,6 +1061,39 @@ sub annotate_process {
 	});
 	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
+
+# Get the scientific name for a NCBI taxon.
+#   Takes two arguments:
+#      The taxon ID
+#      The timestamp to send to the RE in milliseconds since the epoch. This will determine which
+#        version of the NCBI tree is queried.
+sub get_scientific_name_for_NCBI_taxon {
+    my ($self, $tax_id, $timestamp) = @_;
+    my $url = $self->{_re_url} . "/api/v1/query_results?stored_query=ncbi_fetch_taxon";
+    my $content = encode_json({
+        'ts' => $timestamp,
+        'id'=> $tax_id . '' # make sure tax id is a string
+        });
+    my $req = HTTP::Request->new(POST => $url);
+    $req->header('content-type', 'application/json');
+    $req->content($content);
+    my $ua = LWP::UserAgent->new();
+    
+    my $ret = $ua->request($req);
+    if (!$ret->is_success()) {
+        print("Error body from Relation Engine on NCBI taxa query:\n" .
+            $ret->decoded_content({'raise_error' => 1}));
+        # might want to try to parse content to json and extract error, try this for now
+        die "Error contacting Relation Engine: " . $ret->status_line();
+    }
+    my $retjsonref = $ret->decoded_content({'raise_error' => 1, 'ref' => 1});
+    my $retjson = decode_json($retjsonref);
+
+    if (!$retjson->{count}) {
+        die "No result from Relation Engine for NCBI taxonomy ID " . $tax_id;
+    }
+    return $retjson->{'results'}[0]{'scientific_name'};
+}
 #END_HEADER
 
 sub new
@@ -1064,8 +1105,12 @@ sub new
     #BEGIN_CONSTRUCTOR
 	Bio::KBase::utilities::read_config({
 		service => "RAST_SDK",
-		mandatory => ['workspace-url']
+		mandatory => ['workspace-url', 'relation-engine-url']
 	});
+	$self->{_re_url} = Bio::KBase::utilities::conf(
+		$ENV{KB_SERVICE_NAME} or "RAST_SDK", "relation-engine-url");
+	# TODO check url is ok by querying RE root
+
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
@@ -1231,6 +1276,10 @@ sub annotate_genome
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
     my $output = $self->annotate_process($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
@@ -1421,6 +1470,10 @@ sub annotate_genomes
 	    retain_old_anno_for_hypotheticals => 1
 	});
 
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
 	my $htmlmessage = "";
 	my $warn        = "";
 	my $genomes = $params->{input_genomes};
@@ -1510,6 +1563,8 @@ sub annotate_genomes
 		my $list = [qw(
 			workspace
 			scientific_name
+			ncbi_taxon_id
+			relation_engine_timestamp_ms
 			genetic_code
 			domain
 			call_features_rRNA_SEED
@@ -1792,16 +1847,12 @@ sub annotate_metagenome
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 
     my $mg_util = new metag_utils($config, $ctx);
-    my $metag_ref = $mg_util->rast_metagenome($params);
-    my $reportout = Bio::KBase::kbaseenv::create_report({
-        workspace_name => $params->{output_workspace},
-        report_object_name => $params->{output_metagenome_name}.".report"
-    });
+    my $rast_out = $mg_util->rast_metagenome($params);
     $output = {
-        output_metagenome_ref => $metag_ref,
-        output_workspace => $params->{output_workspace},
-        report_ref => $reportout->{"ref"},
-        report_name => $params->{output_metagenome_name}.".report"
+        output_metagenome_ref => $rast_out->{output_genome_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
     };
     #END annotate_metagenome
     my @_bad_returns;
@@ -1990,6 +2041,19 @@ a string
 
 
 
+=item Description
+
+Parameters for the annotate_genome method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+                TODO: document remainder of parameters.
+
+
 =item Definition
 
 =begin html
@@ -2159,6 +2223,19 @@ scientific_name has a value which is a string
 
 =over 4
 
+
+
+=item Description
+
+Parameters for the annotate_genomes method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+                
+                TODO: document remainder of parameters.
 
 
 =item Definition

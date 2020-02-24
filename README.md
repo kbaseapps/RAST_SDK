@@ -7,3 +7,10 @@ This module wraps RAST using the KBase SDK.  Most of the functional aspects can 
 https://github.com/kbase/genome_annotation.  This module includes reference data that is pulled from RAST FTP servers.
 
 
+## Running tests
+
+Note that tests must be run in a KBase environment with an active search instance, as
+GenomeFileUtils contacts search for some operations.
+
+At least 100G of space is required to run tests.
+
