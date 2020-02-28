@@ -32,6 +32,7 @@ use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 use LWP::UserAgent;
 use HTTP::Request;
+use Ref::Util;
 
 use lib '../lib';
 use metag_utils;
@@ -1469,6 +1470,13 @@ sub annotate_genomes
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
+	
+	my $empty_input_msg = ("Required inputs: genomes in an array with at least one genome;\n".
+	                       "and/or a list of genome names separated by ';', '\n' or '|' (without quotes).\n";
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(
+            error        => $empty_input_msg,
+            method_name  => 'annotate_genomes'
+        ) unless (is_arrayref( $genomes ) && @$genomes) && defined($params->{genome_text});
 
 	if ($params->{ncbi_taxon_id}) {
 		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
@@ -1490,7 +1498,7 @@ sub annotate_genomes
 	#	4. Use perl grep to see if the ref is already in the list
 	#	5. Issue a warning when a duplicate is found so user knows what happened. 
 	#
-	if (ref $genomes eq 'ARRAY') {
+	if ( ref $genomes eq 'ARRAY' && @$genomes ) {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
