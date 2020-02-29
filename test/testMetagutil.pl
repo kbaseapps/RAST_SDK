@@ -11,7 +11,6 @@ use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
 
-use RAST_SDK::RAST_SDKImpl;
 use_ok "metag_utils";
 use testRASTutil;
 
