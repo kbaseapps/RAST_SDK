@@ -38,9 +38,10 @@ my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
-my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
+my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $mgutil = new metag_utils($config, $ctx);
 
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
@@ -520,6 +521,59 @@ subtest '_run_rast' => sub {
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 };
 
+# test by using prod/appdev obj id
+subtest 'annotate_metagenome' => sub {
+    my $parms = {
+        #"object_ref" => $obj1, # appdev obj
+        "object_ref" => $obj10, # prod obj
+        "output_metagenome_name" => "rasted_AMA",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        my $rast_ann = $rast_impl->annotate_metagenome($parms);
+    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+
+};
+
+# Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
+subtest 'annotation_genomes_throw_messages' => sub {
+    my $error_message = qr/ERROR:Missing required inputs/;
+
+    my $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{genome_text} = '';
+        my $ret_ann1 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Blank genome_text plus undef input_genoms die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        my $ret_ann2 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Empty input_genomes plus undef genome_text die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        $params->{genome_text} = '';
+        my $ret_ann3 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Blank genome_text AND empty input_genoms die correctly'
+      or diag explain $params;
+};
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
