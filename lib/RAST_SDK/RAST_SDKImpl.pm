@@ -1481,7 +1481,7 @@ sub annotate_genomes
 
 	my $obj_type;
 		
-	my $empty_input_msg = ("Required inputs: genomes in an array with at least one genome;\n".
+	my $empty_input_msg = ("ERROR:Missing required inputs--genomes in an array with at least one genome;\n".
 	                       "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n";
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(
             error        => $empty_input_msg,
