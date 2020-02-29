@@ -16,9 +16,17 @@ use testRASTutil;
 
 
 ## global variables
+my $token = $ENV{'KB_AUTH_TOKEN'};
+my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
+my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $auth_token = Bio::KBase::AuthToken->new(
         token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
+my $ws_url = $config->{"workspace-url"};
 my $ws = get_ws_name();
+my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
 my $out_name = 'annotated_metag';
 my $fasta1 = 'data/short_one.fa';
@@ -30,8 +38,6 @@ my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
 
-my $ctx = LocalCallContext->new($token, $auth_token->user_id);
-$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $mgutil = new metag_utils($config, $ctx);
 
@@ -804,43 +810,3 @@ if (defined($err)) {
         die $err;
     }
 }
-
-{
-     package LocalCallContext;
-     use strict;
-     sub new {
-         my($class,$token,$user) = @_;
-         my $self = {
-             token => $token,
-             user_id => $user
-         };
-         return bless $self, $class;
-     }
-     sub user_id {
-         my($self) = @_;
-         return $self->{user_id};
-     }
-     sub token {
-         my($self) = @_;
-         return $self->{token};
-     }
-     sub provenance {
-         my($self) = @_;
-         return [{'service' => 'RAST_SDK', 'method' => 'please_never_use_it_in_production', 'method_params' => []}];
-     }
-     sub authenticated {
-         return 1;
-     }
-     sub log_debug {
-         my($self,$msg) = @_;
-         print STDERR $msg."\n";
-     }
-     sub log_info {
-         my($self,$msg) = @_;
-         print STDERR $msg."\n";
-     }
-     sub method {
-         my($self) = @_;
-         return "TEST_METHOD";
-     }
- }
