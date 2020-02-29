@@ -24,7 +24,7 @@
         "optional": true,
         "advanced": false,
         "allow_multiple": false,
-        "default_values": [ "" ],
+        "default_values": "",
         "field_type": "textarea",
         "textarea_options" : {
             "n_rows" : 10
