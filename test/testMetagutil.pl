@@ -14,20 +14,12 @@ use RAST_SDK::RAST_SDKImpl;
 use_ok "metag_utils";
 use testRASTutil;
 
-local $| = 1;
 
 ## global variables
-my $token = $ENV{'KB_AUTH_TOKEN'};
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $auth_token = Bio::KBase::AuthToken->new(
         token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
-my $ws_url = $config->{"workspace-url"};
-my $ws = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
-my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $ws = get_ws_name();
 
-$ws = get_ws_name();
 my $out_name = 'annotated_metag';
 my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
