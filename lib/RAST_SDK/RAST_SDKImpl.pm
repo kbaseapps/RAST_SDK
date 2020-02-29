@@ -36,9 +36,6 @@ use HTTP::Request;
 use lib '../lib';
 use metag_utils;
 
-use lib '../lib';
-use metag_utils;
-
 
 #Initialization function for call
 sub util_initialize_call {
