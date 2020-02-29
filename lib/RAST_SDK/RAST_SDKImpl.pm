@@ -32,7 +32,6 @@ use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 use LWP::UserAgent;
 use HTTP::Request;
-use Ref::Util;
 
 use lib '../lib';
 use metag_utils;
@@ -1486,7 +1485,7 @@ sub annotate_genomes
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(
             error        => $empty_input_msg,
             method_name  => 'annotate_genomes'
-        ) unless is_arrayref( $genomes ) && @$genomes && $params->{ genome_text };
+        ) unless (ref $genomes eq 'ARRAY' && @$genomes ) && $params->{ genome_text };
 
 	#
 	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
@@ -1499,7 +1498,7 @@ sub annotate_genomes
 	#	4. Use perl grep to see if the ref is already in the list
 	#	5. Issue a warning when a duplicate is found so user knows what happened. 
 	#
-	if ( is_arrayref( $genomes ) && @$genomes ) {
+	if ( ref $genomes eq 'ARRAY' && @$genomes ) {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
