@@ -1476,13 +1476,17 @@ sub annotate_genomes
 	my $genomes = $params->{input_genomes};
 
 	my $obj_type;
-		
+
+        #
+        # Throw an error IF $genomes is NOT an non-empty ARRAY AND, in the same time,
+        # the input to genome_text is NOT a non-blank string.
+        #
 	my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
 	                       "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n");
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(
             error        => $empty_input_msg,
             method_name  => 'annotate_genomes'
-        ) unless (ref $genomes eq 'ARRAY' && @$genomes ) && $params->{ genome_text };
+        ) unless ((ref $genomes eq 'ARRAY' && @$genomes ) && $params->{ genome_text });
 
 	#
 	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
