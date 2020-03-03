@@ -11,11 +11,9 @@ use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
 
-use RAST_SDK::RAST_SDKImpl;
 use_ok "metag_utils";
 use testRASTutil;
 
-local $| = 1;
 
 ## global variables
 my $token = $ENV{'KB_AUTH_TOKEN'};
@@ -24,11 +22,12 @@ my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $auth_token = Bio::KBase::AuthToken->new(
         token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
 my $ws_url = $config->{"workspace-url"};
-my $ws = undef;
+my $ws = get_ws_name();
 my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
-$ws = get_ws_name();
 my $out_name = 'annotated_metag';
 my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
@@ -38,9 +37,8 @@ my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
-my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 
-my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $mgutil = new metag_utils($config, $ctx);
 
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
@@ -520,6 +518,59 @@ subtest '_run_rast' => sub {
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 };
 
+# test by using prod/appdev obj id
+subtest 'annotate_metagenome' => sub {
+    my $parms = {
+        #"object_ref" => $obj1, # appdev obj
+        "object_ref" => $obj10, # prod obj
+        "output_metagenome_name" => "rasted_AMA",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        my $rast_ann = $rast_impl->annotate_metagenome($parms);
+    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+
+};
+
+# Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
+subtest 'annotation_genomes_throw_messages' => sub {
+    my $error_message = qr/ERROR:Missing required inputs/;
+
+    my $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{genome_text} = '';
+        my $ret_ann1 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Blank genome_text plus undef input_genoms die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        my $ret_ann2 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Empty input_genomes plus undef genome_text die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_genome" => "out_genome_name",
+        "workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        $params->{genome_text} = '';
+        my $ret_ann3 = $rast_impl->annotate_genomes($params);
+    } $error_message,
+      'Blank genome_text AND empty input_genoms die correctly'
+      or diag explain $params;
+};
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
@@ -759,43 +810,3 @@ if (defined($err)) {
         die $err;
     }
 }
-
-{
-     package LocalCallContext;
-     use strict;
-     sub new {
-         my($class,$token,$user) = @_;
-         my $self = {
-             token => $token,
-             user_id => $user
-         };
-         return bless $self, $class;
-     }
-     sub user_id {
-         my($self) = @_;
-         return $self->{user_id};
-     }
-     sub token {
-         my($self) = @_;
-         return $self->{token};
-     }
-     sub provenance {
-         my($self) = @_;
-         return [{'service' => 'RAST_SDK', 'method' => 'please_never_use_it_in_production', 'method_params' => []}];
-     }
-     sub authenticated {
-         return 1;
-     }
-     sub log_debug {
-         my($self,$msg) = @_;
-         print STDERR $msg."\n";
-     }
-     sub log_info {
-         my($self,$msg) = @_;
-         print STDERR $msg."\n";
-     }
-     sub method {
-         my($self) = @_;
-         return "TEST_METHOD";
-     }
- }
