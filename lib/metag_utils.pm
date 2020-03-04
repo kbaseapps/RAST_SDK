@@ -517,8 +517,8 @@ sub _generate_stats_from_gffContents {
         }
 
         my $ftr_attributes = $gff_line->[8];
-        if (!defined($ftr_attributes->{product})
-                || $ftr_attributes->{product} eq '') {
+        if (!defined($ftr_attributes->{'product'})
+                || $ftr_attributes->{'product'} eq '') {
             next;
         }
         #Look for function
@@ -933,17 +933,17 @@ sub _update_gff_functions_from_features {
         # https://github.com/kbaseapps/GenomeFileUtil/blob/master/lib/GenomeFileUtil/core/FastaGFFToGenome.py#L665-L666
         # Note that this overwrites anything that was originally in the 'product' field if it previously existed
         # Also note that I'm forcing every feature to have at least an empty product field
-        if (!defined($ftr_attributes->{product})) {
-            $ftr_attributes->{product}='';
+        if (!defined($ftr_attributes->{'product'})) {
+            $ftr_attributes->{'product'}='';
         }
 
         #Look for, and add function
-        if(exists($ftrs_function_lookup{$ftr_attributes->{id}})) {
-            $ftr_attributes->{product}=$ftrs_function_lookup{$ftr_attributes->{id}};
+        if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
+            $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
         }
 
         $gff_line->[8] = $ftr_attributes;
-        push(@new_gff_contents,$gff_line);
+        push(@new_gff_contents, $gff_line);
     }
     print "INFO: Updated new_gff_contents has ". scalar @new_gff_contents . " entries\n";
     return \@new_gff_contents;
@@ -1219,7 +1219,7 @@ sub rast_metagenome {
                                             $input_obj_ref, $new_gff_file);
     my $ama_ref = $out_metag->{metagenome_ref};
     my $report_ret = $self->_generate_report(
-                         $input_obj_ref, $ama_ref, $gff_contents, $new_gff_file);
+                         $input_obj_ref, $ama_ref, $gff_contents, $updated_gff_contents);
     return $report_ret;
 }
 
