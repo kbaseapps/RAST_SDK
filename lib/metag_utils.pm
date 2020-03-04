@@ -517,6 +517,8 @@ sub _generate_stats_from_gffContents {
         }
 
         my $ftr_attributes = $gff_line->[8];
+        next unless ref $ftr_attributes eq 'HASH';
+
         if (!defined($ftr_attributes->{'product'})
                 || $ftr_attributes->{'product'} eq '') {
             next;
