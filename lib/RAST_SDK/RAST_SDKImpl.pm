@@ -1486,7 +1486,7 @@ sub annotate_genomes
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(
             error        => $empty_input_msg,
             method_name  => 'annotate_genomes'
-        ) unless ((ref $genomes eq 'ARRAY' && @$genomes ) && $params->{ genome_text });
+        ) unless (ref $genomes eq 'ARRAY' && @$genomes) && unless $params->{ genome_text };
 
 	#
 	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
