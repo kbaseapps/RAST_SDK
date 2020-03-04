@@ -570,6 +570,12 @@ subtest 'annotation_genomes_throw_messages' => sub {
     } $error_message,
       'Blank genome_text AND empty input_genoms die correctly'
       or diag explain $params;
+    lives_ok {
+        #$params->{input_genomes} = ["31020/5/1"]; # an appdev object
+        $params->{input_genomes} = ["48109/9/1"]; # an prod object
+        $params->{genome_text} = '';
+        my $ret_ann4 = $rast_impl->annotate_genomes($params);
+    } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
 
 =begin

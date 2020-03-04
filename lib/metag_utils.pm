@@ -1217,7 +1217,7 @@ sub rast_metagenome {
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
-    my $ama_ref = $out_metag->{genome_ref};
+    my $ama_ref = $out_metag->{metagenome_ref};
     my $report_ret = $self->_generate_report(
                          $input_obj_ref, $ama_ref, $gff_contents, $new_gff_file);
     return $report_ret;
