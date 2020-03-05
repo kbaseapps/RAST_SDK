@@ -570,6 +570,7 @@ sub _generate_stats_from_gffContents {
         $gff_stats{gene_role_map}{$gene_id} = $frole;
     }
     #print "Stats from GFF contents--------\n".Dumper(\%gff_stats);
+    print "Stats from GFF contents--------\n".Dumper(\%gff_stats);
     return %gff_stats;
 }
 
