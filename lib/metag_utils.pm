@@ -570,7 +570,6 @@ sub _generate_stats_from_gffContents {
         $gff_stats{gene_role_map}{$gene_id} = $frole;
     }
     #print "Stats from GFF contents--------\n".Dumper(\%gff_stats);
-    print "Stats from GFF contents--------\n".Dumper(\%gff_stats);
     return %gff_stats;
 }
 
@@ -698,7 +697,7 @@ sub _write_html_from_stats {
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;
-    print $file_content;
+    #print $file_content;
 
     my($vol, $f_path, $rfile) = splitpath($report_file_path);
     my @html_report = ({'path'=> $report_file_path,
