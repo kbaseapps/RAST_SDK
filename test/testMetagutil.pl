@@ -63,7 +63,7 @@ sub generate_metagenome {
     });
     return $mg;
 }
-
+=begin
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
@@ -87,7 +87,7 @@ my $gene_seqs = $mgutil->_extract_cds_sequences_from_fasta(
 print "**********Gene sequences************\n" . Dumper($gene_seqs);
 my $protein_seqs = $mgutil->_translate_gene_to_protein_sequences($gene_seqs);
 print "**********Protein sequences************\n" . Dumper($protein_seqs);
-
+=cut
 
 ##-----------------Test Blocks--------------------##
 
@@ -108,6 +108,31 @@ my $obj8 = "55141/114/1";  # prod metag
 my $obj9 = "55141/117/1";  # prod metag
 my $obj10 = "55141/120/1";  # prod metag
 
+my $test_ftrs = [{
+ 'id' => '10000_1',
+ 'protein_translation' => 'VVVLLHGGCCEDMQRGRRESAPDLTLVVYPHALHALDMRLPDRTVLGMRLGFDAHAAADARRQVLDFLTARGVAPPDR*'
+ },
+ {
+ 'function' => 'L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
+ 'quality' => {
+ 'hit_count' => 3
+ },
+ 'annotations' => [
+ [
+ 'Function updated to L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
+ 'annotate_proteins_kmer_v1',
+ '1583389302.95393',
+ '6c670c83-2a11-49ff-97bf-b1c3e2121f30'
+ ]
+ ],
+ 'id' => '10000_2'
+ },
+ {
+ 'id' => '10000_3',
+ 'protein_translation' => 'MLAVNEPTVVLASAETKSLGPVVTGDRLETEAEVERTDGRKRWVKVTVRRAGAPVMEGQFLAVVPDRHILDAKDARR*'
+ }];
+
+=begin
 subtest '_check_annotation_params' => sub {
     my $obj = '1234/56/7';
 
@@ -234,8 +259,9 @@ subtest '_write_html_from_stats' => sub {
 );
 
     my %subsys_info = $mgutil->_fetch_subsystem_info();
+    my (%ft_tab, %ann_src_tab) = $mgutil->_get_feature_function_lookup($test_ftrs);
     my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
-                                                   \%subsys_info, undef);
+                                                   \%subsys_info, \%ann_src_tab, undef);
     ok(exists($ret_html[0]{path}), "html report written with file path returned.");
 };
 
@@ -373,7 +399,6 @@ subtest '_run_prodigal' => sub {
     is($prd_ret, 0, 'Prodigal runs ok with -p meta option.\n');
 
     ##---------A long file takes much longer time!!!!!---------##
-=begin
     $infile = $fasta2;
     @p_cmd = (
           $prodigal_cmd,
@@ -383,11 +408,12 @@ subtest '_run_prodigal' => sub {
     lives_ok {
         $prd_ret = $mgutil->_run_prodigal(@p_cmd)
     } $run_ok;
-
     is($prd_ret, 0, '_run_prodigal successfully returned.\n');
-=cut
 };
 
+=cut
+
+=begin
 subtest '_parse_translation' => sub {
     my $trans_path = catfile($rast_dir, 'trans_scrt');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
@@ -448,7 +474,6 @@ subtest '_write_gff_from_metagenome' => sub {
     ok((-e $gff_test1), 'gff file created');
     ok((-s $gff_test1), 'gff file has data');
 };
-
 
 subtest '_save_metagenome' => sub {
     my $req_params = "Missing required parameters for saving metagenome.\n";
@@ -532,7 +557,9 @@ subtest 'annotate_metagenome' => sub {
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 
 };
+=cut
 
+=begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -577,6 +604,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
+=cut
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
@@ -622,7 +650,6 @@ subtest '_generate_stats_from_ama & from_gffContents' => sub {
 };
 =cut
 
-=begin
 # testing _generate_report using obj ids from prod ONLY
 subtest '_generate_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
@@ -655,13 +682,14 @@ subtest '_generate_report' => sub {
     ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
     ok(exists($ret_stats2{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
-    my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1, $gff_contents2);
+    my (%ftr_tab, %ann_src_tab) = $mgutil->_get_feature_function_lookup($test_ftrs);
+    my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1,
+                                            $gff_contents2, \%ann_src_tab);
     print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
-=cut
 
 =begin
 # testing _generate_report using obj ids from appdev ONLY
@@ -705,7 +733,7 @@ subtest 'rast_metagenome' => sub {
     } qr/Invalid metagenome object reference/,
         'calling rast_metagenome fails to generate a valid metagenome';
 
-    # testing _generate_report using obj ids from prod ONLY
+    # testing rast_metagenome using obj ids from prod ONLY
     # a prod assembly
     $parms = {
         "object_ref" => $obj3,
@@ -716,8 +744,9 @@ subtest 'rast_metagenome' => sub {
     print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
     ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
 };
+=cut
 
-
+=begin
 # testing _generate_report using obj ids from prod ONLY
 subtest '_generate_stats_from_ama' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_ama($obj4);

@@ -516,8 +516,40 @@ sub _generate_stats_from_gffContents {
             next;
         }
 
-        my $ftr_attributes = $gff_line->[8];
-        next unless ref $ftr_attributes eq 'HASH';
+        my $ftr_attrs = $gff_line->[8];
+        my $ftr_attributes;
+        if (ref $ftr_attrs ne 'HASH') {
+            # assuming it is a string like:
+            # 'id=1_2;product=3-oxoacyl-[acyl-carrier protein] reductase (EC 1.1.1.100)'
+
+            # Populating with attribute key-value pair
+            # This is where the feature id is from
+            foreach my $attr (split(";",$ftr_attrs)) {
+                chomp $attr;
+
+                # Sometimes empty string
+                next if $attr =~ /^\s*$/;
+
+                # Use of 1 to limit split as '=' character can also be made available later
+                # Sometimes lack of "=", assume spaces instead
+                my ($key,$value)=(undef,undef);
+                if ($attr =~ /=/) {
+                    ($key, $value) = split("=", $attr, 2);
+                } elsif($attr =~ /\s/) {
+                    ($key, $value) = split(" ", $attr, 2);
+                }
+
+                if(!defined($key)) {
+                    print "Warning: $attr not parsed right\n";
+                }
+
+                #Force to lowercase in case changes in lookup
+                $ftr_attributes->{lc($key)}=$value;
+            }
+        }
+        else {
+            $ftr_attributes = $gff_line->[8];
+        }
 
         if (!defined($ftr_attributes->{'product'})
                 || $ftr_attributes->{'product'} eq '') {
@@ -537,7 +569,7 @@ sub _generate_stats_from_gffContents {
         }
         $gff_stats{gene_role_map}{$gene_id} = $frole;
     }
-    print "Stats from GFF contents--------\n".Dumper($gff_stats);
+    #print "Stats from GFF contents--------\n".Dumper(\%gff_stats);
     return %gff_stats;
 }
 
@@ -580,9 +612,10 @@ sub _write_html_from_stats {
     my $obj_stats_ref = shift;
     my $gff_stats_ref = shift;
     my $subsys_ref = shift;
+    my $ann_src_ref = shift;
     my $template_file = shift;
     if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH"
-             || ref $subsys_ref ne "HASH") {
+             || ref $subsys_ref ne "HASH" || ref $ann_src_ref ne "HASH") {
         croak "You need to pass in hash references!\n";
     }
 
@@ -590,6 +623,7 @@ sub _write_html_from_stats {
     my %obj_stats = %{ $obj_stats_ref };
     my %gff_stats = %{ $gff_stats_ref };
     my %subsys_info = %{ $subsys_ref };
+    my %ann_src = %{ $ann_src_ref };
     $template_file = './templates_and_data/table_report.html' unless defined($template_file);
 
     my $dirname = dirname(__FILE__);
@@ -602,6 +636,7 @@ sub _write_html_from_stats {
     my $report_title = "Feature function report for genome <font color=red>$obj_stats{id}</font>";
     my $rpt_header = "<h3>$report_title:</h3>";
     my $rpt_data = ("data.addColumn('string', 'function role');\n".
+                    "data.addColumn('string', 'annotation source');\n".
                     "data.addColumn('number', 'gene count');\n".
                     "data.addColumn('string', 'subsystem name');\n".
                     "data.addColumn('string', 'subsystem class');\n".
@@ -613,6 +648,12 @@ sub _write_html_from_stats {
         # add escape to preserve double quote (")
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
+        if (exists($ann_src_ref->{$role_k})) {
+            $rpt_data .= "$ann_src_ref->{$role_k},";
+        }
+        else {
+            $rpt_data .= "N/A,";
+        }
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
 
@@ -668,7 +709,7 @@ sub _write_html_from_stats {
 
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
 sub _generate_report {
-    my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts) = @_;
+    my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts, $ann_src) = @_;
 
     my $gn_info = $self->_fetch_object_info($ama_ref);
     my $gn_ws = $gn_info->[7];
@@ -713,7 +754,8 @@ sub _generate_report {
 
     my @html_files = $self->_write_html_from_stats(\%ama_stats,
                                                    \%ama_gff_stats,
-                                                   \%subsys_info);
+                                                   \%subsys_info,
+                                                   $ann_src);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
@@ -899,6 +941,7 @@ sub _get_feature_function_lookup {
 
     #Feature Lookup Hash
     my %function_lookup = ();
+    my %ann_src_lookup = ();
     foreach my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
 
@@ -908,19 +951,21 @@ sub _get_feature_function_lookup {
         elsif (exists($ftr->{'function'})) {
             $function_lookup{$ftr->{'id'}}=$ftr->{'function'};
         }
+        if (exists($ftr->{'annotations'})) {
+            $ann_src_lookup{$function_lookup{$ftr->{'id'}}}=$ftr->{'annotations'}->[0]->[1];
+        }
     }
     my $ksize = keys %function_lookup;
     print "INFO: Feature function look up table contains $ksize entries.\n";
-    return  %function_lookup;
+    return (%function_lookup, %ann_src_lookup);
 }
 
 sub _update_gff_functions_from_features {
-    my ($self, $gff_contents, $features) = @_;
+    my ($self, $gff_contents, $feature_lookup) = @_;
 
     print "INFO: Updating ".scalar @{$gff_contents}." GFFs with RAST features.\n";
 
-    my %ftrs_function_lookup = $self->_get_feature_function_lookup($features);
-
+    my %ftrs_function_lookup = %{ $feature_lookup };
     my @new_gff_contents=();
     foreach my $gff_line (@$gff_contents) {
         if(scalar(@$gff_line) < 9){
@@ -1209,9 +1254,9 @@ sub rast_metagenome {
         print "$f_id\t$f_func\t$f_protein\n";
     }
 
+    my (%ftr_func_lookup, %ann_src_lookup) = $self->_get_feature_function_lookup($ftrs);
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
-                                   $gff_contents, $ftrs);
-
+                                   $gff_contents, \%ftr_func_lookup);
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
@@ -1221,7 +1266,8 @@ sub rast_metagenome {
                                             $input_obj_ref, $new_gff_file);
     my $ama_ref = $out_metag->{metagenome_ref};
     my $report_ret = $self->_generate_report(
-                         $input_obj_ref, $ama_ref, $gff_contents, $updated_gff_contents);
+                         $input_obj_ref, $ama_ref, $gff_contents,
+                         $updated_gff_contents, \%ann_src_lookup);
     return $report_ret;
 }
 
