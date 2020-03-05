@@ -517,7 +517,10 @@ sub _generate_stats_from_gffContents {
         }
 
         my $ftr_attributes = $gff_line->[8];
-        next unless ref $ftr_attributes eq 'HASH';
+        if (ref $ftr_attributes ne 'HASH') {
+            print "Skip non-hash 9th column row with value of$ftr_attributes";
+            next;
+        }
 
         if (!defined($ftr_attributes->{'product'})
                 || $ftr_attributes->{'product'} eq '') {
@@ -1212,8 +1215,8 @@ sub rast_metagenome {
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
                                    $gff_contents, $ftrs);
     print "Comparing updated gff contents with original gff contents:\n";
-    print Dumper(@{$updated_gff_contents}[0..50]) . "\n";
-    print Dumper(@{$gff_contents}[0..50]);
+    print Dumper(@{$updated_gff_contents}[0..10]) . "\n";
+    print Dumper(@{$gff_contents}[0..10]);
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
