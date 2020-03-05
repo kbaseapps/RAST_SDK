@@ -607,15 +607,33 @@ sub _fetch_subsystem_info {
     return %subsys_info;
 }
 
+sub _find_function_source {
+    my $self = shift;
+    my $func_tab_ref = shift;
+    my $func = shift;
+
+    my $func_src = 'N/A';
+    foreach my $ftr_id (sort keys %$func_tab_ref) {
+        if (exists($func_tab_ref->{$ftr_id}->{'functions'})) {
+            my $funcs = $func_tab_ref->{$ftr_id}->{'functions'};
+            if ($funcs =~ /\Q$func\E/) {
+                $func_src = $func_tab_ref->{$ftr_id}->{'annotation_src'};
+                last;
+	    }
+        }
+    }
+    return $func_src;
+}
+
 sub _write_html_from_stats {
     my $self = shift;
     my $obj_stats_ref = shift;
     my $gff_stats_ref = shift;
     my $subsys_ref = shift;
-    my $ann_src_ref = shift;
+    my $func_tab_ref = shift;
     my $template_file = shift;
     if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH"
-             || ref $subsys_ref ne "HASH" || ref $ann_src_ref ne "HASH") {
+             || ref $subsys_ref ne "HASH" || ref $func_tab_ref ne "HASH") {
         croak "You need to pass in hash references!\n";
     }
 
@@ -623,7 +641,6 @@ sub _write_html_from_stats {
     my %obj_stats = %{ $obj_stats_ref };
     my %gff_stats = %{ $gff_stats_ref };
     my %subsys_info = %{ $subsys_ref };
-    my %ann_src = %{ $ann_src_ref };
     $template_file = './templates_and_data/table_report.html' unless defined($template_file);
 
     my $dirname = dirname(__FILE__);
@@ -648,12 +665,8 @@ sub _write_html_from_stats {
         # add escape to preserve double quote (")
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
-        if (exists($ann_src_ref->{$role_k})) {
-            $rpt_data .= "$ann_src_ref->{$role_k},";
-        }
-        else {
-            $rpt_data .= "N/A,";
-        }
+        my $ann_src = $self->_find_function_source($func_tab_ref, $role_k);
+        $rpt_data .= "\"$ann_src\",";
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
 
@@ -709,7 +722,7 @@ sub _write_html_from_stats {
 
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
 sub _generate_report {
-    my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts, $ann_src) = @_;
+    my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts, $func_tab) = @_;
 
     my $gn_info = $self->_fetch_object_info($ama_ref);
     my $gn_ws = $gn_info->[7];
@@ -755,7 +768,7 @@ sub _generate_report {
     my @html_files = $self->_write_html_from_stats(\%ama_stats,
                                                    \%ama_gff_stats,
                                                    \%subsys_info,
-                                                   $ann_src);
+                                                   $func_tab);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
@@ -932,8 +945,8 @@ sub _get_feature_function_lookup {
     my $ftr_count = scalar @{$features};
 
     print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
-    if ($ftr_count > 3) {
-        print "INFO: First 3 RAST feature examples:\n".Dumper(@{$features}[0,1,2]);
+    if ($ftr_count > 10) {
+        print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
     }
     else {
         print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
@@ -941,23 +954,23 @@ sub _get_feature_function_lookup {
 
     #Feature Lookup Hash
     my %function_lookup = ();
-    my %ann_src_lookup = ();
     foreach my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
 
         if (exists($ftr->{'functions'})) {
-            $function_lookup{$ftr->{'id'}}=join(" / ",@{$ftr->{'functions'}});
+            $function_lookup{$ftr->{'id'}}{functions}=join(" / ",@{$ftr->{'functions'}});
         }
         elsif (exists($ftr->{'function'})) {
-            $function_lookup{$ftr->{'id'}}=$ftr->{'function'};
+            $function_lookup{$ftr->{'id'}}{functions}=$ftr->{'function'};
         }
         if (exists($ftr->{'annotations'})) {
-            $ann_src_lookup{$function_lookup{$ftr->{'id'}}}=$ftr->{'annotations'}->[0]->[1];
+            #print "\nFound annotation source array:\n".Dumper($ftr->{'annotations'});
+            $function_lookup{$ftr->{'id'}}{'annotation_src'}=$ftr->{'annotations'}->[0]->[1];
         }
     }
     my $ksize = keys %function_lookup;
     print "INFO: Feature function look up table contains $ksize entries.\n";
-    return (%function_lookup, %ann_src_lookup);
+    return %function_lookup;
 }
 
 sub _update_gff_functions_from_features {
@@ -986,7 +999,7 @@ sub _update_gff_functions_from_features {
 
         #Look for, and add function
         if(exists($ftrs_function_lookup{$ftr_attributes->{'id'}})) {
-            $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}};
+            $ftr_attributes->{'product'}=$ftrs_function_lookup{$ftr_attributes->{'id'}}->{'functions'};
         }
 
         $gff_line->[8] = $ftr_attributes;
@@ -1254,7 +1267,7 @@ sub rast_metagenome {
         print "$f_id\t$f_func\t$f_protein\n";
     }
 
-    my (%ftr_func_lookup, %ann_src_lookup) = $self->_get_feature_function_lookup($ftrs);
+    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
                                    $gff_contents, \%ftr_func_lookup);
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
@@ -1267,7 +1280,7 @@ sub rast_metagenome {
     my $ama_ref = $out_metag->{metagenome_ref};
     my $report_ret = $self->_generate_report(
                          $input_obj_ref, $ama_ref, $gff_contents,
-                         $updated_gff_contents, \%ann_src_lookup);
+                         $updated_gff_contents, \%ftr_func_lookup);
     return $report_ret;
 }
 
