@@ -656,7 +656,7 @@ sub _write_html_from_stats {
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;
-    #print $file_content;
+    print $file_content;
 
     my($vol, $f_path, $rfile) = splitpath($report_file_path);
     my @html_report = ({'path'=> $report_file_path,
