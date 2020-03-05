@@ -694,8 +694,8 @@ sub _write_html_from_stats {
 
     my $gene_count = keys %$genes;
     my $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
-    $rpt_footer .= "<p><strong>Feature Count = $gff_stats{num_features}</strong></p>\n";
-    $rpt_footer .= "<p><strong>(Functional)Gene Total Count = $gene_count</strong></p>\n";
+    $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
+    $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
     $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
 
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
@@ -749,10 +749,9 @@ sub _generate_report {
         $report_message = ("Genome Ref: $ama_ref\n".
                            "Genome type: $ama_stats{genome_type}\n".
                            "Number of contigs: $ama_stats{contig_count}\n".
-                           "Number of features before RAST: $src_stats{num_features}\n".
-                           "Number of unique function roles before RAST: $src_role_count\n".
-                           "Number of features after RAST: $ama_stats{num_features}\n".
-                           "Number of unique function roles after RAST: $ama_role_count\n");
+                           "Number of features: $ama_stats{num_features}\n".
+                           "Number of unique function roles: $ama_role_count\n");
+                           "Number of genes: $ama_gene_count\n");
         # Note that $ama_stats{feature_counts}
         #           $ama_gff_stats{function_roles}{gene_count}
         #           $ama_gff_stats{function_roles}{gene_list}
@@ -761,7 +760,7 @@ sub _generate_report {
     else {
         $report_message = ("Genome Ref: $ama_ref\n".
                            "Genome type: $ama_stats{genome_type}\n".
-                           "Number of features before RAST: $src_stats{num_features}\n".
+                           "Number of features: $src_stats{num_features}\n".
                            "No data on functional roles available\n");
     }
 
