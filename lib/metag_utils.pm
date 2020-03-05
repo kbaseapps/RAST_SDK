@@ -750,7 +750,7 @@ sub _generate_report {
                            "Genome type: $ama_stats{genome_type}\n".
                            "Number of contigs: $ama_stats{contig_count}\n".
                            "Number of features: $ama_stats{num_features}\n".
-                           "Number of unique function roles: $ama_role_count\n");
+                           "Number of unique function roles: $ama_role_count\n".
                            "Number of genes: $ama_gene_count\n");
         # Note that $ama_stats{feature_counts}
         #           $ama_gff_stats{function_roles}{gene_count}
