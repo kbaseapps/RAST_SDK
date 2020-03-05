@@ -1213,7 +1213,7 @@ sub rast_metagenome {
                                    $gff_contents, $ftrs);
     print "Comparing updated gff contents with original gff contents:\n";
     print Dumper($updated_gff_contents->[0..5]) . "\n";
-    print Dumper(gff_contents->[0..5]);
+    print Dumper($gff_contents->[0..5]);
     my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
