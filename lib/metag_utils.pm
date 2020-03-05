@@ -649,10 +649,10 @@ sub _write_html_from_stats {
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
         if (exists($ann_src_ref->{$role_k})) {
-            $rpt_data .= "$ann_src_ref->{$role_k},";
+            $rpt_data .= "\"$ann_src_ref->{$role_k}\",";
         }
         else {
-            $rpt_data .= "N/A,";
+            $rpt_data .= '"N/A",';
         }
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
@@ -932,8 +932,8 @@ sub _get_feature_function_lookup {
     my $ftr_count = scalar @{$features};
 
     print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
-    if ($ftr_count > 3) {
-        print "INFO: First 3 RAST feature examples:\n".Dumper(@{$features}[0,1,2]);
+    if ($ftr_count > 10) {
+        print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0,1,2]);
     }
     else {
         print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
