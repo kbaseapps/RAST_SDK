@@ -130,6 +130,18 @@ my $test_ftrs = [{
  {
  'id' => '10000_3',
  'protein_translation' => 'MLAVNEPTVVLASAETKSLGPVVTGDRLETEAEVERTDGRKRWVKVTVRRAGAPVMEGQFLAVVPDRHILDAKDARR*'
+ },
+ {
+ 'id' => '10000_madeup',
+ 'function' => 'completely fake function',
+ 'annotations' => [
+ [
+ 'completely fake function',
+ 'annotate_maedup_source',
+ '1583389302.95394',
+ '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
+ ]
+ ],
  }];
 
 =begin
@@ -259,9 +271,9 @@ subtest '_write_html_from_stats' => sub {
 );
 
     my %subsys_info = $mgutil->_fetch_subsystem_info();
-    my (%ft_tab, %ann_src_tab) = $mgutil->_get_feature_function_lookup($test_ftrs);
+    my %ft_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
     my @ret_html = $mgutil->_write_html_from_stats(\%obj_stats, \%gff_stats,
-                                                   \%subsys_info, \%ann_src_tab, undef);
+                                                   \%subsys_info, \%ft_tab, undef);
     ok(exists($ret_html[0]{path}), "html report written with file path returned.");
 };
 
@@ -682,9 +694,10 @@ subtest '_generate_report' => sub {
     ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
     ok(exists($ret_stats2{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
-    my (%ftr_tab, %ann_src_tab) = $mgutil->_get_feature_function_lookup($test_ftrs);
+    my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
+    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
     my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1,
-                                            $gff_contents2, \%ann_src_tab);
+                                            $gff_contents2, \%ftr_tab);
     print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
