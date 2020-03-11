@@ -456,10 +456,10 @@ sub _run_rast {
             {stages => [{name => "annotate_proteins_kmer_v2",
                          kmer_v2_parameters => {min_hits => "5",
 			                        dataset_name => "V2Data",
-                                                annotate_hypothetical_only => 0}}]} #,
-                        #{name => "annotate_proteins_kmer_v1",
-                        # kmer_v1_parameters => {dataset_name => "Release70",
-                        #                        annotate_hypothetical_only => 0}}]}
+                                                annotate_hypothetical_only => 0}},
+                        {name => "annotate_proteins_kmer_v1",
+                         kmer_v1_parameters => {dataset_name => "Release70",
+                                                annotate_hypothetical_only => 0}}]}
         );
     };
     if ($@) {
