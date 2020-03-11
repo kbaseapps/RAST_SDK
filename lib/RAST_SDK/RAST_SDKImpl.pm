@@ -304,8 +304,8 @@ sub annotate_process {
 		}
 	}
 	
-  	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-  	my $workflow = {stages => []};
+	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+	my $workflow = {stages => []};
 	my $extragenecalls = "";
 	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
 		if (length($extragenecalls) == 0) {
@@ -1654,6 +1654,7 @@ sub annotate_proteins
 							       method_name => 'annotate_proteins');
     }
 
+		my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($return);
     #BEGIN annotate_proteins

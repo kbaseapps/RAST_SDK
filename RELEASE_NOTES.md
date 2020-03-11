@@ -1,6 +1,14 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.5
+__Changes__
+Bugfix of variable scope for $gaserv in the Impl file
+
+### Version 0.1.4
+__Changes__
+Now uses GFU version 0.10.4
+
 ### Version 0.1.1
 __Changes__
 Add the GenomeSet to the objects created when doing Multiple Assemblies or Multiple Genomes
