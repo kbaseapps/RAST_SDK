@@ -123,7 +123,7 @@ sub gfu_client {
 	});
 	if ($parameters->{refresh} == 1 || !defined($gfu_client)) {
 		require "installed_clients/GenomeFileUtilClient.pm";
-		$gfu_client = new GenomeFileUtil::GenomeFileUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
+		$gfu_client = new installed_clients::GenomeFileUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
 	}
 	return $gfu_client;
 }
