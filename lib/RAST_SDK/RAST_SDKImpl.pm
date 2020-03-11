@@ -4,8 +4,8 @@ use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
 our $VERSION = '0.1.3';
-our $GIT_URL = 'ssh://git@github.com/kbaseapps/RAST_SDK';
-our $GIT_COMMIT_HASH = '913026e502396704cc3240a1b45658b53e3af57d';
+our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK';
+our $GIT_COMMIT_HASH = '16a6b20c10f852646023e459493086e22d80039c';
 
 =head1 NAME
 
