@@ -1654,7 +1654,6 @@ sub annotate_proteins
 							       method_name => 'annotate_proteins');
     }
 
-		my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($return);
     #BEGIN annotate_proteins
@@ -1669,7 +1668,8 @@ sub annotate_proteins
     			protein_translation => $params->{proteins}->[$i]
     		});
     }
-    my $genome = $gaserv->run_pipeline($inputgenome,[
+		my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+		my $genome = $gaserv->run_pipeline($inputgenome,[
 		{ name => 'annotate_proteins_kmer_v2', kmer_v2_parameters => {} },
 		#{ name => 'annotate_proteins_kmer_v1', kmer_v1_parameters => { annotate_hypothetical_only => 1 } },
 		{ name => 'annotate_proteins_similarity', similarity_parameters => { annotate_hypothetical_only => 1 } }
