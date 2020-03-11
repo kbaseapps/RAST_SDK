@@ -455,6 +455,7 @@ sub _run_rast {
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2",
                          kmer_v2_parameters => {min_hits => "5",
+			                        dataset_name => "V2Data",
                                                 annotate_hypothetical_only => 0}},
                         {name => "annotate_proteins_kmer_v1",
                          kmer_v1_parameters => {dataset_name => "Release70",
