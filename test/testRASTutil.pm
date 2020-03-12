@@ -10,7 +10,7 @@ use Workspace::WorkspaceClient;
 use JSON;
 #use File::Copy;
 #use AssemblyUtil::AssemblyUtilClient;
-use GenomeFileUtil::GenomeFileUtilClient;
+use installed_clients::GenomeFileUtilClient;
 #use Storable qw(dclone);
 #use Bio::KBase::kbaseenv;
 
@@ -23,7 +23,7 @@ my $ws_name = undef;
 my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 #my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
-my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
+my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 
 sub get_ws_name {
     if (!defined($ws_name)) {
