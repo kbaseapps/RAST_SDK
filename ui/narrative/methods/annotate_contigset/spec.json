@@ -27,15 +27,13 @@
     "field_type": "dynamic_dropdown",
     "dynamic_dropdown_options": {
         "data_source": "custom",
-        "service_function": "taxonomy_re_api.search_taxa",
+        "service_function": "taxonomy_re_api.search_species",
         "service_version": "dev",
         "service_params": [
             {
                 "search_text": "prefix:{{dynamic_dropdown_input}}",
                 "ns": "ncbi_taxonomy",
-                "ranks": ["species"],
-                "include_strains": true,
-                "limit": 1000
+                "limit": 20
             }
         ],
         "query_on_empty_input": 0,
