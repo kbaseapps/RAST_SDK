@@ -1,0 +1,84 @@
+#
+# Define basic display information
+#
+name     : Annotate Lists of Assemblies, Metagenome Assemblies/Metagenomes and/or AMASets with RAST - v1.073
+
+tooltip  : |
+    Annotate Assemblies, re-annotate Metagenome Assemblies/Metagenomes and/or AMASets using RASTtk (Rapid Annotations using Subsystems Technology toolkit).
+screenshots :
+    []
+
+icon: rast-red.png
+
+#
+# Define the set of other narrative methods that should be suggested to the user.
+#
+suggestions :
+    apps:
+        related :
+            []
+        next :
+            [build_fba_model, build_species_tree]
+    methods:
+        related :
+            []
+        next :
+            [annotate_domains_in_a_genome]
+
+
+#
+# Configure the display and description of the parameters
+#
+parameters :
+    input_assemblies :
+        ui-name : |
+            Assemblies/AssemblySets :
+        short-hint : |
+            Multiple Assemblies and/or AssemblySets to annotate
+    input_AMAs :
+        ui-name : |
+            AMAs/AMASets
+        short-hint : |
+            Multiple Annotated Metagenome Assemblies and/or AMASets to re-annotate
+    AMA_text :
+        ui-name : |
+            AMA list
+        short-hint : |
+            List of AMAs to reannotate, delimited with semicolon (;). This list is in addition to the input assemblies, AMAs and or AMASets above.
+            Example names: EB271-05-03_AA_S_4_E_Prodigal-Rfam-FILTER-2000-NOFUNC.gff_metagenome;EB271-03-02_AA_S_8_F_Prodigal-Rfam-FILTER-2000-NOFUNC.gff_metagenome [no spaces]
+            or IDs: 55141/110/1;55141/111/1 or delimited by new lines (list each name or ID on a separate line).
+            You can also mix names and IDs as long as there are no spaces (e.g., EB271-05-03_AA_S_4_E_Prodigal-Rfam-FILTER-2000-NOFUNC.gff_metagenome;55141/111/1).
+
+    output_AMASet :
+        ui-name : |
+            Optional Output AMASet Name
+        short-hint : |
+            The name of an AMASet of the output annotated AMAs.
+        placeholder : |
+            Name to assign AMASet
+
+parameter-groups:
+  Assemblies:
+    ui-name: |
+      Assemblies to annotate
+    short-hint: |
+      A list of assemblies to annotate
+
+  AMAs:
+    ui-name: |
+      Annotated Metagenome Assemblies:
+    short-hint: |
+      A list of annotated metagenome assemblies to re-annotate
+    long-hint: |
+      A list of metagenomes (set of DNA contigs) or Annotated Metagenome Assembly objects (set of features with Ontologies and functions) to re-annotate
+
+description : |
+    <p>Description content to be filled...</p>
+
+publications :
+    -
+        display-text: |
+            [1] standard citation format
+        link: url of the publication
+    -
+

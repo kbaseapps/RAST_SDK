@@ -1,0 +1,106 @@
+{
+  "ver" : "1.0.0",
+  "name" : "Annotate Lists of Assemblies, Metagenome Assemblies/Metagenomes and/or AMASets with RAST - v1.073",
+  "authors" : [ "chenry", "qzhang" ],
+  "contact" : "help@kbase.us",
+  "visble" : true,
+  "categories" : ["active","annotation"],
+  "widgets" : {
+    "input" : null,
+    "output" : "no-display"
+  },
+  "parameters" : [ {
+    "id" : "input_assemblies",
+    "optional" : true,
+    "advanced" : false,
+    "allow_multiple" : true,
+    "default_values" : [ "" ],
+    "field_type" : "text",
+    "text_options" : {
+      "valid_ws_types": [ "KBaseGenomeAnnotations.Assembly", "KBaseSets.AssemblySet" ]
+    }
+  },
+  {
+    "id" : "input_AMAs",
+    "optional" : true,
+    "advanced" : false,
+    "allow_multiple" : true,
+    "default_values" : [ "" ],
+    "field_type" : "text",
+    "text_options" : {
+      "valid_ws_types" : [ "KBaseMetagenomes.AnnotatedMetagenomeAssembly", "KBaseSearch.AMASet" ]
+    }
+  },
+  {
+    "id": "AMA_text",
+    "optional": true,
+    "advanced": false,
+    "allow_multiple": false,
+    "default_values": [ "" ],
+    "field_type": "textarea",
+    "textarea_options" : {
+      "n_rows" : 10
+    }
+  },
+  {
+    "id": "output_AMASet",
+    "optional": false,
+    "advanced": false,
+    "allow_multiple": false,
+    "default_values": [ "" ],
+    "field_type": "text",
+    "text_options" : {
+      "valid_ws_types" : [ "KBaseSearch.AMASet" ],
+      "is_output_name":true
+    }
+  }],
+  "behavior" : {
+    "service-mapping" : {
+      "url" : "",
+      "name" : "RAST_SDK",
+      "method" : "annotate_metagenomes",
+      "input_mapping" : [
+        {
+          "input_parameter": "input_assemblies",
+          "target_property": "input_assemblies",
+          "target_type_transform": "resolved-ref"
+        },
+        {
+          "input_parameter": "input_AMAs",
+          "target_property": "input_AMAs",
+          "target_type_transform": "resolved-ref"
+        },
+        {
+          "input_parameter": "AMA_text",
+          "target_property": "AMA_text"
+        },
+        {
+          "input_parameter": "output_AMASet",
+          "generated_value": {
+              "prefix": "AMAset_"
+          },
+          "target_property": "output_AMASet"
+        },
+        {
+          "narrative_system_variable": "workspace",
+          "target_property": "output_workspace"
+        }
+      ],
+      "output_mapping" : [
+        {
+          "service_method_output_path": [0, "report_name"],
+          "target_property": "report_name"
+        },
+        {
+          "service_method_output_path": [0, "report_ref"],
+          "target_property": "report_ref"
+        },
+        {
+          "narrative_system_variable": "workspace",
+          "target_property": "output_workspace"
+        }
+      ]
+    }
+  },
+  "job_id_output_field": "docker"
+}

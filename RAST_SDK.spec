@@ -179,6 +179,7 @@ module RAST_SDK {
             data_obj_ref object_ref;
             string output_workspace;
             string output_metagenome_name;
+            bool create_report;
         } MetagenomeAnnotateParams;
 
         typedef structure {
@@ -190,4 +191,20 @@ module RAST_SDK {
 
         funcdef annotate_metagenome(MetagenomeAnnotateParams params) 
                 returns (MetagenomeAnnotateOutput output) authentication required;
+
+        typedef structure {
+            list<data_obj_ref> input_assemblies;
+            list<data_obj_ref> input_AMAs;
+            string AMA_text;
+            string output_workspace;
+            string output_AMASet;
+        } BulkAnnotateMetagenomesParams;
+
+        typedef structure {
+            data_obj_ref output_AMASet_ref;
+            string output_workspace;
+        } BulkMetagenomesAnnotateOutput;
+
+        funcdef annotate_metagenomes(BulkAnnotateMetagenomesParams params)
+                returns (BulkMetagenomesAnnotateOutput output) authentication required;
 };
