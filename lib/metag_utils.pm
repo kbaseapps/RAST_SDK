@@ -438,9 +438,56 @@ sub _check_annotation_params {
         || $params->{run_prodigal} eq '') {
         $params->{run_prodiagl} = 0;
     }
+    if (!defined($params->{create_report})) {
+        $params->{create_report} = 0;
+    }
     return $params;
 }
 
+
+sub _check_bulk_annotation_params {
+    my ($self, $params) = @_;
+
+    my $missing_params = "Missing required parameters for annotating metagenome.\n";
+    unless (defined($params)) {
+        print "params is not defined!!!!\n";
+        croak $missing_params;
+    }
+    # print out the content of hash reference
+    print "Checking parameters:\n". Dumper($params). "\n";
+
+    if (!keys %$params) {
+        print "params is empty!!!!\n";
+        croak $missing_params;
+    }
+    my $req1 = "'output_workspace' is required for running rast_metagenome.\n";
+    my $invald1 = "Invalid workspace name:";
+    if (!defined($params->{output_workspace}) || $params->{output_workspace} eq '') {
+        croak $req1;
+    }
+    elsif ($params->{output_workspace} !~ m/[^\\w:._-]/) {
+        croak $invald1.$params->{output_workspace}.'\n';
+    }
+    if (!defined($params->{output_AMASet})
+        || $params->{output_AMASet} eq '') {
+        $params->{output_AMASet} = "rasted_AMASet_name";
+    }
+    if (!defined($params->{create_report})) {
+        $params->{create_report} = 0;
+    }
+    if (!defined($params->{input_assemblies})
+	|| ref $params->{input_assemblies} ne ARRAY) {
+        $params->{input_assemblies} = [];
+    }
+    if (!defined($params->{input_AMAs})
+        || ref $params->{input_AMAs} ne ARRAY) {
+        $params->{input_AMAs} = [];
+    }
+    unless ($params->{AMA_text}) {
+	$params->{AMA_text} = '';
+    }
+    return $params;
+}
 
 # Call RAST to annotate the proteins/genome
 sub _run_rast {
@@ -1278,11 +1325,112 @@ sub rast_metagenome {
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
     my $ama_ref = $out_metag->{metagenome_ref};
-    my $report_ret = $self->_generate_report(
-                         $input_obj_ref, $ama_ref, $gff_contents,
-                         $updated_gff_contents, \%ftr_func_lookup);
+
+    my $report_ret = {
+        output_metagenome_ref => $ama_ref,
+        report_name => undef,
+        report_ref => undef
+    }
+
+    if (defined(params->{create_report} == 1) {
+        $report_ret = $self->_generate_report(
+                          $input_obj_ref, $ama_ref, $gff_contents,
+                          $updated_gff_contents, \%ftr_func_lookup);
+    }
     return $report_ret;
 }
+
+sub bulk_rast_metagenomes {
+    my $self = shift;
+    my($inparams) = @_;
+
+    print "bulk_rast_metagenome input parameter=\n". Dumper($inparams). "\n";
+
+    my $params = $self->_check_bulk_annotation_params($inparams);
+
+    my $ws = $params->{output_workspace};
+    my $out_amaset = $params->{output_AMASet};
+    my $in_assemblies = $params->{input_assemblies};
+    my $in_amas = $params->{input_AMAs};
+    my $in_ama_text = $params->{AMA_text};
+
+    my $bulk_inparams = [];
+
+    foreach my $assembl (@$in_assemblies) {
+        push(@{$bulk_inparams}, {
+            object_ref => $assembl,
+            output_workspace => $ws,
+            output_metagenome_name => $out_amaset . '_' .$assembl,
+            create_report => 0
+	});
+    }
+
+    foreach my $ama (@$in_amas) {
+        push(@{$bulk_inparams}, {
+            object_ref => $ama,
+            output_workspace => $ws,
+            output_metagenome_name => $out_amaset . '_' .$ama,
+            create_report => 0
+	});
+    }
+
+    if (defined($in_ama_text) && $in_ama_text) {
+	my $ama_list = [split(/[\n;\|]+/, $in_ama_text)];
+	for (my $i=0; $i < @{$ama_list}; $i++) {
+            push(@{$bulk_inparams}, {
+                object_ref => $ama_list->[$i],
+                output_workspace => $ws,
+                output_metagenome_name => $out_amaset . '_ama_'.$i,
+                create_report => 0
+	    });
+	}
+    }
+
+    #
+    # Throw an error IF $bulks_inparams is NOT a ref to an non-empty ARRAY
+    #
+    my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
+		       "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n");
+    Bio::KBase::Exceptions::ArgumentValidationError->throw(
+        error        => $empty_input_msg,
+        method_name  => 'annotate_genomes'
+    ) unless ref $bulk_inparams eq 'ARRAY' && @$bulk_inparams;
+
+    my $amas = [];
+    foreach my $parm (@$bulk_inparams) {
+	my $rast_out = $self.rast_metagenome($parm);
+        push (@$amas, $rast_out->{output_genome_ref});
+    }
+
+    # TODO: Using whatever AMASet function(s) generate and save the AMASet object,
+    #       and then return that object's ref
+    my $amaset_ref = Bio::KBase::kbaseenv::su_client()->KButil_Build_AMASet({
+        workspace_name => $ws,
+        input_refs => $amas,
+        output_name => $out_amaset,
+        desc => 'AMASet Description'
+    });
+
+    my $ret_val = {"output_AMASet_ref"=>$amaset_ref,
+                   "output_workspace"=>$ws,
+                   "report_name"=>undef,
+                   "report_ref"=>undef};
+
+    if ($params->{create_report} == 1) {
+        my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
+        my $report_info = $kbr->create_extended_report({
+             "message"=>$report_message,
+             "objects_created"=>[{"ref"=>$amaset_ref,
+			          "description"=>"RAST re-annotated metagenome set"}],
+             "report_object_name"=>"kb_bulk_RAST_metaG_report_".$self->_create_uuid(),
+             "workspace_name"=>$ws
+        });
+        $ret_val->{report_name} = $report_info->{name};
+        $ret_val->{report_ref} = $report_info->{ref};
+    }
+    $return = $ret_val;
+}
+
 
 sub doInitialization {
     my $self = shift;

@@ -198,6 +198,7 @@ module RAST_SDK {
             string AMA_text;
             string output_workspace;
             string output_AMASet;
+            bool create_report;
         } BulkAnnotateMetagenomesParams;
 
         typedef structure {

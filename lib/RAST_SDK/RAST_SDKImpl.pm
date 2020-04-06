@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'e0daf938818760634cc05173b63fea46ed53f287';
+our $GIT_COMMIT_HASH = '739ac7d87f9b90cdb9bd81dfddd3f3215d1c3373';
 
 =head1 NAME
 
@@ -1901,7 +1901,9 @@ BulkAnnotateMetagenomesParams is a reference to a hash where the following keys 
 	AMA_text has a value which is a string
 	output_workspace has a value which is a string
 	output_AMASet has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
+bool is an int
 BulkMetagenomesAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
@@ -1920,7 +1922,9 @@ BulkAnnotateMetagenomesParams is a reference to a hash where the following keys 
 	AMA_text has a value which is a string
 	output_workspace has a value which is a string
 	output_AMASet has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
+bool is an int
 BulkMetagenomesAnnotateOutput is a reference to a hash where the following keys are defined:
 	output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
@@ -1964,9 +1968,11 @@ sub annotate_metagenomes
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 
     my $mg_util = new metag_utils($config, $ctx);
-    my $rast_out = $mg_util->rast_metagenomes($params);
+    my $rast_out = $mg_util->bulk_rast_metagenomes($params);
     $output = {
         output_AMASet_ref => $rast_out->{output_AMASet_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
     };
     #END annotate_metagenomes
@@ -2675,6 +2681,7 @@ input_AMAs has a value which is a reference to a list where each element is a RA
 AMA_text has a value which is a string
 output_workspace has a value which is a string
 output_AMASet has a value which is a string
+create_report has a value which is a RAST_SDK.bool
 
 </pre>
 
@@ -2688,6 +2695,7 @@ input_AMAs has a value which is a reference to a list where each element is a RA
 AMA_text has a value which is a string
 output_workspace has a value which is a string
 output_AMASet has a value which is a string
+create_report has a value which is a RAST_SDK.bool
 
 
 =end text
