@@ -28,6 +28,7 @@ use File::Basename;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
+use installed_clients::GenomeAnnotationClient;
 use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
@@ -476,11 +477,11 @@ sub _check_bulk_annotation_params {
         $params->{create_report} = 0;
     }
     if (!defined($params->{input_assemblies})
-	|| ref $params->{input_assemblies} ne ARRAY) {
+	|| ref $params->{input_assemblies} ne 'ARRAY') {
         $params->{input_assemblies} = [];
     }
     if (!defined($params->{input_AMAs})
-        || ref $params->{input_AMAs} ne ARRAY) {
+        || ref $params->{input_AMAs} ne 'ARRAY') {
         $params->{input_AMAs} = [];
     }
     unless ($params->{AMA_text}) {
@@ -498,7 +499,9 @@ sub _run_rast {
 
     my $rasted_gn = {};
     eval {
-        my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+	#my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+	my $rast_client = new installed_clients::GenomeAnnotationClient(
+                                         $self->{ws_url}, token => $self->{_token});
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2",
                          kmer_v2_parameters => {min_hits => "5",
@@ -1330,9 +1333,9 @@ sub rast_metagenome {
         output_metagenome_ref => $ama_ref,
         report_name => undef,
         report_ref => undef
-    }
+    };
 
-    if (defined(params->{create_report} == 1) {
+    if (defined($params->{create_report}) && $params->{create_report}== 1) {
         $report_ret = $self->_generate_report(
                           $input_obj_ref, $ama_ref, $gff_contents,
                           $updated_gff_contents, \%ftr_func_lookup);
@@ -1416,6 +1419,7 @@ sub bulk_rast_metagenomes {
                    "report_name"=>undef,
                    "report_ref"=>undef};
 
+    my $report_message = "AMASet created for a list of annotated metagenomes/assemblies";
     if ($params->{create_report} == 1) {
         my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
         my $report_info = $kbr->create_extended_report({
@@ -1428,7 +1432,7 @@ sub bulk_rast_metagenomes {
         $ret_val->{report_name} = $report_info->{name};
         $ret_val->{report_ref} = $report_info->{ref};
     }
-    $return = $ret_val;
+    return $ret_val;
 }
 
 
