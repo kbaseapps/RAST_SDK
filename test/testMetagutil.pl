@@ -11,6 +11,7 @@ use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
 
+use strict;
 use_ok "metag_utils";
 use testRASTutil;
 
@@ -28,6 +29,9 @@ my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
+
+my $gbff_file = 'data/Clostridium_botulinum.gbff';
+
 my $out_name = 'annotated_metag';
 my $fasta1 = 'data/short_one.fa';
 my $gff1 = 'data/short_one.gff';
@@ -44,6 +48,34 @@ my $mgutil = new metag_utils($config, $ctx);
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 my $rast_dir = $mgutil->_create_metag_dir($scratch);
 
+
+sub genome_to_fasta {
+    my($gn_ref) = @_;
+    my $fasta_path = catfile($rast_dir, 'fasta_'.$gn_ref);
+
+    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+
+    my $fasta_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $gn_ref});
+    return $fasta_result->{file_path};
+}
+
+
+sub generate_genome {
+    my($ws, $gn_name, $gbff) = @_;
+    my $gbff_path = catfile($rast_dir, $gbff);
+
+    copy($gbff, $gbff_path) || croak "Copy file failed: $!\n";
+
+    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+
+    my $gn = $gfu->genbank_to_genome({
+        "file" => {'path' => $gbff_path},
+        "genome_name" => $gn_name,
+        "workspace_name" => $ws,
+        "generate_missing_genes" => 1
+    });
+    return $gn;
+}
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
@@ -63,6 +95,8 @@ sub generate_metagenome {
     });
     return $mg;
 }
+
+
 =begin
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
@@ -74,13 +108,13 @@ my $gff_filename = catfile($rast_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
 $input_fasta_file = $mgutil->_write_fasta_from_metagenome(
-		    $input_fasta_file, $input_obj_ref);
+		        $input_fasta_file, $input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_metagenome(
-	        $gff_filename, $input_obj_ref);
+                    $gff_filename, $input_obj_ref);
 # fetch protein sequences and gene IDs from fasta and gff files
 $fasta_contents = $mgutil->_parse_fasta($input_fasta_file);
 ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
-				  $gff_filename, $attr_delimiter);
+                                       $gff_filename, $attr_delimiter);
 
 my $gene_seqs = $mgutil->_extract_cds_sequences_from_fasta(
                     $fasta_contents, $gff_contents);
@@ -97,6 +131,7 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
+my $obj_Ecoli = "55141/212/1";  # prod genome
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
 my $obj3 = "55141/77/1";  # prod assembly
@@ -143,6 +178,27 @@ my $test_ftrs = [{
  ]
  ],
  }];
+
+# test _glimmer3_gene_call
+my $test_genome_fasta = genome_to_fasta($obj_Ecoli);
+
+subtest '_glimmer3_gene_call' => sub {
+    my $glimmer3_ok = "Glimmer3 gene call runs ok.";
+    my $glimmer3_notOk = "ERROR:  Cannot create model--no input data";
+
+    my $glimmer3_ret;
+
+    throws_ok {
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
+    } qr/$glimmer3_notOk/,
+        '_glimmer3_gene_call dies with contigs too short';
+
+    lives_ok {
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta2);
+    } $glimmer3_ok;
+    is(1, 1, "_glimmer3_gene_call on $fasta2 returns gene call result.\n");
+    print "Glimmer3 gene call results:\n". Dumper($glimmer3_ret);
+};
 
 =begin
 subtest '_check_annotation_params' => sub {
@@ -288,6 +344,7 @@ subtest '_fetch_subsystem_info' => sub {
     is(keys %ret_subsysInfo, 920, "_fetch_subsystem_info returns expected data.\n");
 };
 
+# test the prodigal functions
 subtest '_build_prodigal_cmd' => sub {
     my $req = "An input FASTA/Genbank file is required for Prodigal to run.";
     my $set_default_ok = '_build_prodigal_cmd sets the default values ok.';
@@ -423,9 +480,7 @@ subtest '_run_prodigal' => sub {
     is($prd_ret, 0, '_run_prodigal successfully returned.\n');
 };
 
-=cut
 
-=begin
 subtest '_parse_translation' => sub {
     my $trans_path = catfile($rast_dir, 'trans_scrt');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
@@ -467,7 +522,32 @@ subtest '_parse_prodigal_results' => sub {
     ok( keys %trans_tab , 'Prodigal GFF parsing returns translation table.');
 
 };
+=cut
 
+subtest '_prodigal_gene_call' => sub {
+    my $p_input = $fasta1;
+    my $md = 'meta';
+    my $out_type = 'gff';
+    my $gff_filename = catfile($rast_dir, 'genome.gff');
+    my $trans = catfile($rast_dir, 'protein_translation');
+    my $nuc = catfile($rast_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
+
+    my $prd_gene_results;
+    throws_ok {
+        $prd_gene_results = $mgutil->_prodigal_gene_call(
+                               $p_input, $trans, $nuc, $out_file, $out_type, $md)
+    } qr/"Error:  Sequence must be 20000 characters"/,
+        '_prodigal_gene_call dies on too short fasta';
+
+    $p_input = $fasta2;
+    $prd_gene_results = $mgutil->_prodigal_gene_call(
+                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
+    ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
+    print "Prodigal gene call results:\n".Dumper($prd_gene_results);
+};
+
+=begin
 subtest '_write_fasta_from_metagenome' => sub {
     my $fa_test1 = catfile($rast_dir, 'test1.fasta');
     $fa_test1 = $mgutil->_write_fasta_from_metagenome(
@@ -660,7 +740,6 @@ subtest '_generate_stats_from_ama & from_gffContents' => sub {
     print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
 };
-=cut
 
 # testing _generate_report using obj ids from prod ONLY
 subtest '_generate_report' => sub {
@@ -703,6 +782,7 @@ subtest '_generate_report' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
+=cut
 
 =begin
 # testing _generate_report using obj ids from appdev ONLY

@@ -35,7 +35,7 @@ use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
 
 require 'gjoseqlib.pm';
-
+require 'Glimmer.pm';
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
@@ -277,6 +277,90 @@ sub _parse_sco {
 }
 
 ##----end for prodigal parsing----##
+
+##----begin gene call subs ----##
+#
+# prodigal gene call--by calling the above subs
+# return: an array of arrays of the structure:
+# [contig_id, # e.g.,'Ga0065724_100001'
+#  feature_id, # e.g.,'1_1'
+#  feature_type, # e.g., 'CDS'
+#  start, # e.g., '325'
+#  end, # e.g., '849'
+#  strand, # e.g., '+'
+#  protein_sequence # e.g.,'MKREIRLVEVLLMAGLGLIFLFMLFHDWVPMGSLNDVEAVKAHQGVSQLVLVTAFNAAQIAVLMG...'
+# ]
+#
+sub _prodigal_gene_call {
+    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode='meta') = @_;
+
+    my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta,
+                                                  $trans,
+                                                  $nuc,
+                                                  $out_file,
+                                                  $out_type,
+                                                  $mode);
+
+    if ($self->_run_prodigal(@prodigal_cmd) == 0) {
+        print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
+        # print "First 10 lines of the GFF file from Prodigal-----------\n";
+        # $self->_print_fasta_gff(0, 10, $out_file);
+
+	my @prodigal_out = [];
+
+        my ($gff_contents, %transH) = $self->_parse_prodigal_results(
+                                                  $trans,
+                                                  $out_file,
+                                                  $out_type);
+
+        my $count = @$gff_contents;
+        print "Prodigal returned $count entries.\n";
+
+        foreach my $entry (@$gff_contents) {
+            my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
+                $phase, $attribs) = @$entry;
+            next if $contig =~ m/^#.*/;
+            my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
+            my $fid = $attribs->{id};
+            my $start = ($strand eq q(+)) ? $beg : $end;
+            my $end = ($strand eq q(+)) ? $end : $beg;
+            push @prodigal_out, [$contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source];
+        }
+    }
+    else {# Prodigal throws an error
+
+    }
+    return ($out_file, \@prodigal_out);
+}
+
+#
+# Glimmer::call_genes_with_glimmer (glimmer3 gene call)
+# return: an array of arrays of the structure:
+# [feature_id, # e.g.,'prot.1'
+#  contig_id, # e.g.,'Chr01'
+#  /* push(@output, [$fid, $contig_id, $beg, $end, $dna]);
+#  start, # e.g., '931'
+#  end, # e.g., '230'
+#  dna_sequence # e.g.,'gtgtcggatataattttagatggaagatgggcattccctcctgggcactc...'
+#
+
+sub _glimmer3_gene_call {
+    my ($self, $input_fasta) = @_;
+
+    my @glimmer_out = [];
+    eval {
+        @glimmer_out = Glimmer::call_genes_with_glimmer($input_fasta);
+    };
+    if ($@) {
+        croak "ERROR calling Glimmer::call_genes_with_glimmer: ".$@."\n";
+    }
+    else {
+        return \@glimmer_out;
+    }
+}
+
+##----end gene call subs----##
+
 
 sub _get_fasta_from_assembly {
     my ($self, $assembly_ref) = @_;
