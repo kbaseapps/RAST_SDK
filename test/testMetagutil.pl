@@ -184,19 +184,19 @@ my $test_genome_fasta = genome_to_fasta($obj_Ecoli);
 
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
-    my $glimmer3_notOk = "ERROR:  Cannot create model--no input data";
+    my $glimmer3_notOk = "ERROR";
 
     my $glimmer3_ret;
 
     throws_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
     } qr/$glimmer3_notOk/,
-        '_glimmer3_gene_call dies with contigs too short';
+        '_glimmer3_gene_call errors with contigs too short';
 
     lives_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta2);
     } $glimmer3_ok;
-    is(1, 1, "_glimmer3_gene_call on $fasta2 returns gene call result.\n");
+    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta2 returns gene call result.\n");
     print "Glimmer3 gene call results:\n". Dumper($glimmer3_ret);
 };
 
@@ -534,17 +534,19 @@ subtest '_prodigal_gene_call' => sub {
     my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
 
     my $prd_gene_results;
-    throws_ok {
+    lives_ok {
         $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md)
-    } qr/"Error:  Sequence must be 20000 characters"/,
-        '_prodigal_gene_call dies on too short fasta';
-
+    } 'Prodigal finished run.';
+    ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
+    print "Prodigal gene call results:\n".Dumper($prd_gene_results);
+=begin
     $p_input = $fasta2;
     $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
     ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
     print "Prodigal gene call results:\n".Dumper($prd_gene_results);
+=cut
 };
 
 =begin
@@ -610,7 +612,7 @@ subtest '_save_metagenome' => sub {
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
                        $ws, $out_name, $input_obj_ref, $gff_path)
-    } '__save_metagenome run without errors on short_one.\n';
+    } '_save_metagenome run without errors on short_one.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');

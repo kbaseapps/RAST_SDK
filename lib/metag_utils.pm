@@ -292,7 +292,8 @@ sub _parse_sco {
 # ]
 #
 sub _prodigal_gene_call {
-    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode='meta') = @_;
+    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
+    $mode = 'meta' unless defined($mode);
 
     my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta,
                                                   $trans,
@@ -300,13 +301,12 @@ sub _prodigal_gene_call {
                                                   $out_file,
                                                   $out_type,
                                                   $mode);
-
+ 
+    my @prodigal_out = [];
     if ($self->_run_prodigal(@prodigal_cmd) == 0) {
         print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
         # print "First 10 lines of the GFF file from Prodigal-----------\n";
         # $self->_print_fasta_gff(0, 10, $out_file);
-
-	my @prodigal_out = [];
 
         my ($gff_contents, %transH) = $self->_parse_prodigal_results(
                                                   $trans,
@@ -323,7 +323,7 @@ sub _prodigal_gene_call {
             my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
             my $fid = $attribs->{id};
             my $start = ($strand eq q(+)) ? $beg : $end;
-            my $end = ($strand eq q(+)) ? $end : $beg;
+            $end = ($strand eq q(+)) ? $end : $beg;
             push @prodigal_out, [$contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source];
         }
     }
@@ -349,7 +349,7 @@ sub _glimmer3_gene_call {
 
     my @glimmer_out = [];
     eval {
-        @glimmer_out = Glimmer::call_genes_with_glimmer($input_fasta);
+        @glimmer_out = &Glimmer::call_genes_with_glimmer($input_fasta, { verbose => 0 });
     };
     if ($@) {
         croak "ERROR calling Glimmer::call_genes_with_glimmer: ".$@."\n";

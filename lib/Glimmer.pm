@@ -1,12 +1,11 @@
 # use strict;
 # use Data::Dumper;
 
-# my $out = Bio::KBase::GenomeAnnotation::Glimmer::call_genes_with_glimmer("/home/olson/rast_comparison_genomes/staph.fa",
-# 		    { verbose => 1 });
+# my $out = Glimmer::call_genes_with_glimmer(file_with_path, { verbose => 1 });
 
 # print Dumper($out);
 
-package Bio::KBase::GenomeAnnotation::Glimmer;
+package Glimmer;
 use strict;
 use File::Slurp;
 use File::Temp;
