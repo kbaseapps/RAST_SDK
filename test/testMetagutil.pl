@@ -179,26 +179,26 @@ my $test_ftrs = [{
  ],
  }];
 
+=begin
 # test _glimmer3_gene_call
-my $test_genome_fasta = genome_to_fasta($obj_Ecoli);
+my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
     my $glimmer3_notOk = "ERROR";
 
     my $glimmer3_ret;
-
     throws_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
     } qr/$glimmer3_notOk/,
         '_glimmer3_gene_call errors with contigs too short';
-
     lives_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta2);
     } $glimmer3_ok;
     ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta2 returns gene call result.\n");
     print "Glimmer3 gene call results:\n". Dumper($glimmer3_ret);
 };
+=cut
 
 =begin
 subtest '_check_annotation_params' => sub {
@@ -534,19 +534,19 @@ subtest '_prodigal_gene_call' => sub {
     my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
 
     my $prd_gene_results;
+=begin
     lives_ok {
         $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md)
     } 'Prodigal finished run.';
     ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
     print "Prodigal gene call results:\n".Dumper($prd_gene_results);
-=begin
-    $p_input = $fasta2;
+=cut
+    $p_input = $fasta2; # $ecoli_fasta;
     $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
+    ok( @{$prd_gene_results}[0], 'Prodigal gene call on $p_input returns result.');
     print "Prodigal gene call results:\n".Dumper($prd_gene_results);
-=cut
 };
 
 =begin

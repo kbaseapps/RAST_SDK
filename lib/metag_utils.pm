@@ -342,8 +342,8 @@ sub _prodigal_gene_call {
 #  start, # e.g., '931'
 #  end, # e.g., '230'
 #  dna_sequence # e.g.,'gtgtcggatataattttagatggaagatgggcattccctcctgggcactc...'
+# ]
 #
-
 sub _glimmer3_gene_call {
     my ($self, $input_fasta) = @_;
 
@@ -357,6 +357,41 @@ sub _glimmer3_gene_call {
     else {
         return \@glimmer_out;
     }
+}
+
+sub _prodigal_then_glimmer3 {
+    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
+    $mode = 'meta' unless defined($mode);
+
+    my ($outfile, $prodigal_out) = $self->_prodigal_gene_call(
+                                                      $input_fasta,
+                                                      $trans,
+                                                      $nuc,
+                                                      $out_file,
+                                                      $out_type,
+                                                      $mode);
+    my @gene_call_result = @{$prodigal_out};
+
+    my $glimmer_out = $self-> _glimmer3_gene_call($input_fasta);
+
+    my ($ctg_id, $beg, $end) = (undef, undef, undef);
+    foreach my $glm_entry (@{$glimmer_out}) {
+        foreach my $prd_entry (@{$prodigal_out}) {
+	    $ctg_id = $glm_entry->[1];
+	    $beg = $glm_entry->[2];
+	    $end = $glm_entry->[3];
+	    if ( grep( /^$ctg_id$/, @{$prd_entry} ) &&
+	         grep( /^$beg$/, @{$prd_entry} ) &&
+	         grep( /^$end$/, @{$prd_entry} ) ) {
+                next;
+            }
+	    # translate the gene sequence to protein sequence
+	    my $gene_seq = $glm_entry->[4];
+            my $prot_seq = ''; ## TODO: add translation from $gene_seq to $prot_seq
+            push(@gene_call_result, [$ctg_id, $glm_entry->[0], $beg, $end, $prot_seq]);
+        }
+    }
+    return \@gene_call_result;
 }
 
 ##----end gene call subs----##
@@ -395,6 +430,32 @@ sub _write_fasta_from_metagenome {
         croak "**_write_fasta_from_metagenome ERROR: ".$@."\n";
     }
     return $fasta_filename;
+}
+
+sub _write_gff_from_genome {
+    my ($self, $gff_filename, $genome_ref) = @_;
+
+    my $obj_info = $self->_fetch_object_info($genome_ref);
+    my $in_type = $obj_info->[2];
+    my $is_assembly = $in_type =~ /Genomes.AnnotatedGenomeAssembly/;
+
+    unless ($is_assembly) {
+        croak "ValueError: Object is not an AnnotateGenomeAssembly, GFU will throw an error.\n";
+    }
+
+    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+    my $gff_result = '';
+    eval {
+        $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
+
+        copy($gff_result->{file_path}, $gff_filename);
+
+        unless (-s $gff_filename) {print "GFF is empty ";}
+    };
+    if ($@) {
+        croak "**_write_gff_from_genome ERROR: ".$@."\n";
+    }
+    return $gff_filename;
 }
 
 sub _write_gff_from_metagenome {
@@ -1307,6 +1368,28 @@ sub rast_metagenome {
     if ($is_assembly) {
         # object is itself an assembly
         my $mode = 'meta';
+        my ($outfile, $prodigal_out) = $self->_prodigal_gene_call(
+                                                      $input_fasta_file,
+                                                      $trans_file,
+                                                      $nuc_file,
+                                                      $output_file,
+                                                      $output_type,
+                                                      $mode);
+
+        foreach my $entry (@{$prodigal_out}) {
+	    my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$entry;
+            push(@{$inputgenome->{features}}, {
+                        id                  => $fid,
+                        type                => $ftr_type,
+                        location            => [[ $contig, $start, $strand, $end ]],
+                        annotator           => $source,
+                        annotation          => 'Add feature called by PRODIGAL',
+                        protein_translation => $seq
+            });
+	}
+        copy($outfile, $gff_filename);
+
+=begin
         my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
                                                       $trans_file,
                                                       $nuc_file,
@@ -1331,7 +1414,7 @@ sub rast_metagenome {
             print "Prodigal returned $count entries.\n";
 
             foreach my $entry (@$gff_contents) {
-                my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
+                my ($contig, $source, $f/tr_type, $beg, $end, $score, $strand,
                     $phase, $attribs) = @$entry;
 
                 next if $contig =~ m/^#.*/;
@@ -1352,6 +1435,7 @@ sub rast_metagenome {
             #print "******inputgenome data:******* \n".Dumper($inputgenome);
             copy($output_file, $gff_filename);
         }
+=cut
     }
     elsif ($is_meta_assembly) {
         # generating the gff file directly from metagenome
