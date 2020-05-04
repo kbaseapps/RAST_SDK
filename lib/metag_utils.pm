@@ -25,6 +25,7 @@ use Bio::Tools::CodonTable;
 use JSON;
 use Encode qw(encode decode);
 use File::Basename;
+use Array::Utils qw(:all);
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -345,17 +346,22 @@ sub _prodigal_gene_call {
 # ]
 #
 sub _glimmer3_gene_call {
-    my ($self, $input_fasta) = @_;
+    my ($self, $input_fasta, $min_len) = @_;
+    $min_len = 2000 unless defined($min_len);
 
-    my @glimmer_out = [];
+    my $glimmer_out;
     eval {
-        @glimmer_out = &Glimmer::call_genes_with_glimmer($input_fasta, { verbose => 0 });
+        $glimmer_out = &Glimmer::call_genes_with_glimmer(
+		           $input_fasta,
+			   { verbose => 0, min_training_len => $min_len});
     };
     if ($@) {
         croak "ERROR calling Glimmer::call_genes_with_glimmer: ".$@."\n";
     }
     else {
-        return \@glimmer_out;
+        my $count = scalar @{$glimmer_out};
+        print "Glimmer returned $count entries.\n";
+        return $glimmer_out;
     }
 }
 
@@ -370,28 +376,74 @@ sub _prodigal_then_glimmer3 {
                                                       $out_file,
                                                       $out_type,
                                                       $mode);
-    my @gene_call_result = @{$prodigal_out};
+    my $gene_call_result = $prodigal_out;
 
-    my $glimmer_out = $self-> _glimmer3_gene_call($input_fasta);
+    my $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
 
-    my ($ctg_id, $beg, $end) = (undef, undef, undef);
+    # find gene features that are found by glimmer and not by prodigal
+    my %glm_gene_seqs = ();
+    my %glm_ftrs = ();
+    my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
+    my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
     foreach my $glm_entry (@{$glimmer_out}) {
+        my ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
+        my @glm_prim = ($ctg_id, $beg, $end);
+
+	my $found_in_prd = 0;
+	my @prd_prim = ();
         foreach my $prd_entry (@{$prodigal_out}) {
-	    $ctg_id = $glm_entry->[1];
-	    $beg = $glm_entry->[2];
-	    $end = $glm_entry->[3];
-	    if ( grep( /^$ctg_id$/, @{$prd_entry} ) &&
-	         grep( /^$beg$/, @{$prd_entry} ) &&
-	         grep( /^$end$/, @{$prd_entry} ) ) {
-                next;
+            my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
+            @prd_prim = ($pctg_id, $pbeg, $pend);
+
+	    # check if arrays contain same members
+            if (!array_diff(@glm_prim, @prd_prim)) {
+                # print "Found $fid match in prodigal.\n";
+                $found_in_prd = 1;
+                $prd_match_cnt += 1;
+                last;
             }
-	    # translate the gene sequence to protein sequence
-	    my $gene_seq = $glm_entry->[4];
-            my $prot_seq = ''; ## TODO: add translation from $gene_seq to $prot_seq
-            push(@gene_call_result, [$ctg_id, $glm_entry->[0], $beg, $end, $prot_seq]);
-        }
+	    if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
+		((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
+	         (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
+	         (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
+                # print "Found $fid +/-12 check match in prodigal.\n";
+                $found_in_prd = 1;
+		$prd_approxmatch_cnt += 1;
+                last;
+            }
+	    next;
+         }
+
+	 # Not found in Prodigal genes
+	 # prepare the new feature for seq translation
+	 if ($found_in_prd == 0) {
+	    $glm_gene_seqs{$fid} = $dna_seq;
+	    $glm_ftrs{$fid} = \@glm_prim;
+	 }
     }
-    return \@gene_call_result;
+    print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
+    print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
+
+    my $glm_gene_size = keys %glm_ftrs;
+    print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
+    # print Dumper(\%glm_ftrs);
+
+    # translate the additional glimmer gene sequences into protein sequences
+    my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
+    print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
+    # print Dumper($glm_protein_seqs);
+
+    # add the additional glimmer genes to the prodigal result array
+    foreach my $ftr (sort keys %{$glm_protein_seqs}) {
+	my $beg1 = $glm_ftrs{$ftr}[1];
+	my $end1 = $glm_ftrs{$ftr}[2];
+	my $strand = ($beg1 < $end1) ? '+': '-';
+        push(@{$gene_call_result}, [
+            $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
+	     $glm_ftrs{$ftr}[1], $glm_ftrs{$ftr}[2], $strand,
+	     $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+    }
+    return $gene_call_result;
 }
 
 ##----end gene call subs----##
@@ -1503,7 +1555,7 @@ sub rast_metagenome {
         report_ref => undef
     };
 
-    if (defined($params->{create_report}) && $params->{create_report}== 1) {
+    if (defined($params->{create_report}) && $params->{create_report} == 1) {
         $report_ret = $self->_generate_report(
                           $input_obj_ref, $ama_ref, $gff_contents,
                           $updated_gff_contents, \%ftr_func_lookup);

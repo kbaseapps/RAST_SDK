@@ -340,7 +340,7 @@ sub call_genes_with_glimmer
     $contig_id  = qq();
     while(defined($entry = <PREDICT>)) {
 	chomp $entry;
-	
+
 	if ($entry =~ m/^>(\S+)/) {
 	    $contig_id = $1;
 	    next;

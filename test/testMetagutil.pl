@@ -34,13 +34,14 @@ my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
 my $out_name = 'annotated_metag';
 my $fasta1 = 'data/short_one.fa';
+my $fasta3 = 'data/GCA_000350285.1_OR1_genomic.fna';
+my $fasta4 = 'data/metag_test/Test_v1.0.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
-
 
 my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $mgutil = new metag_utils($config, $ctx);
@@ -179,9 +180,9 @@ my $test_ftrs = [{
  ],
  }];
 
+my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 =begin
 # test _glimmer3_gene_call
-my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
@@ -192,11 +193,12 @@ subtest '_glimmer3_gene_call' => sub {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
     } qr/$glimmer3_notOk/,
         '_glimmer3_gene_call errors with contigs too short';
+
     lives_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta2);
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
     } $glimmer3_ok;
-    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta2 returns gene call result.\n");
-    print "Glimmer3 gene call results:\n". Dumper($glimmer3_ret);
+    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
+    print "Glimmer3 gene call results:\n". Dumper($glimmer3_ret)";
 };
 =cut
 
@@ -453,7 +455,7 @@ subtest '_run_prodigal' => sub {
     lives_ok {
         $prd_ret = $mgutil->_run_prodigal(@p_cmd)
     } $run_ok;
-    isnt($prd_ret, 0, 'Prodigal returned: '.$seq_too_short.'\n');
+    isnt($prd_ret, 0, "Prodigal returned:$seq_too_short\n");
 
     @p_cmd = (
         $prodigal_cmd,
@@ -465,7 +467,7 @@ subtest '_run_prodigal' => sub {
     lives_ok {
         $prd_ret = $mgutil->_run_prodigal(@p_cmd)
     } $run_ok;
-    is($prd_ret, 0, 'Prodigal runs ok with -p meta option.\n');
+    is($prd_ret, 0, "Prodigal runs ok with -p meta option.\n");
 
     ##---------A long file takes much longer time!!!!!---------##
     $infile = $fasta2;
@@ -477,7 +479,7 @@ subtest '_run_prodigal' => sub {
     lives_ok {
         $prd_ret = $mgutil->_run_prodigal(@p_cmd)
     } $run_ok;
-    is($prd_ret, 0, '_run_prodigal successfully returned.\n');
+    is($prd_ret, 0, "_run_prodigal successfully returned.\n");
 };
 
 
@@ -486,18 +488,17 @@ subtest '_parse_translation' => sub {
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     %trans_tab = $mgutil->_parse_translation($trans_path);
-    ok( keys %trans_tab , 'Prodigal translation parsing returns result.');
+    ok( keys %trans_tab , "Prodigal translation parsing returns result.");
 };
 
 subtest '_parse_sco' => sub {
     $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
-    ok( @{$sco_tab} >0, 'Prodigal SCO parsing returns result.');
+    ok( @{$sco_tab} >0, "Prodigal SCO parsing returns result.");
 };
 
 subtest '_parse_gff' => sub {
-    my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
-                                              $ecoli_gff, '=');
-    ok( @{$gff_contents} >0, 'Parsing GFF returns result.');
+    my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($ecoli_gff, '=');
+    ok( @{$gff_contents} >0, "Parsing GFF returns result.");
 };
 
 subtest '_parse_prodigal_results' => sub {
@@ -510,19 +511,18 @@ subtest '_parse_prodigal_results' => sub {
     copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
     my ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
                           $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, 'Prodigal GFF parsing returns result.');
-    ok( keys %trans_tab , 'Prodigal GFF parsing returns translation table.');
+    ok( @{$prd_results} >0, "Prodigal GFF parsing returns result.");
+    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
 
     # Prodigal generate an SCO output file
     $out_type = 'sco';
     copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
     ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
                           $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, 'Prodigal SCO parsing returns result.');
-    ok( keys %trans_tab , 'Prodigal GFF parsing returns translation table.');
+    ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
+    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
 
 };
-=cut
 
 subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
@@ -534,19 +534,36 @@ subtest '_prodigal_gene_call' => sub {
     my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
 
     my $prd_gene_results;
-=begin
     lives_ok {
         $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md)
     } 'Prodigal finished run.';
-    ok( @{$prd_gene_results} >0, 'Prodigal gene call returns result.');
+    ok( @{$prd_gene_results} >0, "Prodigal gene call returns result.");
     print "Prodigal gene call results:\n".Dumper($prd_gene_results);
-=cut
+
     $p_input = $fasta2; # $ecoli_fasta;
     $prd_gene_results = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    ok( @{$prd_gene_results}[0], 'Prodigal gene call on $p_input returns result.');
+    ok( @{$prd_gene_results}[0], "Prodigal gene call on $p_input returns result.");
     print "Prodigal gene call results:\n".Dumper($prd_gene_results);
+};
+=cut
+
+subtest '_prodigal_then_glimmer3' => sub {
+    my $fa_input = $fasta4; # $ecoli_fasta; # fasta1;
+    my $md = 'meta';
+    my $out_type = 'gff';
+    my $gff_filename = catfile($rast_dir, 'genome.gff');
+    my $trans = catfile($rast_dir, 'protein_translation');
+    my $nuc = catfile($rast_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
+
+    my $pNg_gene_results;
+    $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
+                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+    # print "_prodigal_then_glimmer3 results:\n".Dumper($pNg_gene_results);
+    ok( @{$pNg_gene_results}, "_prodigal_then_glimmer3 on $fa_input returns result.");
+
 };
 
 =begin
