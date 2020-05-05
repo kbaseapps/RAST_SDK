@@ -306,8 +306,8 @@ sub _prodigal_gene_call {
     my @prodigal_out = [];
     if ($self->_run_prodigal(@prodigal_cmd) == 0) {
         print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
-        # print "First 10 lines of the GFF file from Prodigal-----------\n";
-        # $self->_print_fasta_gff(0, 10, $out_file);
+        print "First 10 lines of the GFF file from Prodigal-----------\n";
+        $self->_print_fasta_gff(0, 10, $out_file);
 
         my ($gff_contents, %transH) = $self->_parse_prodigal_results(
                                                   $trans,
@@ -315,21 +315,24 @@ sub _prodigal_gene_call {
                                                   $out_type);
 
         my $count = @$gff_contents;
-        print "Prodigal returned $count entries.\n";
+	if ($count > 0) {
+            print "Prodigal returned $count entries.\n".Dumper(@{$gff_contents}[0]);
 
-        foreach my $entry (@$gff_contents) {
-            my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
+            foreach my $entry (@$gff_contents) {
+                next unless @{$entry};
+
+                my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                 $phase, $attribs) = @$entry;
-            next if $contig =~ m/^#.*/;
-            my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
-            my $fid = $attribs->{id};
-            my $start = ($strand eq q(+)) ? $beg : $end;
-            $end = ($strand eq q(+)) ? $end : $beg;
-            push @prodigal_out, [$contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source];
+                next if $contig =~ m/^#.*/;
+                my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
+                my $fid = $attribs->{id};
+                my $start = ($strand eq q(+)) ? $beg : $end;
+                $end = ($strand eq q(+)) ? $end : $beg;
+                push @prodigal_out, [$contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source];
+            }
         }
     }
     else {# Prodigal throws an error
-
     }
     return ($out_file, \@prodigal_out);
 }
@@ -1137,7 +1140,8 @@ sub _parse_gff {
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
-        next if $current_line =~ m/^#.*$/;
+        next if (!$current_line || $current_line =~ m/^#.*$/);
+        next if $current_line =~ m/^##gff-version\s*\d$/;
 
         my ($contig_id, $source_id, $feature_type, $start, $end,
             $score, $strand, $phase, $attributes) = split("\t",$current_line);
