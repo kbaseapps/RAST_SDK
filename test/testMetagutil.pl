@@ -98,7 +98,6 @@ sub generate_metagenome {
 }
 
 
-=begin
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
@@ -108,7 +107,7 @@ my $input_fasta_file = catfile($rast_dir, 'prodigal_input.fasta');
 my $gff_filename = catfile($rast_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-$input_fasta_file = $mgutil->_write_fasta_from_metagenome(
+$input_fasta_file = $mgutil->_write_fasta_from_genome(
 		        $input_fasta_file, $input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_metagenome(
                     $gff_filename, $input_obj_ref);
@@ -122,7 +121,7 @@ my $gene_seqs = $mgutil->_extract_cds_sequences_from_fasta(
 print "**********Gene sequences************\n" . Dumper($gene_seqs);
 my $protein_seqs = $mgutil->_translate_gene_to_protein_sequences($gene_seqs);
 print "**********Protein sequences************\n" . Dumper($protein_seqs);
-=cut
+
 
 ##-----------------Test Blocks--------------------##
 
@@ -180,25 +179,6 @@ my $test_ftrs = [{
  ],
  }];
 
-my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
-
-# test _glimmer3_gene_call
-subtest '_glimmer3_gene_call' => sub {
-    my $glimmer3_ok = "Glimmer3 gene call runs ok.";
-    my $glimmer3_notOk = "ERROR";
-
-    my $glimmer3_ret;
-    throws_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
-    } qr/$glimmer3_notOk/,
-        '_glimmer3_gene_call errors with contigs too short';
-
-    lives_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
-    } $glimmer3_ok;
-    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
-    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
-};
 
 =begin
 subtest '_check_annotation_params' => sub {
@@ -262,14 +242,14 @@ subtest '_check_annotation_params' => sub {
         $mgutil->_check_annotation_params(
             {output_workspace => $ws,
              output_metagenome_name => $out_name,
-             object_ref => 'abc/1/2'})
+             object_ref => 'abc/1/2'});
     } '_check_annotation_params object_ref check ok';
 
     lives_ok {
         $mgutil->_check_annotation_params(
             {output_workspace => 'ab:c',
              output_metagenome_name => $out_name,
-             object_ref => '456/1/2'})
+             object_ref => '456/1/2'});
     } '_check_annotation_params workspace name check ok';
 
     # _check_annotation_params passed
@@ -523,6 +503,8 @@ subtest '_parse_prodigal_results' => sub {
 };
 =cut
 
+my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
+
 subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
@@ -535,16 +517,51 @@ subtest '_prodigal_gene_call' => sub {
     my $prd_gene_results;
     lives_ok {
         ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
-                               $p_input, $trans, $nuc, $out_file, $out_type, $md)
-    } 'Prodigal finished run.';
-    ok( @{$prd_gene_results}, "Prodigal gene call returns result.");
-    print "Prodigal gene call results:\n".Dumper(@{$prd_gene_results});
-
-    $p_input = $fasta4; # $ecoli_fasta;
-    ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
+    } 'Prodigal finished run 1.';
     ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results:\n".Dumper(@{$prd_gene_results}[0..10]);
+    print "Prodigal gene call results1:\n".Dumper(@{$prd_gene_results});
+
+    $p_input = $ecoli_fasta;
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
+    } 'Prodigal finished run 2.';
+    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
+    print "Prodigal gene call results2:\n".Dumper(@{$prd_gene_results});
+
+    $p_input = $fasta4;
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
+    } 'Prodigal finished run 3.';
+    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
+    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
+};
+
+
+# test _glimmer3_gene_call
+subtest '_glimmer3_gene_call' => sub {
+    my $glimmer3_ok = "Glimmer3 gene call runs ok.";
+    my $glimmer3_notOk = "ERROR";
+
+    my $glimmer3_ret;
+    throws_ok {
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
+    } qr/$glimmer3_notOk/,
+        '_glimmer3_gene_call errors with contigs too short';
+
+    lives_ok {
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($ecoli_fasta);
+    } $glimmer3_ok;
+    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $ecoli_fasta returns gene call result.\n");
+    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
+
+    lives_ok {
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
+    } $glimmer3_ok;
+    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
+    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
 };
 
 subtest '_prodigal_then_glimmer3' => sub {
@@ -560,14 +577,15 @@ subtest '_prodigal_then_glimmer3' => sub {
     $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
                                $fa_input, $trans, $nuc, $out_file, $out_type, $md);
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $fa_input returns result.");
-    # print "_prodigal_then_glimmer3 results:\n".Dumper(@{$pNg_gene_results}[0..10]);
+    print "_prodigal_then_glimmer3 results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
 };
 
+
 =begin
-subtest '_write_fasta_from_metagenome' => sub {
+subtest '_write_fasta_from_genome' => sub {
     my $fa_test1 = catfile($rast_dir, 'test1.fasta');
-    $fa_test1 = $mgutil->_write_fasta_from_metagenome(
+    $fa_test1 = $mgutil->_write_fasta_from_genome(
                     $fa_test1, $input_obj_ref);
 
     ok((-e $fa_test1), 'fasta file created');
@@ -651,6 +669,7 @@ subtest '_run_rast' => sub {
     } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 };
+=cut
 
 # test by using prod/appdev obj id
 subtest 'annotate_metagenome' => sub {
@@ -666,7 +685,34 @@ subtest 'annotate_metagenome' => sub {
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 
 };
-=cut
+
+
+# test by using prod obj id
+subtest 'mgutil_rast_genome' => sub {
+    # testing rast_metagenome using obj ids from prod ONLY
+    # a prod assembly
+    my $parms = {
+        "object_ref" => $obj_Ecoli,
+        "output_metagenome_name" => "rasted_ecoli_prod",
+        "output_workspace" => $ws
+    };
+    my $rast_ref = $mgutil->rast_metagenome($parms);
+    print "rast_genome returns: $rast_ref" if defined($rast_ref);
+    ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
+};
+
+subtest 'Impl_rast_genome' => sub {
+    my $parms = {
+        "object_ref" => $obj_Ecoli, # prod obj
+        "output_genome_name" => "rasted_genome",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        my $rast_ann = $rast_impl->rast_genome($parms);
+    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+
+};
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
@@ -902,7 +948,7 @@ subtest '_save_metagenome' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj1, $gff1)
+                       $ws, $out_name, $obj1, $gff1);
     } '__save_metagenome run without errors on short_one.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
@@ -912,7 +958,7 @@ subtest '_save_metagenome' => sub {
     
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj2, $gff2)
+                       $ws, $out_name, $obj2, $gff2);
     } '_save_metagenome runs without errors on 59111.assembled.\n';
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");

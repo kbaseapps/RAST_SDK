@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '739ac7d87f9b90cdb9bd81dfddd3f3215d1c3373';
+our $GIT_COMMIT_HASH = '0340a813532c671ff5d9efe69379c15c171c6bcd';
 
 =head1 NAME
 
@@ -1277,6 +1277,7 @@ sub annotate_genome
 		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
 			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
 	}
+
     my $output = $self->annotate_process($params);
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
@@ -1989,6 +1990,120 @@ sub annotate_metagenomes
 
 
 
+=head2 rast_genome
+
+  $output = $obj->rast_genome($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.RastGenomeParams
+$output is a RAST_SDK.RastGenomeOutput
+RastGenomeParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_genome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+RastGenomeOutput is a reference to a hash where the following keys are defined:
+	output_genome_ref has a value which is a RAST_SDK.genome_id
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genome_id is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.RastGenomeParams
+$output is a RAST_SDK.RastGenomeOutput
+RastGenomeParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_genome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+RastGenomeOutput is a reference to a hash where the following keys are defined:
+	output_genome_ref has a value which is a RAST_SDK.genome_id
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genome_id is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub rast_genome
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to rast_genome:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genome');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN rast_genome
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["object_ref", "output_workspace", "output_genome_name"],
+                  {create_report => 0});
+    print "annotate_genome1 input parameters=\n". Dumper($params). "\n";
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $mg_util = new metag_utils($config, $ctx);
+    my $rast_out = $mg_util->rast_genome($params);
+    my $reportout = Bio::KBase::kbaseenv::create_report({
+        workspace_name => $params->{output_workspace},
+        report_object_name => $params->{output_genome_name}.".report",
+    });
+
+    $output = {
+        output_genome_ref => $rast_out->{output_genome_ref},
+        report_ref => $reportout->{"report_ref"},
+        report_name => $reportout->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    Bio::KBase::utilities::close_debug();
+    #END rast_genome
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to rast_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genome');
+    }
+    return($output);
+}
+
+
+
+
 =head2 status 
 
   $return = $obj->status()
@@ -2243,6 +2358,42 @@ annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 AnnotateGenomeParams1
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace has a value which is a string
+input_genome has a value which is a RAST_SDK.genome_id
+input_contigset has a value which is a RAST_SDK.contigset_id
+output_genome has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace has a value which is a string
+input_genome has a value which is a RAST_SDK.genome_id
+input_contigset has a value which is a RAST_SDK.contigset_id
+output_genome has a value which is a string
 
 
 =end text
@@ -2728,6 +2879,86 @@ output_workspace has a value which is a string
 a reference to a hash where the following keys are defined:
 output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 RastGenomeParams
+
+=over 4
+
+
+
+=item Description
+
+Required parameters for rast_genome:
+    object_ref - reference to Assembly or Genome object,
+    output_workspace - output workspace name,
+    output_genome_name - output object name,
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_genome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_genome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 RastGenomeOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_genome_ref has a value which is a RAST_SDK.genome_id
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_genome_ref has a value which is a RAST_SDK.genome_id
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
 
 
 =end text

@@ -319,8 +319,6 @@ sub _prodigal_gene_call {
             print "Prodigal returned $count entries.\n".Dumper(@{$gff_contents}[0]);
 
             foreach my $entry (@$gff_contents) {
-                next unless @{$entry};
-
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
                 $phase, $attribs) = @$entry;
                 next if $contig =~ m/^#.*/;
@@ -372,81 +370,94 @@ sub _prodigal_then_glimmer3 {
     my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
     $mode = 'meta' unless defined($mode);
 
-    my ($outfile, $prodigal_out) = $self->_prodigal_gene_call(
+    my @gene_call_result = [];
+    eval {
+        my ($outfile, $prodigal_out) = $self->_prodigal_gene_call(
                                                       $input_fasta,
                                                       $trans,
                                                       $nuc,
                                                       $out_file,
                                                       $out_type,
                                                       $mode);
-    my $gene_call_result = $prodigal_out;
-
-    my $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
-
-    # find gene features that are found by glimmer and not by prodigal
-    my %glm_gene_seqs = ();
-    my %glm_ftrs = ();
-    my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
-    my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
-    foreach my $glm_entry (@{$glimmer_out}) {
-        my ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
-        my @glm_prim = ($ctg_id, $beg, $end);
-
-	my $found_in_prd = 0;
-	my @prd_prim = ();
-        foreach my $prd_entry (@{$prodigal_out}) {
-            my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
-            @prd_prim = ($pctg_id, $pbeg, $pend);
-
-	    # check if arrays contain same members
-            if (!array_diff(@glm_prim, @prd_prim)) {
-                # print "Found $fid match in prodigal.\n";
-                $found_in_prd = 1;
-                $prd_match_cnt += 1;
-                last;
-            }
-	    if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
-		((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
-	         (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
-	         (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
-                # print "Found $fid +/-12 check match in prodigal.\n";
-                $found_in_prd = 1;
-		$prd_approxmatch_cnt += 1;
-                last;
-            }
-	    next;
-         }
-
-	 # Not found in Prodigal genes
-	 # prepare the new feature for seq translation
-	 if ($found_in_prd == 0) {
-	    $glm_gene_seqs{$fid} = $dna_seq;
-	    $glm_ftrs{$fid} = \@glm_prim;
-	 }
+        \@gene_call_result = $prodigal_out;
+    };
+    if ($@) {
+        print "Prodigal gene calling failed with ERROR:\n".$@."\n";
     }
-    print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
-    print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
 
-    my $glm_gene_size = keys %glm_ftrs;
-    print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
-    # print Dumper(\%glm_ftrs);
-
-    # translate the additional glimmer gene sequences into protein sequences
-    my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
-    print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
-    # print Dumper($glm_protein_seqs);
-
-    # add the additional glimmer genes to the prodigal result array
-    foreach my $ftr (sort keys %{$glm_protein_seqs}) {
-	my $beg1 = $glm_ftrs{$ftr}[1];
-	my $end1 = $glm_ftrs{$ftr}[2];
-	my $strand = ($beg1 < $end1) ? '+': '-';
-        push(@{$gene_call_result}, [
-            $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
-	     $glm_ftrs{$ftr}[1], $glm_ftrs{$ftr}[2], $strand,
-	     $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+    my $glimmer_out;
+    eval {
+        $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
+    };
+    if ($@) {
+        print "Glimmer3 gene calling failed with ERROR:\n".$@."\n";
     }
-    return $gene_call_result;
+    else {
+        # find gene features that are found by glimmer and not by prodigal
+        my %glm_gene_seqs = ();
+        my %glm_ftrs = ();
+        my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
+        my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
+        foreach my $glm_entry (@{$glimmer_out}) {
+            my ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
+            my @glm_prim = ($ctg_id, $beg, $end);
+
+	    my $found_in_prd = 0;
+	    my @prd_prim = ();
+            foreach my $prd_entry (@{$prodigal_out}) {
+                my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
+                @prd_prim = ($pctg_id, $pbeg, $pend);
+
+	        # check if arrays contain same members
+                if (!array_diff(@glm_prim, @prd_prim)) {
+                    # print "Found $fid match in prodigal.\n";
+                    $found_in_prd = 1;
+                    $prd_match_cnt += 1;
+                    last;
+                }
+	        if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
+		    ((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
+	             (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
+	             (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
+                    # print "Found $fid +/-12 check match in prodigal.\n";
+                    $found_in_prd = 1;
+		    $prd_approxmatch_cnt += 1;
+                    last;
+                }
+	        next;
+             }
+
+	     # Not found in Prodigal genes
+	     # prepare the new feature for seq translation
+	     if ($found_in_prd == 0) {
+	         $glm_gene_seqs{$fid} = $dna_seq;
+	         $glm_ftrs{$fid} = \@glm_prim;
+	     }
+        }
+        print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
+        print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
+
+        my $glm_gene_size = keys %glm_ftrs;
+        print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
+        # print Dumper(\%glm_ftrs);
+
+        # translate the additional glimmer gene sequences into protein sequences
+        my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
+        print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
+        # print Dumper($glm_protein_seqs);
+
+        # add the additional glimmer genes to the prodigal result array
+        foreach my $ftr (sort keys %{$glm_protein_seqs}) {
+	    my $beg1 = $glm_ftrs{$ftr}[1];
+	    my $end1 = $glm_ftrs{$ftr}[2];
+	    my $strand = ($beg1 < $end1) ? '+': '-';
+            push(@gene_call_result, [
+                $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
+	        $glm_ftrs{$ftr}[1], $glm_ftrs{$ftr}[2], $strand,
+	        $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+        }
+    }
+    return \@gene_call_result;
 }
 
 ##----end gene call subs----##
@@ -468,7 +479,7 @@ sub _get_fasta_from_assembly {
     }
 }
 
-sub _write_fasta_from_metagenome {
+sub _write_fasta_from_genome {
     my ($self, $fasta_filename, $input_obj_ref) = @_;
 
     eval {
@@ -482,7 +493,7 @@ sub _write_fasta_from_metagenome {
         unless (-s $fasta_filename) {print "Fasta file is empty.";}
     };
     if ($@) {
-        croak "**_write_fasta_from_metagenome ERROR: ".$@."\n";
+        croak "**_write_fasta_from_genome ERROR: ".$@."\n";
     }
     return $fasta_filename;
 }
@@ -492,10 +503,11 @@ sub _write_gff_from_genome {
 
     my $obj_info = $self->_fetch_object_info($genome_ref);
     my $in_type = $obj_info->[2];
-    my $is_assembly = $in_type =~ /Genomes.AnnotatedGenomeAssembly/;
+    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations.Assembly/ ||
+                       $in_type =~ /KBaseGenomes.ContigSet/);
 
     unless ($is_assembly) {
-        croak "ValueError: Object is not an AnnotateGenomeAssembly, GFU will throw an error.\n";
+        croak "ValueError: Object is not an KBaseAnnotations.Assembly, GFU will throw an error.\n";
     }
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
@@ -596,6 +608,66 @@ sub _save_metagenome {
     }
     else {
         return $annotated_metag;
+    }
+}
+
+sub _save_genome {
+    my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
+
+    my $req_params = "Missing required parameters for saving genome.\n";
+    my $req1 = "Both 'output_workspace' and 'output_genome_name' are required.\n";
+    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
+    unless (defined($ws) && defined($obj_ref) &&
+            defined($out_gn_name) && defined($gff_file)) {
+        croak $req_params;
+    }
+
+    print "Parameters for saving annotated genome-----------------\n";
+    print "Workspace name: $_[1]\n";
+    print "Annotated genome name: $_[2]\n";
+    print "Object ref: $_[3]\n";
+    print "GFF file: $_[4]\n";
+
+    unless (defined($out_gn_name) && defined($ws)) {
+        croak "**In _save_genome: $req1";
+    }
+    unless (defined($obj_ref) && defined($gff_file)) {
+        croak "**In _save_genome: $req2";
+    }
+    unless (-e $gff_file) {
+        croak "**In _save_genome: GFF file not found.\n";
+    }
+    unless (-s $gff_file) {
+        croak "**In _save_genome: GFF file is empty.\n";
+    }
+
+    eval {
+        $self->_fetch_object_info($obj_ref);
+    };
+    if ($@) {
+        croak("**In _save_genome ERROR trying to access the input object:\n"
+               .$@."\n");
+    }
+
+    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_genome-----------\n";
+    $self->_print_fasta_gff(0, 10, $gff_file);
+
+    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+    my $annotated_genome = {};
+    eval {
+        $annotated_genome = $gfu->ws_obj_gff_to_genome ({
+            "ws_ref" => $obj_ref,
+            "gff_file" => {'path' => $gff_file},
+            "genome_name" => $out_gn_name,
+            "workspace_name" => $ws,
+            "generate_missing_genes" => 1});
+    };
+    if ($@) {
+        croak("**In _save_genome ERROR calling GenomeFileUtil.ws_obj_gff_to_genome:\n"
+               .$@."\n");
+    }
+    else {
+        return $annotated_genome;
     }
 }
 
@@ -1091,11 +1163,11 @@ sub _openRead {
     return $fh;
 }
 
-sub _create_metag_dir {
-    my ($self, $rast_dir) = @_;
-    # create the project directory for metagenome annotation
-    my $mg_dir = "metag_annotation_dir_".$self->_create_uuid();
-    my $dir = catfile($rast_dir, $mg_dir);
+# create the project directory for rast annotation
+sub _create_rast_subdir {
+    my ($self, $rast_dir, $sub_dir) = @_;
+    my $subdir = $sub_dir.$self->_create_uuid();
+    my $dir = catfile($rast_dir, $subdir);
 
     make_path $dir; # it won't make a directory that already exists
     return $dir;
@@ -1365,7 +1437,136 @@ sub _translate_gene_to_protein_sequences {
     return \%protein_seqs;
 }
 
-##----main function----##
+=begin
+##----main function 1----##
+sub rast_genome {
+    my $self = shift;
+    my($inparams) = @_;
+
+    print "rast_genome input parameter=\n". Dumper($inparams). "\n";
+    
+    my $params = $self->_check_annotation_params($inparams);
+    my $input_obj_ref = $params->{object_ref};
+
+    my $inputgenome = {
+        features => []
+    };
+
+    my $output_type = 'gff';
+    my $gff_filename = catfile($self->{genome_dir}, 'genome.gff');
+    my $input_fasta_file = catfile($self->{genome_dir}, 'prodigal_input.fasta');
+    my $trans_file = catfile($self->{genome_dir}, 'protein_translation');
+    my $nuc_file = catfile($self->{genome_dir}, 'nucleotide_seq');
+    my $output_file = catfile($self->{genome_dir}, 'prodigal_output').'.'.$output_type;
+
+    # 1. getting the fasta file from $input_obj_ref according to its type
+    my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
+    my $in_type = $input_obj_info->[2];
+    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations.Assembly/ ||
+                       $in_type =~ /KBaseGenomes.ContigSet/);
+    my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
+                     $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
+
+    if ($is_assembly) {
+        # object is itself an assembly
+        my $out_fasta = $self->_get_fasta_from_assembly($input_obj_ref);
+        copy($out_fasta, $input_fasta_file) || croak "Copy file failed: $!\n";
+    }
+    elsif ($is_genome) {
+        # input_obj_ref points to a genome
+        if (defined($input_obj_info->[10])) {
+            my $num_ftrs = $input_obj_info->[10]->{'Number features'};
+            print "Input object '$input_obj_ref' is a genome/annotation and has $num_ftrs features.\n";
+        }
+
+        $input_fasta_file = $self->_write_fasta_from_genome(
+                            $input_fasta_file, $input_obj_ref);
+        unless (-e $input_fasta_file) {
+            croak "**rast_genome ERROR: could not find FASTA file\n";
+        }
+    }
+    else {
+        croak ("Only KBaseGenomes.Genome and ".
+               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
+    }
+
+    ## gene calling to get featuress 2) call rast to annotate features
+    my $mode = 'meta';
+    my $gene_called = $self->_prodigal_then_glimmer3($input_fasta_file,
+	                                             $trans_file,
+						     $nuc_file,
+						     $output_file,
+						     $output_type,
+						     $mode);
+    foreach my $gene (@{$gene_called}) {
+	my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$gene;
+        push(@{$inputgenome->{features}}, {
+                        id                  => $fid,
+                        type                => $ftr_type,
+                        location            => [[ $contig, $start, $strand, $end ]],
+                        annotator           => $source,
+                        annotation          => 'Add feature called by PRODIGAL & Glimmer3',
+                        protein_translation => $seq
+            });
+	}
+    }
+
+    # generating the gff file directly from genome
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+    $gff_filename = $self->_write_gff_from_genome($gff_filename, $input_obj_ref);
+    unless (-e $gff_filename) {
+        croak "**rast_genome ERROR: could not find GFF file\n";
+    }
+
+    # fetch protein sequences and gene IDs from fasta and gff files
+    $fasta_contents = $self->_parse_fasta($input_fasta_file);
+    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
+
+    ## call rast to annotate features
+    my $ftr_count = scalar @{$inputgenome->{features}};
+    unless ($ftr_count >= 1) {
+        print "Empty input genome features, skip rasting, return original genome object.\n";
+        return $input_obj_ref;
+    }
+
+    my $rasted_genome = $self->_run_rast($inputgenome);
+    my $ftrs = $rasted_genome->{features};
+    my $rasted_ftr_count = scalar @{$ftrs};
+    print "RAST resulted ".$rasted_ftr_count." features.\n";
+
+    print "***********The first 10 or fewer rasted features, for example***************\n";
+    my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
+    for (my $j=0; $j<$prnt_lines; $j++) {
+        my $f_id = $ftrs->[$j]->{id};
+        my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
+        my $f_protein = defined($ftrs->[$j]->{protein_translation}) ? $ftrs->[$j]->{protein_translation} : '';
+        print "$f_id\t$f_func\t$f_protein\n";
+    }
+
+    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
+    my $updated_gff_contents = $self->_update_gff_functions_from_features(
+                                   $gff_contents, \%ftr_func_lookup);
+    my $new_gff_file = catfile($self->{metag_dir}, 'new_genome.gff');
+    $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
+
+    ## TOTO: save rast re-annotated fasta/gff data AND reporting
+    my $out_gn = $self->_save_genome($params->{output_workspace},
+                                     $params->{output_genome_name},
+                                     $input_obj_ref, $new_gff_file);
+    my $aa_ref = $out_gn->{genome_ref};
+
+    my $ret = {
+            output_genome_ref => $aa_ref,
+            output_workspace => $params->{output_workspace},
+            report_name => undef,
+            report_ref => undef
+        };
+    return $ret;
+}
+=cut
+
+
+##----main function2----##
 sub rast_metagenome {
     my $self = shift;
     my($inparams) = @_;
@@ -1407,7 +1608,7 @@ sub rast_metagenome {
             print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
         }
 
-        $input_fasta_file = $self->_write_fasta_from_metagenome(
+        $input_fasta_file = $self->_write_fasta_from_genome(
                             $input_fasta_file, $input_obj_ref);
         unless (-e $input_fasta_file) {
             croak "**rast_metagenome ERROR: could not find FASTA file\n";
@@ -1444,54 +1645,6 @@ sub rast_metagenome {
             });
 	}
         copy($outfile, $gff_filename);
-
-=begin
-        my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta_file,
-                                                      $trans_file,
-                                                      $nuc_file,
-                                                      $output_file,
-                                                      $output_type,
-                                                      $mode);
-
-        # 2.1 filing the feature list for rast call
-        if ($self->_run_prodigal(@prodigal_cmd) == 0) {
-            print "Prodigal finished run, files are written into:\n$output_file\n$trans_file\n$nuc_file\n";
-
-            # print "First 10 lines of the GFF file from Prodigal-----------\n";
-            # $self->_print_fasta_gff(0, 10, $output_file);
-            my %transH;
-
-            ($gff_contents, %transH) = $self->_parse_prodigal_results(
-                                                  $trans_file,
-                                                  $output_file,
-                                                  $output_type);
-
-            my $count = @$gff_contents;
-            print "Prodigal returned $count entries.\n";
-
-            foreach my $entry (@$gff_contents) {
-                my ($contig, $source, $f/tr_type, $beg, $end, $score, $strand,
-                    $phase, $attribs) = @$entry;
-
-                next if $contig =~ m/^#.*/;
-
-                my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
-                my $id = $attribs->{id};
-                my $start = ($strand eq q(+)) ? $beg : $end;
-
-                push(@{$inputgenome->{features}}, {
-                        id                  => $id,
-                        type                => $ftr_type,
-                        location            => [[ $contig, $start, $strand, $end ]],
-                        annotator           => $source,
-                        annotation          => 'Add feature called by PRODIGAL',
-                        protein_translation => $seq
-                });
-            }
-            #print "******inputgenome data:******* \n".Dumper($inputgenome);
-            copy($output_file, $gff_filename);
-        }
-=cut
     }
     elsif ($is_meta_assembly) {
         # generating the gff file directly from metagenome
@@ -1671,7 +1824,10 @@ sub doInitialization {
     $self->{ws_url} = $self->{config}->{'workspace-url'};
     $self->{call_back_url} = $ENV{ SDK_CALLBACK_URL };
     $self->{rast_scratch} = $self->{config}->{'scratch'};
-    $self->{metag_dir} = $self->_create_metag_dir($self->{rast_scratch});
+    $self->{metag_dir} = $self->_create_rast_subdir($self->{rast_scratch},
+                                                    "metag_annotation_dir_");
+    $self->{genome_dir} = $self->_create_rast_subdir($self->{rast_scratch},
+                                                     "genome_annotation_dir_");
 
     die "no workspace-url defined" unless $self->{ws_url};
 

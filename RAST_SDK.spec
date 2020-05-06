@@ -76,7 +76,7 @@ module RAST_SDK {
 		params - a param hash that includes the workspace id and options
 	*/
 	funcdef annotate_genome(AnnotateGenomeParams params) returns (AnnotateGenomeResults) authentication required;
-	
+
 	typedef structure {
 		contigset_id input_contigset;
 		genome_id input_genome;
@@ -147,7 +147,7 @@ module RAST_SDK {
 	} AnnotateProteinResults;
 	
 	/*
-		annotate proteins - returns a list of the RAST annotations for the input protein sequences
+            annotate proteins - returns a list of the RAST annotations for the input protein sequences
 	*/
 	funcdef annotate_proteins(AnnotateProteinParams params) returns (AnnotateProteinResults);
 
@@ -208,4 +208,29 @@ module RAST_SDK {
 
         funcdef annotate_metagenomes(BulkAnnotateMetagenomesParams params)
                 returns (BulkMetagenomesAnnotateOutput output) authentication required;
+
+        /*
+            Required parameters for rast_genome:
+                object_ref - reference to Assembly or Genome object,
+                output_workspace - output workspace name,
+                output_genome_name - output object name,
+        */
+
+        typedef structure {
+            data_obj_ref object_ref;
+            string output_workspace;
+            string output_genome_name;
+            bool create_report;
+        } RastGenomeParams;
+
+        typedef structure {
+            genome_id output_genome_ref;
+            string output_workspace;
+            string report_name;
+            string report_ref;
+        } RastGenomeOutput;
+
+        funcdef rast_genome(RastGenomeParams params)
+                returns (RastGenomeOutput output) authentication required;
+
 };

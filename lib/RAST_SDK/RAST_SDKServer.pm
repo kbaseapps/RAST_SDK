@@ -33,6 +33,7 @@ our %return_counts = (
         'annotate_proteins' => 1,
         'annotate_metagenome' => 1,
         'annotate_metagenomes' => 1,
+        'rast_genome' => 1,
         'status' => 1,
 );
 
@@ -42,6 +43,7 @@ our %method_authentication = (
         'annotate_proteins' => 'none',
         'annotate_metagenome' => 'required',
         'annotate_metagenomes' => 'required',
+        'rast_genome' => 'required',
 );
 
 sub _build_valid_methods
@@ -53,6 +55,7 @@ sub _build_valid_methods
         'annotate_proteins' => 1,
         'annotate_metagenome' => 1,
         'annotate_metagenomes' => 1,
+        'rast_genome' => 1,
         'status' => 1,
     };
     return $methods;
