@@ -614,7 +614,7 @@ sub _save_metagenome {
 }
 
 sub _save_genome {
-    my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
+    my ($self, $ws, $out_gn_name, $ncbi_taxon_id, $obj_ref, $gff_file) = @_;
 
     my $req_params = "Missing required parameters for saving genome.\n";
     my $req1 = "Both 'output_workspace' and 'output_genome_name' are required.\n";
@@ -662,6 +662,7 @@ sub _save_genome {
             "gff_file" => {'path' => $gff_file},
             "genome_name" => $out_gn_name,
             "workspace_name" => $ws,
+            "taxon_id" => $ncbi_taxon_id,
             "generate_missing_genes" => 1});
     };
     if ($@) {
@@ -674,6 +675,56 @@ sub _save_genome {
 }
 
 sub _check_annotation_params {
+    my ($self, $params) = @_;
+
+    my $missing_params = "Missing required parameters for annotating genome.\n";
+    unless (defined($params)) {
+        print "params is not defined!!!!\n";
+        croak $missing_params;
+    }
+    # print out the content of hash reference
+    print "Checking parameters:\n". Dumper($params). "\n";
+
+    if (!keys %$params) {
+        print "params is empty!!!!\n";
+        croak $missing_params;
+    }
+    my $req1 = "'output_workspace' is required for running rast_genome.\n";
+    my $invald1 = "Invalid workspace name:";
+    if (!defined($params->{output_workspace}) || $params->{output_workspace} eq '') {
+        croak $req1;
+    }
+    elsif ($params->{output_workspace} !~ m/[^\\w:._-]/) {
+        croak $invald1.$params->{output_workspace}.'\n';
+    }
+
+    my $req2 = "'object_ref' is required for running rast_genome.\n";
+    my $invald2 = "Invalid workspace object reference:";
+    if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
+        croak $req2;
+    }
+    elsif ($params->{object_ref} !~ m/[^\\w\\|._-]/) {
+        croak $invald2 .$params->{object_ref}.'\n';
+    }
+    if (!defined($params->{output_genome_name})
+        || $params->{output_genome_name} eq '') {
+        $params->{output_genome_name} = "rast_annotated_genome";
+    }
+    if (!defined($params->{ncbi_taxon_id})
+        || $params->{ncbi_taxon_id} eq '') {
+        $params->{ncbi_taxon_id} = 999999;  # a fake number for now
+    }
+    if (!defined($params->{run_prodigal})
+        || $params->{run_prodigal} eq '') {
+        $params->{run_prodiagl} = 0;
+    }
+    if (!defined($params->{create_report})) {
+        $params->{create_report} = 0;
+    }
+    return $params;
+}
+
+sub _check_annotation_params_metag {
     my ($self, $params) = @_;
 
     my $missing_params = "Missing required parameters for annotating metagenome.\n";
@@ -1561,12 +1612,14 @@ sub rast_genome {
     my $new_gff_file = catfile($self->{genome_dir}, 'new_genome.gff');
     $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
 
-    ## TOTO: save rast re-annotated fasta/gff data AND reporting
+    ## save rast re-annotated fasta/gff data
     my $out_gn = $self->_save_genome($params->{output_workspace},
                                      $params->{output_genome_name},
+                                     $params->{ncbi_taxon_id},
                                      $input_obj_ref, $new_gff_file);
     my $aa_ref = $out_gn->{genome_ref};
 
+    ## TODO: reporting
     my $ret = {
             output_genome_ref => $aa_ref,
             output_workspace => $params->{output_workspace},
@@ -1584,7 +1637,7 @@ sub rast_metagenome {
 
     print "rast_metagenome input parameter=\n". Dumper($inparams). "\n";
     
-    my $params = $self->_check_annotation_params($inparams);
+    my $params = $self->_check_annotation_params_metag($inparams);
     my $input_obj_ref = $params->{object_ref};
 
     my $inputgenome = {

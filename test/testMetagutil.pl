@@ -184,7 +184,7 @@ my $test_ftrs = [{
 
 
 =begin
-subtest '_check_annotation_params' => sub {
+subtest '_check_annotation_params_metag' => sub {
     my $obj = '1234/56/7';
 
     my $missing_params = "Missing required parameters for annotating metagenome.\n";
@@ -192,84 +192,84 @@ subtest '_check_annotation_params' => sub {
     my $req2 = "'object_ref' is required for running rast_metagenome.\n";
 
     throws_ok {
-        $mgutil->_check_annotation_params()
+        $mgutil->_check_annotation_params_metag()
     } qr/$missing_params/,
-        '_check_annotation_params dies without params';
+        '_check_annotation_params_metag dies without params';
 
     throws_ok {
-        $mgutil->_check_annotation_params( {} )
+        $mgutil->_check_annotation_params_metag( {} )
     } qr/$missing_params/,
-        '_check_annotation_params dies with an empty hashref';
+        '_check_annotation_params_metag dies with an empty hashref';
 
     throws_ok {
         my $p = {output_workspace => $ws,
                  output_metagenome_name => $out_name};
         print "input parameter=\n". Dumper($p);
-        $mgutil->_check_annotation_params($p)
+        $mgutil->_check_annotation_params_metag($p)
     } qr/$req2/,
-        '_check_annotation_params dies with no object_ref';
+        '_check_annotation_params_metag dies with no object_ref';
 
     throws_ok {
         my $p = {output_workspace => $ws,
                  output_metagenome_name => $out_name,
                  object_ref => ''};
         print "input parameter=\n". Dumper($p);
-        $mgutil->_check_annotation_params($p)
+        $mgutil->_check_annotation_params_metag($p)
     } qr/$req2/,
-        '_check_annotation_params dies with blank object_ref';
+        '_check_annotation_params_metag dies with blank object_ref';
 
     throws_ok {
-        $mgutil->_check_annotation_params(
+        $mgutil->_check_annotation_params_metag(
             {object_ref => $obj,
              output_metagenome_name => $out_name})
     } qr/$req1/,
-        '_check_annotation_params dies with no outpout_workspace';
+        '_check_annotation_params_metag dies with no outpout_workspace';
 
     throws_ok {
-        $mgutil->_check_annotation_params(
+        $mgutil->_check_annotation_params_metag(
             {workspace => $ws,
              output_metagenome_name => $out_name,
              obect_ref => $obj})
     } qr/$req1/,
-        '_check_annotation_params dies with wrong workspace key';
+        '_check_annotation_params_metag dies with wrong workspace key';
 
     throws_ok {
-        $mgutil->_check_annotation_params(
+        $mgutil->_check_annotation_params_metag(
             {output_workspace => '',
              output_metagenome_name => $out_name,
              obect_ref => $obj})
     } qr/$req1/,
-        '_check_annotation_params dies with blank workspace name';
+        '_check_annotation_params_metag dies with blank workspace name';
 
     lives_ok {
-        $mgutil->_check_annotation_params(
+        $mgutil->_check_annotation_params_metag(
             {output_workspace => $ws,
              output_metagenome_name => $out_name,
              object_ref => 'abc/1/2'});
-    } '_check_annotation_params object_ref check ok';
+    } '_check_annotation_params_metag object_ref check ok';
 
     lives_ok {
-        $mgutil->_check_annotation_params(
+        $mgutil->_check_annotation_params_metag(
             {output_workspace => 'ab:c',
              output_metagenome_name => $out_name,
              object_ref => '456/1/2'});
-    } '_check_annotation_params workspace name check ok';
+    } '_check_annotation_params_metag workspace name check ok';
 
-    # _check_annotation_params passed
+    # _check_annotation_params_metag passed
     my $expected = {
              output_workspace => $ws,
              output_metagenome_name => 'rast_annotated_metagenome',
              object_ref => '456/1/2'};
-    my $set_default_ok = '_check_annotation_params sets the default value for output_metagenome_name.';
+    my $set_default_ok = '_check_annotation_params_metag sets the default value for output_metagenome_name.';
 
-    my $ret = $mgutil->_check_annotation_params(
+    my $ret = $mgutil->_check_annotation_params_metag(
             {output_workspace => $ws,
              output_metagenome_name => undef,
              object_ref => '456/1/2'});
     ok ($ret->{output_metagenome_name} eq $expected->{output_metagenome_name},
         'When undefined, '.$set_default_ok);
 
-    $ret = $mgutil->_check_annotation_params(
+    $ret = $mgutil->_check_annotation_params_metag(
             {output_workspace => $ws,
              output_metagenome_name => '',
              object_ref => '456/1/2'});
