@@ -824,9 +824,9 @@ sub _run_rast {
 
     my $rasted_gn = {};
     eval {
-	my $rast_client = new installed_clients::GenomeAnnotationClient(
-	                                 $self->{ws_url}, token => $self->{_token});
-	#my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+	#my $rast_client = new installed_clients::GenomeAnnotationClient(
+	#                                 $self->{ws_url}, token => $self->{_token});
+	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2",
                          kmer_v2_parameters => {min_hits => "5",
