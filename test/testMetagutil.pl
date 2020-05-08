@@ -679,7 +679,7 @@ subtest '_run_rast' => sub {
     throws_ok {
         my $rast_ret = $mgutil->_run_rast($inputgenome);
     } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
 
 # test by using prod/appdev obj id
@@ -693,11 +693,10 @@ subtest 'annotate_metagenome' => sub {
     throws_ok {
         my $rast_ann = $rast_impl->annotate_metagenome($parms);
     } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+        'RAST annotate_metagenome call returns ERROR due to kmer data absence or other causes.';
 
 };
 
-=begin
 # test by using prod obj id
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
@@ -707,7 +706,11 @@ subtest 'mgutil_rast_genome' => sub {
         "output_genome_name" => "rasted_ecoli_prod",
         "output_workspace" => $ws
     };
-    my $rast_ref = $mgutil->rast_genome($parms);
+    my $rast_ref;
+    throws_ok {
+        $rast_ref = $mgutil->rast_genome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
     print "rast_genome returns: $rast_ref" if defined($rast_ref);
     ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
 };
@@ -721,10 +724,8 @@ subtest 'Impl_rast_genome' => sub {
     throws_ok {
         my $rast_ann = $rast_impl->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
-
+        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
-=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text

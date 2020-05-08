@@ -2078,7 +2078,7 @@ sub rast_genome
     $params = Bio::KBase::utilities::args($params,
                   ["object_ref", "output_workspace", "output_genome_name"],
                   {create_report => 0});
-    print "annotate_genome1 input parameters=\n". Dumper($params). "\n";
+    print "rast_genome input parameters=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
