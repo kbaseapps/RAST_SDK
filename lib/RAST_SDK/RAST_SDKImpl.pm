@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '0340a813532c671ff5d9efe69379c15c171c6bcd';
+our $GIT_COMMIT_HASH = '0c0157308454abdf79d1e6c91ba1cbccaf0303a8';
 
 =head1 NAME
 
@@ -2006,6 +2006,9 @@ $output is a RAST_SDK.RastGenomeOutput
 RastGenomeParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
 	output_genome_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
@@ -2028,6 +2031,9 @@ $output is a RAST_SDK.RastGenomeOutput
 RastGenomeParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
 	output_genome_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
@@ -2358,42 +2364,6 @@ annotate_proteins_similarity has a value which is a RAST_SDK.bool
 resolve_overlapping_features has a value which is a RAST_SDK.bool
 call_features_prophage_phispy has a value which is a RAST_SDK.bool
 retain_old_anno_for_hypotheticals has a value which is a RAST_SDK.bool
-
-
-=end text
-
-=back
-
-
-
-=head2 AnnotateGenomeParams1
-
-=over 4
-
-
-
-=item Definition
-
-=begin html
-
-<pre>
-a reference to a hash where the following keys are defined:
-workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
-output_genome has a value which is a string
-
-</pre>
-
-=end html
-
-=begin text
-
-a reference to a hash where the following keys are defined:
-workspace has a value which is a string
-input_genome has a value which is a RAST_SDK.genome_id
-input_contigset has a value which is a RAST_SDK.contigset_id
-output_genome has a value which is a string
 
 
 =end text
@@ -2898,7 +2868,14 @@ output_workspace has a value which is a string
 Required parameters for rast_genome:
     object_ref - reference to Assembly or Genome object,
     output_workspace - output workspace name,
-    output_genome_name - output object name,
+    output_genome_name - output object name
+
+Optional parameters for rast_genome:
+    ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                    is included scientific_name is ignored.
+    relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+            up taxon information in milliseconds since the epoch.
+    scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
 
 
 =item Definition
@@ -2909,6 +2886,9 @@ Required parameters for rast_genome:
 a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
 output_genome_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
 
@@ -2921,6 +2901,9 @@ create_report has a value which is a RAST_SDK.bool
 a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
 output_genome_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
 

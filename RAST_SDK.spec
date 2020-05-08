@@ -213,12 +213,21 @@ module RAST_SDK {
             Required parameters for rast_genome:
                 object_ref - reference to Assembly or Genome object,
                 output_workspace - output workspace name,
-                output_genome_name - output object name,
-        */
+                output_genome_name - output object name
 
+            Optional parameters for rast_genome:
+		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+			        is included scientific_name is ignored.
+		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+			up taxon information in milliseconds since the epoch.
+		scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+        */
         typedef structure {
             data_obj_ref object_ref;
             string output_workspace;
+            int ncbi_taxon_id;
+            int relation_engine_timestamp_ms;
+            string scientific_name;
             string output_genome_name;
             bool create_report;
         } RastGenomeParams;

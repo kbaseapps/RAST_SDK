@@ -14,8 +14,7 @@ RUN cpanm -i Config::IniFiles && \
     cpanm -i HTML::SimpleLinkExtor && \
     cpanm -i WWW::Mechanize --force && \
     cpanm -i MIME::Base64 && \
-    cpanm -i Test::Most && \
-    apt-get -y install nano
+    cpanm -i Test::Most
 
 ADD ./bootstrap bootstrap
 
@@ -25,14 +24,7 @@ RUN \
     ./build.glimmer /kb/runtime/ && \
     ./build.elph /kb/runtime/ && \
     ./build.prodigal /kb/runtime/ && \
-    ./build.phispy /kb/runtime/ && \
     cd .. && rm -rf bootstrap
-
-# Add random forest for phispy
-RUN \
-    wget https://cran.r-project.org/src/contrib/Archive/randomForest/randomForest_4.6-12.tar.gz && \
-    R CMD INSTALL ./randomForest_4.6-12.tar.gz && \
-    rm randomForest_4.6-12.tar.gz
 
 
 # Build kb_seed
@@ -52,8 +44,6 @@ RUN cd /kb/dev_container/modules && \
     sed -i 's/print .*keeping.*/#ignore/'  /kb/deployment/lib/GenomeTypeObject.pm
 
 
-#RUN sed -i 's/capture_stderr/tee_stderr/' /kb/deployment/lib/Bio/KBase/GenomeAnnotation/GenomeAnnotationImpl.pm
-
 RUN \
     cpanm Array::Utils && \
     cpanm install Set::IntervalTree && \
@@ -65,8 +55,6 @@ RUN \
 RUN mkdir /data && \
     mkdir /data/Data.may1 && \
     mkdir /data/kmer
-
-#RUN sed -i 's/->port/->port, Passive=>1/' /kb/deployment/plbin/kmer-figfam-update-data.pl
                                                            
 # -----------------------------------------
 

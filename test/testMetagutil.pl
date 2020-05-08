@@ -47,12 +47,13 @@ my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $mgutil = new metag_utils($config, $ctx);
 
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
-my $rast_dir = $mgutil->_create_metag_dir($scratch);
+my $rast_metag_dir = $mgutil->_create_rast_subdir($scratch, "metag_annotation_dir_");
+my $rast_genome_dir = $mgutil->_create_rast_subdir($scratch, "genome_annotation_dir_");
 
 
 sub genome_to_fasta {
     my($gn_ref) = @_;
-    my $fasta_path = catfile($rast_dir, 'fasta_'.$gn_ref);
+    my $fasta_path = catfile($rast_metag_dir, 'fasta_'.$gn_ref);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 
@@ -63,7 +64,7 @@ sub genome_to_fasta {
 
 sub generate_genome {
     my($ws, $gn_name, $gbff) = @_;
-    my $gbff_path = catfile($rast_dir, $gbff);
+    my $gbff_path = catfile($rast_metag_dir, $gbff);
 
     copy($gbff, $gbff_path) || croak "Copy file failed: $!\n";
 
@@ -80,8 +81,8 @@ sub generate_genome {
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
-    my $fasta_path = catfile($rast_dir, $fasta_scrt);
-    my $gff_path = catfile($rast_dir, $gff_scrt);
+    my $fasta_path = catfile($rast_metag_dir, $fasta_scrt);
+    my $gff_path = catfile($rast_metag_dir, $gff_scrt);
 
     copy($fasta, $fasta_path) || croak "Copy file failed: $!\n";
     copy($gff, $gff_path) || croak "Copy file failed: $!\n";
@@ -103,8 +104,8 @@ my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
 my $input_obj_ref = $ret_metag->{metagenome_ref};
 
-my $input_fasta_file = catfile($rast_dir, 'prodigal_input.fasta');
-my $gff_filename = catfile($rast_dir, 'genome.gff');
+my $input_fasta_file = catfile($rast_metag_dir, 'prodigal_input.fasta');
+my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
 $input_fasta_file = $mgutil->_write_fasta_from_genome(
@@ -142,6 +143,8 @@ my $obj7 = "55141/107/1";  # prod metag
 my $obj8 = "55141/114/1";  # prod metag
 my $obj9 = "55141/117/1";  # prod metag
 my $obj10 = "55141/120/1";  # prod metag
+
+my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 
 my $test_ftrs = [{
  'id' => '10000_1',
@@ -462,7 +465,7 @@ subtest '_run_prodigal' => sub {
 
 
 subtest '_parse_translation' => sub {
-    my $trans_path = catfile($rast_dir, 'trans_scrt');
+    my $trans_path = catfile($rast_metag_dir, 'trans_scrt');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     %trans_tab = $mgutil->_parse_translation($trans_path);
@@ -480,8 +483,8 @@ subtest '_parse_gff' => sub {
 };
 
 subtest '_parse_prodigal_results' => sub {
-    my $prd_out_path = catfile($rast_dir, 'prodigal_output.gff');
-    my $trans_path = catfile($rast_dir, 'protein_translation');
+    my $prd_out_path = catfile($rast_metag_dir, 'prodigal_output.gff');
+    my $trans_path = catfile($rast_metag_dir, 'protein_translation');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     # Prodigal generate a GFF output file
@@ -501,18 +504,16 @@ subtest '_parse_prodigal_results' => sub {
     ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
 
 };
-=cut
 
-my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 
 subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
     my $out_type = 'gff';
-    my $gff_filename = catfile($rast_dir, 'genome.gff');
-    my $trans = catfile($rast_dir, 'protein_translation');
-    my $nuc = catfile($rast_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
+    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
+    my $trans = catfile($rast_metag_dir, 'protein_translation');
+    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
 
     my $prd_gene_results;
     lives_ok {
@@ -544,6 +545,7 @@ subtest '_prodigal_gene_call' => sub {
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
     my $glimmer3_notOk = "ERROR";
+    my $glimmer3_died = "Could not extract upstream motifs";
 
     my $glimmer3_ret;
     throws_ok {
@@ -551,11 +553,10 @@ subtest '_glimmer3_gene_call' => sub {
     } qr/$glimmer3_notOk/,
         '_glimmer3_gene_call errors with contigs too short';
 
-    lives_ok {
+    throws_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($ecoli_fasta);
-    } $glimmer3_ok;
-    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $ecoli_fasta returns gene call result.\n");
-    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
+    } qr/$glimmer3_died/,
+        "_glimmer3_gene_call errors: $glimmer3_died";
 
     lives_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
@@ -568,10 +569,10 @@ subtest '_prodigal_then_glimmer3' => sub {
     my $fa_input = $fasta4; # $ecoli_fasta; # fasta1;
     my $md = 'meta';
     my $out_type = 'gff';
-    my $gff_filename = catfile($rast_dir, 'genome.gff');
-    my $trans = catfile($rast_dir, 'protein_translation');
-    my $nuc = catfile($rast_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_dir, 'prodigal_output').'.'.$out_type;
+    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
+    my $trans = catfile($rast_metag_dir, 'protein_translation');
+    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
 
     my $pNg_gene_results;
     $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
@@ -580,11 +581,12 @@ subtest '_prodigal_then_glimmer3' => sub {
     print "_prodigal_then_glimmer3 results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
 };
+=cut
 
 
 =begin
 subtest '_write_fasta_from_genome' => sub {
-    my $fa_test1 = catfile($rast_dir, 'test1.fasta');
+    my $fa_test1 = catfile($rast_metag_dir, 'test1.fasta');
     $fa_test1 = $mgutil->_write_fasta_from_genome(
                     $fa_test1, $input_obj_ref);
 
@@ -593,8 +595,17 @@ subtest '_write_fasta_from_genome' => sub {
     # ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
 };
 
+subtest '_write_gff_from_genome' => sub {
+    my $gff_test1 = catfile($rast_genome_dir, 'test1.gff');
+    $gff_test1 = $mgutil->_write_gff_from_genome(
+		     $gff_test1, $obj_Ecoli);
+
+    ok((-e $gff_test1), 'gff file created');
+    ok((-s $gff_test1), 'gff file has data');
+};
+
 subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = catfile($rast_dir, 'test1.gff');
+    my $gff_test1 = catfile($rast_metag_dir, 'test1.gff');
     $gff_test1 = $mgutil->_write_gff_from_metagenome(
 		     $gff_test1, $input_obj_ref);
 
@@ -639,7 +650,7 @@ subtest '_save_metagenome' => sub {
     } qr/$not_found/,
       '_save_metagenome dies because GFF file not found';
 
-    my $gff_path = catfile($rast_dir, $gff_scrt);
+    my $gff_path = catfile($rast_metag_dir, $gff_scrt);
     copy($gff1, $gff_path) || croak "Copy file failed: $!\n";
     my $mymetag = {};
     lives_ok {
@@ -652,6 +663,7 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
+=cut
 
 subtest '_run_rast' => sub {
     my $inputgenome = {
@@ -666,10 +678,9 @@ subtest '_run_rast' => sub {
 
     throws_ok {
         my $rast_ret = $mgutil->_run_rast($inputgenome);
-    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
+    } qr/ERROR calling rast run_pipeline/,
         'RAST run_pipeline call returns ERROR due to kmer data absence.';
 };
-=cut
 
 # test by using prod/appdev obj id
 subtest 'annotate_metagenome' => sub {
@@ -681,22 +692,22 @@ subtest 'annotate_metagenome' => sub {
     };
     throws_ok {
         my $rast_ann = $rast_impl->annotate_metagenome($parms);
-    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+    } qr/ERROR calling rast run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 
 };
 
-
+=begin
 # test by using prod obj id
 subtest 'mgutil_rast_genome' => sub {
-    # testing rast_metagenome using obj ids from prod ONLY
+    # testing rast_genome using obj ids from prod ONLY
     # a prod assembly
     my $parms = {
         "object_ref" => $obj_Ecoli,
-        "output_metagenome_name" => "rasted_ecoli_prod",
+        "output_genome_name" => "rasted_ecoli_prod",
         "output_workspace" => $ws
     };
-    my $rast_ref = $mgutil->rast_metagenome($parms);
+    my $rast_ref = $mgutil->rast_genome($parms);
     print "rast_genome returns: $rast_ref" if defined($rast_ref);
     ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
 };
@@ -709,10 +720,11 @@ subtest 'Impl_rast_genome' => sub {
     };
     throws_ok {
         my $rast_ann = $rast_impl->rast_genome($parms);
-    } qr/ERROR calling GenomeAnnotation::GenomeAnnotationImpl->run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence.';
+    } qr/ERROR calling rast run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 
 };
+=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
@@ -767,7 +779,7 @@ my $stats_ok = 'stats generation runs ok.\n';
 
 subtest '_generate_stats_from_ama & from_gffContents' => sub {
     my $gff_file = 'tmp_gff';
-    my $gff_path = catfile($rast_dir, $gff_file);
+    my $gff_path = catfile($rast_metag_dir, $gff_file);
     my ($gff_contents, $attr_delimiter) = ([], '=');
 
     # $obj8
@@ -809,11 +821,11 @@ subtest '_generate_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
     my $gff_file1 = 'tmp_gff1';
-    my $gff_path1 = catfile($rast_dir, $gff_file1);
+    my $gff_path1 = catfile($rast_metag_dir, $gff_file1);
     $gff_path1 = $mgutil->_write_gff_from_metagenome($gff_path1, $obj6);
 
     my $gff_file2 = 'tmp_gff2';
-    my $gff_path2 = catfile($rast_dir, $gff_file2);
+    my $gff_path2 = catfile($rast_metag_dir, $gff_file2);
     $gff_path2 = $mgutil->_write_gff_from_metagenome($gff_path2, $obj7);
 
     my ($gff_contents1, $attr_delimiter) = ([], '=');
@@ -848,7 +860,7 @@ subtest '_generate_report' => sub {
 =cut
 
 =begin
-# testing _generate_report using obj ids from appdev ONLY
+# testing rast_metagenome using obj ids from appdev ONLY
 subtest 'rast_metagenome' => sub {
     # an appdev assembly
     my $parms = {
@@ -921,7 +933,7 @@ subtest '_generate_stats_from_ama' => sub {
 # testing _generate_report using obj ids from prod ONLY
 subtest '_generate_stats_from_gffContents' => sub {
     my $gff_file = 'tmp_gff';
-    my $gff_path = catfile($rast_dir, $gff_file);
+    my $gff_path = catfile($rast_metag_dir, $gff_file);
     $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj7);
 
     my ($gff_contents, $attr_delimiter) = ([], '=');
@@ -970,7 +982,7 @@ subtest '_save_metagenome' => sub {
 # test by using prod obj id
 subtest '_write_gff_from_metagenome' => sub {
     # prod obj of type KBaseGenomeAnnotations.Assembly-5.0
-    my $gff_test2 = catfile($rast_dir, 'test2.gff');
+    my $gff_test2 = catfile($rast_metag_dir, 'test2.gff');
     my $obj_wrong_type = "55141/119/1";
     throws_ok {
        $gff_test2 = $mgutil->_write_gff_from_metagenome(
