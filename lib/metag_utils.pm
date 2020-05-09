@@ -482,17 +482,18 @@ sub _get_fasta_from_assembly {
 sub _write_fasta_from_genome {
     my ($self, $input_obj_ref) = @_;
 
-    my $gn_result;
+    my $fa_file;
     eval {
-        my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-        $gn_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $input_obj_ref});
+        my $genome_obj = $self->_fetch_object_data($input_obj_ref);
 
-        unless (-s $gn_result->{file_path}) {print "Fasta file is empty!!!!";}
+        $fa_file = $self->_get_fasta_from_assembly(
+                          $input_obj_ref.";".$genome_obj->{assembly_ref});
+        unless (-s $fa_file) {print "Fasta file is empty!!!!";}
     };
     if ($@) {
         croak "**_write_fasta_from_genome ERROR: ".$@."\n";
     }
-    return $gn_result->{file_path};
+    return $fa_file;
 }
 
 sub _write_fasta_from_ama {
@@ -514,7 +515,7 @@ sub _write_fasta_from_ama {
 }
 
 sub _write_gff_from_genome {
-    my ($self, $gff_filename, $genome_ref) = @_;
+    my ($self, $genome_ref) = @_;
 
     my $obj_info = $self->_fetch_object_info($genome_ref);
     my $in_type = $obj_info->[2];
@@ -528,22 +529,22 @@ sub _write_gff_from_genome {
     }
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $gff_result = '';
+    my $gff_result;
     eval {
         $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
 
-        copy($gff_result->{file_path}, $gff_filename);
+	# copy($gff_result->{file_path}, $gff_filename) || die "GFF file copy failed!" ;
 
-        unless (-s $gff_filename) {print "GFF is empty ";}
+        unless (-s $gff_result->{file_path}) {print "GFF is empty ";}
     };
     if ($@) {
         croak "**_write_gff_from_genome ERROR: ".$@."\n";
     }
-    return $gff_filename;
+    return $gff_result->{file_path};
 }
 
-sub _write_gff_from_metagenome {
-    my ($self, $gff_filename, $genome_ref) = @_;
+sub _write_gff_from_ama {
+    my ($self, $genome_ref) = @_;
 
     my $obj_info = $self->_fetch_object_info($genome_ref);
     my $in_type = $obj_info->[2];
@@ -553,17 +554,17 @@ sub _write_gff_from_metagenome {
         croak "ValueError: Object is not an AnnotatedMetagenomeAssembly, GFU will throw an error.\n";
     }
 
+    my $gff_filename = '';
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $gff_result = '';
     eval {
-        $gff_result = $gfu->metagenome_to_gff({"metagenome_ref" => $genome_ref});
+        my $gff_result = $gfu->metagenome_to_gff({"metagenome_ref" => $genome_ref});
 
-        copy($gff_result->{file_path}, $gff_filename);
+        $gff_filename = $gff_result->{file_path};
 
         unless (-s $gff_filename) {print "GFF is empty ";}
     };
     if ($@) {
-        croak "**_write_gff_from_metagenome ERROR: ".$@."\n";
+        croak "**_write_gff_from_ama ERROR: ".$@."\n";
     }
     return $gff_filename;
 }
@@ -1633,15 +1634,15 @@ sub rast_genome {
             print "Input object '$input_obj_ref' is a genome/annotation and has $num_ftrs features.\n";
         }
 
+        # generating the fasta file directly from genome
         $input_fasta_file = $self->_write_fasta_from_genome($input_obj_ref);
-        unless (-e $input_fasta_file) {
-            croak "**rast_genome ERROR: could not find FASTA file\n";
+        unless (-s $input_fasta_file) {
+            croak "**rast_genome ERROR: FASTA file is empty!\n";
         }
-
         $fasta_contents = $self->_parse_fasta($input_fasta_file);
 
         # generating the gff file directly from genome
-        $gff_filename = $self->_write_gff_from_genome($gff_filename, $input_obj_ref);
+        $gff_filename = $self->_write_gff_from_genome($input_obj_ref);
         unless (-e $gff_filename) {
             croak "**rast_genome ERROR: could not find GFF file\n";
         }
@@ -1734,6 +1735,7 @@ sub rast_metagenome {
     my $trans_file = catfile($self->{metag_dir}, 'protein_translation');
     my $nuc_file = catfile($self->{metag_dir}, 'nucleotide_seq');
     my $output_file = catfile($self->{metag_dir}, 'prodigal_output').'.'.$output_type;
+    my $prodigal_out;
     # my $start_file = catfile($self->{metag_dir}, 'start_file');
     # cannot specify metagenomic sequence with a training file
     # my $training_file = catfile($self->{metag_dir}, 'training_file');
@@ -1746,20 +1748,22 @@ sub rast_metagenome {
 
     if ($is_assembly) {
         # object is itself an assembly
-        my $out_file = $self->_get_fasta_from_assembly($input_obj_ref);
-        copy($out_file, $input_fasta_file) || croak "Copy file failed: $!\n";
+        $input_fasta_file = $self->_get_fasta_from_assembly($input_obj_ref);
+        unless (-s $input_fasta_file) {
+            croak "**rast_metagenome ERROR: FASTA file is empty!\n";
+        }
     }
     elsif ($is_meta_assembly) {
-        # input_obj_ref points to a genome
+        # input_obj_ref points to a metagenome assembly
         if (defined($input_obj_info->[10])) {
             my $num_ftrs = $input_obj_info->[10]->{'Number features'};
             print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
         }
 
-        $input_fasta_file = $self->_write_fasta_from_ama(
-                            $input_fasta_file, $input_obj_ref);
-        unless (-e $input_fasta_file) {
-            croak "**rast_metagenome ERROR: could not find FASTA file\n";
+        # generating the fasta file directly from metagenome assembly
+        $input_fasta_file = $self->_write_fasta_from_ama($input_obj_ref);
+        unless (-s $input_fasta_file) {
+            croak "**rast_metagenome ERROR: FASTA file is empty!\n";
         }
     }
     else {
@@ -1773,7 +1777,7 @@ sub rast_metagenome {
     if ($is_assembly) {
         # object is itself an assembly
         my $mode = 'meta';
-        my ($outfile, $prodigal_out) = $self->_prodigal_gene_call(
+        ($gff_filename, $prodigal_out) = $self->_prodigal_gene_call(
                                                       $input_fasta_file,
                                                       $trans_file,
                                                       $nuc_file,
@@ -1792,13 +1796,12 @@ sub rast_metagenome {
                         protein_translation => $seq
             });
 	}
-        copy($outfile, $gff_filename);
     }
     elsif ($is_meta_assembly) {
-        # generating the gff file directly from metagenome
-        $gff_filename = $self->_write_gff_from_metagenome($gff_filename, $input_obj_ref);
-        unless (-e $gff_filename) {
-            croak "**rast_metagenome ERROR: could not find GFF file\n";
+        # generating the gff file directly from metagenome assembly
+        $gff_filename = $self->_write_gff_from_ama($input_obj_ref);
+        unless (-s $gff_filename) {
+            croak "**rast_metagenome ERROR: GFF file is empty.\n";
         }
 
         # 2.2 filing the feature list for rast call
@@ -1824,9 +1827,6 @@ sub rast_metagenome {
         print "Empty input genome features, skip rasting, return original genome object.\n";
         return $input_obj_ref;
     }
-
-    #print "--------Print out 1000 (4200~5200) lines in the GFF file before RASTing-------\n";
-    #$self->_print_fasta_gff(4200, 1000, $gff_filename);
 
     my $rasted_genome = $self->_run_rast($inputgenome);
     my $ftrs = $rasted_genome->{features};

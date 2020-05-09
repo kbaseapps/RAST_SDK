@@ -109,8 +109,7 @@ my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
 $input_fasta_file = $mgutil->_write_fasta_from_ama(
 		        $input_fasta_file, $input_obj_ref);
-$gff_filename = $mgutil->_write_gff_from_metagenome(
-                    $gff_filename, $input_obj_ref);
+$gff_filename = $mgutil->_write_gff_from_ama($input_obj_ref);
 # fetch protein sequences and gene IDs from fasta and gff files
 $fasta_contents = $mgutil->_parse_fasta($input_fasta_file);
 ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
@@ -601,11 +600,16 @@ subtest '_write_gff_from_genome' => sub {
     ok((-s $gff_test1), 'gff file has data');
 };
 
-subtest '_write_gff_from_metagenome' => sub {
-    my $gff_test1 = catfile($rast_metag_dir, 'test1.gff');
-    $gff_test1 = $mgutil->_write_gff_from_metagenome(
-		     $gff_test1, $input_obj_ref);
+subtest '_write_gff_from_ama' => sub {
+    # test by using prod obj of type KBaseGenomeAnnotations.Assembly-5.0
+    my $obj_wrong_type = "55141/119/1";
+    throws_ok {
+       $gff_test2 = $mgutil->_write_gff_from_ama($obj_wrong_type);
+    } qr/ValueError/,
+        '_write_gff_from_ama dies due to wrong object type.';
 
+    # test using obj in the current test workspace
+    my $gff_test1 = $mgutil->_write_gff_from_ama($input_obj_ref);
     ok((-e $gff_test1), 'gff file created');
     ok((-s $gff_test1), 'gff file has data');
 };
@@ -693,23 +697,33 @@ subtest 'annotate_metagenome' => sub {
 
 };
 =cut
-
-
-# test by using prod obj id
+## testing rast-annotating genome functions
 subtest 'mgutil_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
-    my $fasta_fpath = catfile($rast_genome_dir, 'fasta_'.$obj_Ecoli);
+    my $fasta_fpath;
     lives_ok {
-        $fasta_fpath = $mgutil->_write_fasta_from_genome($fasta_fpath, $obj_Ecoli);
+        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Ecoli);
     } 'Writing fasta from a genome runs ok';
 
     ok ((-s $fasta_fpath), "fasta file written for $obj_Ecoli.\n");
+    print "First 10 lines of the FASTA file:\n";
+    $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
 
-=begin
+subtest 'mgutil_write_gff_from_genome' => sub {
+    # testing get the gff from a genome using obj ids from prod ONLY
+    my $gff_fpath;
+    lives_ok {
+        $gff_fpath = $mgutil->_write_gff_from_genome($obj_Ecoli);
+    } 'Writing gff from a genome runs ok';
+
+    ok ((-s $gff_fpath), "GFF file written for $obj_Ecoli.\n");
+    print "First 10 lines of the GFF file:\n";
+    $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
+};
+
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
-    # a prod assembly
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
@@ -726,9 +740,10 @@ subtest 'mgutil_rast_genome' => sub {
     }
 };
 
+=begin
 subtest 'Impl_rast_genome' => sub {
     my $parms = {
-        "object_ref" => $obj_Ecoli, # prod obj
+        "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_genome",
         "output_workspace" => $ws
     };
@@ -791,16 +806,15 @@ subtest 'annotation_genomes_throw_messages' => sub {
 my $stats_ok = 'stats generation runs ok.\n';
 
 subtest '_generate_stats_from_aa & from_gffContents' => sub {
-    my $gff_file = 'tmp_gff';
-    my $gff_path = catfile($rast_metag_dir, $gff_file);
     my ($gff_contents, $attr_delimiter) = ([], '=');
+    my $gff_path = '';
 
     # $obj8
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj8);
     print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
 
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj8);
+    $gff_path = $mgutil->_write_gff_from_ama($obj8);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
     #print "Stats from GFF on $obj8: \n".Dumper(\%ret_stats);
@@ -811,7 +825,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
 
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj9);
+    $gff_path = $mgutil->_write_gff_from_ama($obj9);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
     #print "Stats from GFF on $obj9: \n".Dumper(\%ret_stats);
@@ -822,7 +836,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
 
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj10);
+    $gff_path = $mgutil->_write_gff_from_ama($obj10);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
     print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
@@ -833,13 +847,9 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 subtest 'generate_metag_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
-    my $gff_file1 = 'tmp_gff1';
-    my $gff_path1 = catfile($rast_metag_dir, $gff_file1);
-    $gff_path1 = $mgutil->_write_gff_from_metagenome($gff_path1, $obj6);
+    my $gff_path1 = $mgutil->_write_gff_from_ama($obj6);
 
-    my $gff_file2 = 'tmp_gff2';
-    my $gff_path2 = catfile($rast_metag_dir, $gff_file2);
-    $gff_path2 = $mgutil->_write_gff_from_metagenome($gff_path2, $obj7);
+    my $gff_path2 = $mgutil->_write_gff_from_ama($obj7);
 
     my ($gff_contents1, $attr_delimiter) = ([], '=');
     my %ret_stats1;
@@ -945,9 +955,7 @@ subtest '_generate_stats_from_aa' => sub {
 
 # testing generate_metag_report using obj ids from prod ONLY
 subtest '_generate_stats_from_gffContents' => sub {
-    my $gff_file = 'tmp_gff';
-    my $gff_path = catfile($rast_metag_dir, $gff_file);
-    $gff_path = $mgutil->_write_gff_from_metagenome($gff_path, $obj7);
+    my $gff_path = $mgutil->_write_gff_from_ama($obj7);
 
     my ($gff_contents, $attr_delimiter) = ([], '=');
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
@@ -991,20 +999,7 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
-
-# test by using prod obj id
-subtest '_write_gff_from_metagenome' => sub {
-    # prod obj of type KBaseGenomeAnnotations.Assembly-5.0
-    my $gff_test2 = catfile($rast_metag_dir, 'test2.gff');
-    my $obj_wrong_type = "55141/119/1";
-    throws_ok {
-       $gff_test2 = $mgutil->_write_gff_from_metagenome(
-                        $gff_test2, $obj_wrong_type);
-    } qr/ValueError/,
-        '_write_gff_from_metagenome dies due to wrong object type.';
-};
 =cut
-
 
 done_testing();
 
