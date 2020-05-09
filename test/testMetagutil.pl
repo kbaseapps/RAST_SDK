@@ -53,7 +53,6 @@ my $rast_genome_dir = $mgutil->_create_rast_subdir($scratch, "genome_annotation_
 
 sub genome_to_fasta {
     my($gn_ref) = @_;
-    my $fasta_path = catfile($rast_metag_dir, 'fasta_'.$gn_ref);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 
@@ -108,7 +107,7 @@ my $input_fasta_file = catfile($rast_metag_dir, 'prodigal_input.fasta');
 my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-$input_fasta_file = $mgutil->_write_fasta_from_genome(
+$input_fasta_file = $mgutil->_write_fasta_from_ama(
 		        $input_fasta_file, $input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_metagenome(
                     $gff_filename, $input_obj_ref);
@@ -581,13 +580,11 @@ subtest '_prodigal_then_glimmer3' => sub {
     print "_prodigal_then_glimmer3 results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
 };
-=cut
 
 
-=begin
-subtest '_write_fasta_from_genome' => sub {
+subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = catfile($rast_metag_dir, 'test1.fasta');
-    $fa_test1 = $mgutil->_write_fasta_from_genome(
+    $fa_test1 = $mgutil->_write_fasta_from_ama(
                     $fa_test1, $input_obj_ref);
 
     ok((-e $fa_test1), 'fasta file created');
@@ -663,7 +660,6 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
-=cut
 
 subtest '_run_rast' => sub {
     my $inputgenome = {
@@ -696,8 +692,21 @@ subtest 'annotate_metagenome' => sub {
         'RAST annotate_metagenome call returns ERROR due to kmer data absence or other causes.';
 
 };
+=cut
+
 
 # test by using prod obj id
+subtest 'mgutil_write_fasta_from_genome' => sub {
+    # testing get the fasta from a genome using obj ids from prod ONLY
+    my $fasta_fpath = catfile($rast_genome_dir, 'fasta_'.$obj_Ecoli);
+    lives_ok {
+        $fasta_fpath = $mgutil->_write_fasta_from_genome($fasta_fpath, $obj_Ecoli);
+    } 'Writing fasta from a genome runs ok';
+
+    ok ((-s $fasta_fpath), "fasta file written for $obj_Ecoli.\n");
+};
+
+=begin
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
     # a prod assembly
@@ -728,6 +737,7 @@ subtest 'Impl_rast_genome' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text

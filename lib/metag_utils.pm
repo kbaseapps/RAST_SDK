@@ -480,6 +480,22 @@ sub _get_fasta_from_assembly {
 }
 
 sub _write_fasta_from_genome {
+    my ($self, $input_obj_ref) = @_;
+
+    my $gn_result;
+    eval {
+        my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+        $gn_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $input_obj_ref});
+
+        unless (-s $gn_result->{file_path}) {print "Fasta file is empty!!!!";}
+    };
+    if ($@) {
+        croak "**_write_fasta_from_genome ERROR: ".$@."\n";
+    }
+    return $gn_result->{file_path};
+}
+
+sub _write_fasta_from_ama {
     my ($self, $fasta_filename, $input_obj_ref) = @_;
 
     eval {
@@ -487,13 +503,12 @@ sub _write_fasta_from_genome {
 
         my $fa_file = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
-
         copy($fa_file, $fasta_filename);
 
         unless (-s $fasta_filename) {print "Fasta file is empty.";}
     };
     if ($@) {
-        croak "**_write_fasta_from_genome ERROR: ".$@."\n";
+        croak "**_write_fasta_from_ama ERROR: ".$@."\n";
     }
     return $fasta_filename;
 }
@@ -509,7 +524,7 @@ sub _write_gff_from_genome {
                      $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
 
     unless ($is_genome) {
-        croak "ValueError: Object is not an KBaseAnnotations.Assembly, GFU will throw an error.\n";
+        croak "ValueError: Object is not an KBaseAnnotations.GenomeAnnotation or Genome, GFU will throw an error.\n";
     }
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
@@ -1618,8 +1633,7 @@ sub rast_genome {
             print "Input object '$input_obj_ref' is a genome/annotation and has $num_ftrs features.\n";
         }
 
-        $input_fasta_file = $self->_write_fasta_from_genome(
-                            $input_fasta_file, $input_obj_ref);
+        $input_fasta_file = $self->_write_fasta_from_genome($input_obj_ref);
         unless (-e $input_fasta_file) {
             croak "**rast_genome ERROR: could not find FASTA file\n";
         }
@@ -1742,7 +1756,7 @@ sub rast_metagenome {
             print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
         }
 
-        $input_fasta_file = $self->_write_fasta_from_genome(
+        $input_fasta_file = $self->_write_fasta_from_ama(
                             $input_fasta_file, $input_obj_ref);
         unless (-e $input_fasta_file) {
             croak "**rast_metagenome ERROR: could not find FASTA file\n";
