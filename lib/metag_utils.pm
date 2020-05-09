@@ -1644,8 +1644,8 @@ sub rast_genome {
 
         # generating the gff file directly from genome
         $gff_filename = $self->_write_gff_from_genome($input_obj_ref);
-        unless (-e $gff_filename) {
-            croak "**rast_genome ERROR: could not find GFF file\n";
+        unless (-s $gff_filename) {
+            croak "**rast_genome ERROR: GFF file is empty!\n";
         }
         ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
 

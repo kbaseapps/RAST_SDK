@@ -57,6 +57,8 @@ sub genome_to_fasta {
     my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 
     my $fasta_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $gn_ref});
+    print "First 10 lines of the FASTA file from gfu->genome_proteins_to_fasta:\n";
+    $mgutil->_print_fasta_gff(0, 10, $fasta_result->{file_path});
     return $fasta_result->{file_path};
 }
 
@@ -587,15 +589,6 @@ subtest '_write_fasta_from_ama' => sub {
     # ok(compare($fa_test1, $fasta1) ==dd 0, 'fasta file written correctly');
 };
 
-subtest '_write_gff_from_genome' => sub {
-    my $gff_test1 = catfile($rast_genome_dir, 'test1.gff');
-    $gff_test1 = $mgutil->_write_gff_from_genome(
-		     $gff_test1, $obj_Ecoli);
-
-    ok((-e $gff_test1), 'gff file created');
-    ok((-s $gff_test1), 'gff file has data');
-};
-
 subtest '_write_gff_from_ama' => sub {
     # test by using prod obj of type KBaseGenomeAnnotations.Assembly-5.0
     my $obj_wrong_type = "55141/119/1";
@@ -693,8 +686,27 @@ subtest 'annotate_metagenome' => sub {
 
 };
 =cut
+
 ## testing rast-annotating genome functions
+
+=begin
+## testing rast-annotating genome functions using CI object
+my $ci_obj_id = '47032/4/8';
+
 subtest 'mgutil_write_fasta_from_genome' => sub {
+    # testing get the fasta from a genome using obj ids from prod ONLY
+    my $fasta_fpath;
+    lives_ok {
+        $fasta_fpath = $mgutil->_write_fasta_from_genome($ci_obj_id);
+    } 'Writing fasta from a genome runs ok';
+
+    ok ((-s $fasta_fpath), "fasta file written for $ci_obj_id.\n");
+    print "First 10 lines of the FASTA file:\n";
+    $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
+};
+=cut
+
+subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
     my $fasta_fpath;
     lives_ok {
@@ -706,14 +718,16 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
 
-subtest 'mgutil_write_gff_from_genome' => sub {
+subtest '_write_gff_from_genome' => sub {
     # testing get the gff from a genome using obj ids from prod ONLY
     my $gff_fpath;
     lives_ok {
         $gff_fpath = $mgutil->_write_gff_from_genome($obj_Ecoli);
     } 'Writing gff from a genome runs ok';
 
+    ok((-e $gff_fpath), "GFF file created for $obj_Ecoli.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Ecoli.\n");
+
     print "First 10 lines of the GFF file:\n";
     $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
 };
