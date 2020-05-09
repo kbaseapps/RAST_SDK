@@ -1,0 +1,135 @@
+{
+  "ver" : "1.0.0",
+  "name" : "Annotate an assembly or a genome",
+  "authors" : [ "chenry", "olson", "qzhang"],
+"contact" : "http://kbase.us/contact-us/",
+  "visble" : true,
+  "categories" : ["active","annotation"],
+  "widgets" : {
+    "input" : null,
+    "output" : "kbaseGenomeView"
+  },
+  "parameters" : [
+  {
+      "id" : "object_ref",
+      "optional" : false,
+      "advanced" : false,
+      "allow_multiple" : false,
+      "default_values" : [ "" ],
+      "field_type" : "text",
+      "text_options" : {
+          "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomes.ContigSet",
+                               "KBaseGenomeAnnotations.Assembly",
+                               "KBaseGenomeAnnotations.GenomeAnnotation" ]
+      }
+  }, {
+      "id" : "output_genome_name",
+      "optional" : false,
+      "advanced" : false,
+      "allow_multiple" : false,
+      "default_values" : [ "" ],
+      "field_type" : "text",
+      "text_options" : {
+          "valid_ws_types" : [ "KBaseGenomes.Genome","KBaseGenomes.ContigSet",
+                               "KBaseGenomeAnnotations.Assembly",
+                               "KBaseGenomeAnnotations.GenomeAnnotation" ],
+          "is_output_name":true
+      }
+  }, {
+      "id" : "ncbi_taxon_id",
+      "optional" : true,
+      "advanced" : true,
+      "allow_multiple" : false,
+      "default_values" : [ "99999" ],
+      "field_type": "text",
+      "text_options": {
+           "validate_as" : "int",
+           "min_int" : 1
+      }
+  }, {
+      "id" : "relation_engine_timestamp_ms",
+      "optional" : true,
+      "advanced" : true,
+      "allow_multiple" : false,
+      "default_values" : [ "" ],
+      "field_type": "text",
+      "text_options": {
+           "validate_as" : "int",
+           "min_int" : 1
+      }
+  }, {
+      "id" : "scientific_name",
+      "optional" : true,
+      "advanced" : true,
+      "allow_multiple" : false,
+      "default_values" : [ "" ],
+      "field_type": "text",
+      "text_options": {
+           "validate_as" : "text"
+      }
+  }],
+  "job_id_output_field": "docker",
+  "behavior" : {
+    "service-mapping" : {
+      "url" : "",
+      "name" : "RAST_SDK",
+      "method" : "rast_genome",
+      "input_mapping" : [
+        {
+          "input_parameter": "object_ref",
+          "target_property": "object_ref",
+          "target_type_transform": "ref"
+        },
+        {
+          "input_parameter": "output_genome_name",
+          "generated_value": {
+            "prefix": "annotated_"
+          },
+          "target_property": "output_genome_name"
+        },
+        {
+          "input_parameter": "ncbi_taxon_id",
+          "target_property": "ncbi_taxon_id"
+        },
+        {
+          "input_parameter": "relation_engine_timestamp_ms",
+          "target_property": "relation_engine_timestamp_ms"
+        },
+        {
+          "input_parameter": "scientific_name",
+          "target_property": "scientific_name"
+        },
+        {
+          "narrative_system_variable": "workspace",
+          "target_property": "output_workspace"
+        },
+	{
+	    "constant_value" : "1",
+	    "target_property": "create_report"
+	}
+      ],
+      "output_mapping" : [
+        {
+          "service_method_output_path": [0, "report_name"],
+          "target_property": "report_name"
+        },
+        {
+          "service_method_output_path": [0, "report_ref"],
+          "target_property": "report_ref"
+        },
+        {
+          "narrative_system_variable": "output_workspace",
+          "target_property": "output_workspace"
+        },
+        {
+          "input_parameter": "output_genome_name",
+          "target_property": "id"
+        },
+        {
+          "narrative_system_variable": "output_workspace",
+          "target_property": "ws"
+        }
+      ]
+    }
+  }
+}
