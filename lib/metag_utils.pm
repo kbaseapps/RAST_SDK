@@ -482,13 +482,14 @@ sub _get_fasta_from_assembly {
 sub _write_fasta_from_genome {
     my ($self, $input_obj_ref) = @_;
 
-    my $fa_file;
+    my $fa_file = '';
     eval {
         my $genome_obj = $self->_fetch_object_data($input_obj_ref);
+        print "*******Input genome's assembly ref is: $genome_obj->{assembly_ref}**********\n";
 
         $fa_file = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
-        unless (-s $fa_file) {print "Fasta file is empty!!!!";}
+        unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
     };
     if ($@) {
         croak "**_write_fasta_from_genome ERROR: ".$@."\n";
@@ -497,16 +498,16 @@ sub _write_fasta_from_genome {
 }
 
 sub _write_fasta_from_ama {
-    my ($self, $fasta_filename, $input_obj_ref) = @_;
+    my ($self, $input_obj_ref) = @_;
 
+    my $fasta_filename = '';
     eval {
         my $genome_obj = $self->_fetch_object_data($input_obj_ref);
 
-        my $fa_file = $self->_get_fasta_from_assembly(
+        $fasta_filename = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
-        copy($fa_file, $fasta_filename);
 
-        unless (-s $fasta_filename) {print "Fasta file is empty.";}
+        unless (-e $fasta_filename && -s $fasta_filename) {print "Fasta file is empty.";}
     };
     if ($@) {
         croak "**_write_fasta_from_ama ERROR: ".$@."\n";

@@ -107,8 +107,7 @@ my $input_fasta_file = catfile($rast_metag_dir, 'prodigal_input.fasta');
 my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
 my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-$input_fasta_file = $mgutil->_write_fasta_from_ama(
-		        $input_fasta_file, $input_obj_ref);
+$input_fasta_file = $mgutil->_write_fasta_from_ama($input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_ama($input_obj_ref);
 # fetch protein sequences and gene IDs from fasta and gff files
 $fasta_contents = $mgutil->_parse_fasta($input_fasta_file);
@@ -582,13 +581,10 @@ subtest '_prodigal_then_glimmer3' => sub {
 
 
 subtest '_write_fasta_from_ama' => sub {
-    my $fa_test1 = catfile($rast_metag_dir, 'test1.fasta');
-    $fa_test1 = $mgutil->_write_fasta_from_ama(
-                    $fa_test1, $input_obj_ref);
-
+    my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
     ok((-e $fa_test1), 'fasta file created');
     ok((-s $fa_test1), 'fasta file has data');
-    # ok(compare($fa_test1, $fasta1) == 0, 'fasta file written correctly');
+    # ok(compare($fa_test1, $fasta1) ==dd 0, 'fasta file written correctly');
 };
 
 subtest '_write_gff_from_genome' => sub {
@@ -740,7 +736,6 @@ subtest 'mgutil_rast_genome' => sub {
     }
 };
 
-=begin
 subtest 'Impl_rast_genome' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
@@ -752,7 +747,6 @@ subtest 'Impl_rast_genome' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
-=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
