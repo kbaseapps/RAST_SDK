@@ -844,12 +844,16 @@ sub _run_rast {
 };
 
 
-sub _generate_stats_from_ama {
+sub _generate_stats_from_aa {
     my ($self, $gn_ref) = @_;
 
     my $gn_info = $self->_fetch_object_info($gn_ref);
-    my $is_assembly = $gn_info->[2] =~ m/GenomeAnnotations.Assembly/;
-    my $is_meta_assembly = $gn_info->[2] =~ m/Metagenomes.AnnotatedMetagenomeAssembly/;
+    my $in_type = $gn_info->[2];
+    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations.Assembly/ ||
+                       $in_type =~ /KBaseGenomes.ContigSet/);
+    my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
+                     $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
+    my $is_meta_assembly = $in_type =~ m/Metagenomes.AnnotatedMetagenomeAssembly/;
 
     my %gn_stats = ();
     $gn_stats{workspace} = $gn_info->[7];
@@ -868,7 +872,7 @@ sub _generate_stats_from_ama {
         $gn_stats{num_features} = 0;
         $gn_stats{feature_counts} = {};
     }
-    elsif ($is_meta_assembly) {
+    elsif ($is_meta_assembly || $is_genome) {
         my $gn_data = $self->_fetch_object_data($gn_ref);
         $gn_stats{gc_content} = $gn_data->{gc_content};
         $gn_stats{contig_count} = $gn_data->{num_contigs};
@@ -1095,15 +1099,77 @@ sub _write_html_from_stats {
     return @html_report;
 }
 
+#Create a KBaseReport with brief info/stats on a reannotated genome
+sub _generate_genome_report {
+    my ($self, $src_ref, $aa_ref, $src_gff_conts, $aa_gff_conts, $func_tab) = @_;
+
+    my $gn_info = $self->_fetch_object_info($aa_ref);
+    my $gn_ws = $gn_info->[7];
+
+    my %src_stats = $self->_generate_stats_from_aa($src_ref);
+    my %aa_stats = $self->_generate_stats_from_aa($aa_ref);
+    my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
+    my %aa_gff_stats = $self->_generate_stats_from_gffContents($aa_gff_conts);
+    my %subsys_info = $self->_fetch_subsystem_info();
+
+    my $report_message;
+    my ($src_gene_count, $src_role_count, $aa_gene_count, $aa_role_count);
+    if (keys %aa_gff_stats) {
+        if (keys %src_gff_stats) {
+            $src_gene_count = keys $src_gff_stats{gene_role_map};
+            $src_role_count = keys $src_gff_stats{function_roles};
+        }
+        else {
+            $src_gene_count = 0;
+            $src_role_count = 0;
+        }
+        $aa_gene_count = keys $aa_gff_stats{gene_role_map};
+        $aa_role_count = keys $aa_gff_stats{function_roles};
+        $report_message = ("Genome Ref: $aa_ref\n".
+                           "Genome type: $aa_stats{genome_type}\n".
+                           "Number of contigs: $aa_stats{contig_count}\n".
+                           "Number of features: $aa_stats{num_features}\n".
+                           "Number of unique function roles: $aa_role_count\n".
+                           "Number of genes: $aa_gene_count\n");
+    }
+    else {
+        $report_message = ("Genome Ref: $aa_ref\n".
+                           "Genome type: $aa_stats{genome_type}\n".
+                           "Number of features: $src_stats{num_features}\n".
+                           "No data on functional roles available\n");
+    }
+
+    my @html_files = $self->_write_html_from_stats(\%aa_stats,
+                                                   \%aa_gff_stats,
+                                                   \%subsys_info,
+                                                   $func_tab);
+
+    my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
+    my $report_info = $kbr->create_extended_report(
+        {"message"=>$report_message,
+         "objects_created"=>[{"ref"=>$aa_ref, "description"=>"RAST re-annotated genome"}],
+         "html_links"=> \@html_files,
+         "direct_html_link_index"=> 0,
+         "html_window_height"=> 366,
+         "report_object_name"=>"kb_RAST_genome_report_".$self->_create_uuid(),
+         "workspace_name"=>$gn_ws
+        });
+
+    return {"output_genome_ref"=>$aa_ref,
+            "workspace_name"=>$gn_ws,
+            "report_name"=>$report_info->{name},
+            "report_ref"=>$report_info->{ref}};
+}
+
 #Create a KBaseReport with brief info/stats on a reannotated metagenome
-sub _generate_report {
+sub _generate_metag_report {
     my ($self, $src_ref, $ama_ref, $src_gff_conts, $ama_gff_conts, $func_tab) = @_;
 
     my $gn_info = $self->_fetch_object_info($ama_ref);
     my $gn_ws = $gn_info->[7];
 
-    my %src_stats = $self->_generate_stats_from_ama($src_ref);
-    my %ama_stats = $self->_generate_stats_from_ama($ama_ref);
+    my %src_stats = $self->_generate_stats_from_aa($src_ref);
+    my %ama_stats = $self->_generate_stats_from_aa($ama_ref);
     my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
     my %ama_gff_stats = $self->_generate_stats_from_gffContents($ama_gff_conts);
     my %subsys_info = $self->_fetch_subsystem_info();
@@ -1618,14 +1684,19 @@ sub rast_genome {
                                      $input_obj_ref, $new_gff_file);
     my $aa_ref = $out_gn->{genome_ref};
 
-    ## TODO: reporting
-    my $ret = {
-            output_genome_ref => $aa_ref,
-            output_workspace => $params->{output_workspace},
-            report_name => undef,
-            report_ref => undef
+    my $rast_ret = {
+        output_genome_ref => $aa_ref,
+        output_workspace => $params->{output_workspace},
+        report_name => undef,
+        report_ref => undef
     };
-    return $ret;
+
+    if (defined($params->{create_report}) && $params->{create_report} == 1) {
+        $rast_ret = $self->_generate_genome_report(
+                          $input_obj_ref, $aa_ref, $gff_contents,
+                          $updated_gff_contents, \%ftr_func_lookup);
+    }
+    return $rast_ret;
 }
 
 
@@ -1769,18 +1840,18 @@ sub rast_metagenome {
                                             $input_obj_ref, $new_gff_file);
     my $ama_ref = $out_metag->{metagenome_ref};
 
-    my $report_ret = {
+    my $rast_ret = {
         output_metagenome_ref => $ama_ref,
         report_name => undef,
         report_ref => undef
     };
 
     if (defined($params->{create_report}) && $params->{create_report} == 1) {
-        $report_ret = $self->_generate_report(
+        $rast_ret = $self->_generate_metag_report(
                           $input_obj_ref, $ama_ref, $gff_contents,
                           $updated_gff_contents, \%ftr_func_lookup);
     }
-    return $report_ret;
+    return $rast_ret;
 }
 
 sub bulk_rast_metagenomes {

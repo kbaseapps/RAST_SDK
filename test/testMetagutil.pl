@@ -711,8 +711,10 @@ subtest 'mgutil_rast_genome' => sub {
         $rast_ref = $mgutil->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-    print "rast_genome returns: $rast_ref" if defined($rast_ref);
-    ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
+    if(defined($rast_ref)) {
+        print "rast_genome returns: $rast_ref" if defined($rast_ref);
+        ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
+    }
 };
 
 subtest 'Impl_rast_genome' => sub {
@@ -778,13 +780,13 @@ subtest 'annotation_genomes_throw_messages' => sub {
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 
-subtest '_generate_stats_from_ama & from_gffContents' => sub {
+subtest '_generate_stats_from_aa & from_gffContents' => sub {
     my $gff_file = 'tmp_gff';
     my $gff_path = catfile($rast_metag_dir, $gff_file);
     my ($gff_contents, $attr_delimiter) = ([], '=');
 
     # $obj8
-    my %ret_stats = $mgutil->_generate_stats_from_ama($obj8);
+    my %ret_stats = $mgutil->_generate_stats_from_aa($obj8);
     print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
 
@@ -795,7 +797,7 @@ subtest '_generate_stats_from_ama & from_gffContents' => sub {
     ok(keys %ret_stats, "Statistics generated from gffContents on $obj8.");
 
     # $obj9
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj9);
+    %ret_stats = $mgutil->_generate_stats_from_aa($obj9);
     print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
 
@@ -806,7 +808,7 @@ subtest '_generate_stats_from_ama & from_gffContents' => sub {
     ok(keys %ret_stats, "Statistics generated from gffContents on $obj9.");
 
     # $obj10
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj10);
+    %ret_stats = $mgutil->_generate_stats_from_aa($obj10);
     print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
 
@@ -817,8 +819,8 @@ subtest '_generate_stats_from_ama & from_gffContents' => sub {
     ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
 };
 
-# testing _generate_report using obj ids from prod ONLY
-subtest '_generate_report' => sub {
+# testing generate_metag_report using obj ids from prod ONLY
+subtest 'generate_metag_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
     my $gff_file1 = 'tmp_gff1';
@@ -851,7 +853,7 @@ subtest '_generate_report' => sub {
 
     my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
     #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $mgutil->_generate_report($obj6, $obj7, $gff_contents1,
+    my $ret_rpt = $mgutil->generate_metag_report($obj6, $obj7, $gff_contents1,
                                             $gff_contents2, \%ftr_tab);
     print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
@@ -916,22 +918,22 @@ subtest 'rast_metagenome' => sub {
 =cut
 
 =begin
-# testing _generate_report using obj ids from prod ONLY
-subtest '_generate_stats_from_ama' => sub {
-    my %ret_stats = $mgutil->_generate_stats_from_ama($obj4);
+# testing generate_metag_report using obj ids from prod ONLY
+subtest '_generate_stats_from_aa' => sub {
+    my %ret_stats = $mgutil->_generate_stats_from_aa($obj4);
     #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj4 returns result.");
 
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj5);
+    %ret_stats = $mgutil->_generate_stats_from_aa($obj5);
     #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj5 returns result.");
 
-    %ret_stats = $mgutil->_generate_stats_from_ama($obj7);
+    %ret_stats = $mgutil->_generate_stats_from_aa($obj7);
     #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj7 returns result.");
 };
 
-# testing _generate_report using obj ids from prod ONLY
+# testing generate_metag_report using obj ids from prod ONLY
 subtest '_generate_stats_from_gffContents' => sub {
     my $gff_file = 'tmp_gff';
     my $gff_path = catfile($rast_metag_dir, $gff_file);
