@@ -476,12 +476,21 @@ subtest '_parse_sco' => sub {
     $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
     ok( @{$sco_tab} >0, "Prodigal SCO parsing returns result.");
 };
+=cut
 
 subtest '_parse_gff' => sub {
+    my $Echinacea_gff = "data/Echinacea.gff";
     my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($ecoli_gff, '=');
     ok( @{$gff_contents} >0, "Parsing GFF returns result.");
+
+    lives_ok {
+        ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($Echinacea_gff, '=');
+    } "Testing _parse_gff on $Echinacea_gff succeeded.";
+    ok( @{$gff_contents} >0, "Parsing GFF on $Echinacea_gff returns result.\n");
+    print Dumper($gff_contents);
 };
 
+=begin
 subtest '_parse_prodigal_results' => sub {
     my $prd_out_path = catfile($rast_metag_dir, 'prodigal_output.gff');
     my $trans_path = catfile($rast_metag_dir, 'protein_translation');
@@ -719,9 +728,9 @@ subtest '_write_fasta_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 
     lives_ok {
-        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Echinace);
+        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Echinacea);
     } 'Writing fasta from a genome runs ok';
-    ok ((-s $fasta_fpath), "fasta file written for $obj_Echinace.\n");
+    ok ((-s $fasta_fpath), "fasta file written for $obj_Echinacea.\n");
 };
 
 subtest '_write_gff_from_genome' => sub {
@@ -738,11 +747,11 @@ subtest '_write_gff_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
 
     lives_ok {
-        $gff_fpath = $mgutil->_write_gff_from_genome($obj_Echinace);
+        $gff_fpath = $mgutil->_write_gff_from_genome($obj_Echinacea);
     } 'Writing gff from a genome runs ok';
 
-    ok((-e $gff_fpath), "GFF file created for $obj_Echinace.\n");
-    ok ((-s $gff_fpath), "GFF file written for $obj_Echinace.\n");
+    ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
+    ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea.\n");
 };
 
 subtest 'mgutil_rast_genome' => sub {
@@ -763,7 +772,7 @@ subtest 'mgutil_rast_genome' => sub {
     }
 
     $parms = {
-        "object_ref" => $obj_Echinace,
+        "object_ref" => $obj_Echinacea,
         "output_genome_name" => "rasted_Echinace_prod",
         "output_workspace" => $ws
     };
