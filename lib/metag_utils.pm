@@ -669,8 +669,8 @@ sub _save_genome {
                .$@."\n");
     }
 
-    #print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_genome-----------\n";
-    #$self->_print_fasta_gff(0, 10, $gff_file);
+    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_genome-----------\n";
+    $self->_print_fasta_gff(0, 10, $gff_file);
 
     # Open $gff_file to read into an array
     my $fh = $self->_openRead($gff_file);
@@ -679,7 +679,7 @@ sub _save_genome {
     close($fh);
 
     print "Read in ". scalar @gff_lines . " lines from GFF file $gff_file.\n";
-    $self->_print_fasta_gff(0, scalar @gff_lines, $gff_file);
+    #$self->_print_fasta_gff(0, scalar @gff_lines, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_genome = {};
