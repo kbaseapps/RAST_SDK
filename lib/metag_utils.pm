@@ -644,8 +644,9 @@ sub _save_genome {
     print "Parameters for saving annotated genome-----------------\n";
     print "Workspace name: $_[1]\n";
     print "Annotated genome name: $_[2]\n";
-    print "Object ref: $_[3]\n";
-    print "GFF file: $_[4]\n";
+    print "NCBI taxon ID: $_[3]\n";
+    print "Object ref: $_[4]\n";
+    print "GFF file: $_[5]\n";
 
     unless (defined($out_gn_name) && defined($ws)) {
         croak "**In _save_genome: $req1";
@@ -668,8 +669,17 @@ sub _save_genome {
                .$@."\n");
     }
 
-    print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_genome-----------\n";
-    $self->_print_fasta_gff(0, 10, $gff_file);
+    #print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_genome-----------\n";
+    #$self->_print_fasta_gff(0, 10, $gff_file);
+
+    # Open $gff_file to read into an array
+    my $fh = $self->_openRead($gff_file);
+    my @gff_lines=();
+    chomp(@gff_lines = <$fh>);
+    close($fh);
+
+    print "Read in ". scalar @gff_lines . " lines from GFF file $gff_file.\n";
+    $self->_print_fasta_gff(0, scalar @gff_lines, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_genome = {};
@@ -1248,8 +1258,8 @@ sub _fetch_object_data {
     my $ret_obj_data = {};
     eval {
         $ret_obj_data = $self->{ws_client}->get_objects2(
-                             {'objects'=>[{ref=>$obj_ref}]}
-                         )->{data}->[0]->{data};
+                            {'objects'=>[{ref=>$obj_ref, 'included'=>["assembly_ref"]}]}
+                        )->{data}->[0]->{data};
     };
     if ($@) {
         croak "ERROR Workspace.get_objects2 failed: ".$@."\n";
@@ -1404,7 +1414,7 @@ sub _get_feature_function_lookup {
 
     print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
     if ($ftr_count > 10) {
-        print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
+        print "INFO: F_get_feature_function_lookupirst 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
     }
     else {
         print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});

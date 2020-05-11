@@ -131,6 +131,7 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
+my $obj_Echinacea = "55141/242/1";  #prod genome
 my $obj_Ecoli = "55141/212/1";  # prod genome
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
@@ -716,6 +717,11 @@ subtest '_write_fasta_from_genome' => sub {
     ok ((-s $fasta_fpath), "fasta file written for $obj_Ecoli.\n");
     print "First 10 lines of the FASTA file:\n";
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
+
+    lives_ok {
+        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Echinace);
+    } 'Writing fasta from a genome runs ok';
+    ok ((-s $fasta_fpath), "fasta file written for $obj_Echinace.\n");
 };
 
 subtest '_write_gff_from_genome' => sub {
@@ -730,6 +736,13 @@ subtest '_write_gff_from_genome' => sub {
 
     print "First 10 lines of the GFF file:\n";
     $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
+
+    lives_ok {
+        $gff_fpath = $mgutil->_write_gff_from_genome($obj_Echinace);
+    } 'Writing gff from a genome runs ok';
+
+    ok((-e $gff_fpath), "GFF file created for $obj_Echinace.\n");
+    ok ((-s $gff_fpath), "GFF file written for $obj_Echinace.\n");
 };
 
 subtest 'mgutil_rast_genome' => sub {
@@ -745,8 +758,23 @@ subtest 'mgutil_rast_genome' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
     if(defined($rast_ref)) {
-        print "rast_genome returns: $rast_ref" if defined($rast_ref);
-        ok (($rast_ref !~ m/[^\\w\\|._-]/), 'rast_genome returns an INVALID ref');
+        print "rast_genome returns: $rast_ref";
+        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returned an INVALID ref: $rast_ref");
+    }
+
+    $parms = {
+        "object_ref" => $obj_Echinace,
+        "output_genome_name" => "rasted_Echinace_prod",
+        "output_workspace" => $ws
+    };
+
+    throws_ok {
+        $rast_ref = $mgutil->rast_genome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    if(defined($rast_ref)) {
+        print "rast_genome returns: $rast_ref";
+        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returns an INVALID ref: $rast_ref");
     }
 };
 
