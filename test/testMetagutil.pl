@@ -489,13 +489,10 @@ subtest '_parseNwrite_gff' => sub {
     ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea to $gff_fpath.\n");
 
-    print "First 10 lines of the GFF file $gff_fpath:\n";
-    $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
+    print "ALL lines of the GFF file written from genome $obj_Echinacea:\n";
+    $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
 
-    my $Echinacea_gff = "data/Echinacea.gff";
-    my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($ecoli_gff, '=');
-    ok( @{$gff_contents} >0, "Parsing GFF returns result.");
-
+    my $Echinacea_gff = "data/Echinacea_purpurea_1762.gff";
     lives_ok {
         ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($Echinacea_gff, '=');
     } "Testing _parse_gff on $Echinacea_gff succeeded.";
@@ -735,6 +732,7 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
 };
 =cut
 
+=begin
 ## testing rast-annotating genome functions
 subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
@@ -773,10 +771,11 @@ subtest '_write_gff_from_genome' => sub {
     ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea.\n");
 
-    print "First 10 lines of the GFF file:\n";
-    $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
+    print "ALL lines of the GFF file:\n";
+    $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
 };
-
+=cut
+=begin
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
     my $parms = {
@@ -821,6 +820,7 @@ subtest 'Impl_rast_genome' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text

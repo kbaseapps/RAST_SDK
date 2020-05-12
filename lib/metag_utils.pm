@@ -1500,8 +1500,8 @@ sub _write_gff {
     unless (-s $gff_filename) {
         croak "**In _write_gff ERROR: empty file $gff_filename\n";
     }
-    print "\n*********First 10 lines of the newly written GFF file:\n";
-    $self->_print_fasta_gff(0, 10, $gff_filename);
+    print "\n*********First 20 lines of the newly written GFF file:\n";
+    $self->_print_fasta_gff(0, 20, $gff_filename);
 }
 
 
