@@ -682,17 +682,9 @@ sub _save_genome {
                .$@."\n");
     }
 
+    my $file_lines = $self->_count_file_lines($gff_file);
     print "*********GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
-    $self->_print_fasta_gff_file(0, scalar @{$gff_file}, $gff_file);
-
-    # Open $gff_file to read into an array
-    my $fh = $self->_openRead($gff_file);
-    my @gff_lines=();
-    chomp(@gff_lines = <$fh>);
-    close($fh);
-
-    print "Read in ". scalar @gff_lines . " lines from GFF file $gff_file.\n";
-    #$self->_print_fasta_gff(0, scalar @gff_lines, $gff_file);
+    $self->_print_fasta_gff_file(0, $file_lines, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_genome = {};
@@ -1354,18 +1346,25 @@ sub _print_fasta_gff {
     }
 }
 
+sub _count_file_lines {
+    my ($self, $filename) = @_;
+    print "Counting the number of lines in file $filename=\n";
+    # Open $filename to read into an array
+    my $fh = $self->_openRead($filename);
+    my @file_lines=();
+    chomp(@file_lines = <$fh>);
+    close($fh);
+    return scalar @file_lines;
+}
+
+
 ##----subs for parsing GFF by Seaver----##
 sub _parse_gff {
     my ($self, $gff_filename, $attr_delimiter) = @_;
     print "Parsing GFF contents from file $gff_filename \n";
 
-    # Open $gff_filename to read into an array
-    my $fh = $self->_openRead($gff_filename);
-    my @gff_lines=();
-    chomp(@gff_lines = <$fh>);
-    close($fh);
-
-    print "Read in ". scalar @gff_lines . " lines from GFF file $gff_filename\n";
+    my $file_lines = $self->_count_file_lines($gff_filename);
+    print "Read in $file_lines lines from GFF file $gff_filename\n";
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
