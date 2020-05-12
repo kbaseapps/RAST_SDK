@@ -30,6 +30,8 @@ my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
 
+my $tmp_write_dir = 'data/write_tmp';  ## For saving temporary test files
+
 my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
 my $out_name = 'annotated_metag';
@@ -489,20 +491,42 @@ subtest '_parseNwrite_gff' => sub {
     ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea to $gff_fpath.\n");
 
-    print "ALL lines of the GFF file written from genome $obj_Echinacea:\n";
-    $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
+    print "First 20 lines of the GFF file written from genome $obj_Echinacea:\n";
+    $mgutil->_print_fasta_gff(0, 20, $gff_fpath);
 
-    my $Echinacea_gff = "data/Echinacea_purpurea_1762.gff";
+    my $temp_gff_file = catfile($tmp_write_dir, 'test_gff_file.gff');
+    copy $gff_fpath, $temp_gff_file;
+    print "First 20 lines of the GFF file copied from genome $gff_fpath:\n";
+    $mgutil->_print_fasta_gff(0, 20, $temp_gff_file);
+
+    my $gff_contents1;
     lives_ok {
-        ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($Echinacea_gff, '=');
-    } "Testing _parse_gff on $Echinacea_gff succeeded.";
-    ok( @{$gff_contents} >0, "Parsing GFF on $Echinacea_gff returns result.\n");
-    print "Parsed ". scalar @{$gff_contents}." GFF contents.\n"; # .Dumper($gff_contents);
+        ($gff_contents1, $attr_delimiter) = $mgutil->_parse_gff($gff_fpath, '=');
+    } "Testing _parse_gff on $gff_fpath succeeded.";
+    ok( @{$gff_contents1} >0, "Parsing GFF on $gff_fpath returns result.\n");
+
+    my $gff_contents2;
+    lives_ok {
+        ($gff_contents2, $attr_delimiter) = $mgutil->_parse_gff($temp_gff_file, '=');
+    } "Testing _parse_gff on $temp_gff_file succeeded.";
+    ok( @{$gff_contents1} >0, "Parsing GFF on $temp_gff_file returns result.\n");
+
+    is_deeply($gff_contents1, $gff_contents2, 'GFF data structures should be the same!');
+
+    my $Echinacea_gff_file = "data/Echinacea_purpurea_1762.gff";
+    my $gff_contents3;
+    lives_ok {
+        ($gff_contents3, $attr_delimiter) = $mgutil->_parse_gff($Echinacea_gff_file, '=');
+    } "Testing _parse_gff on file $Echinacea_gff_file succeeded.";
+    ok( @{$gff_contents3} >0, "Parsing GFF on $Echinacea_gff_file returns result.\n");
+    print "Parsed ". scalar @{$gff_contents3}." GFF contents.\n";
+
+    is_deeply($gff_contents1, $gff_contents3, 'GFF data structures should be the same 2!');
 
     my $test_gff_file_written;
     lives_ok {
         $test_gff_file_written = catfile($rast_genome_dir, 'test_written.gff');
-        $mgutil->_write_gff($gff_contents, $test_gff_file_written , '=');
+        $mgutil->_write_gff($gff_contents1, $test_gff_file_written , '=');
     } "Writing the gff contents back to a gff file is ok";
     ok ( (-s $test_gff_file_written), "GFF file written to $test_gff_file_written.\n");
 };

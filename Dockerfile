@@ -14,6 +14,7 @@ RUN cpanm -i Config::IniFiles && \
     cpanm -i HTML::SimpleLinkExtor && \
     cpanm -i WWW::Mechanize --force && \
     cpanm -i MIME::Base64 && \
+    cpanm -i Text::Trim && \
     cpanm -i Test::Most
 
 ADD ./bootstrap bootstrap

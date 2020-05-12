@@ -26,6 +26,7 @@ use JSON;
 use Encode qw(encode decode);
 use File::Basename;
 use Array::Utils qw(:all);
+use Text::Trim qw(trim);
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -1350,10 +1351,10 @@ sub _parse_gff {
     close($fh);
 
     print "Read in ". scalar @gff_lines . " lines from GFF file $gff_filename\n";
-    print Dumper(@gff_lines);
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
+        chomp $current_line;
         next if (!$current_line || $current_line =~ m/^#.*$/);
         next if $current_line =~ m/^##gff-version\s*\d$/;
 
@@ -1392,6 +1393,17 @@ sub _parse_gff {
             }
 
             #Force to lowercase in case changes in lookup
+            #Added the trim/chomp function to avoid cases like extra space or newline:
+            # ' parent' => 'mRNA_2',
+            # ' product' => 'malate/citrate symporter
+            #'
+            # 'id' => 'EPWB_RS00005
+            #'
+            #
+            trim $key;
+            trim $value;
+            chomp $value;
+
             $ftr_attributes{lc($key)}=$value;
             push(@attr_order,lc($key));
         }
