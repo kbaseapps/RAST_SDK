@@ -478,7 +478,20 @@ subtest '_parse_sco' => sub {
 };
 =cut
 
-subtest '_parse_gff' => sub {
+
+subtest '_parseNwrite_gff' => sub {
+    # testing get the gff from a genome using obj ids from prod ONLY
+    my $gff_fpath;
+    lives_ok {
+        $gff_fpath = $mgutil->_write_gff_from_genome($obj_Echinacea);
+    } 'Writing gff from a genome runs ok';
+
+    ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
+    ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea to $gff_fpath.\n");
+
+    print "First 10 lines of the GFF file $gff_fpath:\n";
+    $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
+
     my $Echinacea_gff = "data/Echinacea.gff";
     my ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($ecoli_gff, '=');
     ok( @{$gff_contents} >0, "Parsing GFF returns result.");
@@ -487,8 +500,16 @@ subtest '_parse_gff' => sub {
         ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($Echinacea_gff, '=');
     } "Testing _parse_gff on $Echinacea_gff succeeded.";
     ok( @{$gff_contents} >0, "Parsing GFF on $Echinacea_gff returns result.\n");
-    print Dumper($gff_contents);
+    print "Parsed ". scalar @{$gff_contents}." GFF contents.\n"; # .Dumper($gff_contents);
+
+    my $test_gff_file_written;
+    lives_ok {
+        $test_gff_file_written = catfile($rast_genome_dir, 'test_written.gff');
+        $mgutil->_write_gff($gff_contents, $test_gff_file_written , '=');
+    } "Writing the gff contents back to a gff file is ok";
+    ok ( (-s $test_gff_file_written), "GFF file written to $test_gff_file_written.\n");
 };
+
 
 =begin
 subtest '_parse_prodigal_results' => sub {
@@ -511,7 +532,6 @@ subtest '_parse_prodigal_results' => sub {
                           $trans_path, $prd_out_path, $out_type);
     ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
     ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
-
 };
 
 
@@ -697,10 +717,9 @@ subtest 'annotate_metagenome' => sub {
 };
 =cut
 
-## testing rast-annotating genome functions
 
 =begin
-## testing rast-annotating genome functions using CI object
+## test by using a CI object
 my $ci_obj_id = '47032/4/8';
 
 subtest 'mgutil_write_fasta_from_genome' => sub {
@@ -716,6 +735,7 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
 };
 =cut
 
+## testing rast-annotating genome functions
 subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
     my $fasta_fpath;
@@ -752,6 +772,9 @@ subtest '_write_gff_from_genome' => sub {
 
     ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea.\n");
+
+    print "First 10 lines of the GFF file:\n";
+    $mgutil->_print_fasta_gff(0, 10, $gff_fpath);
 };
 
 subtest 'mgutil_rast_genome' => sub {

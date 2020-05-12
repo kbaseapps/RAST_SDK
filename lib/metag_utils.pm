@@ -534,8 +534,6 @@ sub _write_gff_from_genome {
     eval {
         $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
 
-	# copy($gff_result->{file_path}, $gff_filename) || die "GFF file copy failed!" ;
-
         unless (-s $gff_result->{file_path}) {print "GFF is empty ";}
     };
     if ($@) {
@@ -631,7 +629,7 @@ sub _save_metagenome {
 }
 
 sub _save_genome {
-    my ($self, $ws, $out_gn_name, $ncbi_taxon_id, $obj_ref, $gff_file) = @_;
+    my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
 
     my $req_params = "Missing required parameters for saving genome.\n";
     my $req1 = "Both 'output_workspace' and 'output_genome_name' are required.\n";
@@ -644,9 +642,8 @@ sub _save_genome {
     print "Parameters for saving annotated genome-----------------\n";
     print "Workspace name: $_[1]\n";
     print "Annotated genome name: $_[2]\n";
-    print "NCBI taxon ID: $_[3]\n";
-    print "Object ref: $_[4]\n";
-    print "GFF file: $_[5]\n";
+    print "Object ref: $_[3]\n";
+    print "GFF file: $_[4]\n";
 
     unless (defined($out_gn_name) && defined($ws)) {
         croak "**In _save_genome: $req1";
@@ -689,7 +686,6 @@ sub _save_genome {
             "gff_file" => {'path' => $gff_file},
             "genome_name" => $out_gn_name,
             "workspace_name" => $ws,
-            "taxon_id" => $ncbi_taxon_id,
             "generate_missing_genes" => 1});
     };
     if ($@) {
@@ -739,7 +735,7 @@ sub _check_annotation_params {
     }
     if (!defined($params->{ncbi_taxon_id})
         || $params->{ncbi_taxon_id} eq '') {
-        $params->{ncbi_taxon_id} = 999999;  # a fake number for now
+        $params->{ncbi_taxon_id} = 9999999;  # a fake number for now
     }
     if (!defined($params->{run_prodigal})
         || $params->{run_prodigal} eq '') {
@@ -1357,6 +1353,7 @@ sub _parse_gff {
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
+	print "$current_line\n";
         next if (!$current_line || $current_line =~ m/^#.*$/);
         next if $current_line =~ m/^##gff-version\s*\d$/;
 
@@ -1482,7 +1479,6 @@ sub _write_gff {
 
     # Open $gff_filename to write the @$gff_contents array back to the file
     my $fh = $self->_openWrite($gff_filename);
-
     # Loop over the array
     foreach (@$gff_contents) {
         if(scalar(@$_)>=9){
@@ -1504,6 +1500,8 @@ sub _write_gff {
     unless (-s $gff_filename) {
         croak "**In _write_gff ERROR: empty file $gff_filename\n";
     }
+    print "\n*********First 10 lines of the newly written GFF file:\n";
+    $self->_print_fasta_gff(0, 10, $gff_filename);
 }
 
 
@@ -1611,7 +1609,8 @@ sub rast_genome {
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
                      $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
 
-    # 2. fetching the gff contents, if $input_obj_ref points to an assembly, call Prodigal
+    # 2. fetching the gff contents, if $input_obj_ref points to an assembly,
+    #    call Prodigal and then Glimmer3 to for genes
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
     if ($is_assembly) {
@@ -1706,7 +1705,6 @@ sub rast_genome {
     ## save rast re-annotated fasta/gff data
     my $out_gn = $self->_save_genome($params->{output_workspace},
                                      $params->{output_genome_name},
-                                     $params->{ncbi_taxon_id},
                                      $input_obj_ref, $new_gff_file);
     my $aa_ref = $out_gn->{genome_ref};
 
