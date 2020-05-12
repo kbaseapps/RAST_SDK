@@ -145,8 +145,13 @@ my $obj7 = "55141/107/1";  # prod metag
 my $obj8 = "55141/114/1";  # prod metag
 my $obj9 = "55141/117/1";  # prod metag
 my $obj10 = "55141/120/1";  # prod metag
+my $obj_asmb = "55141/243/1";  # prod assembly
 
-my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
+#my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
+my $ecoli_fasta = $mgutil->_write_fasta_from_genome($obj_Ecoli);
+unless (-s $ecoli_fasta) {
+    print "**_write_fasta_from_genome on $obj_Ecoli ERROR: FASTA file is empty!\n";
+}
 
 my $test_ftrs = [{
  'id' => '10000_1',
@@ -478,8 +483,6 @@ subtest '_parse_sco' => sub {
     $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
     ok( @{$sco_tab} >0, "Prodigal SCO parsing returns result.");
 };
-=cut
-
 
 subtest '_parseNwrite_gff' => sub {
     # testing get the gff from a genome using obj ids from prod ONLY
@@ -532,7 +535,6 @@ subtest '_parseNwrite_gff' => sub {
 };
 
 
-=begin
 subtest '_parse_prodigal_results' => sub {
     my $prd_out_path = catfile($rast_metag_dir, 'prodigal_output.gff');
     my $trans_path = catfile($rast_metag_dir, 'protein_translation');
@@ -554,6 +556,7 @@ subtest '_parse_prodigal_results' => sub {
     ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
     ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
 };
+=cut
 
 
 subtest '_prodigal_gene_call' => sub {
@@ -570,8 +573,7 @@ subtest '_prodigal_gene_call' => sub {
         ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
     } 'Prodigal finished run 1.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results1:\n".Dumper(@{$prd_gene_results});
+    ok( @{$prd_gene_results}=0, "Prodigal gene call on $p_input returns 0 result.");
 
     $p_input = $ecoli_fasta;
     lives_ok {
@@ -579,7 +581,7 @@ subtest '_prodigal_gene_call' => sub {
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
     } 'Prodigal finished run 2.';
     ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results2:\n".Dumper(@{$prd_gene_results});
+    print "Prodigal gene call results2:\n".Dumper(@{$prd_gene_results}[0..10]);
 
     $p_input = $fasta4;
     lives_ok {
@@ -594,8 +596,7 @@ subtest '_prodigal_gene_call' => sub {
 # test _glimmer3_gene_call
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
-    my $glimmer3_notOk = "ERROR";
-    my $glimmer3_died = "Could not extract upstream motifs";
+    my $glimmer3_notOk = "ERROR:";
 
     my $glimmer3_ret;
     throws_ok {
@@ -605,8 +606,8 @@ subtest '_glimmer3_gene_call' => sub {
 
     throws_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($ecoli_fasta);
-    } qr/$glimmer3_died/,
-        "_glimmer3_gene_call errors: $glimmer3_died";
+    } qr/$glimmer3_ok/,
+        "_glimmer3_gene_call runs ok on $ecoli_fasta";
 
     lives_ok {
         $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
@@ -616,7 +617,7 @@ subtest '_glimmer3_gene_call' => sub {
 };
 
 subtest '_prodigal_then_glimmer3' => sub {
-    my $fa_input = $fasta4; # $ecoli_fasta; # fasta1;
+    my $fa_input = $fasta4; # $ecoli_fasta;
     my $md = 'meta';
     my $out_type = 'gff';
     my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
@@ -628,11 +629,16 @@ subtest '_prodigal_then_glimmer3' => sub {
     $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
                                $fa_input, $trans, $nuc, $out_file, $out_type, $md);
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $fa_input returns result.");
-    print "_prodigal_then_glimmer3 results:\n".Dumper(@{$pNg_gene_results}[0..10]);
+    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
+    my $asmb_fasta = $mgutil->_get_fasta_from_assembly($obj_asmb);
+    $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
+                               $asmb_fasta, $trans, $nuc, $out_file, $out_type, $md);
+    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
+    print "_prodigal_then_glimmer3 on $asmb_fasta results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 };
 
-
+=begin
 subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
     ok((-e $fa_test1), 'fasta file created');
@@ -754,9 +760,8 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
     print "First 10 lines of the FASTA file:\n";
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
-=cut
 
-=begin
+
 ## testing rast-annotating genome functions
 subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
@@ -799,7 +804,7 @@ subtest '_write_gff_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
 };
 =cut
-=begin
+
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
     my $parms = {
@@ -831,6 +836,16 @@ subtest 'mgutil_rast_genome' => sub {
         print "rast_genome returns: $rast_ref";
         ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returns an INVALID ref: $rast_ref");
     }
+
+    $parms = {
+        "object_ref" => $obj_asmb,
+        "output_genome_name" => "rasted_assembly",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        $rast_ref = $mgutil->rast_genome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
 subtest 'Impl_rast_genome' => sub {
@@ -839,12 +854,22 @@ subtest 'Impl_rast_genome' => sub {
         "output_genome_name" => "rasted_genome",
         "output_workspace" => $ws
     };
+    my $rast_ann;
     throws_ok {
-        my $rast_ann = $rast_impl->rast_genome($parms);
+        $rast_ann = $rast_impl->rast_genome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    $parms = {
+        "object_ref" => $obj_asmb,
+        "output_genome_name" => "rasted_assembly",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        $rast_ann = $rast_impl->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
-=cut
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text

@@ -304,7 +304,7 @@ sub _prodigal_gene_call {
                                                   $out_type,
                                                   $mode);
  
-    my @prodigal_out = [];
+    my @prodigal_out;
     if ($self->_run_prodigal(@prodigal_cmd) == 0) {
         print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
         print "First 10 lines of the GFF file from Prodigal-----------\n";
@@ -317,7 +317,7 @@ sub _prodigal_gene_call {
 
         my $count = @$gff_contents;
 	if ($count > 0) {
-            print "Prodigal returned $count entries.\n".Dumper(@{$gff_contents}[0]);
+            print "Prodigal returned $count entries.\n";  # .Dumper(@{$gff_contents}[0]);
 
             foreach my $entry (@$gff_contents) {
                 my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
@@ -371,7 +371,7 @@ sub _prodigal_then_glimmer3 {
     my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
     $mode = 'meta' unless defined($mode);
 
-    my ($out_gff_file, $gene_call_result, $prodigal_out);
+    my ($out_gff_file, $prd_gff_contents, $gene_call_result, $prodigal_out, $attr_dlmtr);
     eval {
         ($out_gff_file, $prodigal_out) = $self->_prodigal_gene_call(
                                                       $input_fasta,
@@ -381,12 +381,13 @@ sub _prodigal_then_glimmer3 {
                                                       $out_type,
                                                       $mode);
         $gene_call_result = $prodigal_out;
+        ($prd_gff_contents, $attr_dlmtr) = $self->_parse_gff($out_gff_file, "=");
     };
     if ($@) {
         print "Prodigal gene calling failed with ERROR:\n".$@."\n";
     }
 
-    my $glimmer_out;
+    my $glimmer_out; # an array of [$fid, $contig_id, $beg, $end, $dna]
     eval {
         $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
     };
@@ -401,6 +402,8 @@ sub _prodigal_then_glimmer3 {
         my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
         foreach my $glm_entry (@{$glimmer_out}) {
             my ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
+            next if !defined($fid) || !defined($ctg_id);
+
             my @glm_prim = ($ctg_id, $beg, $end);
 
 	    my $found_in_prd = 0;
@@ -430,9 +433,15 @@ sub _prodigal_then_glimmer3 {
 
 	     # Not found in Prodigal genes
 	     # prepare the new feature for seq translation
-	     if ($found_in_prd == 0) {
+	     if (defined($fid) && $found_in_prd == 0) {
 	         $glm_gene_seqs{$fid} = $dna_seq;
 	         $glm_ftrs{$fid} = \@glm_prim;
+                 # $prd_gff_contents is an array of
+	         # [$contig_id, $source_id, $feature_type, $start, $end,
+                 #  $score, $strand, $phase, \%ftr_attributes]
+	         my $strd = ($beg < $end) ? '+': '-';
+		 push @{$prd_gff_contents}, [
+			 $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {ID=>$fid}];
 	     }
         }
         print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
@@ -454,10 +463,16 @@ sub _prodigal_then_glimmer3 {
 	    my $strand = ($beg1 < $end1) ? '+': '-';
             push(@{$gene_call_result}, [
                 $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
-	        $glm_ftrs{$ftr}[1], $glm_ftrs{$ftr}[2], $strand,
-	        $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+                $beg1, $end1, $strand,
+                $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
         }
     }
+    # updating the GFF file by writing the $prd_gff_contents back to $out_gff_file
+    print "First 20 lines of the GFF file from Prodigal:\n";
+    $self->_print_fasta_gff(0, 20, $out_gff_file);
+    $self->_write_gff($prd_gff_contents, $out_gff_file, $attr_dlmtr);
+    print "First 20 lines of the GFF file after combine results from Prodigal and Glimmer3:\n";
+    $self->_print_fasta_gff(0, 20, $out_gff_file);
     return ($out_gff_file, $gene_call_result);
 }
 
@@ -1648,6 +1663,7 @@ sub rast_genome {
                         protein_translation => $seq
             });
         }
+        ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
     }
     elsif ($is_genome) {
         # input_obj_ref points to a genome, should we keep the exisiting genome features????
