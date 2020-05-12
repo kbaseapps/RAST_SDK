@@ -1350,10 +1350,10 @@ sub _parse_gff {
     close($fh);
 
     print "Read in ". scalar @gff_lines . " lines from GFF file $gff_filename\n";
+    print Dumper(@gff_lines);
 
     my @gff_contents=();
     foreach my $current_line (@gff_lines){
-	print "$current_line\n";
         next if (!$current_line || $current_line =~ m/^#.*$/);
         next if $current_line =~ m/^##gff-version\s*\d$/;
 
