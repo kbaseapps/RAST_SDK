@@ -685,7 +685,7 @@ sub _save_genome {
     my $gff_lines = $self->_get_file_lines($gff_file);
     my $file_lines = scalar @{$gff_lines};
     print "*********GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
-    $self->_print_fasta_gff_file(0, $file_lines, $gff_file);
+    $self->_print_fasta_gff(0, $file_lines, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_genome = {};
