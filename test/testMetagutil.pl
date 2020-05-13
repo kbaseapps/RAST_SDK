@@ -560,7 +560,7 @@ subtest '_parse_prodigal_results' => sub {
 };
 =cut
 
-
+=begin
 subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
@@ -637,6 +637,7 @@ subtest '_prodigal_then_glimmer3' => sub {
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
     print "_prodigal_then_glimmer3 on $asmb_fasta results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 };
+=cut
 
 =begin
 subtest '_write_fasta_from_ama' => sub {
@@ -802,7 +803,24 @@ subtest '_write_gff_from_genome' => sub {
     print "ALL lines of the GFF file:\n";
     $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
 };
+=cut
 
+subtest '_save_genome' => sub {
+    my $gff_fpath = 'data/gff4save.gff';
+    my $out_gn = 'rasted_Carsonella';
+    my $input_asmb = $obj_asmb;
+    my $mygn = {};
+    lives_ok {
+        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $gff_fpath);
+    } '_save_genome run without errors on $input_asmb.\n';
+    ok (exists $mygn->{genome_ref},
+        "genome saved with genome_ref=$mygn->{genome_ref}");
+    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
+    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
+    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
+};
+
+=begin
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
     my $parms = {
