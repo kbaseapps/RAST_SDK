@@ -101,7 +101,7 @@ sub generate_metagenome {
     return $mg;
 }
 
-
+=begin
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
@@ -121,9 +121,10 @@ $fasta_contents = $mgutil->_parse_fasta($input_fasta_file);
 my $gene_seqs = $mgutil->_extract_cds_sequences_from_fasta(
                     $fasta_contents, $gff_contents);
 print "**********Gene sequences************\n" . Dumper($gene_seqs);
+
 my $protein_seqs = $mgutil->_translate_gene_to_protein_sequences($gene_seqs);
 print "**********Protein sequences************\n" . Dumper($protein_seqs);
-
+=cut
 
 ##-----------------Test Blocks--------------------##
 
@@ -558,9 +559,7 @@ subtest '_parse_prodigal_results' => sub {
     ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
     ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
 };
-=cut
 
-=begin
 subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
@@ -577,6 +576,10 @@ subtest '_prodigal_gene_call' => sub {
     } 'Prodigal finished run 1.';
     ok( @{$prd_gene_results}=0, "Prodigal gene call on $p_input returns 0 result.");
 
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigal gff file for $p_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $out_file);
+
     $p_input = $ecoli_fasta;
     lives_ok {
         ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
@@ -585,6 +588,10 @@ subtest '_prodigal_gene_call' => sub {
     ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
     print "Prodigal gene call results2:\n".Dumper(@{$prd_gene_results}[0..10]);
 
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigal gff file for $p_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $out_file);
+
     $p_input = $fasta4;
     lives_ok {
         ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
@@ -592,6 +599,18 @@ subtest '_prodigal_gene_call' => sub {
     } 'Prodigal finished run 3.';
     ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
     print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
+
+    $p_input = $asmb_fasta;
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
+    } 'Prodigal finished run 4.';
+    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
+    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
+
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigal gff file for $p_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $out_file);
 };
 
 
@@ -626,20 +645,31 @@ subtest '_prodigal_then_glimmer3' => sub {
     my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
     my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
 
-    my $pNg_gene_results;
-    $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
+    my ($pNg_gene_results, $pNg_gff_file);
+    lives_ok {
+        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
                                $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+    } "_prodigal_then_glimmer3 finished run 1.";
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $fa_input returns result.");
     print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
-    $pNg_gene_results = $mgutil->_prodigal_then_glimmer3(
-                               $asmb_fasta, $trans, $nuc, $out_file, $out_type, $md);
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
-    print "_prodigal_then_glimmer3 on $asmb_fasta results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-};
-=cut
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
 
-=begin
+    $fa_input = $asmb_fasta;
+    lives_ok {
+        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
+                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+    } "_prodigal_then_glimmer3 finished run 2.";
+    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
+    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
+
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
+};
+
 subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
     ok((-e $fa_test1), 'fasta file created');
@@ -806,13 +836,33 @@ subtest '_write_gff_from_genome' => sub {
 =cut
 
 subtest '_save_genome' => sub {
-    my $gff_fpath = 'data/gff4save.gff';
+    ## repeat the portion from testing _prodigal_then_glimmer3 in order to get the GFF
+    my $md = 'meta';
+    my $out_type = 'gff';
+    my $trans = catfile($rast_genome_dir, 'protein_translation');
+    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
+
+    my $fa_input = $asmb_fasta;
+    my ($pNg_gff_file, $pNg_gene_results);
+    lives_ok {
+        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
+                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+    } "_prodigal_then_glimmer3 finished run on $fa_input.";
+    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
+    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
+
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
+
+    ## Test the _save_genome function with $gff_fpath
     my $out_gn = 'rasted_Carsonella';
     my $input_asmb = $obj_asmb;
     my $mygn = {};
     lives_ok {
-        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $gff_fpath);
-    } '_save_genome run without errors on $input_asmb.\n';
+        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $pNg_gff_file);
+    } "_save_genome run without errors on $input_asmb.\n";
     ok (exists $mygn->{genome_ref},
         "genome saved with genome_ref=$mygn->{genome_ref}");
     ok (exists $mygn->{genome_info}, 'genome saved with genome_info');

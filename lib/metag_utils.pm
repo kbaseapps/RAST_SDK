@@ -682,10 +682,11 @@ sub _save_genome {
                .$@."\n");
     }
 
-    my $gff_lines = $self->_get_file_lines($gff_file);
-    my $file_lines = scalar @{$gff_lines};
-    print "*********GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
-    $self->_print_fasta_gff(0, $file_lines, $gff_file);
+    #my $gff_lines = $self->_get_file_lines($gff_file);
+    #my $file_lines = scalar @{$gff_lines};
+    #$self->_print_fasta_gff(0, $file_lines, $gff_file);
+    print "*********First 20 lines of GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
+    $self->_print_fasta_gff(0, 20, $gff_file);
 
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $annotated_genome = {};
@@ -1349,7 +1350,6 @@ sub _print_fasta_gff {
 
 sub _get_file_lines {
     my ($self, $filename) = @_;
-    print "Counting the number of lines in file $filename=\n";
     # Open $filename to read into an array
     my $fh = $self->_openRead($filename);
     my @file_lines=();
@@ -1743,7 +1743,8 @@ sub rast_genome {
         report_ref => undef
     };
 
-    if (defined($params->{create_report}) && $params->{create_report} == 1) {
+    if (defined($aa_ref) && defined($params->{create_report}) &&
+	    $params->{create_report} == 1) {
         $rast_ret = $self->_generate_genome_report(
                           $input_obj_ref, $aa_ref, $gff_contents,
                           $updated_gff_contents, \%ftr_func_lookup);
