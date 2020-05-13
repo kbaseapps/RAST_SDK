@@ -1368,7 +1368,7 @@ sub _parse_gff {
     print "Read in ".scalar @{$gff_lines}." lines from GFF file $gff_filename\n";
 
     my @gff_contents=();
-    foreach my $current_line (@gff_lines){
+    foreach my $current_line (@{$gff_lines}){
         chomp $current_line;
         next if (!$current_line || $current_line =~ m/^#.*$/);
         next if $current_line =~ m/^##gff-version\s*\d$/;
