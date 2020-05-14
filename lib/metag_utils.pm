@@ -28,6 +28,11 @@ use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
 
+
+use GenomeTypeObject;
+use SeedUtils;
+use IDclient;
+
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::GenomeAnnotationClient;
@@ -336,6 +341,28 @@ sub _prodigal_gene_call {
     return ($out_file, \@prodigal_out);
 }
 
+sub _run_glimmer3 {
+    my ($self, $gn_in, $min_len) = @_;
+    $min_len = 2000 unless defined($min_len);
+    my $params = { verbose => 0, min_training_len => $min_len};
+
+    my $glimmer_out;
+    eval {
+	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+        $glimmer_out = $rast_client->run_pipeline($gn_in,
+            {stages => [{name => "call_features_CDS_glimmer3",
+                         glimmer3_parameters => $params}]}
+        );
+    };
+    if ($@) {
+        croak "ERROR calling rast run_pipeline: ".$@."\n";
+
+    }
+    else {
+        return $glimmer_out;
+    }
+}
+
 #
 # Glimmer::call_genes_with_glimmer (glimmer3 gene call)
 # return: an array of arrays of the structure:
@@ -367,6 +394,10 @@ sub _glimmer3_gene_call {
     }
 }
 
+
+# Expect to return the final GFF file and $gene_call_result of the following data structure:
+# An array of [$contig_id, $fid, $ftr_type, $start, $end, $strand, $seq, $source]
+#
 sub _prodigal_then_glimmer3 {
     my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
     $mode = 'meta' unless defined($mode);
@@ -440,8 +471,10 @@ sub _prodigal_then_glimmer3 {
 	         # [$contig_id, $source_id, $feature_type, $start, $end,
                  #  $score, $strand, $phase, \%ftr_attributes]
 	         my $strd = ($beg < $end) ? '+': '-';
+                 ## !!!!ONLY take in glimmer genes that has $strd=='+' to test if _save_genome works!!!
+                 next unless $strd eq '+';
 		 push @{$prd_gff_contents}, [
-			 $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {ID=>$fid}];
+                         $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
 	     }
         }
         print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
@@ -461,6 +494,7 @@ sub _prodigal_then_glimmer3 {
 	    my $beg1 = $glm_ftrs{$ftr}[1];
 	    my $end1 = $glm_ftrs{$ftr}[2];
 	    my $strand = ($beg1 < $end1) ? '+': '-';
+            next unless $strand eq '+';
             push(@{$gene_call_result}, [
                 $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
                 $beg1, $end1, $strand,

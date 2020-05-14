@@ -612,8 +612,31 @@ subtest '_prodigal_gene_call' => sub {
     print "***********First 10 lines of prodigal gff file for $p_input:\n";
     $mgutil->_print_fasta_gff(0, 10, $out_file);
 };
+=cut
 
 
+=begin
+# test _run_glimmer3
+subtest '_run_glimmer3' => sub {
+    my $glimmer3_ok = "_run_glimmer3 call runs ok.";
+    my $glimmer3_notOk = "ERROR";
+
+    #my $gn_data = $mgutil->_fetch_object_data($obj_asmb);
+    #print "Data for Assembly $obj_asmb:\n".Dumper($gn_data);
+    #my $contig_count = $gn_data->{num_contigs};
+    #my $gc_content = $gn_data->{gc_content};
+
+    my $glimmer3_ret = {features => []};
+    lives_ok {
+        $glimmer3_ret = $mgutil->_run_glimmer3({id => $obj_asmb});
+    } $glimmer3_ok;
+
+    ok( @{$glimmer3_ret->{features}} > 0, "_run_glimmer3 on $obj_asmb returns gene call result.\n");
+    print "_run_glimmer3 results:\n". Dumper($glimmer3_ret);
+};
+=cut
+
+=begin
 # test _glimmer3_gene_call
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
@@ -635,6 +658,7 @@ subtest '_glimmer3_gene_call' => sub {
     ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
     print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
 };
+
 
 subtest '_prodigal_then_glimmer3' => sub {
     my $fa_input = $fasta4; # $ecoli_fasta;
@@ -836,7 +860,8 @@ subtest '_write_gff_from_genome' => sub {
 =cut
 
 subtest '_save_genome' => sub {
-    ## repeat the portion from testing _prodigal_then_glimmer3 in order to get the GFF
+    ## repeat the portion from testing prodigal and
+    ## _prodigal_then_glimmer3 in order to get the GFF
     my $md = 'meta';
     my $out_type = 'gff';
     my $trans = catfile($rast_genome_dir, 'protein_translation');
@@ -844,10 +869,38 @@ subtest '_save_genome' => sub {
     my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
 
     my $fa_input = $asmb_fasta;
+    my $prd_gene_results;
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+    } 'Prodigal finished run.';
+    ok( @{$prd_gene_results}, "Prodigal gene call on $fa_input returns result.");
+    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
+
+    ## Check if the GFF file from Prodigal is tab delimited
+    print "***********First 10 lines of prodigal gff file for $fa_input:\n";
+    $mgutil->_print_fasta_gff(0, 10, $out_file);
+
+    ## Test the _save_genome function with Prodigal $out_file
+    my $out_gn = 'prd_ed_Carsonella';
+    my $input_asmb = $obj_asmb;
+    my $mygn = {};
+    lives_ok {
+        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $out_file);
+    } "_save_genome run without errors on $input_asmb.\n";
+    ok (exists $mygn->{genome_ref},
+        "genome saved with genome_ref=$mygn->{genome_ref}");
+    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
+    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
+    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
+
+    ## prodigal_then_glimmer3
+    $fa_input = $asmb_fasta;
     my ($pNg_gff_file, $pNg_gene_results);
+    my $out_file1 = catfile($rast_genome_dir, 'prodigal_output1').'.'.$out_type;
     lives_ok {
         ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
+                               $fa_input, $trans, $nuc, $out_file1, $out_type, $md);
     } "_prodigal_then_glimmer3 finished run on $fa_input.";
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
     print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
@@ -855,11 +908,10 @@ subtest '_save_genome' => sub {
     ## Check if the GFF file from Prodigal is tab delimited
     print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
     $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
-
-    ## Test the _save_genome function with $gff_fpath
-    my $out_gn = 'rasted_Carsonella';
-    my $input_asmb = $obj_asmb;
-    my $mygn = {};
+    ## Test the _save_genome function with prodigal_then_glimmer3 $gff_fpath
+    $out_gn = 'pNg_Carsonella';
+    $input_asmb = $obj_asmb;
+    $mygn = {};
     lives_ok {
         $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $pNg_gff_file);
     } "_save_genome run without errors on $input_asmb.\n";
