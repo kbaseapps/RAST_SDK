@@ -2084,10 +2084,6 @@ sub rast_genome
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
     my $mg_util = new metag_utils($config, $ctx);
     my $rast_out = $mg_util->rast_genome($params);
-    my $reportout = Bio::KBase::kbaseenv::create_report({
-        workspace_name => $params->{output_workspace},
-        report_object_name => $params->{output_genome_name}.".report",
-    });
 
     $output = {
         output_genome_ref => $rast_out->{output_genome_ref},
