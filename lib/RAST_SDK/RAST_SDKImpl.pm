@@ -2084,11 +2084,10 @@ sub rast_genome
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
     my $mg_util = new metag_utils($config, $ctx);
     my $rast_out = $mg_util->rast_genome($params);
-
     $output = {
         output_genome_ref => $rast_out->{output_genome_ref},
-        report_ref => $reportout->{"report_ref"},
-        report_name => $reportout->{report_name},
+        report_ref => $rast_out->{"report_ref"},
+        report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
     };
     Bio::KBase::utilities::close_debug();
