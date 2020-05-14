@@ -576,9 +576,8 @@ sub _write_gff_from_genome {
                      $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
 
     unless ($is_genome) {
-        croak "ValueError: Object is not an KBaseAnnotations.GenomeAnnotation or Genome, GFU will throw an error.\n";
+        croak "ValueError: Object is not an KBaseAnnotations.GenomeAnnotation or Genome, will throw an error.\n";
     }
-
     my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gff_result;
     eval {
@@ -1138,12 +1137,14 @@ sub _write_html_from_stats {
     chop $rpt_data;
     $rpt_data .= "\n]);\n";
 
+    my $rpt_footer = '';
     my $gene_count = keys %$genes;
-    my $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
-    $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
-    $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
-    $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
-
+    if (defined($obj_stats{contig_count}) && defined($obj_stats{num_features})) {
+        $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
+        $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
+        $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
+        $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
+    }
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
     my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
     my $srch3 = "(<replaceTableData>)(.*)(</replaceTableData>)";
@@ -1194,7 +1195,6 @@ sub _generate_genome_report {
         $aa_role_count = keys $aa_gff_stats{function_roles};
         $report_message = ("Genome Ref: $aa_ref\n".
                            "Genome type: $aa_stats{genome_type}\n".
-                           "Number of contigs: $aa_stats{contig_count}\n".
                            "Number of features: $aa_stats{num_features}\n".
                            "Number of unique function roles: $aa_role_count\n".
                            "Number of genes: $aa_gene_count\n");

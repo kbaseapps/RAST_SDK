@@ -135,7 +135,11 @@ my %trans_tab;
 my $sco_tab = [];
 
 my $obj_Echinacea = "55141/242/1";  #prod genome
+my $obj_Echinacea_ann = "55141/247/1";  #prod genome
 my $obj_Ecoli = "55141/212/1";  # prod genome
+my $obj_Ecoli_ann = "55141/252/1";  # prod genome
+my $obj_asmb = "55141/243/1";  # prod assembly
+my $obj_asmb_ann = "55141/244/1";  # prod assembly
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
 my $obj3 = "55141/77/1";  # prod assembly
@@ -146,7 +150,6 @@ my $obj7 = "55141/107/1";  # prod metag
 my $obj8 = "55141/114/1";  # prod metag
 my $obj9 = "55141/117/1";  # prod metag
 my $obj10 = "55141/120/1";  # prod metag
-my $obj_asmb = "55141/243/1";  # prod assembly
 
 my $asmb_fasta = $mgutil->_get_fasta_from_assembly($obj_asmb);
 
@@ -857,7 +860,7 @@ subtest '_write_gff_from_genome' => sub {
     print "ALL lines of the GFF file:\n";
     $mgutil->_print_fasta_gff(0, 2000, $gff_fpath);
 };
-=cut
+
 
 subtest '_save_genome' => sub {
     ## repeat the portion from testing prodigal and
@@ -922,7 +925,6 @@ subtest '_save_genome' => sub {
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
 
-=begin
 subtest 'mgutil_rast_genome' => sub {
     # testing rast_genome using obj ids from prod ONLY
     my $parms = {
@@ -989,6 +991,36 @@ subtest 'Impl_rast_genome' => sub {
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 =cut
+
+
+## testing generate_genome_report using obj ids from prod ONLY
+subtest 'generate_genome_report' => sub {
+    my $stats_ok = 'stats generation runs ok.\n';
+
+    my $gff_path = $mgutil->_write_gff_from_genome($obj_asmb_ann);
+
+    my ($gff_contents, $attr_delimiter) = ([], '=');
+
+    my %ret_stats;
+    lives_ok {
+        ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
+        %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
+        #print "Stats on $obj_asmb_ann: \n".Dumper(\%ret_stats);
+    } $stats_ok;
+    is(keys %ret_stats, 2, "_generate_stats_from_gffContents on $obj_asmb_ann should return non-empty.\n");
+    ok(exists($ret_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
+    ok(exists($ret_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
+
+    my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
+    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
+    my $ret_rpt = $mgutil->_generate_genome_report($obj_asmb, $obj_asmb_ann, [],
+                                            $gff_contents, \%ftr_tab);
+    print "Report return: \n".Dumper($ret_rpt);
+    ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
+    ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
+    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
+};
+
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
@@ -1189,7 +1221,7 @@ subtest '_generate_stats_from_aa' => sub {
     ok(keys %ret_stats, "Statistics generation from AMA $obj7 returns result.");
 };
 
-# testing generate_metag_report using obj ids from prod ONLY
+# testing _generate_stats_from_gffContents using obj ids from prod ONLY
 subtest '_generate_stats_from_gffContents' => sub {
     my $gff_path = $mgutil->_write_gff_from_ama($obj7);
 

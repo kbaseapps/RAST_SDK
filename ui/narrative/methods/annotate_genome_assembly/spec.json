@@ -2,12 +2,12 @@
   "ver" : "1.0.0",
   "name" : "Annotate an assembly or a genome",
   "authors" : [ "chenry", "olson", "qzhang"],
-"contact" : "http://kbase.us/contact-us/",
+  "contact" : "http://kbase.us/contact-us/",
   "visble" : true,
   "categories" : ["active","annotation"],
   "widgets" : {
-    "input" : null,
-    "output" : "kbaseGenomeView"
+      "input" : "kbaseNarrativeMethodInput",
+      "output" : "no-display"
   },
   "parameters" : [
   {
