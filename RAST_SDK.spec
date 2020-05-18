@@ -154,7 +154,7 @@ module RAST_SDK {
 
         /*
             For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation moduel)
-        /*
+
             Reference to an Assembly or Genome object in the workspace
             @id ws KBaseGenomeAnnotations.Assembly
             @id ws KBaseGenomes.Genome
@@ -197,7 +197,7 @@ module RAST_SDK {
             list<data_obj_ref> input_AMAs;
             string AMA_text;
             string output_workspace;
-            string output_AMASet;
+            string output_AMASet_name;
             bool create_report;
         } BulkAnnotateMetagenomesParams;
 
@@ -209,13 +209,14 @@ module RAST_SDK {
         funcdef annotate_metagenomes(BulkAnnotateMetagenomesParams params)
                 returns (BulkMetagenomesAnnotateOutput output) authentication required;
 
+
         /*
-            Required parameters for rast_genome:
-                object_ref - reference to Assembly or Genome object,
+            Required parameters for rast_genome_assembly:
+                object_ref - reference to a Genome or Assembly object,
                 output_workspace - output workspace name,
                 output_genome_name - output object name
 
-            Optional parameters for rast_genome:
+            Optional parameters for rast_genome_assembly:
 		ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
 			        is included scientific_name is ignored.
 		relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
@@ -230,16 +231,43 @@ module RAST_SDK {
             string scientific_name;
             string output_genome_name;
             bool create_report;
-        } RastGenomeParams;
+        } RastGenomeAssemblyParams;
 
         typedef structure {
             genome_id output_genome_ref;
             string output_workspace;
             string report_name;
             string report_ref;
-        } RastGenomeOutput;
+        } RastGenomeAssemblyOutput;
 
-        funcdef rast_genome(RastGenomeParams params)
-                returns (RastGenomeOutput output) authentication required;
+        funcdef rast_genome_assembly(RastGenomeAssemblyParams params)
+                returns (RastGenomeAssemblyOutput output) authentication required;
 
+
+        /*
+            For RAST annotating genomes/assemblies
+ 
+            Reference to a set of annotated Genome and/or Assembly objects in the workspace
+            @id ws KBaseSearch.GenomeSet
+        */
+        typedef string genomeSet_ref;
+
+        typedef structure {
+            list<data_obj_ref> input_genomes_assemblies;
+            string input_text;
+            string output_workspace;
+            int ncbi_taxon_id;
+            int relation_engine_timestamp_ms;
+            string scientific_name;
+            string output_GenomeSet_name;
+            bool create_report;
+        } BulkRastGenomesAssembliesParams;
+
+        typedef structure {
+            genomeSet_ref output_GenomeSet_ref;
+            string output_workspace;
+        } BulkRastGenomesAssembliesOutput;
+
+        funcdef rast_genomes_assemblies(BulkRastGenomesAssembliesParams params)
+                returns (BulkRastGenomesAssembliesOutput output) authentication required;
 };

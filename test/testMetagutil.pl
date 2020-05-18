@@ -926,7 +926,7 @@ subtest '_save_genome' => sub {
 };
 
 subtest 'mgutil_rast_genome' => sub {
-    # testing rast_genome using obj ids from prod ONLY
+    # testing metag_utils rast_genome using obj ids from prod ONLY
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
@@ -960,7 +960,8 @@ subtest 'mgutil_rast_genome' => sub {
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws
+        "output_workspace" => $ws,
+        "create_report" => 1
     };
     throws_ok {
         $rast_ref = $mgutil->rast_genome($parms);
@@ -968,7 +969,7 @@ subtest 'mgutil_rast_genome' => sub {
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
-subtest 'Impl_rast_genome' => sub {
+subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_genome",
@@ -976,7 +977,7 @@ subtest 'Impl_rast_genome' => sub {
     };
     my $rast_ann;
     throws_ok {
-        $rast_ann = $rast_impl->rast_genome($parms);
+        $rast_ann = $rast_impl->rast_genome_assembly($parms);
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 
@@ -986,7 +987,7 @@ subtest 'Impl_rast_genome' => sub {
         "output_workspace" => $ws
     };
     throws_ok {
-        $rast_ann = $rast_impl->rast_genome($parms);
+        $rast_ann = $rast_impl->rast_genome_assembly($parms);
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };

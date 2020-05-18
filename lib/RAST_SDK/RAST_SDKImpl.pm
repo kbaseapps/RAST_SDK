@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '0c0157308454abdf79d1e6c91ba1cbccaf0303a8';
+our $GIT_COMMIT_HASH = '19d45032e7cac7ab0dff23df3b73ebec8cd774c4';
 
 =head1 NAME
 
@@ -1445,7 +1445,6 @@ sub annotate_genomes
     my($return);
     #BEGIN annotate_genomes
     $self->util_initialize_call($params,$ctx);
-    #$params = Bio::KBase::utilities::args($params,["workspace"],{
     $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
     	input_genomes => [],
     	genome_text => undef,
@@ -1901,7 +1900,7 @@ BulkAnnotateMetagenomesParams is a reference to a hash where the following keys 
 	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	AMA_text has a value which is a string
 	output_workspace has a value which is a string
-	output_AMASet has a value which is a string
+	output_AMASet_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
 bool is an int
@@ -1922,7 +1921,7 @@ BulkAnnotateMetagenomesParams is a reference to a hash where the following keys 
 	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	AMA_text has a value which is a string
 	output_workspace has a value which is a string
-	output_AMASet has a value which is a string
+	output_AMASet_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
 bool is an int
@@ -1990,9 +1989,9 @@ sub annotate_metagenomes
 
 
 
-=head2 rast_genome
+=head2 rast_genome_assembly
 
-  $output = $obj->rast_genome($params)
+  $output = $obj->rast_genome_assembly($params)
 
 =over 4
 
@@ -2001,9 +2000,9 @@ sub annotate_metagenomes
 =begin html
 
 <pre>
-$params is a RAST_SDK.RastGenomeParams
-$output is a RAST_SDK.RastGenomeOutput
-RastGenomeParams is a reference to a hash where the following keys are defined:
+$params is a RAST_SDK.RastGenomeAssemblyParams
+$output is a RAST_SDK.RastGenomeAssemblyOutput
+RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
 	ncbi_taxon_id has a value which is an int
@@ -2013,7 +2012,7 @@ RastGenomeParams is a reference to a hash where the following keys are defined:
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
 bool is an int
-RastGenomeOutput is a reference to a hash where the following keys are defined:
+RastGenomeAssemblyOutput is a reference to a hash where the following keys are defined:
 	output_genome_ref has a value which is a RAST_SDK.genome_id
 	output_workspace has a value which is a string
 	report_name has a value which is a string
@@ -2026,9 +2025,9 @@ genome_id is a string
 
 =begin text
 
-$params is a RAST_SDK.RastGenomeParams
-$output is a RAST_SDK.RastGenomeOutput
-RastGenomeParams is a reference to a hash where the following keys are defined:
+$params is a RAST_SDK.RastGenomeAssemblyParams
+$output is a RAST_SDK.RastGenomeAssemblyOutput
+RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
 	ncbi_taxon_id has a value which is an int
@@ -2038,7 +2037,7 @@ RastGenomeParams is a reference to a hash where the following keys are defined:
 	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
 bool is an int
-RastGenomeOutput is a reference to a hash where the following keys are defined:
+RastGenomeAssemblyOutput is a reference to a hash where the following keys are defined:
 	output_genome_ref has a value which is a RAST_SDK.genome_id
 	output_workspace has a value which is a string
 	report_name has a value which is a string
@@ -2058,7 +2057,7 @@ genome_id is a string
 
 =cut
 
-sub rast_genome
+sub rast_genome_assembly
 {
     my $self = shift;
     my($params) = @_;
@@ -2066,20 +2065,24 @@ sub rast_genome
     my @_bad_arguments;
     (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
     if (@_bad_arguments) {
-	my $msg = "Invalid arguments passed to rast_genome:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	my $msg = "Invalid arguments passed to rast_genome_assembly:\n" . join("", map { "\t$_\n" } @_bad_arguments);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-							       method_name => 'rast_genome');
+							       method_name => 'rast_genome_assembly');
     }
 
     my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
     my($output);
-    #BEGIN rast_genome
+    #BEGIN rast_genome_assembly
     $self->util_initialize_call($params,$ctx);
     $params = Bio::KBase::utilities::args($params,
                   ["object_ref", "output_workspace", "output_genome_name"],
                   {create_report => 0});
-    print "rast_genome input parameters=\n". Dumper($params). "\n";
+    print "rast_genome_assembly input parameters=\n". Dumper($params). "\n";
 
+    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
+	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
     my $mg_util = new metag_utils($config, $ctx);
@@ -2091,13 +2094,144 @@ sub rast_genome
         output_workspace => $params->{output_workspace}
     };
     Bio::KBase::utilities::close_debug();
-    #END rast_genome
+    #END rast_genome_assembly
     my @_bad_returns;
     (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
     if (@_bad_returns) {
-	my $msg = "Invalid returns passed to rast_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	my $msg = "Invalid returns passed to rast_genome_assembly:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-							       method_name => 'rast_genome');
+							       method_name => 'rast_genome_assembly');
+    }
+    return($output);
+}
+
+
+
+
+=head2 rast_genomes_assemblies
+
+  $output = $obj->rast_genomes_assemblies($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.BulkRastGenomesAssembliesParams
+$output is a RAST_SDK.BulkRastGenomesAssembliesOutput
+BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
+	input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	output_workspace has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
+	output_GenomeSet_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
+	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+	output_workspace has a value which is a string
+genomeSet_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.BulkRastGenomesAssembliesParams
+$output is a RAST_SDK.BulkRastGenomesAssembliesOutput
+BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
+	input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	output_workspace has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
+	output_GenomeSet_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
+	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+	output_workspace has a value which is a string
+genomeSet_ref is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub rast_genomes_assemblies
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to rast_genomes_assemblies:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genomes_assemblies');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN rast_genomes_assemblies
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["object_ref", "output_workspace", "output_genome_name"],
+                  {create_report => 0});
+    print "rast_genome_assembly input parameters=\n". Dumper($params). "\n";
+
+    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
+	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
+    my $genomes_assemblies = $params->{input_genomes_assemblies};
+
+    #
+    # Throw an error IF $genomes is NOT an non-empty ARRAY AND, in the same time,
+    # the input to genome_text is NOT a non-blank string.
+    #
+    my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
+		       "and/or a string of genome names separated by ';', '\n' or '|'i".
+                       " (without quotes).\n");
+    Bio::KBase::Exceptions::ArgumentValidationError->throw(
+        error        => $empty_input_msg,
+        method_name  => 'rast_genomes_assemblies'
+    ) unless ref $genomes_assemblies eq 'ARRAY' && @$genomes_assemblies || $params->{ input_text };
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $mg_util = new metag_utils($config, $ctx);
+    my $rast_out = $mg_util->bulk_rast_genomes($params);
+    $output = {
+        output_genome_ref => $rast_out->{output_genome_ref},
+        report_ref => $rast_out->{"report_ref"},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    Bio::KBase::utilities::close_debug();
+    #END rast_genomes_assemblies
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to rast_genomes_assemblies:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genomes_assemblies');
     }
     return($output);
 }
@@ -2641,7 +2775,7 @@ functions has a value which is a reference to a list where each element is a ref
 =item Description
 
 For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation moduel)
-        /*
+
 Reference to an Assembly or Genome object in the workspace
 @id ws KBaseGenomeAnnotations.Assembly
 @id ws KBaseGenomes.Genome
@@ -2796,7 +2930,7 @@ input_assemblies has a value which is a reference to a list where each element i
 input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 AMA_text has a value which is a string
 output_workspace has a value which is a string
-output_AMASet has a value which is a string
+output_AMASet_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
 
 </pre>
@@ -2810,7 +2944,7 @@ input_assemblies has a value which is a reference to a list where each element i
 input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 AMA_text has a value which is a string
 output_workspace has a value which is a string
-output_AMASet has a value which is a string
+output_AMASet_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
 
 
@@ -2852,7 +2986,7 @@ output_workspace has a value which is a string
 
 
 
-=head2 RastGenomeParams
+=head2 RastGenomeAssemblyParams
 
 =over 4
 
@@ -2860,12 +2994,12 @@ output_workspace has a value which is a string
 
 =item Description
 
-Required parameters for rast_genome:
-    object_ref - reference to Assembly or Genome object,
+Required parameters for rast_genome_assembly:
+    object_ref - reference to a Genome or Assembly object,
     output_workspace - output workspace name,
     output_genome_name - output object name
 
-Optional parameters for rast_genome:
+Optional parameters for rast_genome_assembly:
     ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
                     is included scientific_name is ignored.
     relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
@@ -2909,7 +3043,7 @@ create_report has a value which is a RAST_SDK.bool
 
 
 
-=head2 RastGenomeOutput
+=head2 RastGenomeAssemblyOutput
 
 =over 4
 
@@ -2937,6 +3071,116 @@ output_genome_ref has a value which is a RAST_SDK.genome_id
 output_workspace has a value which is a string
 report_name has a value which is a string
 report_ref has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 genomeSet_ref
+
+=over 4
+
+
+
+=item Description
+
+For RAST annotating genomes/assemblies
+ 
+Reference to a set of annotated Genome and/or Assembly objects in the workspace
+@id ws KBaseSearch.GenomeSet
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 BulkRastGenomesAssembliesParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+output_workspace has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
+output_GenomeSet_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+output_workspace has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
+output_GenomeSet_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 BulkRastGenomesAssembliesOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+output_workspace has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+output_workspace has a value which is a string
 
 
 =end text
