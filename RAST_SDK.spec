@@ -193,9 +193,9 @@ module RAST_SDK {
                 returns (MetagenomeAnnotateOutput output) authentication required;
 
         typedef structure {
-            list<data_obj_ref> input_assemblies;
             list<data_obj_ref> input_AMAs;
-            string AMA_text;
+            list<data_obj_ref> input_assemblies;
+            string input_text;
             string output_workspace;
             string output_AMASet_name;
             bool create_report;
@@ -253,7 +253,8 @@ module RAST_SDK {
         typedef string genomeSet_ref;
 
         typedef structure {
-            list<data_obj_ref> input_genomes_assemblies;
+            list<data_obj_ref> input_genomes;
+            list<data_obj_ref> input_assemblies;
             string input_text;
             string output_workspace;
             int ncbi_taxon_id;

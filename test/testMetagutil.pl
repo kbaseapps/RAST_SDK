@@ -819,6 +819,7 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
 
+
 ## testing rast-annotating genome functions
 subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
@@ -991,7 +992,6 @@ subtest 'Impl_rast_genome_assembly' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
-=cut
 
 
 ## testing generate_genome_report using obj ids from prod ONLY
@@ -1021,6 +1021,7 @@ subtest 'generate_genome_report' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
+=cut
 
 
 =begin
@@ -1069,6 +1070,81 @@ subtest 'annotation_genomes_throw_messages' => sub {
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
 =cut
+
+subtest 'rast_genomes_assemblies' => sub {
+    my $error_message = qr/ERROR:Missing required inputs/;
+    my $error_mand = qr/Mandatory arguments missing/;
+
+    my $params = {
+        "output_GenomeSet_name" => "out_genomeSet"
+    };
+=begin
+    throws_ok {
+        my $ret_ann0 = $rast_impl->rast_genomes_assemblies($params);
+    } $error_mand,
+      'Missing required parameter output_workspace die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_GenomeSet_name" => "out_genomeSet",
+        "output_workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_text} = '';
+        my $ret_ann1 = $rast_impl->rast_genomes_assemblies($params);
+    } $error_message,
+      'Blank input_text plus undef input_genomes and input_assemblies die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_GenomeSet_name" => "out_genomeSet",
+        "output_workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        my $ret_ann2 = $rast_impl->rast_genomes_assemblies($params);
+    } $error_message,
+      'Empty input_genomes plus undef input_text die correctly'
+      or diag explain $params;
+=cut
+
+    $params = {
+        "output_GenomeSet_name" => "out_genomeSet",
+        "output_workspace" => get_ws_name()
+    };
+    throws_ok {
+        $params->{input_genomes} = [];
+        $params->{input_assemblies} = [];
+        $params->{input_text} = '';
+        my $ret_ann3 = $rast_impl->rast_genomes_assemblies($params);
+    } $error_message,
+      "Blank input_text AND empty input_genoms AND empty input_assemblies die correctly"
+      or diag explain $params;
+
+    throws_ok {
+        $params->{input_genomes} = ["48109/9/1"]; # array of a prod object
+        $params->{input_text} = '';
+        my $ret_ann4 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    throws_ok {
+        $params->{input_genomes} = "48109/9/1"; # array of a prod object
+        $params->{input_text} = '';
+        my $ret_ann5 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    my $ret_ann6;
+    throws_ok {
+        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
+        $params->{input_genomes} = [$obj4, $obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [$obj3, $obj_asmb]; # array of prod objects
+        $params->{input_text} = '';
+        $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+};
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#

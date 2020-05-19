@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '19d45032e7cac7ab0dff23df3b73ebec8cd774c4';
+our $GIT_COMMIT_HASH = '3801a4acdd90424f45e7ade19d0f7dd0c769a666';
 
 =head1 NAME
 
@@ -1896,9 +1896,9 @@ sub annotate_metagenome
 $params is a RAST_SDK.BulkAnnotateMetagenomesParams
 $output is a RAST_SDK.BulkMetagenomesAnnotateOutput
 BulkAnnotateMetagenomesParams is a reference to a hash where the following keys are defined:
-	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
-	AMA_text has a value which is a string
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
 	output_workspace has a value which is a string
 	output_AMASet_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
@@ -1917,9 +1917,9 @@ BulkMetagenomesAnnotateOutput is a reference to a hash where the following keys 
 $params is a RAST_SDK.BulkAnnotateMetagenomesParams
 $output is a RAST_SDK.BulkMetagenomesAnnotateOutput
 BulkAnnotateMetagenomesParams is a reference to a hash where the following keys are defined:
-	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
-	AMA_text has a value which is a string
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
 	output_workspace has a value which is a string
 	output_AMASet_name has a value which is a string
 	create_report has a value which is a RAST_SDK.bool
@@ -2122,7 +2122,8 @@ sub rast_genome_assembly
 $params is a RAST_SDK.BulkRastGenomesAssembliesParams
 $output is a RAST_SDK.BulkRastGenomesAssembliesOutput
 BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
-	input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_text has a value which is a string
 	output_workspace has a value which is a string
 	ncbi_taxon_id has a value which is an int
@@ -2146,7 +2147,8 @@ genomeSet_ref is a string
 $params is a RAST_SDK.BulkRastGenomesAssembliesParams
 $output is a RAST_SDK.BulkRastGenomesAssembliesOutput
 BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
-	input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_text has a value which is a string
 	output_workspace has a value which is a string
 	ncbi_taxon_id has a value which is an int
@@ -2192,27 +2194,8 @@ sub rast_genomes_assemblies
     #BEGIN rast_genomes_assemblies
     $self->util_initialize_call($params,$ctx);
     $params = Bio::KBase::utilities::args($params,
-                  ["object_ref", "output_workspace", "output_genome_name"],
-                  {create_report => 0});
-    print "rast_genome_assembly input parameters=\n". Dumper($params). "\n";
-
-    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
-	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
-		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
-    }
-    my $genomes_assemblies = $params->{input_genomes_assemblies};
-
-    #
-    # Throw an error IF $genomes is NOT an non-empty ARRAY AND, in the same time,
-    # the input to genome_text is NOT a non-blank string.
-    #
-    my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
-		       "and/or a string of genome names separated by ';', '\n' or '|'i".
-                       " (without quotes).\n");
-    Bio::KBase::Exceptions::ArgumentValidationError->throw(
-        error        => $empty_input_msg,
-        method_name  => 'rast_genomes_assemblies'
-    ) unless ref $genomes_assemblies eq 'ARRAY' && @$genomes_assemblies || $params->{ input_text };
+                  ["output_workspace"], {create_report => 0});
+    print "rast_genomes_assemblies input parameters=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
@@ -2926,9 +2909,9 @@ report_ref has a value which is a string
 
 <pre>
 a reference to a hash where the following keys are defined:
-input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
-AMA_text has a value which is a string
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
 output_workspace has a value which is a string
 output_AMASet_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
@@ -2940,9 +2923,9 @@ create_report has a value which is a RAST_SDK.bool
 =begin text
 
 a reference to a hash where the following keys are defined:
-input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
-AMA_text has a value which is a string
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
 output_workspace has a value which is a string
 output_AMASet_name has a value which is a string
 create_report has a value which is a RAST_SDK.bool
@@ -3125,7 +3108,8 @@ a string
 
 <pre>
 a reference to a hash where the following keys are defined:
-input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_text has a value which is a string
 output_workspace has a value which is a string
 ncbi_taxon_id has a value which is an int
@@ -3141,7 +3125,8 @@ create_report has a value which is a RAST_SDK.bool
 =begin text
 
 a reference to a hash where the following keys are defined:
-input_genomes_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_text has a value which is a string
 output_workspace has a value which is a string
 ncbi_taxon_id has a value which is an int
