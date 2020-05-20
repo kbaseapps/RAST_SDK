@@ -2017,11 +2017,9 @@ sub bulk_rast_genomes {
         method_name  => 'bulk_rast_genomes'
     ) unless ref $bulk_inparams eq 'ARRAY' && @{$bulk_inparams};
 
-    print Dumper($bulk_inparams);
     my $anngns = [];
     foreach my $parm (@{$bulk_inparams}) {
-        print "Check the type of each parameter:".ref($parm), "\n".Dumper($parm);
-	my $rast_out = $self.rast_genome($parm);
+	my $rast_out = $self->rast_genome($parm);
         push (@$anngns, $rast_out->{output_genome_ref});
     }
 

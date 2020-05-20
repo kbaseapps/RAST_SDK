@@ -618,7 +618,6 @@ subtest '_prodigal_gene_call' => sub {
 =cut
 
 
-=begin
 # test _run_glimmer3
 subtest '_run_glimmer3' => sub {
     my $glimmer3_ok = "_run_glimmer3 call runs ok.";
@@ -637,7 +636,7 @@ subtest '_run_glimmer3' => sub {
     ok( @{$glimmer3_ret->{features}} > 0, "_run_glimmer3 on $obj_asmb returns gene call result.\n");
     print "_run_glimmer3 results:\n". Dumper($glimmer3_ret);
 };
-=cut
+
 
 =begin
 # test _glimmer3_gene_call
@@ -1069,7 +1068,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
-=cut
 
 subtest 'rast_genomes_assemblies' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -1078,7 +1076,6 @@ subtest 'rast_genomes_assemblies' => sub {
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
-=begin
     throws_ok {
         my $ret_ann0 = $rast_impl->rast_genomes_assemblies($params);
     } $error_mand,
@@ -1106,7 +1103,6 @@ subtest 'rast_genomes_assemblies' => sub {
     } $error_message,
       'Empty input_genomes plus undef input_text die correctly'
       or diag explain $params;
-=cut
 
     $params = {
         "output_GenomeSet_name" => "out_genomeSet",
@@ -1146,7 +1142,6 @@ subtest 'rast_genomes_assemblies' => sub {
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
-=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 
