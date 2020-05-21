@@ -2195,7 +2195,7 @@ sub rast_genomes_assemblies
     $self->util_initialize_call($params,$ctx);
     $params = Bio::KBase::utilities::args($params,
                   ["output_workspace"], {create_report => 0});
-    print "rast_genomes_assemblies input parameters=\n". Dumper($params). "\n";
+    # print "rast_genomes_assemblies input parameters=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');

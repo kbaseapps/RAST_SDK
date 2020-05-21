@@ -341,28 +341,6 @@ sub _prodigal_gene_call {
     return ($out_file, \@prodigal_out);
 }
 
-sub _run_glimmer3 {
-    my ($self, $gn_in, $min_len) = @_;
-    $min_len = 2000 unless defined($min_len);
-    my $params = { verbose => 0, min_training_len => $min_len};
-
-    my $glimmer_out;
-    eval {
-	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-        $glimmer_out = $rast_client->run_pipeline($gn_in,
-            {stages => [{name => "call_features_CDS_glimmer3",
-                         glimmer3_parameters => $params}]}
-        );
-    };
-    if ($@) {
-        croak "ERROR calling rast run_pipeline: ".$@."\n";
-
-    }
-    else {
-        return $glimmer_out;
-    }
-}
-
 #
 # Glimmer::call_genes_with_glimmer (glimmer3 gene call)
 # return: an array of arrays of the structure:
@@ -749,7 +727,7 @@ sub _check_annotation_params {
         croak $missing_params;
     }
     # print out the content of hash reference
-    print "Checking genome annotation parameters:\n". Dumper($params). "\n";
+    # print "Checking genome annotation parameters:\n". Dumper($params). "\n";
 
     if (!keys %$params) {
         print "params is empty!!!!\n";
@@ -846,7 +824,7 @@ sub _check_bulk_annotation_params {
         croak $missing_params;
     }
     # print out the content of hash reference
-    print "Checking bulk annotation parameters:\n". Dumper($params). "\n";
+    # print "Checking bulk annotation parameters:\n". Dumper($params). "\n";
 
     if (!keys %$params) {
         print "params is empty!!!!\n";
@@ -918,7 +896,6 @@ sub _run_rast {
     };
     if ($@) {
         croak "ERROR calling rast run_pipeline: ".$@."\n";
-
     }
     return $rasted_gn;
 };
@@ -1332,7 +1309,7 @@ sub _fetch_object_info {
     if ($@) {
         croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
     }
-    print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
+    # print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
     return $obj_info;
 }
 

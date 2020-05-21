@@ -140,9 +140,10 @@ my $obj_Ecoli = "55141/212/1";  # prod genome
 my $obj_Ecoli_ann = "55141/252/1";  # prod genome
 my $obj_asmb = "55141/243/1";  # prod assembly
 my $obj_asmb_ann = "55141/244/1";  # prod assembly
+my $obj_asmb_refseq = "55141/266/3";  # prod assembly
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
-my $obj3 = "55141/77/1";  # prod assembly
+my $obj3 = "55141/77/1";  # prod KBaseGenomeAnnotations.Assembly
 my $obj4 = "55141/33/1";  # prod metag
 my $obj5 = "55141/50/1";  # prod metag
 my $obj6 = "55141/105/1";  # prod metag
@@ -615,30 +616,7 @@ subtest '_prodigal_gene_call' => sub {
     print "***********First 10 lines of prodigal gff file for $p_input:\n";
     $mgutil->_print_fasta_gff(0, 10, $out_file);
 };
-=cut
 
-
-# test _run_glimmer3
-subtest '_run_glimmer3' => sub {
-    my $glimmer3_ok = "_run_glimmer3 call runs ok.";
-    my $glimmer3_notOk = "ERROR";
-
-    #my $gn_data = $mgutil->_fetch_object_data($obj_asmb);
-    #print "Data for Assembly $obj_asmb:\n".Dumper($gn_data);
-    #my $contig_count = $gn_data->{num_contigs};
-    #my $gc_content = $gn_data->{gc_content};
-
-    my $glimmer3_ret = {features => []};
-    lives_ok {
-        $glimmer3_ret = $mgutil->_run_glimmer3({id => $obj_asmb});
-    } $glimmer3_ok;
-
-    ok( @{$glimmer3_ret->{features}} > 0, "_run_glimmer3 on $obj_asmb returns gene call result.\n");
-    print "_run_glimmer3 results:\n". Dumper($glimmer3_ret);
-};
-
-
-=begin
 # test _glimmer3_gene_call
 subtest '_glimmer3_gene_call' => sub {
     my $glimmer3_ok = "Glimmer3 gene call runs ok.";
@@ -803,7 +781,7 @@ subtest 'annotate_metagenome' => sub {
 
 
 =begin
-## test by using a CI object
+## a CI object
 my $ci_obj_id = '47032/4/8';
 
 subtest 'mgutil_write_fasta_from_genome' => sub {
@@ -1020,10 +998,8 @@ subtest 'generate_genome_report' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
-=cut
 
 
-=begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -1068,7 +1044,10 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
+=cut
 
+
+=begin
 subtest 'rast_genomes_assemblies' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
     my $error_mand = qr/Mandatory arguments missing/;
@@ -1076,6 +1055,7 @@ subtest 'rast_genomes_assemblies' => sub {
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
+
     throws_ok {
         my $ret_ann0 = $rast_impl->rast_genomes_assemblies($params);
     } $error_mand,
@@ -1125,23 +1105,52 @@ subtest 'rast_genomes_assemblies' => sub {
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
     throws_ok {
-        $params->{input_genomes} = "48109/9/1"; # array of a prod object
+        $params->{input_genomes} = "48109/9/1"; # non-array
         $params->{input_text} = '';
         my $ret_ann5 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
-    my $ret_ann6;
     throws_ok {
-        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
-        $params->{input_genomes} = [$obj4, $obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [$obj3, $obj_asmb]; # array of prod objects
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
         $params->{input_text} = '';
-        $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
+        my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    throws_ok {
+        $params->{output_workspace} = get_ws_name();
+        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
+        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [];
+        $params->{input_text} = '';
+        my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+	'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    throws_ok {
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
+	$params->{input_genomes} = [];
+        $params->{input_text} = '';
+        my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
+    } qr/ERROR calling rast run_pipeline/,
+        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+
+    throws_ok {
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
+        $params->{input_text} = '';
+        my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
+=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 

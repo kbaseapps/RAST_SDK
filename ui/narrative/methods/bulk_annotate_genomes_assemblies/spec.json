@@ -1,0 +1,159 @@
+{
+    "ver" : "1.0.0",
+    "name" : "Annotate Lists of Genomes and/or Assemblies with RAST - v1.073",
+    "authors" : [ "chenry", "qzhang" ],
+    "contact" : "help@kbase.us",
+    "visble" : true,
+    "categories" : ["active","annotation"],
+    "widgets" : {
+        "input" : null,
+        "output" : "no-display"
+    },
+    "parameters": [
+    {
+        "id" : "input_genomes",
+        "optional" : true,
+        "advanced" : false,
+        "allow_multiple" : true,
+        "default_values" : [ "" ],
+        "field_type" : "text",
+        "text_options" : {
+            "valid_ws_types": [ "KBaseGenomes.Genome","KBaseGenomeAnnotations.GenomeAnnotation", "KBaseSearch.GenomeSet" ]
+        }
+    },
+    {
+        "id" : "input_assemblies",
+        "optional" : true,
+        "advanced" : false,
+        "allow_multiple" : true,
+        "default_values" : [ "" ],
+        "field_type" : "text",
+        "text_options" : {
+            "valid_ws_types": [ "KBaseGenomeAnnotations.Assembly","KBaseGenomes.ContigSet" ]
+        }
+    },
+    {
+        "id": "input_text",
+        "optional": true,
+        "advanced": false,
+        "allow_multiple": false,
+        "default_values": [ "" ],
+        "field_type": "textarea",
+        "textarea_options" : {
+         "n_rows" : 10
+        }
+    },
+    {
+        "id" : "ncbi_taxon_id",
+        "optional" : true,
+        "advanced" : true,
+        "allow_multiple" : false,
+        "default_values" : [ "" ],
+        "field_type" : "text",
+        "text_options" : {
+            "validate_as" : "int"
+        }
+    },
+    {
+        "id" : "scientific_name",
+        "optional" : true,
+        "advanced" : true,
+        "allow_multiple" : false,
+        "default_values" : [ "" ],
+        "field_type" : "text",
+        "text_options" : {
+            "validate_as" : "text"
+        }
+    },
+    {
+        "id" : "relation_engine_timestamp_ms",
+        "optional" : true,
+        "advanced" : true,
+        "allow_multiple" : false,
+        "default_values" : [ "" ],
+        "field_type" : "text",
+        "text_options" : {
+            "validate_as" : "int"
+        }
+    },
+    {
+        "id": "output_GenomeSet_name",
+        "optional": false,
+        "advanced": false,
+        "allow_multiple": false,
+        "default_values": [ "genomeset_" ],
+        "field_type": "text",
+        "text_options" : {
+            "valid_ws_types" : [ "KBaseSearch.GenomeSet" ],
+            "is_output_name":true
+        }
+    }],
+    "behavior": {
+        "service-mapping": {
+            "url": "",
+            "name":"RAST_SDK",
+            "method": "rast_genomes_assemblies",
+            "input_mapping": [
+                {
+                    "narrative_system_variable": "workspace",
+                    "target_property": "output_workspace"
+                },
+                {
+                    "input_parameter": "input_genomes",
+                    "target_property": "input_genomes"
+                },
+                {
+                    "input_parameter": "input_assemblies",
+                    "target_property": "input_assemblies"
+                },
+                {
+                    "input_parameter": "input_text",
+                    "target_property": "input_text"
+                },
+                {
+                    "input_parameter": "ncbi_taxon_id",
+                    "target_property": "ncbi_taxon_id"
+                },
+                {
+                    "input_parameter": "scientific_name",
+                    "target_property": "scientific_name"
+                },
+                {
+                    "input_parameter": "relation_engine_timestamp_ms",
+                    "target_property": "relation_engine_timestamp_ms"
+                },
+                {
+                    "input_parameter": "output_GenomeSet_name",
+                    "generated_value": {
+                        "prefix": "genomeset_"
+                    },
+                    "target_property": "output_GenomeSet_name"
+                },
+                {
+                    "constant_value": 1,
+                    "target_property": "create_report"
+                }
+            ],
+            "output_mapping": [
+                {
+                    "service_method_output_path": [0,"report_name"],
+                    "target_property": "report_name"
+                },
+                {
+                    "service_method_output_path": [0,"report_ref"],
+                    "target_property": "report_ref"
+                },
+                {
+                    "constant_value": "5",
+                    "target_property": "report_window_line_height"
+                },
+                {
+                    "service_method_output_path": [0],
+                    "target_property": "bulk_annotate_genomes_result"
+                }
+            ]
+        }
+    },
+    "job_id_output_field": "docker"
+}
+
