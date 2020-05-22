@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '3801a4acdd90424f45e7ade19d0f7dd0c769a666';
+our $GIT_COMMIT_HASH = '6bb3c55efaa81509cc20aeb7c8c2d2ffefc5261e';
 
 =head1 NAME
 
@@ -1631,26 +1631,26 @@ sub annotate_genomes
         });
     }
 
-	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
-	open (FH,">$path") || warn("Did not create the output file\n");
-	print FH $warn.$htmlmessage;
-	close FH;
-	$htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
+    my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
+    open (FH,">$path") || warn("Did not create the output file\n");
+    print FH $warn.$htmlmessage;
+    close FH;
+    $htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
     my $reportfile = Bio::KBase::utilities::add_report_file({
     	workspace_name => $params->{workspace},
     	name =>  "annotation_report.$params->{output_genome}",
-		path => $path,
-		description => 'Microbial Annotation Report'
+        path => $path,
+        description => 'Microbial Annotation Report'
     });
 
-	Bio::KBase::utilities::print_report_message({
-		message => $htmlmessage,html=>0,append => 0
-	});
+    Bio::KBase::utilities::print_report_message({
+        message => $htmlmessage,html=>0,append => 0
+    });
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
     	report_object_name => Bio::KBase::utilities::processid().".report",
     });
-	$return = {
+    $return = {
     	workspace => $params->{workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
@@ -2130,12 +2130,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_GenomeSet_name has a value which is a string
-	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
-bool is an int
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
 	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
 genomeSet_ref is a string
 
 </pre>
@@ -2155,12 +2155,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_GenomeSet_name has a value which is a string
-	create_report has a value which is a RAST_SDK.bool
 data_obj_ref is a string
-bool is an int
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
 	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
 genomeSet_ref is a string
 
 
@@ -2202,7 +2202,7 @@ sub rast_genomes_assemblies
     my $mg_util = new metag_utils($config, $ctx);
     my $rast_out = $mg_util->bulk_rast_genomes($params);
     $output = {
-        output_genome_ref => $rast_out->{output_genome_ref},
+        output_genome_ref => $rast_out->{output_genomeSet_ref},
         report_ref => $rast_out->{"report_ref"},
         report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
@@ -3116,7 +3116,6 @@ ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_GenomeSet_name has a value which is a string
-create_report has a value which is a RAST_SDK.bool
 
 </pre>
 
@@ -3133,7 +3132,6 @@ ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_GenomeSet_name has a value which is a string
-create_report has a value which is a RAST_SDK.bool
 
 
 =end text
@@ -3156,6 +3154,8 @@ create_report has a value which is a RAST_SDK.bool
 a reference to a hash where the following keys are defined:
 output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
 
 </pre>
 
@@ -3166,6 +3166,8 @@ output_workspace has a value which is a string
 a reference to a hash where the following keys are defined:
 output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
 
 
 =end text

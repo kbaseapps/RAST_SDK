@@ -40,6 +40,8 @@ use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
+use installed_clients::kb_SetUtilitiesClient;
+
 
 require 'gjoseqlib.pm';
 require 'Glimmer.pm';
@@ -2001,31 +2003,19 @@ sub bulk_rast_genomes {
     }
 
     # create, save and then return that GenomeSet object's ref
-    my $genomeSet_ref = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+    # my $kbutil_output = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+    my $kbutil = new installed_clients::kb_SetUtilitiesClient($self->{call_back_url});
+    my $kbutil_output = $kbutil->KButil_Build_GenomeSet({
         workspace_name => $ws,
         input_refs => $anngns,
         output_name => $out_genomeSet,
         desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
     });
 
-    my $ret_val = {"output_genomeSet_ref"=>$genomeSet_ref,
+    my $ret_val = {"output_genomeSet_ref"=>$ws."/".$out_genomeSet,
                    "output_workspace"=>$ws,
-                   "report_name"=>undef,
-                   "report_ref"=>undef};
-
-    if ($params->{create_report} == 1) {
-        my $report_message = "GenomeSet created for a list of annotated genomes/assemblies";
-        my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
-        my $report_info = $kbr->create_extended_report({
-             "message"=>$report_message,
-             "objects_created"=>[{"ref"=>$genomeSet_ref,
-			          "description"=>"RAST re-annotated genome set"}],
-             "report_object_name"=>"kb_bulk_RAST_genomes_report_".$self->_create_uuid(),
-             "workspace_name"=>$ws
-        });
-        $ret_val->{report_name} = $report_info->{name};
-        $ret_val->{report_ref} = $report_info->{ref};
-    }
+                   "report_name"=>$kbutil_output->{report_name},
+                   "report_ref"=>$kbutil_output->{report_ref}};
     return $ret_val;
 }
 
@@ -2094,31 +2084,20 @@ sub bulk_rast_metagenomes {
 
     # TODO: Using whatever AMASet function(s) generate and save the AMASet object,
     #       and then return that object's ref
-    my $amaset_ref = Bio::KBase::kbaseenv::su_client()->KButil_Build_AMASet({
+    # my $amaset_ref = Bio::KBase::kbaseenv::su_client()->KButil_Build_AMASet({
+    my $kbutil = new installed_clients::kb_SetUtilitiesClient($self->{call_back_url});
+    my $kbutil_output = $kbutil->KButil_Build_AMASet({
         workspace_name => $ws,
         input_refs => $amas,
         output_name => $out_amaset,
         desc => 'AMASet generated from RAST annotated metagenomes/assemblies'
     });
 
-    my $ret_val = {"output_AMASet_ref"=>$amaset_ref,
+    my $ret_val = {"output_AMASet_ref"=>$ws."/".$out_amaset,
                    "output_workspace"=>$ws,
-                   "report_name"=>undef,
-                   "report_ref"=>undef};
+                   "report_name"=>$kbutil_output->{report_name},
+                   "report_ref"=>$kbutil_output->{report_ref}};
 
-    if ($params->{create_report} == 1) {
-        my $report_message = "AMASet created for a list of annotated metagenomes/assemblies";
-        my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
-        my $report_info = $kbr->create_extended_report({
-             "message"=>$report_message,
-             "objects_created"=>[{"ref"=>$amaset_ref,
-			          "description"=>"RAST re-annotated metagenome set"}],
-             "report_object_name"=>"kb_bulk_RAST_metaG_report_".$self->_create_uuid(),
-             "workspace_name"=>$ws
-        });
-        $ret_val->{report_name} = $report_info->{name};
-        $ret_val->{report_ref} = $report_info->{ref};
-    }
     return $ret_val;
 }
 

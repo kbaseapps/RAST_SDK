@@ -1047,7 +1047,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
 =cut
 
 
-=begin
 subtest 'rast_genomes_assemblies' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
     my $error_mand = qr/Mandatory arguments missing/;
@@ -1148,7 +1147,6 @@ subtest 'rast_genomes_assemblies' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
-=cut
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#

@@ -16,8 +16,8 @@
   "version_tag" : "dev"
 }, {
   "module_name" : "kb_SetUtilities",
-  "type" : "sdk",
-  "version_tag" : "release"
+  "type" : "core",
+  "file_path" : "https://raw.githubusercontent.com/kbaseapps/kb_SetUtilities/master/kb_SetUtilities.spec"
 }, {
   "module_name" : "KBaseReport",
   "type" : "sdk",

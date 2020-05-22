@@ -261,12 +261,13 @@ module RAST_SDK {
             int relation_engine_timestamp_ms;
             string scientific_name;
             string output_GenomeSet_name;
-            bool create_report;
         } BulkRastGenomesAssembliesParams;
 
         typedef structure {
             genomeSet_ref output_GenomeSet_ref;
             string output_workspace;
+            string report_name;
+            string report_ref;
         } BulkRastGenomesAssembliesOutput;
 
         funcdef rast_genomes_assemblies(BulkRastGenomesAssembliesParams params)
