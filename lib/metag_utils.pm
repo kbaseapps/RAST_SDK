@@ -515,11 +515,17 @@ sub _write_fasta_from_genome {
     my $fa_file = '';
     eval {
         my $genome_obj = $self->_fetch_object_data($input_obj_ref);
-        print "*******Input genome's assembly ref is: $genome_obj->{assembly_ref}**********\n";
+	if ($genome_obj->{assembly_ref}) {
+            print "*******Input genome's assembly ref is: $genome_obj->{assembly_ref}**********\n";
 
-        $fa_file = $self->_get_fasta_from_assembly(
+            $fa_file = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
-        unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
+            unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
+	}
+	else {
+            croak ("**_write_fasta_from_genome ERROR:\n".
+		    "No assembly can be found for genome $input_obj_ref\n");
+        }
     };
     if ($@) {
         croak "**_write_fasta_from_genome ERROR: ".$@."\n";
@@ -728,8 +734,6 @@ sub _check_annotation_params {
         print "params is not defined!!!!\n";
         croak $missing_params;
     }
-    # print out the content of hash reference
-    # print "Checking genome annotation parameters:\n". Dumper($params). "\n";
 
     if (!keys %$params) {
         print "params is empty!!!!\n";
@@ -760,10 +764,6 @@ sub _check_annotation_params {
         || $params->{ncbi_taxon_id} eq '') {
         $params->{ncbi_taxon_id} = 9999999;  # a fake number for now
     }
-    if (!defined($params->{run_prodigal})
-        || $params->{run_prodigal} eq '') {
-        $params->{run_prodiagl} = 0;
-    }
     if (!defined($params->{create_report})) {
         $params->{create_report} = 0;
     }
@@ -778,8 +778,6 @@ sub _check_annotation_params_metag {
         print "params is not defined!!!!\n";
         croak $missing_params;
     }
-    # print out the content of hash reference
-    print "Checking metag annotation parameters:\n". Dumper($params). "\n";
 
     if (!keys %$params) {
         print "params is empty!!!!\n";

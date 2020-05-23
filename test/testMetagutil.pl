@@ -35,6 +35,7 @@ my $tmp_write_dir = 'data/write_tmp';  ## For saving temporary test files
 my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
 my $out_name = 'annotated_metag';
+my $outgn_name = 'rast_annotated_genome';
 my $fasta1 = 'data/short_one.fa';
 my $fasta3 = 'data/GCA_000350285.1_OR1_genomic.fna';
 my $fasta4 = 'data/metag_test/Test_v1.0.fa';
@@ -196,8 +197,190 @@ my $test_ftrs = [{
  ],
  }];
 
-
 =begin
+subtest '_check_annotation_params' => sub {
+    my $obj = '1234/56/7';
+
+    my $missing_params = "Missing required parameters for annotating genome.\n";
+    my $req1 = "'output_workspace' is required for running rast_genome.\n";
+    my $req2 = "'object_ref' is required for running rast_genome.\n";
+
+    throws_ok {
+        $mgutil->_check_annotation_params()
+    } qr/$missing_params/,
+        '_check_annotation_params dies without params';
+
+    throws_ok {
+        $mgutil->_check_annotation_params( {} )
+    } qr/$missing_params/,
+        '_check_annotation_params dies with an empty hashref';
+
+    throws_ok {
+        my $p = {output_workspace => $ws,
+                 output_genome_name => $outgn_name};
+        print "input parameter=\n". Dumper($p);
+        $mgutil->_check_annotation_params($p)
+    } qr/$req2/,
+        '_check_annotation_params dies with no object_ref';
+
+    throws_ok {
+        my $p = {output_workspace => $ws,
+                 output_genome_name => $outgn_name,
+                 object_ref => ''};
+        print "input parameter=\n". Dumper($p);
+        $mgutil->_check_annotation_params($p)
+    } qr/$req2/,
+        '_check_annotation_params dies with blank object_ref';
+
+    throws_ok {
+        $mgutil->_check_annotation_params(
+            {object_ref => $obj,
+             output_genome_name => $outgn_name})
+    } qr/$req1/,
+        '_check_annotation_params_metag dies with no outpout_workspace';
+
+    throws_ok {
+        $mgutil->_check_annotation_params(
+            {workspace => $ws,
+             output_genome_name => $outgn_name,
+             obect_ref => $obj})
+    } qr/$req1/,
+        '_check_annotation_params dies with wrong workspace key';
+
+    throws_ok {
+        $mgutil->_check_annotation_params(
+            {output_workspace => '',
+             output_genome_name => $outgn_name,
+             obect_ref => $obj})
+    } qr/$req1/,
+        '_check_annotation_params dies with blank workspace name';
+
+    lives_ok {
+        $mgutil->_check_annotation_params(
+            {output_workspace => $ws,
+             output_genome_name => $outgn_name,
+             object_ref => 'abc/1/2'});
+    } '_check_annotation_params object_ref check ok';
+
+    lives_ok {
+        $mgutil->_check_annotation_params(
+            {output_workspace => 'ab:c',
+             output_genome_name => $outgn_name,
+             object_ref => '456/1/2'});
+    } '_check_annotation_params workspace name check ok';
+
+    # _check_annotation_params passed
+    my $expected = {
+             output_workspace => $ws,
+             output_genome_name => $outgn_name,
+             object_ref => '456/1/2'};
+    my $set_default_ok = '_check_annotation_params sets the default value for output_genome_name.';
+
+    my $ret = $mgutil->_check_annotation_params(
+            {output_workspace => $ws,
+             output_genome_name => undef,
+             object_ref => '456/1/2'});
+    ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
+        'When undefined, '.$set_default_ok);
+
+    $ret = $mgutil->_check_annotation_params(
+            {output_workspace => $ws,
+             output_genome_name => '',
+             object_ref => '456/1/2'});
+    ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
+        'When blank, '.$set_default_ok);
+};
+
+
+subtest '_check_bulk_annotation_params' => sub {
+    my $error_message = qr/ERROR:Missing required inputs/;
+    my $error_mand = qr/Mandatory arguments missing/;
+
+    my $params = {
+        "output_GenomeSet_name" => "out_genomeSet"
+    };
+    throws_ok {
+        my $ret_parms1 = $mgutil->_check_bulk_annotation_params($params);
+    } qr/'output_workspace' is required/,
+      'Missing required parameter output_workspace die correctly'
+      or diag explain $params;
+
+    $params = {
+        "output_workspace" => get_ws_name()
+    };
+    my $expected = {
+       'input_assemblies' => [],
+       'input_genomes' => [],
+       'input_text' => '',
+       'output_GenomeSet_name' => 'rasted_GenomeSet_name'
+    };
+
+    my $set_default_ok = '_check_annotation_params sets the default value for output_GenomeSet_name.';
+    $params->{input_text} = '';
+    my $ret_parms2 = $mgutil->_check_bulk_annotation_params($params);
+    ok ($ret_parms2->{output_GenomeSet_name} eq $expected->{output_GenomeSet_name},
+        "When undefined, ".$set_default_ok);
+    ok ($ret_parms2->{output_workspace} eq $params->{output_workspace},
+        "output_workspace is defined");
+    ok (!@{$ret_parms2->{input_genomes}} && !@{$ret_parms2->{input_assemblies}},
+        "No input genome or assembly was specified as input.");
+    print Dumper($ret_parms2);
+
+    $params->{input_genomes} = [];
+    $params->{input_assemblies} = [];
+    $params->{input_text} = '';
+    my $ret_parms3 = $mgutil->_check_bulk_annotation_params($params);
+    ok (!@{$ret_parms3->{input_genomes}} && !@{$ret_parms3->{input_assemblies}},
+        "No input genome or assembly was specified as input.");
+
+    $params->{input_genomes} = ["48109/9/1"]; # array of a prod object
+    $params->{input_text} = '';
+    my $ret_parms4 = $mgutil->_check_bulk_annotation_params($params);
+    ok ($ret_parms4->{input_genomes} eq $params->{input_genomes},
+        "Input genome array is not empty.");
+
+    $params->{input_genomes} = []; # array of a prod object
+    $params->{input_text} = '48109/9/1;123/4/5';
+    my $ret_parms5 = $mgutil->_check_bulk_annotation_params($params);
+    ok ($ret_parms5->{input_text} eq $params->{input_text},
+        "Input text is not empty.");
+    ok (!@{$ret_parms5->{input_genomes}} && !@{$ret_parms5->{input_assemblies}},
+        "No input genome or assembly was specified as input.");
+
+    $params->{input_genomes} = "48109/9/1"; # non-array
+    $params->{input_text} = '';
+    my $ret_parms6 = $mgutil->_check_bulk_annotation_params($params);
+    ok ($ret_parms6->{input_genomes}->[0] eq "48109/9/1",
+        "Non array input genome converted into array");
+
+    $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
+    $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
+    $params->{input_text} = '';
+    my $ret_parms7 = $mgutil->_check_bulk_annotation_params($params);
+    ok (@{$ret_parms7->{input_genomes}} && @{$ret_parms7->{input_assemblies}},
+        "Both input_genomes and input_assemblies arrays are not empty.");
+
+    $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+    $params->{input_assemblies} = [];
+    $params->{input_text} = '';
+    my $ret_parms8 = $mgutil->_check_bulk_annotation_params($params);
+    ok (@{$ret_parms8->{input_genomes}}==2 && @{$ret_parms8->{input_assemblies}}==0,
+        "The input_genomes array has 2 elements while input_assemblies is empty.");
+
+    $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
+    $params->{input_genomes} = [];
+    $params->{input_text} = '';
+    my $ret_parms9 = $mgutil->_check_bulk_annotation_params($params);
+    ok (@{$ret_parms9->{input_genomes}}==0 && @{$ret_parms9->{input_assemblies}}==2,
+        "The input_assemblies array has 2 elements while input_genomes is empty.");
+
+    $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+    my $ret_parms10 = $mgutil->_check_bulk_annotation_params($params);
+    ok (@{$ret_parms10->{input_genomes}}==2 && @{$ret_parms10->{input_assemblies}}==2,
+        "Both input_genomes and input_assemblies arrays have 2 elements.");
+};
+
+
 subtest '_check_annotation_params_metag' => sub {
     my $obj = '1234/56/7';
 
@@ -1046,7 +1229,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
 };
 =cut
 
-
 subtest 'rast_genomes_assemblies' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
     my $error_mand = qr/Mandatory arguments missing/;
@@ -1054,61 +1236,6 @@ subtest 'rast_genomes_assemblies' => sub {
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
-
-    throws_ok {
-        my $ret_ann0 = $rast_impl->rast_genomes_assemblies($params);
-    } $error_mand,
-      'Missing required parameter output_workspace die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_GenomeSet_name" => "out_genomeSet",
-        "output_workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{input_text} = '';
-        my $ret_ann1 = $rast_impl->rast_genomes_assemblies($params);
-    } $error_message,
-      'Blank input_text plus undef input_genomes and input_assemblies die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_GenomeSet_name" => "out_genomeSet",
-        "output_workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{input_genomes} = [];
-        my $ret_ann2 = $rast_impl->rast_genomes_assemblies($params);
-    } $error_message,
-      'Empty input_genomes plus undef input_text die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_GenomeSet_name" => "out_genomeSet",
-        "output_workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{input_genomes} = [];
-        $params->{input_assemblies} = [];
-        $params->{input_text} = '';
-        my $ret_ann3 = $rast_impl->rast_genomes_assemblies($params);
-    } $error_message,
-      "Blank input_text AND empty input_genoms AND empty input_assemblies die correctly"
-      or diag explain $params;
-
-    throws_ok {
-        $params->{input_genomes} = ["48109/9/1"]; # array of a prod object
-        $params->{input_text} = '';
-        my $ret_ann4 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-
-    throws_ok {
-        $params->{input_genomes} = "48109/9/1"; # non-array
-        $params->{input_text} = '';
-        my $ret_ann5 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
     throws_ok {
         $params->{output_workspace} = get_ws_name();
@@ -1147,6 +1274,7 @@ subtest 'rast_genomes_assemblies' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
+
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
