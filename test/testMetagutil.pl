@@ -821,7 +821,7 @@ subtest '_glimmer3_gene_call' => sub {
     ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
     print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
 };
-
+=cut
 
 subtest '_prodigal_then_glimmer3' => sub {
     my $fa_input = $fasta4; # $ecoli_fasta;
@@ -841,8 +841,8 @@ subtest '_prodigal_then_glimmer3' => sub {
     print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 
     ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
+    # print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
+    # $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
 
     $fa_input = $asmb_fasta;
     lives_ok {
@@ -851,12 +851,10 @@ subtest '_prodigal_then_glimmer3' => sub {
     } "_prodigal_then_glimmer3 finished run 2.";
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
     print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
 };
 
+
+=begin
 subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
     ok((-e $fa_test1), 'fasta file created');

@@ -411,8 +411,9 @@ sub _prodigal_then_glimmer3 {
         my %glm_ftrs = ();
         my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
         my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
+        my ($fid, $ctg_id, $beg, $end, $dna_seq);
         foreach my $glm_entry (@{$glimmer_out}) {
-            my ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
+            ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
             next if !defined($fid) || !defined($ctg_id);
 
             my @glm_prim = ($ctg_id, $beg, $end);
@@ -440,52 +441,60 @@ sub _prodigal_then_glimmer3 {
                     last;
                 }
 	        next;
-             }
+            }
 
-	     # Not found in Prodigal genes
-	     # prepare the new feature for seq translation
-	     if (defined($fid) && $found_in_prd == 0) {
-	         $glm_gene_seqs{$fid} = $dna_seq;
-	         $glm_ftrs{$fid} = \@glm_prim;
-                 # $prd_gff_contents is an array of
-	         # [$contig_id, $source_id, $feature_type, $start, $end,
-                 #  $score, $strand, $phase, \%ftr_attributes]
-	         my $strd = ($beg < $end) ? '+': '-';
-                 ## !!!!ONLY take in glimmer genes that has $strd=='+' to test if _save_genome works!!!
-                 next unless $strd eq '+';
-		 push @{$prd_gff_contents}, [
+            # Not found in Prodigal genes
+            # prepare the new feature for seq translation
+            if (defined($fid) && $found_in_prd == 0) {
+	        $glm_gene_seqs{$fid} = $dna_seq;
+	        $glm_ftrs{$fid} = \@glm_prim;
+                # $prd_gff_contents is an array of
+                # [$contig_id, $source_id, $feature_type, $start, $end,
+                # $score, $strand, $phase, \%ftr_attributes]
+	        my $strd = ($beg < $end) ? '+': '-';
+		if ($strd eq '+') {
+		    push @{$prd_gff_contents}, [
                          $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-	     }
+	        }
+		else {
+		    # if $strd eq '-', only pick the ones whose length is within the contig range
+		    # reject cases when either $begin or $end is outside of the contig
+                    my $len = abs($end - $beg) + 1;
+		    if ($len <= length $dna_seq) {
+			print Dumper($glm_entry);
+		        push @{$prd_gff_contents}, [
+                            $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
+                    }
+                }
+	    }
         }
         print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
         print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
 
         my $glm_gene_size = keys %glm_ftrs;
         print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
-        # print Dumper(\%glm_ftrs);
 
         # translate the additional glimmer gene sequences into protein sequences
         my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
         print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
-        # print Dumper($glm_protein_seqs);
 
         # add the additional glimmer genes to the prodigal result array
         foreach my $ftr (sort keys %{$glm_protein_seqs}) {
 	    my $beg1 = $glm_ftrs{$ftr}[1];
 	    my $end1 = $glm_ftrs{$ftr}[2];
 	    my $strand = ($beg1 < $end1) ? '+': '-';
-            next unless $strand eq '+';
-            push(@{$gene_call_result}, [
-                $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
-                $beg1, $end1, $strand,
-                $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+	    my $len1 = abs($end1 - $beg1) + 1;
+            if ($strand eq '+' || ($strand eq '-' && $len1 <= length $dna_seq)) {
+                push(@{$gene_call_result}, [
+                    $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
+                    $beg1, $end1, $strand,
+                    $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
+            }
         }
     }
     # updating the GFF file by writing the $prd_gff_contents back to $out_gff_file
-    print "First 20 lines of the GFF file from Prodigal:\n";
     $self->_print_fasta_gff(0, 20, $out_gff_file);
     $self->_write_gff($prd_gff_contents, $out_gff_file, $attr_dlmtr);
-    print "First 20 lines of the GFF file after combine results from Prodigal and Glimmer3:\n";
     $self->_print_fasta_gff(0, 20, $out_gff_file);
     return ($out_gff_file, $gene_call_result);
 }
@@ -1086,7 +1095,7 @@ sub _write_html_from_stats {
     read $fh1, my $file_content, -s $fh1; # read the whole file into a string
     close $fh1;
 
-    my $report_title = "Feature function report for genome <font color=red>$obj_stats{id}</font>";
+    my $report_title = "Feature function report for genome <font color=green>$obj_stats{id}</font>";
     my $rpt_header = "<h3>$report_title:</h3>";
     my $rpt_data = ("data.addColumn('string', 'function role');\n".
                     "data.addColumn('string', 'annotation source');\n".
