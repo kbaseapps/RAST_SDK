@@ -547,11 +547,12 @@ sub _run_rast_genecalls {
 
     #Creating default genome object
     my $inputgenome = {
-	id => $params->{output_genome_name},
-	genetic_code => $params->{genetic_code},
-	scientific_name => $params->{scientific_name},
-	contigs => [],
-	features => []
+        id => $params->{output_genome_name},
+        genetic_code => $params->{genetic_code},
+        scientific_name => $params->{scientific_name},
+        domain => $params->{domain},
+        contigs => [],
+        features => []
     };
 
     my $output_gn = {};
