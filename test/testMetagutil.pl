@@ -821,7 +821,6 @@ subtest '_glimmer3_gene_call' => sub {
     ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
     print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
 };
-=cut
 
 subtest '_prodigal_then_glimmer3' => sub {
     my $fa_input = $fasta4; # $ecoli_fasta;
@@ -854,7 +853,6 @@ subtest '_prodigal_then_glimmer3' => sub {
 };
 
 
-=begin
 subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
     ok((-e $fa_test1), 'fasta file created');
@@ -927,7 +925,7 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
 
-subtest '_run_rast' => sub {
+subtest '_run_rast_annotation' => sub {
     my $inputgenome = {
         features => []
     };
@@ -939,7 +937,7 @@ subtest '_run_rast' => sub {
     }
 
     throws_ok {
-        my $rast_ret = $mgutil->_run_rast($inputgenome);
+        my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
     } qr/ERROR calling rast run_pipeline/,
         'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
@@ -958,10 +956,22 @@ subtest 'annotate_metagenome' => sub {
         'RAST annotate_metagenome call returns ERROR due to kmer data absence or other causes.';
 
 };
-=cut
+
+subtest 'rast_call_genes' => sub {
+    my $input_obj = $obj_Ecoli;
+    my $inparams = {
+        "object_ref" => $input_obj,
+        "output_genome_name" => "ann_gn",
+        "output_workspace" => $ws,
+        "create_report" => 0
+    };
+    throws_ok {
+        my $rast_ret = $mgutil->rast_call_genes($inparams);
+    } qr/ERROR calling rast run_pipeline/,
+      'rast_call_genes threw ERROR when local testing.';
+};
 
 
-=begin
 ## a CI object
 my $ci_obj_id = '47032/4/8';
 
@@ -1083,6 +1093,7 @@ subtest '_save_genome' => sub {
     is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
+=cut
 
 subtest 'mgutil_rast_genome' => sub {
     # testing metag_utils rast_genome using obj ids from prod ONLY
@@ -1128,6 +1139,8 @@ subtest 'mgutil_rast_genome' => sub {
         'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
+
+=begin
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
@@ -1225,7 +1238,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
-=cut
 
 subtest 'rast_genomes_assemblies' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -1274,7 +1286,6 @@ subtest 'rast_genomes_assemblies' => sub {
 };
 
 
-=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 

@@ -499,6 +499,73 @@ sub _prodigal_then_glimmer3 {
     return ($out_gff_file, $gene_call_result);
 }
 
+
+#
+# Forming the gene calling workflow in the following order:
+# Call prodigal
+# Call glimmer3
+# Call rRNAs
+# Call tRNA trnascan
+# Call selenoproteins
+# Call pyrrolysoproteins
+# Call SEED repeat region
+# Call strep suis repeats
+# Call strep pneumo repeats
+# Call crisprs
+#
+# return a reference to the list of workflow stages
+#
+sub _rast_genecall_workflow {
+    my $self = shift;
+    my @stages = (
+      { name => 'call_features_CDS_prodigal' },
+      { name => 'call_features_CDS_glimmer3', failure_is_not_fatal => 1,
+        glimmer3_parameters => {"min_training_len" => "2000"} },
+      { name => 'call_features_rRNA_SEED' },
+      { name => 'call_features_tRNA_trnascan' },
+      { name => 'call_selenoproteins', failure_is_not_fatal => 1 },
+      { name => 'call_pyrrolysoproteins', failure_is_not_fatal => 1 },
+      { name => 'call_features_repeat_region_SEED',
+	    repeat_region_SEED_parameters => {} },
+      { name => 'call_features_strep_suis_repeat',
+	    condition => '$genome->{scientific_name} =~ /^Streptococcus\s/' },
+      { name => 'call_features_strep_pneumo_repeat',
+	    condition => '$genome->{scientific_name} =~ /^Streptococcus\s/' },
+      { name => 'call_features_crispr', failure_is_not_fatal => 1 }
+    );
+    return { stages => \@stages };
+}
+
+#
+# Calling the gene calls on the input genomes with the input workflow stages:
+# return the following data structure:
+#
+sub _run_rast_genecalls {
+    my ($self, $params, $stages) = @_;
+
+    print "Calling genes on $params->{object_ref} with workflow stages:\n".Dumper($stages);
+
+    #Creating default genome object
+    my $inputgenome = {
+	id => $params->{output_genome_name},
+	genetic_code => $params->{genetic_code},
+	scientific_name => $params->{scientific_name},
+	contigs => [],
+	features => []
+    };
+
+    my $output_gn = {};
+    eval {
+	# my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
+	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+        $output_gn = $rast_client->run_pipeline($inputgenome, $stages);
+    };
+    if ($@) {
+        croak "ERROR calling rast run_pipeline in _run_rast_genecalls ".$@."\n";
+    }
+    return $output_gn;
+}
+
 ##----end gene call subs----##
 
 
@@ -769,6 +836,17 @@ sub _check_annotation_params {
         || $params->{output_genome_name} eq '') {
         $params->{output_genome_name} = "rast_annotated_genome";
     }
+    if (!defined($params->{scientific_name})
+        || $params->{scientific_name} eq '') {
+        $params->{scientific_name} = "Unknown species";
+    }
+    if (!defined($params->{genetic_code})) {
+        $params->{genetic_code} = 11;
+    }
+    if (!defined($params->{domain})
+        || $params->{domain} eq '') {
+        $params->{domain} = "Bacteria";
+    }
     if (!defined($params->{ncbi_taxon_id})
         || $params->{ncbi_taxon_id} eq '') {
         $params->{ncbi_taxon_id} = 9999999;  # a fake number for now
@@ -883,7 +961,7 @@ sub _check_bulk_annotation_params {
 }
 
 # Call RAST to annotate the protein/genome
-sub _run_rast {
+sub _run_rast_annotation {
     my ($self, $inputgenome) = @_;
     my $count = scalar @{$inputgenome->{features}};
     print "******Run RAST pipeline on genome with $count features.******\n";
@@ -1641,7 +1719,62 @@ sub _translate_gene_to_protein_sequences {
     return \%protein_seqs;
 }
 
-##----main function 1----##
+#
+# generate gff_contents and inputgenome for the next step--annotating
+#
+sub _prepare4annotation {
+    my ($self, $obj_ref) = @_;
+
+    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+
+    # generating the fasta file directly from genome
+    my $input_fasta_file = $self->_write_fasta_from_genome($obj_ref);
+    unless (-s $input_fasta_file) {
+        croak "**rast_genome ERROR: FASTA file is empty!\n";
+    }
+    $fasta_contents = $self->_parse_fasta($input_fasta_file);
+
+    # generating the gff file directly from genome
+    my $gff_filename = $self->_write_gff_from_genome($obj_ref);
+    unless (-s $gff_filename) {
+        croak "**rast_genome ERROR: GFF file is empty!\n";
+    }
+
+    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
+
+    # fetch protein sequences and gene IDs from fasta and gff files
+    my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
+    my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
+
+    my $inputgenome = {
+        features => []
+    };
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => $gene,
+            protein_translation => $protein_seqs->{$gene}
+        });
+    }
+    return ($gff_contents, $inputgenome);
+}
+
+
+##----main function 1.1----##
+sub rast_call_genes {
+    my $self = shift;
+    my($inparams) = @_;
+
+    print "rast_call_genes input parameters:\n". Dumper($inparams). "\n";
+    #my $params = $self->_check_annotation_params($inparams);
+
+    my $wf_stages = $self->_rast_genecall_workflow();
+    my $ret_obj_ref = $self->_run_rast_genecalls($inparams, $wf_stages);
+
+    return $ret_obj_ref;
+}
+
+
+##----main function 1.2----##
 sub rast_genome {
     my $self = shift;
     my($inparams) = @_;
@@ -1650,10 +1783,6 @@ sub rast_genome {
     
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
-
-    my $inputgenome = {
-        features => []
-    };
 
     my $output_type = 'gff';
     my $gff_filename = catfile($self->{genome_dir}, 'genome.gff');
@@ -1670,10 +1799,19 @@ sub rast_genome {
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
                      $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
 
+    if (!$is_assembly && !$is_genome) {
+        croak ("Only KBaseGenomes.Genome, KBaseGenomes.ContigSet, ".
+	       "KBaseGenomeAnnotations.Assembly, and ".
+               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
+    }
     # 2. fetching the gff contents, if $input_obj_ref points to an assembly,
     #    call Prodigal and then Glimmer3 to for genes
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
+=begin
 
+    #my $inputgenome = {
+    #    features => []
+    #};
     if ($is_assembly) {
         # object is itself an assembly
         my $out_fasta = $self->_get_fasta_from_assembly($input_obj_ref);
@@ -1731,20 +1869,19 @@ sub rast_genome {
             });
         }
     }
-    else {
-        croak ("Only KBaseGenomes.Genome, KBaseGenomes.ContigSet, ".
-	       "KBaseGenomeAnnotations.Assembly, and ".
-               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
-    }
+=cut
+    ## call rast to call genes first
+    my $inputgenome = $self->rast_call_genes($params);
+    ($gff_contents, $inputgenome) = $self->_prepare4annotation($inputgenome);
 
-    ## call rast to annotate features
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
         return $input_obj_ref;
     }
 
-    my $rasted_genome = $self->_run_rast($inputgenome);
+    ## call rast to annotate features
+    my $rasted_genome = $self->_run_rast_annotation($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "RAST resulted ".$rasted_ftr_count." features.\n";
@@ -1900,7 +2037,7 @@ sub rast_metagenome {
         return $input_obj_ref;
     }
 
-    my $rasted_genome = $self->_run_rast($inputgenome);
+    my $rasted_genome = $self->_run_rast_annotation($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "RAST resulted ".$rasted_ftr_count." features.\n";
