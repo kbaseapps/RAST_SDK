@@ -957,7 +957,7 @@ subtest 'annotate_metagenome' => sub {
 
 };
 
-subtest 'rast_call_genes' => sub {
+subtest '_run_rast_genecalls' => sub {
     my $input_obj = $obj_Ecoli;
     my $inparams = {
         "object_ref" => $input_obj,
@@ -966,9 +966,9 @@ subtest 'rast_call_genes' => sub {
         "create_report" => 0
     };
     throws_ok {
-        my $rast_ret = $mgutil->rast_call_genes($inparams);
+        my $rast_ret = $mgutil->_run_rast_genecalls($inparams);
     } qr/ERROR calling rast run_pipeline/,
-      'rast_call_genes threw ERROR when local testing.';
+      '_run_rast_genecalls threw ERROR when local testing.';
 };
 
 

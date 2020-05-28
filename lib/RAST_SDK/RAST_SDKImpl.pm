@@ -2195,8 +2195,11 @@ sub rast_genomes_assemblies
     $self->util_initialize_call($params,$ctx);
     $params = Bio::KBase::utilities::args($params,
                   ["output_workspace"], {create_report => 0});
-    # print "rast_genomes_assemblies input parameters=\n". Dumper($params). "\n";
 
+    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
+	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
     my $mg_util = new metag_utils($config, $ctx);

@@ -128,10 +128,6 @@
                         "prefix": "genomeset_"
                     },
                     "target_property": "output_GenomeSet_name"
-                },
-                {
-                    "constant_value": 1,
-                    "target_property": "create_report"
                 }
             ],
             "output_mapping": [
