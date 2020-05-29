@@ -155,6 +155,10 @@ my $obj10 = "55141/120/1";  # prod metag
 
 my $asmb_fasta = $mgutil->_get_fasta_from_assembly($obj_asmb);
 
+#####RAST_SDK Module test objects #####
+my $obj2_1 = "63171/315/1";
+
+
 #my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 my $ecoli_fasta = $mgutil->_write_fasta_from_genome($obj_Ecoli);
 unless (-s $ecoli_fasta) {
@@ -943,7 +947,7 @@ subtest '_run_rast_annotation' => sub {
 };
 
 # test by using prod/appdev obj id
-subtest 'annotate_metagenome' => sub {
+subtest 'annotate_metagenome_prod' => sub {
     my $parms = {
         #"object_ref" => $obj1, # appdev obj
         "object_ref" => $obj10, # prod obj
@@ -971,7 +975,9 @@ subtest '_run_rast_genecalls' => sub {
       '_run_rast_genecalls threw ERROR when local testing.';
 };
 
+=cut
 
+=begin
 ## a CI object
 my $ci_obj_id = '47032/4/8';
 
@@ -1093,7 +1099,7 @@ subtest '_save_genome' => sub {
     is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
-=cut
+
 
 subtest 'mgutil_rast_genome' => sub {
     # testing metag_utils rast_genome using obj ids from prod ONLY
@@ -1140,7 +1146,6 @@ subtest 'mgutil_rast_genome' => sub {
 };
 
 
-=begin
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
@@ -1364,11 +1369,10 @@ subtest 'generate_metag_report' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
-=cut
 
-=begin
+
 # testing rast_metagenome using obj ids from appdev ONLY
-subtest 'rast_metagenome' => sub {
+subtest 'rast_metagenome_appdev' => sub {
     # an appdev assembly
     my $parms = {
         "object_ref" => "37798/14/1",
@@ -1407,19 +1411,57 @@ subtest 'rast_metagenome' => sub {
         }
     } qr/Invalid metagenome object reference/,
         'calling rast_metagenome fails to generate a valid metagenome';
-
-    # testing rast_metagenome using obj ids from prod ONLY
-    # a prod assembly
-    $parms = {
-        "object_ref" => $obj3,
-        "output_metagenome_name" => "rasted_obj3_prod",
-        "output_workspace" => $ws
-    };
-    $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
 };
 =cut
+
+# testing rast_metagenome using obj ids from prod ONLY
+subtest 'rast_metagenome_prod' => sub {
+    # a prod assembly
+    my $parms = {
+        "object_ref" => $obj2_1,
+        "output_metagenome_name" => "rasted_ama",
+        "output_workspace" => $ws
+    };
+
+    my $rast_mg_ref;
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+
+    # a prod metagenome assembly
+    $parms = {
+        "object_ref" => $obj4,
+        "output_metagenome_name" => "rasted_obj4_prod",
+        "output_workspace" => $ws
+    };
+    throws_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    } qr/ERROR calling rast run_pipeline/,
+        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+};
+
+subtest '_prepare_genome_4annotation' => sub {
+    # a prod assembly
+    my ($gff, $gn, $fa_file, $gff_file);
+
+    throws_ok {
+        $fa_file = $mgutil->_get_fasta_from_assembly($obj3);
+        $gff_file = $mgutil->_write_gff_from_ama($obj3);
+        ($gff, $gn) = $mgutil->_prepare_genome_4annotation($fa_file, $gff_file);
+    } qr/ValueError: Object is not an AnnotatedMetagenomeAssembly/,
+      "ValueError: Object is not an AnnotatedMetagenomeAssembly because $obj3 did not point to an AMA.";
+
+    # a prod metagenome assembly
+    lives_ok {
+        $fa_file = $mgutil->_write_fasta_from_ama($obj4);
+        $gff_file = $mgutil->_write_gff_from_ama($obj4);
+        ($gff, $gn) = $mgutil->_prepare_genome_4annotation($fa_file, $gff_file);
+    } 'mgutil->_prepare_genome_4annotation returns normally.';
+    ok (@{$gff} > 0, "_prepare_genome_4annotation returns ". scalar @{$gff}." lines of GFF contents.");
+    ok (@{$gn->{features}} > 0,
+        "_prepare_genome_4annotation returns genome with ". scalar @{$gn->{features}}." features.");
+};
 
 =begin
 # testing generate_metag_report using obj ids from prod ONLY

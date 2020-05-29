@@ -1311,8 +1311,6 @@ sub _write_html_from_stats {
         my $subsys_str = '';
         my $class_str = '';
         foreach my $subsys_k (sort keys %subsys_info) {
-            #print $subsys_k."---------\n";
-            #print Dumper($subsys_info{$subsys_k});
             my $subsys_roles = $subsys_info{$subsys_k}{role_names};
             if ( grep {$_ eq $role_k} @$subsys_roles ) {
                 #print "Found $role_k in subsystem $subsys_k\n";
@@ -1664,7 +1662,7 @@ sub _get_feature_function_lookup {
 
     print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
     if ($ftr_count > 10) {
-        print "INFO: F_get_feature_function_lookupirst 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
+        print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
     }
     else {
         print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
@@ -1834,27 +1832,32 @@ sub _translate_gene_to_protein_sequences {
 }
 
 #
-# generate gff_contents and inputgenome for the next step--annotating
+# generate fasta_contents and gff_contents from given fasta and gff files
 #
-sub _prepare_genome_4annotation {
-    my ($self, $obj_ref) = @_;
+sub _get_fasta_gff_contents {
+    my ($self, $fasta_file, $gff_file) = @_;
 
     my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
-    # generating the fasta file directly from genome
-    my $input_fasta_file = $self->_write_fasta_from_genome($obj_ref);
-    unless (-s $input_fasta_file) {
+    # generating fasta_contents from the fasta file
+    unless (-s $fasta_file) {
         croak "**rast_genome ERROR: FASTA file is empty!\n";
     }
-    $fasta_contents = $self->_parse_fasta($input_fasta_file);
+    $fasta_contents = $self->_parse_fasta($fasta_file);
 
-    # generating the gff file directly from genome
-    my $gff_filename = $self->_write_gff_from_genome($obj_ref);
-    unless (-s $gff_filename) {
+    # generating gff_contents from the gff file
+    unless (-s $gff_file) {
         croak "**rast_genome ERROR: GFF file is empty!\n";
     }
+    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_file, $attr_delimiter);
 
-    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
+    return ($fasta_contents, $gff_contents);
+}
+
+sub _prepare_genome_4annotation {
+    my ($self, $fa_file, $gff_file) = @_;
+
+    my ($fasta_contents, $gff_contents) = $self->_get_fasta_gff_contents($fa_file, $gff_file);
 
     # fetch protein sequences and gene IDs from fasta and gff files
     my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
@@ -1985,14 +1988,14 @@ sub rast_metagenome {
     my $is_meta_assembly = $in_type =~ /Metagenomes\.AnnotatedMetagenomeAssembly/;
 
     if ($is_assembly) {
-        # object is itself an assembly
+        # print "INFO:object is itself an assembly";
         $input_fasta_file = $self->_get_fasta_from_assembly($input_obj_ref);
         unless (-s $input_fasta_file) {
             croak "**rast_metagenome ERROR: FASTA file is empty!\n";
         }
     }
     elsif ($is_meta_assembly) {
-        # input_obj_ref points to a metagenome assembly
+        # print "INFO:input_obj_ref points to a metagenome assembly";
         if (defined($input_obj_info->[10])) {
             my $num_ftrs = $input_obj_info->[10]->{'Number features'};
             print "Input object '$input_obj_ref' is a metagenome and has $num_ftrs features.\n";
@@ -2034,6 +2037,8 @@ sub rast_metagenome {
                         protein_translation => $seq
             });
 	}
+        # fetch the GFF contents from $gff_filename
+        ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
     }
     elsif ($is_meta_assembly) {
         # generating the gff file directly from metagenome assembly
@@ -2041,22 +2046,8 @@ sub rast_metagenome {
         unless (-s $gff_filename) {
             croak "**rast_metagenome ERROR: GFF file is empty.\n";
         }
-
-        # 2.2 filing the feature list for rast call
-
-        # fetch protein sequences and gene IDs from fasta and gff files
-        $fasta_contents = $self->_parse_fasta($input_fasta_file);
-        ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
-
-        my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
-        my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
-
-        foreach my $gene (sort keys %$protein_seqs){
-            push(@{$inputgenome->{features}},{
-                id => $gene,
-                protein_translation => $protein_seqs->{$gene}
-            });
-        }
+        ($gff_contents, $inputgenome) = $self->_prepare_genome_4annotation(
+                                            $input_fasta_file, $gff_filename);
     }
 
     # 3. call RAST to annotate the proteins/genome
