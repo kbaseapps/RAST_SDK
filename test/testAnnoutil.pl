@@ -109,48 +109,6 @@ my $obj2_1 = "63171/315/1";
 
 
 =begin
-#my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
-my $ecoli_fasta = $annoutil->_write_fasta_from_genome($obj_Ecoli);
-unless (-s $ecoli_fasta) {
-    print "**_write_fasta_from_genome on $obj_Ecoli ERROR: FASTA file is empty!\n";
-}
-
-my $test_ftrs = [{
- 'id' => '10000_1',
- 'protein_translation' => 'VVVLLHGGCCEDMQRGRRESAPDLTLVVYPHALHALDMRLPDRTVLGMRLGFDAHAAADARRQVLDFLTARGVAPPDR*'
- },
- {
- 'function' => 'L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
- 'quality' => {
- 'hit_count' => 3
- },
- 'annotations' => [
- [
- 'Function updated to L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
- 'annotate_proteins_kmer_v1',
- '1583389302.95393',
- '6c670c83-2a11-49ff-97bf-b1c3e2121f30'
- ]
- ],
- 'id' => '10000_2'
- },
- {
- 'id' => '10000_3',
- 'protein_translation' => 'MLAVNEPTVVLASAETKSLGPVVTGDRLETEAEVERTDGRKRWVKVTVRRAGAPVMEGQFLAVVPDRHILDAKDARR*'
- },
- {
- 'id' => '10000_madeup',
- 'function' => 'completely fake function',
- 'annotations' => [
- [
- 'completely fake function',
- 'annotate_maedup_source',
- '1583389302.95394',
- '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
- ]
- ],
- }];
-
 subtest '_get_genome' => sub {
     my $parameters = {
          output_genome_name => 'test_out_gn_name',
@@ -242,7 +200,7 @@ subtest '_set_parameters_by_input' => sub {
     is ($inputgenome1->{assembly_ref}, '2901/78/1', 'inputgenome assembly_ref is correct.');
 
     # before merging with default gene call settings
-    cmp_deeply($expected_params1, $parameters1, 'parameters has default gene calls.');
+    cmp_deeply($expected_params1, $parameters1, 'parameters has input param values.');
 
     #  merge with the default gene call settings
     my $default_params = $annoutil->_set_default_parameters();
@@ -252,7 +210,7 @@ subtest '_set_parameters_by_input' => sub {
     my $expected_params2 = { %$default_params, %$expected_params1 };
 
     # after merging with default gene call settings
-    cmp_deeply($expected_params2, $parameters1, 'parameters has default gene calls.');
+    cmp_deeply($expected_params2, $parameters1, 'parameters has default workflows.');
 
     # an assembly object
     $parameters2 = {
@@ -292,7 +250,7 @@ subtest '_set_parameters_by_input' => sub {
     $parameters2 = $rast_details2{parameters};
 
     # before merging with default gene call settings
-    cmp_deeply($expected_params3, $parameters2, 'parameters are correct');
+    cmp_deeply($expected_params3, $parameters2, 'parameters has input values');
 
     # merge with the default gene call settings
     $parameters2 = { %$default_params, %$parameters2 };
@@ -300,7 +258,7 @@ subtest '_set_parameters_by_input' => sub {
     $rast_details2{parameters} = $parameters2;
 
     # after merging with default gene call settings
-    cmp_deeply($expected_params4, $parameters2, 'parameters are correct');
+    cmp_deeply($expected_params4, $parameters2, 'parameters has default workflows');
 
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$rast_details2{contigobj}{contigs}} == 1, 'inputgenome has 1 contig.');
@@ -323,7 +281,7 @@ subtest '_set_messageNcontigs' => sub {
     ok (@{$inputgenome1->{features}} > 0, 'inputgenome has feature(s).');
     ok (@{$inputgenome1->{contigs}} > 0, 'inputgenome has contig(s).');
     ok (length($msg1) > 0, "Message for genome input has contents:\n$msg1");
-    ok ($tax1 eq 'Bacteria', "tax_domain for genome input has value:\n$tax1");
+    ok ($tax1 eq 'Bacteria', "tax_domain for genome input has value:$tax1");
 
     # an assembly object
     lives_ok {
@@ -338,7 +296,7 @@ subtest '_set_messageNcontigs' => sub {
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
     ok (length($msg2) == 0, "Message for assembly input has no contents.");
-    ok ($tax2 eq 'U', "tax_domain for assembly input has value:\n$tax2");
+    ok ($tax2 eq 'U', "tax_domain for assembly input has value:$tax2");
 
 };
 
@@ -347,11 +305,10 @@ subtest '_set_messageNcontigs' => sub {
 subtest '_set_genecall_workflow' => sub {
     # a genome object
     lives_ok {
-        ($rast_ref, $inputgenome1) = $annoutil->_set_genecall_workflow(
+        $rast_ref = $annoutil->_set_genecall_workflow(
                                             \%rast_details1, $inputgenome1);
     } '_set_genecall_workflow runs successfully on genome';
     %rast_details1 = %{ $rast_ref }; # dereference
-    $parameters1 = $rast_details1{parameters};
     my $genecall_workflow1 = $rast_details1{genecall_workflow};
 
     my $exp_gc_workflow1 = {
@@ -406,16 +363,149 @@ subtest '_set_genecall_workflow' => sub {
     };
 
     lives_ok {
-        ($rast_ref, $inputgenome2) = $annoutil->_set_genecall_workflow(
+        $rast_ref = $annoutil->_set_genecall_workflow(
                                             \%rast_details2, $inputgenome2);
     } '_set_genecall_workflow runs successfully on assembly';
     %rast_details2 = %{$rast_ref}; # dereference
-    $parameters2 = $rast_details2{parameters};
     my $msg2 = $rast_details2{message};
     my $genecall_workflow2 = $rast_details2{genecall_workflow};
     cmp_deeply($exp_gc_workflow2, $genecall_workflow2, 'gc_workflow built correctly');
+
 };
 
+
+# Test _set_annotation_workflow with genome/assembly object refs in prod
+subtest '_set_annotation_workflow' => sub {
+    # a genome object
+    lives_ok {
+        $rast_ref = $annoutil->_set_annotation_workflow(\%rast_details1);
+    } '_set_genecall_workflow runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    my $annomessage1 = $rast_details1{annomessage};
+    my $annotate_workflow1 = $rast_details1{annotate_workflow};
+
+    my $exp_ann_workflow1 = {
+        'stages' => [
+            { 'name' => 'annotate_proteins_kmer_v2',
+                'kmer_v2_parameters' => {
+                                          'min_hits' => '5',
+                                          'annotate_hypothetical_only' => 1
+                                        }
+            },
+            { 'kmer_v1_parameters' => {
+                                        'annotate_hypothetical_only' => 1,
+                                        'dataset_name' => 'Release70'
+                                      },
+              'name' => 'annotate_proteins_kmer_v1'
+            },
+            { 'name' => 'annotate_proteins_similarity',
+              'similarity_parameters' => {
+                                             'annotate_hypothetical_only' => 1
+                                           }
+            },
+            { 'resolve_overlapping_features_parameters' => {},
+              'name' => 'resolve_overlapping_features'
+            },
+            {
+              'name' => 'call_features_prophage_phispy'
+            }
+        ]
+    };
+    print "genome annotation-msg:\n$annomessage1";
+    cmp_deeply($exp_ann_workflow1, $annotate_workflow1, 'ann_workflow built correctly');
+
+    # an assembly object
+    my $exp_ann_workflow2 = {
+        'stages' => [
+            { 'name' => 'annotate_proteins_kmer_v2',
+                'kmer_v2_parameters' => {
+                                          'min_hits' => '5',
+                                          'annotate_hypothetical_only' => 1
+                                        }
+            },
+            { 'kmer_v1_parameters' => {
+                                        'annotate_hypothetical_only' => 1,
+                                        'dataset_name' => 'Release70'
+                                      },
+              'name' => 'annotate_proteins_kmer_v1'
+            },
+            { 'name' => 'annotate_proteins_similarity',
+              'similarity_parameters' => {
+                                             'annotate_hypothetical_only' => 1
+                                           }
+            },
+            { 'resolve_overlapping_features_parameters' => {},
+              'name' => 'resolve_overlapping_features'
+            }
+        ]
+    };
+
+    lives_ok {
+        $rast_ref = $annoutil->_set_annotation_workflow(\%rast_details2);
+    } '_set_genecall_workflow runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+    my $annomessage2 = $rast_details2{annomessage};
+    my $annotate_workflow2 = $rast_details2{annotate_workflow};
+    print "assembly annotation-msg:\n$annomessage2";
+    cmp_deeply($exp_ann_workflow2, $annotate_workflow2, 'ann_workflow built correctly');
+
+};
+
+
+# Test _merge_messages with genome/assembly object refs in prod
+subtest '_merge_messages' => sub {
+    # a genome object
+    lives_ok {
+        ($rast_ref, $inputgenome1) = $annoutil->_merge_messages(
+                        \%rast_details1, $inputgenome1);
+    } '_merge_messages runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    my $msg1 = $rast_details2{message};
+    print "genome merged-msg:\n$msg1";
+    ok (@{$inputgenome1->{features}} > 0,
+        "Genome inputgenome has ".scalar @{$inputgenome1->{features}}." features.");
+
+    # an assembly object
+    lives_ok {
+        ($rast_ref, $inputgenome2) = $annoutil->_merge_messages(
+                        \%rast_details2, $inputgenome2);
+    } '_merge_messages runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+    my $msg2 = $rast_details2{message};
+    print "genome merged-msg:\n$msg2";
+    ok (@{$inputgenome2->{features}} == 0, "Assembly inputgenome has no features.");
+};
+
+
+# Test _prepare4rast with genome/assembly object refs in prod
+subtest '_prepare4rast' => sub {
+    # a genome object
+    lives_ok {
+        ($rast_ref, $inputgenome1) = $annoutil->_prepare4rast(
+                        \%rast_details1, $inputgenome1);
+    } '_prepare4rast runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    my $genehash1 = $rast_details1{genehash};
+
+    ok (keys %{$genehash1}, "Gene hash created from genome with elements.");
+    if (defined($inputgenome1->{ontology_events})){
+        ok (@{$inputgenome1->{ontology_events}} > 0,
+            "There are ".scalar @{$inputgenome1->{ontology_events}}." ontology events for genome.");
+    }
+    # an assembly object
+    lives_ok {
+        ($rast_ref, $inputgenome2) = $annoutil->_prepare4rast(
+                        \%rast_details2, $inputgenome2);
+    } '_merge_messages runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+    my $genehash2 = $rast_details2{genehash};
+
+    ok (keys %{$genehash2} == 0, "Gene hash created from assembly with no elements.");
+    if (defined($inputgenome2->{ontology_events})){
+        ok (@{$inputgenome2->{ontology_events}} > 0,
+            "There are ".scalar @{$inputgenome2->{ontology_events}}." ontology events for assembly.");
+    }
+};
 
 =begin
 subtest '_build_genecall_workflow' => sub {

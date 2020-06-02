@@ -955,6 +955,7 @@ sub _set_genecall_workflow {
     my $contigobj = $rast_details{contigobj};
 
     my $workflow = {stages => []};
+
     my $extragenecalls = "";
     if (defined($parameters->{call_features_rRNA_SEED})
             && $parameters->{call_features_rRNA_SEED} == 1) {
@@ -1036,31 +1037,35 @@ sub _set_genecall_workflow {
         }
     }
     if (defined($parameters->{call_features_strep_suis_repeat})
-            && $parameters->{call_features_strep_suis_repeat} == 1
-            && $parameters->{scientific_name} =~ /^Streptococcus\s/) {
-        if (length($extragenecalls) == 0) {
-            $extragenecalls = "A scan was conducted for the following additional feature types: ";
-        } else {
-            $extragenecalls .= "; ";
-        }
-        $extragenecalls .= "strep suis repeats";
-        push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
-        if (!defined($contigobj)) {
-            Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+	        && defined($parameters->{scientific_name})) {
+        if( $parameters->{call_features_strep_suis_repeat} == 1
+                && $parameters->{scientific_name} =~ /^Streptococcus\s/) {
+            if (length($extragenecalls) == 0) {
+                $extragenecalls = "A scan was conducted for the following additional feature types: ";
+            } else {
+                $extragenecalls .= "; ";
+            }
+            $extragenecalls .= "strep suis repeats";
+            push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
+            if (!defined($contigobj)) {
+                Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+            }
         }
     }
     if (defined($parameters->{call_features_strep_pneumo_repeat})
-            && $parameters->{call_features_strep_pneumo_repeat} == 1
-            && $parameters->{scientific_name} =~ /^Streptococcus\s/) {
-        if (length($extragenecalls) == 0) {
-            $extragenecalls = "A scan was conducted for the following additional feature types: ";
-        } else {
-            $extragenecalls .= "; ";
-        }
-        $extragenecalls .= "strep pneumonia repeats";
-        push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
-        if (!defined($contigobj)) {
-            Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+	        && defined($parameters->{scientific_name})) {
+        if ($parameters->{call_features_strep_pneumo_repeat} == 1
+                && $parameters->{scientific_name} =~ /^Streptococcus\s/) {
+            if (length($extragenecalls) == 0) {
+                $extragenecalls = "A scan was conducted for the following additional feature types: ";
+            } else {
+                $extragenecalls .= "; ";
+            }
+            $extragenecalls .= "strep pneumonia repeats";
+            push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
+            if (!defined($contigobj)) {
+                Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+            }
         }
     }
     if (defined($parameters->{call_features_crispr})
@@ -1077,7 +1082,7 @@ sub _set_genecall_workflow {
                 Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
             }
         } else {
-            $message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n"; 
+            $message .= "Did not call crisprs because the domain is tax_domain is 'U'\n\n";
         }
     }
     $extragenecalls .= ".\n" if (length($extragenecalls) > 0);
@@ -1087,6 +1092,7 @@ sub _set_genecall_workflow {
             && $parameters->{call_features_CDS_glimmer3} == 1)   {
         if (@{$inputgenome->{features}} > 0) {
             $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
+            #$inputgenome->{features} = [];
         }
         if (length($genecalls) == 0) {
             $genecalls = "Standard features were called using: ";
@@ -1098,7 +1104,7 @@ sub _set_genecall_workflow {
             name => "call_features_CDS_glimmer3",
             "glimmer3_parameters" => {
                             "min_training_len" => "2000"
-                     }
+            }
         });
         if (!defined($contigobj)) {
             Bio::KBase::utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
@@ -1108,6 +1114,7 @@ sub _set_genecall_workflow {
             && $parameters->{call_features_CDS_prodigal} == 1)   {
         if (@{$inputgenome->{features}} > 0) {
             $message .= "The existing gene features were cleared due to selection of gene calling with Prodigal.\n";
+            #$inputgenome->{features} = [];
         }
         if (length($genecalls) == 0) {
             $genecalls = "Standard gene features were called using: ";
@@ -1173,9 +1180,8 @@ sub _set_annotation_workflow {
     my $v1flag = 0;
     my $simflag = 0;
     my $workflow = {stages => []};
-
     if (defined($parameters->{annotate_proteins_kmer_v2})
-        && $parameters->{annotate_proteins_kmer_v2} == 1) {
+            && $parameters->{annotate_proteins_kmer_v2} == 1) {
         if (length($annomessage) == 0) {
             $annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
         }
@@ -1234,7 +1240,7 @@ sub _set_annotation_workflow {
         if ($tax_domain ne 'U' ) {
             push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
         } else {
-            $message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";   
+            $message .= "Did not call call features prophage phispy because tax_domain is 'U'\n\n";
         }
     }
     $annomessage .= ".\n" if (length($annomessage) > 0);
@@ -1281,7 +1287,6 @@ sub _set_annotation_workflow {
 #
 sub _merge_messages {
     my ($self, $rast_ref, $inputgenome) = @_;
-
     my %rast_details = %{ $rast_ref };
     my $message = $rast_details{message};
     my $annomessage = $rast_details{annomessage};
