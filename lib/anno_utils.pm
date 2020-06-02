@@ -560,8 +560,17 @@ sub _get_genome {
 sub _get_contigs {
     my ($self, $ref) = @_;
     my $info = $self->_fetch_object_info($ref);
-    my $obj;
+    print "Object $ref information:\n".Dumper($info);
 
+    my $obj = {
+        _reference => $ref,
+        id => $info->[0],
+        name => $info->[1],
+        source_id => $info->[0],
+        source => "KBase",
+        type => "SingleGenome",
+        contigs => []
+    };
     if ($info->[2] =~ /Assembly/) {
         my $fpath = $self->_get_fasta_from_assembly($ref);
         my $fasta = "";
@@ -570,15 +579,6 @@ sub _get_contigs {
             $fasta .= $line;
         }
         close($fh);
-        $obj = {
-            _reference => $ref,
-            id => $info->[0],
-            name => $info->[1],
-            source_id => $info->[0],
-            source => "KBase",
-            type => "SingleGenome",
-            contigs => []
-        };
         $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
         $fasta =~ s/\n//g;
         my $array = [split(/\>/,$fasta)];
@@ -607,7 +607,7 @@ sub _get_contigs {
                     };
                     $contigobject->{name} = $id;
                     $contigobject->{description} = $description;
-                    push(@{$obj->{contigs}},$contigobject);
+                    push(@{$obj->{contigs}}, $contigobject);
                 }
             }
         }
@@ -622,7 +622,7 @@ sub _get_contigs {
         print("Assembly $obj->{_reference} Downloaded\n");
         $obj->{md5} = Digest::MD5::md5_hex($str);
         $obj->{_kbasetype} = "Assembly";
-    } else {
+    }elsif ($info->[2] =~ /ContigSet/) {
         $obj = $self->_fetch_object_data($ref);
         $obj->{_kbasetype} = "ContigSet";
         $obj->{_reference} = $ref;
@@ -712,18 +712,44 @@ sub _set_default_parameters {
 ## end helper subs
 
 #
-# According to inputs in $parameters
+## According to inputs in $parameters and a pre-created default genome object, $inputgenome
+## Returns:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj
+##  }, $inputgenomes);
 #
 sub _set_parameters_by_input {
     my ($self, $parameters, $inputgenome) = @_;
+
+    print "_set_parameters_by_input's input parameters:\n". Dumper($parameters). "\n";
     my $contigobj;
     my $oldfunchash = {};
     my $oldtype     = {};
     my %types = ();
 
-    if (defined($parameters->{input_genome})) {
-        # assuming $parameters->{input_genome} is given as a Workspace.ref_string
-        $inputgenome = $self->_get_genome($parameters->{input_genome});
+    # 1. getting the fasta file from $input_obj_ref according to its type
+    my $input_obj_ref = $parameters->{object_ref};
+    my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
+    my $in_type = $input_obj_info->[2];
+    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
+                       $in_type =~ /KBaseGenomes\.ContigSet/);
+    my $is_genome = ($in_type =~ /KBaseGenomes\.Genome/ ||
+                     $in_type =~ /KBaseGenomeAnnotations\.GenomeAnnotation/);
+
+    if (!$is_assembly && !$is_genome) {
+        croak ("Only KBaseGenomes.Genome, KBaseGenomes.ContigSet, ".
+           "KBaseGenomeAnnotations.Assembly, and ".
+               "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
+    }
+
+    # if (defined($parameters->{input_genome})) {
+    #   assuming $parameters->{input_genome} is given as a Workspace.ref_string
+    if ($is_genome) {
+        $inputgenome = $self->_get_genome($input_obj_ref);
         for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
             my $ftr = $inputgenome->{features}->[$i];
             if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
@@ -784,25 +810,67 @@ sub _set_parameters_by_input {
             } elsif (defined($inputgenome->{assembly_ref})) {
                 $contigref = $inputgenome->{assembly_ref};
             }
-            $contigobj = $self->_get_contigs($inputgenome->{_reference}.";".$contigref)
+            $contigobj = $self->_get_contigs($contigref);
         }
         $parameters->{genetic_code} = $inputgenome->{genetic_code};
         $parameters->{domain} = $inputgenome->{domain};
         $parameters->{scientific_name} = $inputgenome->{scientific_name};
-    } elsif (defined($parameters->{input_contigset})) {
+    } elsif ($is_assembly) {
         $parameters->{genetic_code} = $inputgenome->{genetic_code};
         $parameters->{domain} = $inputgenome->{domain};
         $parameters->{scientific_name} = $inputgenome->{scientific_name};
-        $contigobj = $self->_get_contigs($parameters->{input_contigset});   
+        $contigobj = $self->_get_contigs($input_obj_ref);   
     } else {
         croak("Neither contigs nor genome specified!");
     }
-    return ($parameters, $inputgenome, $oldfunchash, $oldtype, $contigobj);
+
+    my %rast_details = ();
+    $rast_details{parameters} = $parameters;
+    $rast_details{oldfunchash} = $oldfunchash;
+    $rast_details{oldtype} = $oldtype;
+    $rast_details{ftr_types} = \%types;
+    $rast_details{contigobj} = $contigobj;
+    return (\%rast_details, $inputgenome);
 }
 
+#
+## Recording the annotation process by taking a note in $message
+## Input:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj
+##  }, $inputgenome);
+## Returns:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##  }, $inputgenome);
+#
 sub _set_message {
-    my ($self, $parameters, $inputgenome, $message, $contigobj) = @_;
+    my ($self, $rast_in, $inputgenome) = @_;
 
+    my %rast_details = %{ $rast_in };
+    my $parameters = $rast_details{parameters};
+    my %types = %{$rast_details{ftr_types}};
+    my $contigobj = $rast_details{contigobj};
+
+    my $tax_domain = 'U';
+    my $message = "";
+    if (defined($inputgenome->{domain})) {
+        $tax_domain = ($inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
+        if ($tax_domain eq 'U' ) {
+            $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+        }
+    }
+=begin
     if (defined($contigobj)) {
         my $count = 0;
         my $size = 0;
@@ -835,14 +903,53 @@ sub _set_message {
             $message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
         }
     }
-    return ($message, $inputgenome);
+=cut
+    if (%types) {
+        $message .= "Input genome has the following feature types:\n";
+        for my $key (sort keys(%types)) {
+            $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
+        }
+    }
+
+    $rast_details{message} = $message;
+    $rast_details{tax_domain} = $tax_domain;
+    return (\%rast_details, $inputgenome);
 }
 
 #
 ## Check the gene call specifications in $parameters and set the workflow accordingly 
+## Input:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##  }, $inputgenome);
+## Returns:
+##  $rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $workflow,
+##      extragenecalls => $extragenecalls,
+##      genecalls => $genecalls
+##  };
 #
 sub _set_genecall_workflow {
-    my ($self, $inputgenome, $parameters, $message, $contigobj, $tax_domain) = @_;
+    my ($self, $rast_in, $inputgenome) = @_;
+
+    my %rast_details = %{ $rast_in };
+    my $parameters = $rast_details{parameters};
+    my $message = $rast_details{message};
+    my $tax_domain = $rast_details{tax_domain};
+    my $contigobj = $rast_details{contigobj};
 
     my $workflow = {stages => []};
     my $extragenecalls = "";
@@ -1012,12 +1119,53 @@ sub _set_genecall_workflow {
     }
     $genecalls .= ".\n" if (length($genecalls) > 0);
 
-    return ($inputgenome, $message, $workflow, $extragenecalls, $genecalls);
+    $rast_details{genecall_workflow} = $workflow;
+    $rast_details{message} = $message;
+    $rast_details{extragenecalls} = $extragenecalls;
+    $rast_details{genecalls} = $genecalls;
+
+    return \%rast_details;
 }
 
-
+#
+## Create workflow with only the annotation part (i.e., no gene callings)
+## Input:
+##  $rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $workflow,
+##      extragenecalls => $extragenecalls,
+##      genecalls => $genecalls
+##  };
+## Returns:
+##  $rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $gc_workflow,
+##      annotate_workflow => $workflow,
+##      extragenecalls => $extragenecalls,
+##      genecalls => $genecalls,
+##      annomessage => $annomessage
+##  };
+#
 sub _set_annotation_workflow {
-    my ($self, $parameters, $message, $tax_domain) = @_;
+    my ($self, $rast_in) = @_;
+
+    my %rast_details = %{ $rast_in };
+    my $parameters = $rast_details{parameters};
+    my $message = $rast_details{message};
+    my $tax_domain = $rast_details{tax_domain};
+
     my $annomessage = "";
     my $v1flag = 0;
     my $simflag = 0;
@@ -1087,44 +1235,127 @@ sub _set_annotation_workflow {
         }
     }
     $annomessage .= ".\n" if (length($annomessage) > 0);
-    return ($annomessage, $workflow, $message);
+    $rast_details{annotate_workflow} = $workflow;
+    $rast_details{message} = $message;
+    $rast_details{annomessage} = $annomessage;
+
+    return \%rast_details;
 }
 
 #
-## merge messages, update $inputgenome and $workflow
+## Merge messages, update $inputgenome and $workflow
+## Input:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $gc_workflow,
+##      annotate_workflow => $workflow,
+##      extragenecalls => $extragenecalls,
+##      genecalls => $genecalls,
+##      annomessage => $annomessage
+##  }, $inputgenome);
+## Returns:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $gc_workflow,
+##      annotate_workflow => $anno_workflow,
+##      extragenecalls => $extragenecalls,
+##      extra_workflow => $workflow,
+##      genecalls => $genecalls,
+##      annomessage => $annomessage
+##  }, $inputgenome);
 #
 sub _merge_messages {
-    my ($self, $genecalls, $extragenecalls, $message, $annomessage, $inputgenome) = @_;
+    my ($self, $rast_ref, $inputgenome) = @_;
+
+    my %rast_details = %{ $rast_ref };
+    my $message = $rast_details{message};
+    my $annomessage = $rast_details{annomessage};
+    my $genecalls = $rast_details{genecalls};
+    my $extragenecalls = $rast_details{extragenecalls};
+
     my $workflow = {stages => []};
     
-   if (length($genecalls) > 0) {
-      push(@{$workflow->{stages}},{name => "renumber_features"});
-      if (@{$inputgenome->{features}} > 0) {
-         my $replace = [];
-         for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
-            my $ftr = $inputgenome->{features}->[$i];
-            if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-               #push(@{$replace}, @{$inputgenome->{features}}->[$i]);
-               push(@{$replace}, $ftr);
-            } 
-         }
-         $inputgenome->{features} = $replace;
-      }
-      $message .= $genecalls;
-   }
-   if (length($extragenecalls) > 0) {
-      $message .= $extragenecalls;
-   }
-   if (length($annomessage) > 0) {
-      $message .= $annomessage;
-   }
-    return ($message, $inputgenome, $workflow);
+    if (length($genecalls) > 0) {
+        push(@{$workflow->{stages}},{name => "renumber_features"});
+        if (@{$inputgenome->{features}} > 0) {
+            my $replace = [];
+            for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
+                my $ftr = $inputgenome->{features}->[$i];
+                if (!defined($ftr->{protein_translation})
+                        || $ftr->{type} =~ /pseudo/) {
+                    #push(@{$replace}, @{$inputgenome->{features}}->[$i]);
+                    push(@{$replace}, $ftr);
+                }
+            }
+            $inputgenome->{features} = $replace;
+        }
+        $message .= $genecalls;
+    }
+    if (length($extragenecalls) > 0) {
+        $message .= $extragenecalls;
+    }
+    if (length($annomessage) > 0) {
+        $message .= $annomessage;
+    }
+    $rast_details{inputgenome} = $inputgenome;
+    $rast_details{message} = $message;
+    $rast_details{extra_workflow} = $workflow;
+
+    return (\%rast_details, $inputgenome);
 }
 
-
+#
+## Final massage $inputgenome and $workflows
+## Input:
+##  ($rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $gc_workflow,
+##      annotate_workflow => $anno_workflow,
+##      extragenecalls => $extragenecalls,
+##      extra_workflow => $workflow,
+##      genecalls => $genecalls,
+##      annomessage => $annomessage
+##  }, $inputgenome);
+## Returns:
+##  $rast_details = {
+##      parameters => $parameters,
+##      oldfunchash => $oldfunchash,
+##      oldtype => $oldtype,
+##      ftr_types => %types,
+##      contigobj => $contigobj,
+##      message => $message,
+##      tax_domain => $tax_domain
+##      genecall_workflow => $gc_workflow,
+##      annotate_workflow => $anno_workflow,
+##      extragenecalls => $extragenecalls,
+##      extra_workflow => $workflow,
+##      genecalls => $genecalls,
+##      annomessage => $annomessage,
+##      genehash => $genehash
+##  }, $inputgenome);
+#
 sub _prepare4rast {
-    my ($self, $inputgenome) = @_;
+    my ($self, $rast_ref, $inputgenome) = @_;
 
+    my %rast_details = %{ $rast_ref };
     my $genome = $inputgenome;
     my $genehash = {};
     if (defined($genome->{features})) {
@@ -1186,9 +1417,11 @@ sub _prepare4rast {
             push(@{$inputgenome->{ontology_events}}, $ont_event);
         }
     }
-    return ($genehash, $inputgenome);
-}
 
+    $rast_details{genehash} = $genehash;
+
+    return (\%rast_details, $inputgenome);
+}
 
 #
 #----------------------------------------------------------------------
@@ -1251,90 +1484,92 @@ sub _run_rast_workflow {
     return $rasted_gn;
 }
 
-
+#
+## process the rast result
+#
 sub _post_rast_processing {
     my ($self, $genome, $inputgenome, $parameters) = @_;
-	delete $genome->{contigs};
-	delete $genome->{feature_creation_event};
-	delete $genome->{analysis_events};
-	$genome->{genetic_code} = $genome->{genetic_code}+0;
-	$genome->{id} = $parameters->{output_genome};
-	if (!defined($genome->{source})) {
-		$genome->{source} = "KBase";
-		$genome->{source_id} = $parameters->{output_genome};
-	}
-	if (defined($inputgenome->{gc_content})) {
-		$genome->{gc_content} = $inputgenome->{gc_content};
-	}
-	if (defined($genome->{gc})) {
-		$genome->{gc_content} = $genome->{gc}+0;
-		delete $genome->{gc};
-	}
-	if (!defined($genome->{gc_content})) {
-		$genome->{gc_content} = 0.5;
-	}
-	if (not defined($genome->{non_coding_features})) {
-		$genome->{non_coding_features} = [];
-	}
+    delete $genome->{contigs};
+    delete $genome->{feature_creation_event};
+    delete $genome->{analysis_events};
+    $genome->{genetic_code} = $genome->{genetic_code}+0;
+    $genome->{id} = $parameters->{output_genome};
+    if (!defined($genome->{source})) {
+        $genome->{source} = "KBase";
+        $genome->{source_id} = $parameters->{output_genome};
+    }
+    if (defined($inputgenome->{gc_content})) {
+        $genome->{gc_content} = $inputgenome->{gc_content};
+    }
+    if (defined($genome->{gc})) {
+        $genome->{gc_content} = $genome->{gc}+0;
+        delete $genome->{gc};
+    }
+    if (!defined($genome->{gc_content})) {
+        $genome->{gc_content} = 0.5;
+    }
+    if (not defined($genome->{non_coding_features})) {
+        $genome->{non_coding_features} = [];
+    }
     return $genome;
 }
 
 sub _move_non_coding_features {
     my ($self, $genome, $contigobj) = @_;
-	my @splice_list = ();
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
-				if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-				# Found some pseudogenes that have wrong structure for aliases
-					my $tmp = [];
-					foreach my $key (@{$ftr->{aliases}})  {
-						my @ary = ('alias',$key);
-						push(@{$tmp},\@ary); 
-					}
-					$ftr->{aliases} = $tmp;
-				}
-			 }
-			if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
-				push(@splice_list,$i);
+    my @splice_list = ();
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
+                if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
+                # Found some pseudogenes that have wrong structure for aliases
+                    my $tmp = [];
+                    foreach my $key (@{$ftr->{aliases}})  {
+                        my @ary = ('alias',$key);
+                        push(@{$tmp},\@ary);
+                    }
+                    $ftr->{aliases} = $tmp;
+                }
+             }
+            if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
+                push(@splice_list,$i);
             }
-		}
-	}
-	my $count = 0;
-#	
-#	Move non-coding features from features to non_coding_features
-#	They can have more than one location and they need md5 and dna_sequence_length
-#
-#	print "Array size =".scalar @{$genome->{features}}."\n";
-#	print "Number to splice out = ".scalar @splice_list."\n";
-	foreach my $key (reverse @splice_list) {
-		if ($key =~ /\D/ ) {
-			print "INVALID:size=".scalar @{$genome->{features}}."\n";
-#			print Dumper $key;
-		}
-		else {
-			my $ftr = $genome->{features}->[$key];
-			if (defined($ftr->{location})) {
-				$ftr->{dna_sequence_length} = 0;
-				$ftr->{md5} = '';
-				for (my $i=0; $i < scalar @{$ftr->{location}}; $i++) {
-					$ftr->{location}->[$i]->[1]  = $ftr->{location}->[$i]->[1]+0;
-					$ftr->{location}->[$i]->[3]  = $ftr->{location}->[$i]->[3]+0;
-					$ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3]+0;
-				}
-			}
-			delete  $ftr->{feature_creation_event};
-			my $non = splice(@{$genome->{features}},$key,1);
-			push(@{$genome->{non_coding_features}}, $non);
+        }
+    }
+    my $count = 0;
+    #
+    #   Move non-coding features from features to non_coding_features
+    #   They can have more than one location and they need md5 and dna_sequence_length
+    #
+    #   print "Array size =".scalar @{$genome->{features}}."\n";
+    #   print "Number to splice out = ".scalar @splice_list."\n";
+    foreach my $key (reverse @splice_list) {
+        if ($key =~ /\D/ ) {
+            print "INVALID:size=".scalar @{$genome->{features}}."\n";
+            # print Dumper $key;
+        }
+        else {
+            my $ftr = $genome->{features}->[$key];
+            if (defined($ftr->{location})) {
+                $ftr->{dna_sequence_length} = 0;
+                $ftr->{md5} = '';
+                for (my $i=0; $i < scalar @{$ftr->{location}}; $i++) {
+                    $ftr->{location}->[$i]->[1]  = $ftr->{location}->[$i]->[1]+0;
+                    $ftr->{location}->[$i]->[3]  = $ftr->{location}->[$i]->[3]+0;
+                    $ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3]+0;
+                }
+            }
+            delete  $ftr->{feature_creation_event};
+            my $non = splice(@{$genome->{features}},$key,1);
+            push(@{$genome->{non_coding_features}}, $non);
 
-			$count++;
-		}
-	}
+            $count++;
+        }
+    }
     if (defined($contigobj) && defined($contigobj->{contigs})
             && scalar(@{$contigobj->{contigs}})>0 ) {
-		$genome->{num_contigs} = @{$contigobj->{contigs}};
-		$genome->{md5} = $contigobj->{md5};
+        $genome->{num_contigs} = @{$contigobj->{contigs}};
+        $genome->{md5} = $contigobj->{md5};
     }
     return $genome;
 }
@@ -1343,253 +1578,253 @@ sub _move_non_coding_features {
 sub _build_seed_ontology {
     my ($self, $genome, $genehash, $inputgenome, $oldfunchash, $oldtype, $parameters) = @_;
     
-	my $output = Bio::KBase::kbaseenv::get_objects([{
-		workspace => "KBaseOntology",
-		name => "seed_subsystem_ontology"
-	}]);
+    my $output = Bio::KBase::kbaseenv::get_objects([{
+        workspace => "KBaseOntology",
+        name => "seed_subsystem_ontology"
+    }]);
 
-	#Building a hash of standardized seed function strings
-	my $num_coding = 0;
-	my $funchash = {};
-	foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
-		my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
-		$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-		$rolename =~ s/\s//g;
-		$rolename =~ s/\#.*$//g;
-		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
-	}
-	my $newftrs = 0;
-	my $newncfs = 0;
-	my $update_cdss = 'N';
-	my $proteins = 0;
-	my $others = 0;
-	my $seedfunctions = 0;
-	my $genomefunchash;
-	my $seedfunchash;
-	my $advancedmessage = '';
-	my %types = ();
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
-				# Let's count number of features with functions updated by RAST service.
-				# If function is not set we treat it as empty string to avoid perl warning.
-				$newftrs++;
-				my $func = $ftr->{function};
-				if (not defined($func)) {
-					$func = "";
-				}
-				if ($ftr->{type} eq 'CDS' && !defined($genome->{cdss}->[$i])) {
-					#Some of the optional gene finders don't respect new genome format
-					#They may not have the cdss
-					$update_cdss = 'Y';
-				}
-			} else {
-				$num_coding++;
-			}
-			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
-				$ftr->{type} = $1;
-			}
-			if (defined($ftr->{protein_translation})) {
-				$ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
-				$ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
-				$proteins++;
-			} else {
-				$others++;
-			}
-			if (defined($ftr->{dna_sequence})) {
-				$ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
-			}
-			if (defined($ftr->{quality}->{weighted_hit_count})) {
-				$ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
-			}
-			if (defined($ftr->{quality}->{hit_count})) {
-				$ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
-			}
-			if (defined($ftr->{annotations})) {
-				delete $ftr->{annotations};
-			}
-			if (defined($ftr->{location})) {
-				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
-			}
-			delete $ftr->{feature_creation_event};
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
-				for (my $j=0; $j < @{$genome->{features}}; $j++) {
-					if ($i ne $j) {
-						if ($ftr->{location}->[0]->[0] eq $genome->{features}->[$j]->{location}->[0]->[0]) {
-							if ($ftr->{location}->[0]->[1] == $genome->{features}->[$j]->{location}->[0]->[1]) {
-								if ($ftr->{location}->[0]->[2] eq $genome->{features}->[$j]->{location}->[0]->[2]) {
-									if ($ftr->{location}->[0]->[3] == $genome->{features}->[$j]->{location}->[0]->[3]) {
-										if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
-											$genome->{features}->[$j]->{function} = $ftr->{function};
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
-				if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
-					$ftr->{function} = $oldfunchash->{$ftr->{id}};
-				}
-			}
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
-				my $function = $ftr->{function};
-				my $array = [split(/\#/,$function)];
-				$function = shift(@{$array});
-				$function =~ s/\s+$//;
-				$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
-				my $marked = 0;
-				for (my $j=0;$j < @{$array}; $j++) {
-					my $rolename = lc($array->[$j]);
-					$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-					$rolename =~ s/\s//g;
-					$rolename =~ s/\#.*$//g;
-					$genomefunchash->{$rolename} = 1;
-					if (defined($funchash->{$rolename})) {
-						$seedfunchash->{$rolename} = 1;
-						if ($marked == 0) {
-							$seedfunctions++;
-							$marked = 1;
-						}
-						my $ont_term = $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}};
-						if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
-							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
-								 evidence => [],
-								 id => $funchash->{$rolename}->{id},
-								 term_name => $funchash->{$rolename}->{name},
-								 ontology_ref => "KBaseOntology/seed_subsystem_ontology",
-								 term_lineage => [],
-							};
-						}
-						my $found = 0;
-						if (ref($ont_term) eq 'ARRAY'){
-							push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
-						} else {
-							for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-								if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
-									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
-									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
-									$found = 1;
-									last;
-								}
-							}
-							if ($found == 0) {
-								push(
-									@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
-									{
-										method         => Bio::KBase::utilities::method(),
-										method_version => $self->util_version(),
-										timestamp      => Bio::KBase::utilities::timestamp()
-									});
-							}
-						}
-						if (exists ($ftr->{ontology_terms}->{SSO})) {
-							foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
-								if ($sso =~ /SSO:000009304/) {
-									$advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
-								}
-								elsif ($sso =~ /SSO:000009291/) {
-									$advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
-								}
-							}
-						}	
-					}
-				}
-			}
-		}
-		## Rolling protein features back from 'CDS' to 'gene':
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if ($ftr->{type} eq "CDS") {
-				$ftr->{type} = "gene"
-			}
-			if (exists $oldtype->{$ftr->{id}} && $oldtype->{$ftr->{id}} =~ /gene/) {
-				$ftr->{type} = $oldtype->{$ftr->{id}};					
-			}
-			if (defined($ftr->{location})) {
-				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
-			}
-#			$ftr->{type} = 'gene';
-			my $type = '';
-			if ( defined$ftr->{type}) {
-				$type = 'Coding '.$ftr->{type};
-			} else {
-				$type = 'Coding ';
-			}
-			#	Count the output feature types
-			if (exists $types{$type}) {
-				$types{$type} += 1;
-			} else {
-				$types{$type} = 1;
-			}
-			delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
-			delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
-		}
-		if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
-			## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
-			my $cdss = [];
-			$genome->{cdss} = $cdss;
-			my $mrnas = [];
-			$genome->{mrnas} = $mrnas;
-			for (my $i=0; $i < @{$genome->{features}}; $i++) {
-				my $feature = $genome->{features}->[$i];
-				if (defined($feature->{protein_translation})) {
-					my $gene_id = $feature->{id};
-					my $cds_id = $gene_id . "_CDS";
-					my $mrna_id = $gene_id . "_mRNA";
-					my $location = $feature->{location};
-					my $md5 = $feature->{md5};
-					my $function = $feature->{function};
-					if (not defined($function)) {
-						$function = "";
-					}
-					my $ontology_terms = $feature->{ontology_terms};
-					if (not defined($ontology_terms)) {
-						$ontology_terms = {};
-					}
-					my $protein_translation = $feature->{protein_translation};
-					my $protein_translation_length = length($protein_translation);
-					my $aliases = [];
-					if (defined($feature->{aliases})) {
-						$aliases = $feature->{aliases};
-						# Found some pseudogenes that have wrong structure for aliases
-						if (ref($aliases) !~ /ARRAY/) {
-							$aliases = [$feature->{aliases}];
-						}
-					}
-					push(@{$cdss}, {
-						id => $cds_id,
-						location => $location,
-						md5 => $md5,
-						parent_gene => $gene_id,
-						parent_mrna => $mrna_id,
-						function => $function,
-						ontology_terms => $ontology_terms,
-						protein_translation => $protein_translation,
-						protein_translation_length => $protein_translation_length,
-						aliases => $aliases
-					});
-					push(@{$mrnas}, {
-						id => $mrna_id,
-						location => $location,
-						md5 => $md5,
-						parent_gene => $gene_id,
-						cds => $cds_id
-					});
-					$feature->{cdss} = [$cds_id];
-					$feature->{mrnas} = [$mrna_id];
-				}
-			}
-		}
-	}
+    #Building a hash of standardized seed function strings
+    my $num_coding = 0;
+    my $funchash = {};
+    foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
+        my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
+        $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+        $rolename =~ s/\s//g;
+        $rolename =~ s/\#.*$//g;
+        $funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
+    }
+    my $newftrs = 0;
+    my $newncfs = 0;
+    my $update_cdss = 'N';
+    my $proteins = 0;
+    my $others = 0;
+    my $seedfunctions = 0;
+    my $genomefunchash;
+    my $seedfunchash;
+    my $advancedmessage = '';
+    my %types = ();
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+                # Let's count number of features with functions updated by RAST service.
+                # If function is not set we treat it as empty string to avoid perl warning.
+                $newftrs++;
+                my $func = $ftr->{function};
+                if (not defined($func)) {
+                    $func = "";
+                }
+                if ($ftr->{type} eq 'CDS' && !defined($genome->{cdss}->[$i])) {
+                    #Some of the optional gene finders don't respect new genome format
+                    #They may not have the cdss
+                    $update_cdss = 'Y';
+                }
+            } else {
+                $num_coding++;
+            }
+            if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
+                $ftr->{type} = $1;
+            }
+            if (defined($ftr->{protein_translation})) {
+                $ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
+                $ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
+                $proteins++;
+            } else {
+                $others++;
+            }
+            if (defined($ftr->{dna_sequence})) {
+                $ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
+            }
+            if (defined($ftr->{quality}->{weighted_hit_count})) {
+                $ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
+            }
+            if (defined($ftr->{quality}->{hit_count})) {
+                $ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
+            }
+            if (defined($ftr->{annotations})) {
+                delete $ftr->{annotations};
+            }
+            if (defined($ftr->{location})) {
+                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
+                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+            }
+            delete $ftr->{feature_creation_event};
+            if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
+                for (my $j=0; $j < @{$genome->{features}}; $j++) {
+                    if ($i ne $j) {
+                        if ($ftr->{location}->[0]->[0] eq $genome->{features}->[$j]->{location}->[0]->[0]) {
+                            if ($ftr->{location}->[0]->[1] == $genome->{features}->[$j]->{location}->[0]->[1]) {
+                                if ($ftr->{location}->[0]->[2] eq $genome->{features}->[$j]->{location}->[0]->[2]) {
+                                    if ($ftr->{location}->[0]->[3] == $genome->{features}->[$j]->{location}->[0]->[3]) {
+                                        if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
+                                            $genome->{features}->[$j]->{function} = $ftr->{function};
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
+                if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1) {
+                    $ftr->{function} = $oldfunchash->{$ftr->{id}};
+                }
+            }
+            if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
+                my $function = $ftr->{function};
+                my $array = [split(/\#/,$function)];
+                $function = shift(@{$array});
+                $function =~ s/\s+$//;
+                $array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
+                my $marked = 0;
+                for (my $j=0;$j < @{$array}; $j++) {
+                    my $rolename = lc($array->[$j]);
+                    $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+                    $rolename =~ s/\s//g;
+                    $rolename =~ s/\#.*$//g;
+                    $genomefunchash->{$rolename} = 1;
+                    if (defined($funchash->{$rolename})) {
+                        $seedfunchash->{$rolename} = 1;
+                        if ($marked == 0) {
+                            $seedfunctions++;
+                            $marked = 1;
+                        }
+                        my $ont_term = $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}};
+                        if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
+                            $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
+                                 evidence => [],
+                                 id => $funchash->{$rolename}->{id},
+                                 term_name => $funchash->{$rolename}->{name},
+                                 ontology_ref => "KBaseOntology/seed_subsystem_ontology",
+                                 term_lineage => [],
+                            };
+                        }
+                        my $found = 0;
+                        if (ref($ont_term) eq 'ARRAY'){
+                            push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
+                        } else {
+                            for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
+                                if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
+                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
+                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+                                    $found = 1;
+                                    last;
+                                }
+                            }
+                            if ($found == 0) {
+                                push(
+                                    @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
+                                    {
+                                        method         => Bio::KBase::utilities::method(),
+                                        method_version => $self->util_version(),
+                                        timestamp      => Bio::KBase::utilities::timestamp()
+                                    });
+                            }
+                        }
+                        if (exists ($ftr->{ontology_terms}->{SSO})) {
+                            foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
+                                if ($sso =~ /SSO:000009304/) {
+                                    $advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+                                }
+                                elsif ($sso =~ /SSO:000009291/) {
+                                    $advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ## Rolling protein features back from 'CDS' to 'gene':
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if ($ftr->{type} eq "CDS") {
+                $ftr->{type} = "gene"
+            }
+            if (exists $oldtype->{$ftr->{id}} && $oldtype->{$ftr->{id}} =~ /gene/) {
+                $ftr->{type} = $oldtype->{$ftr->{id}};
+            }
+            if (defined($ftr->{location})) {
+                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
+                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+            }
+#           $ftr->{type} = 'gene';
+            my $type = '';
+            if ( defined$ftr->{type}) {
+                $type = 'Coding '.$ftr->{type};
+            } else {
+                $type = 'Coding ';
+            }
+            #   Count the output feature types
+            if (exists $types{$type}) {
+                $types{$type} += 1;
+            } else {
+                $types{$type} = 1;
+            }
+            delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
+            delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
+        }
+        if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
+            ## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
+            my $cdss = [];
+            $genome->{cdss} = $cdss;
+            my $mrnas = [];
+            $genome->{mrnas} = $mrnas;
+            for (my $i=0; $i < @{$genome->{features}}; $i++) {
+                my $feature = $genome->{features}->[$i];
+                if (defined($feature->{protein_translation})) {
+                    my $gene_id = $feature->{id};
+                    my $cds_id = $gene_id . "_CDS";
+                    my $mrna_id = $gene_id . "_mRNA";
+                    my $location = $feature->{location};
+                    my $md5 = $feature->{md5};
+                    my $function = $feature->{function};
+                    if (not defined($function)) {
+                        $function = "";
+                    }
+                    my $ontology_terms = $feature->{ontology_terms};
+                    if (not defined($ontology_terms)) {
+                        $ontology_terms = {};
+                    }
+                    my $protein_translation = $feature->{protein_translation};
+                    my $protein_translation_length = length($protein_translation);
+                    my $aliases = [];
+                    if (defined($feature->{aliases})) {
+                        $aliases = $feature->{aliases};
+                        # Found some pseudogenes that have wrong structure for aliases
+                        if (ref($aliases) !~ /ARRAY/) {
+                            $aliases = [$feature->{aliases}];
+                        }
+                    }
+                    push(@{$cdss}, {
+                        id => $cds_id,
+                        location => $location,
+                        md5 => $md5,
+                        parent_gene => $gene_id,
+                        parent_mrna => $mrna_id,
+                        function => $function,
+                        ontology_terms => $ontology_terms,
+                        protein_translation => $protein_translation,
+                        protein_translation_length => $protein_translation_length,
+                        aliases => $aliases
+                    });
+                    push(@{$mrnas}, {
+                        id => $mrna_id,
+                        location => $location,
+                        md5 => $md5,
+                        parent_gene => $gene_id,
+                        cds => $cds_id
+                    });
+                    $feature->{cdss} = [$cds_id];
+                    $feature->{mrnas} = [$mrna_id];
+                }
+            }
+        }
+    }
     return ($genome, %types, $num_coding, $newncfs, $newftrs, $genomefunchash);
 }
 
@@ -1597,120 +1832,120 @@ sub _summarize_annotation {
     my ($self, $genome, $inputgenome, $message, $contigobj, %types, $num_coding, $genehash,
         $newncfs, $newftrs, $genomefunchash, $seedfunctions, $seedfunchash) = @_;
 
-	my $num_non_coding = 0;
-	if (defined($genome->{non_coding_features})) {
-		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
-			my $ftr = $genome->{non_coding_features}->[$i];
-			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
-				# Let's count number of non_coding_features with functions updated by RAST service.
-				# If function is not set we treat it as empty string to avoid perl warning.
-				$newncfs++;
-				$newftrs++;
-				my $func = $ftr->{function};
-				if (not defined($func)) {
-					$func = "";
-				}
+    my $num_non_coding = 0;
+    if (defined($genome->{non_coding_features})) {
+        for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
+            my $ftr = $genome->{non_coding_features}->[$i];
+            if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+                # Let's count number of non_coding_features with functions updated by RAST service.
+                # If function is not set we treat it as empty string to avoid perl warning.
+                $newncfs++;
+                $newftrs++;
+                my $func = $ftr->{function};
+                if (not defined($func)) {
+                    $func = "";
+                }
 
-			} else {
-				$num_non_coding++; 
-			}
-			my $type = '';
-			if ( defined$ftr->{type} && $ftr->{type} =~ /coding/) {
-				$type = $ftr->{type} ;
-			} elsif (defined$ftr->{type}) {
-				$type = 'Non-coding '.$ftr->{type} ;
-			} else {
-				$type = 'Non-coding ';
-			}
-			#	Count the output feature types
-			if (exists $types{$type}) {
-				$types{$type} += 1;
-			} else {
-				$types{$type} = 1;
-			}
-		}
-	}
-	if (defined($inputgenome)) {
-		$message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
-		if (%types) {
-			$message .= "Output genome has the following feature types:\n";
-			for my $key (sort keys(%types)) {
-				$message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
-			}
-		}
-	}
+            } else {
+                $num_non_coding++;
+            }
+            my $type = '';
+            if ( defined$ftr->{type} && $ftr->{type} =~ /coding/) {
+                $type = $ftr->{type} ;
+            } elsif (defined$ftr->{type}) {
+                $type = 'Non-coding '.$ftr->{type} ;
+            } else {
+                $type = 'Non-coding ';
+            }
+            #   Count the output feature types
+            if (exists $types{$type}) {
+                $types{$type} += 1;
+            } else {
+                $types{$type} = 1;
+            }
+        }
+    }
+    if (defined($inputgenome)) {
+        $message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
+        if (%types) {
+            $message .= "Output genome has the following feature types:\n";
+            for my $key (sort keys(%types)) {
+                $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
+            }
+        }
+    }
 
-	$message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
-	$message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
-	print($message);
-	if (!defined($genome->{assembly_ref})) {
-		delete $genome->{assembly_ref};
-	}
-	if (defined($contigobj)) {
-		$genome->{gc_content} = $contigobj->{_gc};
-		if ($contigobj->{_kbasetype} eq "ContigSet") {
-			$genome->{contigset_ref} = $contigobj->{_reference};
-		} else {
-			$genome->{assembly_ref} = $contigobj->{_reference};
-		}
-	}
+    $message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
+    $message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
+    print($message);
+    if (!defined($genome->{assembly_ref})) {
+        delete $genome->{assembly_ref};
+    }
+    if (defined($contigobj)) {
+        $genome->{gc_content} = $contigobj->{_gc};
+        if ($contigobj->{_kbasetype} eq "ContigSet") {
+            $genome->{contigset_ref} = $contigobj->{_reference};
+        } else {
+            $genome->{assembly_ref} = $contigobj->{_reference};
+        }
+    }
     return $genome;
 }
 
 sub _save_annotation {
     my ($self, $genome, $inputgenome, $parameters, $message) = @_;
-#	print "SEND OFF FOR SAVING\n";
-#	print "***** Domain       = $genome->{domain}\n";
-#	print "***** Genitic_code = $genome->{genetic_code}\n";
-#	print "***** Scientific_namee = $genome->{scientific_name}\n";
-#	print "***** Number of features=".scalar  @{$genome->{features}}."\n";
-#	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
-#	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
-#	print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
+#   print "SEND OFF FOR SAVING\n";
+#   print "***** Domain       = $genome->{domain}\n";
+#   print "***** Genitic_code = $genome->{genetic_code}\n";
+#   print "***** Scientific_namee = $genome->{scientific_name}\n";
+#   print "***** Number of features=".scalar  @{$genome->{features}}."\n";
+#   print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
+#   print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
+#   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-	my $gaout = $gfu_client->save_one_genome({
-		workspace => $parameters->{workspace},
+    my $gaout = $gfu_client->save_one_genome({
+        workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
         provenance => [{
-			"time" => DateTime->now()->datetime()."+0000",
-			service_ver => $self->util_version(),
-			service => "RAST_SDK",
-			method => Bio::KBase::utilities::method(),
-			method_params => [$parameters],
-			input_ws_objects => [],
-			resolved_ws_objects => [],
-			intermediate_incoming => [],
-			intermediate_outgoing => []
-		}],
+            "time" => DateTime->now()->datetime()."+0000",
+            service_ver => $self->util_version(),
+            service => "RAST_SDK",
+            method => Bio::KBase::utilities::method(),
+            method_params => [$parameters],
+            input_ws_objects => [],
+            resolved_ws_objects => [],
+            intermediate_incoming => [],
+            intermediate_outgoing => []
+        }],
         hidden => 0
-	});
-	Bio::KBase::kbaseenv::add_object_created({
-		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
-		"description" => "Annotated genome"
-	});
-	Bio::KBase::utilities::print_report_message({
-		message => "<pre>".$message."</pre>",
-		append => 0,
-		html => 0
-	});
+    });
+    Bio::KBase::kbaseenv::add_object_created({
+        "ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+        "description" => "Annotated genome"
+    });
+    Bio::KBase::utilities::print_report_message({
+        message => "<pre>".$message."</pre>",
+        append => 0,
+        html => 0
+    });
 
-	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
+    return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
 
 #
-#------------------------------------------------------------------------
-## Runs RAST by connecting the factoral procedures from input $parameters
-#------------------------------------------------------------------------
+#--------------------------------------------------------------
+## Runs RAST by connecting ALL the factoral procedures together
+#--------------------------------------------------------------
 #
-sub _annotate_process {
+sub _annotate_process_allInOne {
     my ($self, $parameters) = @_;
 
     my $oldfunchash = {};
     my $oldtype     = {};
-    my $message = "";
     my %types = ();
     my $contigobj; 
+    my ($message, $extragenecalls, $genecalls) = ("", "", "");
 
     ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
     # 1. creating default genome object
@@ -1726,62 +1961,38 @@ sub _annotate_process {
         $inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
     }
 
-    ($parameters, $inputgenome, $oldfunchash, $oldtype) = $self->_set_parameters_by_input(
-                                                                $parameters, $inputgenome);
+    my (%para_group, $rast_ref);
+    ($rast_ref, $inputgenome) = $self->_set_parameters_by_input($parameters, $inputgenome);
 
     # 2. merge with the default gene call settings
+    %para_group = %{ $rast_ref };
+    $parameters = $para_group{parameters};
     my $default_params = $self->_set_default_parameters();
     $parameters = { %$default_params, %$parameters };
+    $para_group{parameters} = $parameters;
 
     ## refactor 2 -- taking notes in $message
-    my $tax_domain = (exists $inputgenome->{domain}
-                       && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
-    if ($tax_domain eq 'U' ) {
-        $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
-    }
-
-    ($message, $inputgenome) = $self->_set_message($parameters,
-                                                   $inputgenome,
-                                                   $contigobj,
-                                                   $message);
-
-    if (%types) {
-        $message .= "Input genome has the following feature types:\n";
-        for my $key (sort keys(%types)) {
-            $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
-        }
-    }
+    ($rast_ref, $inputgenome) = $self->_set_message(\%para_group, $inputgenome);
+    %para_group = %{ $rast_ref };
 
     ## refactor 3 -- set gene call workflow
-    my ($extragenecalls, $genecalls);
-    my $genecall_workflow = {stages => []};
-    ($inputgenome, $message, $genecall_workflow,
-     $extragenecalls, $genecalls) = $self->_set_genecall_workflow($inputgenome,
-                                                                  $parameters,
-                                                                  $message,
-                                                                  $contigobj,
-                                                                  $tax_domain);
-    my $workflow = $genecall_workflow;
+    $rast_ref = $self->_set_genecall_workflow(\%para_group, $inputgenome);
+    %para_group = %{ $rast_ref };
 
     ## refactor 4 -- set annotation workflow
-    my $annotate_workflow = {stages => []};
-    my $annomessage = "";
-    ($annomessage, $annotate_workflow, $message) = $self->_set_annotation_workflow(
-                                                   $parameters, $message, $tax_domain);
+    $rast_ref = $self->_set_annotation_workflow(\%para_group);
+    %para_group = %{ $rast_ref };
 
     ## refactor 5 -- merge messages, update $inputgenome and $extra_workflow
-    my $extra_workflow = {stages => []};
-    ($message, $inputgenome, $extra_workflow) = $self->_merge_messages($genecalls, 
-                                                                       $extragenecalls,
-                                                                       $message,
-                                                                       $annomessage,
-                                                                       $inputgenome);
+    ($rast_ref, $inputgenome) = $self->_merge_messages(\%para_group, $inputgenome); 
+    %para_group = %{ $rast_ref };
 
     ## refactor 6 -- prepare for rasting
-    my $genehash = {};
-    ($genehash, $inputgenome) = $self->_prepare4rast($inputgenome);
+    ($rast_ref, $inputgenome) = $self->_prepare4rast(\%para_group, $inputgenome);
+    %para_group = %{ $rast_ref };
     
     ## refactor 7 -- finally...rasting
+    my $genecall_workflow = $para_group{genecall_workflow};
     my $genome_genecalled = $self->_run_rast_workflow($genecall_workflow, $inputgenome);
     my $genome_annotated = $self->_run_rast_workflow($genecall_workflow, $genome_genecalled);
     my $genome_renumed = $self->_run_rast_workflow($genecall_workflow, $genome_annotated);
@@ -1795,16 +2006,13 @@ sub _annotate_process {
     $genome_final = $self->_move_non_coding_features($genome_final, $contigobj);
 
     ## refactor 10 -- build seed ontology
-    my $num_coding = 0;
-    my ($newncfs, $newftrs, $genomefunchash, $seedfunctions, $seedfunchash);
-    ($genome_final, %types, $num_coding, $newncfs, $newftrs,
-     $genomefunchash, $seedfunctions, $seedfunchash) = $self->_build_seed_ontology(
-        $genome_final, $genehash, $inputgenome, $oldfunchash, $oldtype, $parameters);
+    ($rast_ref, $inputgenome) = $self->_build_seed_ontology( \%para_group, $inputgenome);
+    %para_group = %{ $rast_ref };
 
     ## refactor 11 -- summarize annotation
-    $genome_final = $self->_summarize_annotation(
-        $genome_final, $inputgenome, $message, $contigobj, %types, $num_coding,
-        $genehash, $newncfs, $newftrs, $genomefunchash, $seedfunctions, $seedfunchash);
+    ($rast_ref, $inputgenome) = $self->_summarize_annotation(
+                                            \%para_group, $inputgenome);
+    %para_group = %{ $rast_ref };
 
     ## refactor 12 -- save the annotated genome
     $genome_final = $self->_save_annotation($genome_final, $inputgenome,
@@ -1821,14 +2029,14 @@ sub _generate_fasta_gff_contents {
     # generating the fasta file directly from genome
     my $input_fasta_file = $self->_write_fasta_from_genome($obj_ref);
     unless (-s $input_fasta_file) {
-        croak "**rast_genome ERROR: FASTA file is empty!\n";
+        croak "**_generate_fasta_gff_contents ERROR: FASTA file is empty!\n";
     }
     $fasta_contents = $self->_parse_fasta($input_fasta_file);
 
     # generating the gff file directly from genome
     my $gff_filename = $self->_write_gff_from_genome($obj_ref);
     unless (-s $gff_filename) {
-        croak "**rast_genome ERROR: GFF file is empty!\n";
+        croak "**_generate_fasta_gff_contents ERROR: GFF file is empty!\n";
     }
     ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_filename, $attr_delimiter);
     return ($fasta_contents, $gff_contents);
@@ -1840,106 +2048,91 @@ sub _generate_fasta_gff_contents {
 # return the following data structure:
 #
 sub _run_rast_genecalls {
-    my ($self, $params) = @_;
+    my ($self, $inparams) = @_;
 
-    #my $params = $self->_check_annotation_params($inparams);
-    print "_run_rast_genecalls input parameters:\n". Dumper($params). "\n";
+    my $parameters = $self->_check_annotation_params($inparams);
+    print "_run_rast_genecalls input parameters:\n". Dumper($parameters). "\n";
+
+    my $gene_call_params = $self->_build_genecall_workflow($parameters);
+
+    my $in_genome = $gene_call_params->{inputgenome};
+    my $wf_genecall = $gene_call_params->{genecall_workflow};
+    my $count = scalar @{$in_genome->{features}};
+    print "******Run RAST pipeline on genome with $count features.******\n";
+    print "For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
+
+    my $rasted_gn = {};
+    eval {
+    #my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
+    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+        $rasted_gn = $rast_client->run_pipeline($in_genome, $wf_genecall);
+    };
+    if ($@) {
+        croak "ERROR calling rast run_pipeline from _run_rast_genecalls: ".$@."\n";
+    }
+    return ($rasted_gn, $gene_call_params);
+}
+
+#
+## return:
+#  {inputgenome=>$inputgenome,
+#   workflow=>$workflow,
+#   oldfunchash=>$oldfunchash,
+#   oldtype=>$oldtype,
+#   message=>$message,
+#   types=>%types,
+#   contigobj=>$contigobj,
+#   parameters=>$parameters,
+#   ...
+#  }
+#
+sub _build_genecall_workflow {
+    my ($self, $parameters) = @_;
 
     my $oldfunchash = {};
     my $oldtype     = {};
-    my $message = "";
     my %types = ();
+    my $contigobj;
+    my ($message, $extragenecalls, $genecalls) = ("", "", "");
+    my $genecall_workflow = {stages => []};
 
-    #Creating default genome object
+    my $rast_ref;
+    my %rast_details = ();
+
+    ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
+    # 1. creating default genome object
     my $inputgenome = {
-        id => $params->{output_genome_name},
-        genetic_code => $params->{genetic_code},
-        scientific_name => $params->{scientific_name},
-        domain => $params->{domain},
+        id => $parameters->{output_genome},
+        genetic_code => $parameters->{genetic_code},
+        scientific_name => $parameters->{scientific_name},
+        domain => $parameters->{domain},
         contigs => [],
         features => []
     };
-    if ($params->{ncbi_taxon_id}) {
-        $inputgenome->{taxon_assignments} = {'ncbi' => ''.$params->{ncbi_taxon_id}};
+    if ($parameters->{ncbi_taxon_id}) {
+        $inputgenome->{taxon_assignments} = {
+            'ncbi' => '' . $parameters->{ncbi_taxon_id}};
     }
 
-    my $wf_stages = $self->_rast_genecall_workflow();
-    my $obj_ref = $params->{object_ref};
-    print "Calling genes on $obj_ref with workflow stages:\n".Dumper($wf_stages);
+    ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
+                                    $parameters, $inputgenome);
+    %rast_details = %{ $rast_ref };
 
-    $inputgenome = $self->_get_genome($obj_ref);
-    for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-        my $ftr = $inputgenome->{features}->[$i];
-        if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
-            if (defined($ftr->{protein_translation})) {
-                $ftr->{type} = 'gene';
-            } else {
-                $ftr->{type} = 'other';
-            }
-        }
-        # Reset functions in protein features to "hypothetical protein" to make them available
-        # for re-annotation in RAST service (otherwise these features will be skipped).
-        if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
-                ($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
-            if (defined($ftr->{functions})){
-                $ftr->{function} = join("; ", @{$ftr->{functions}});
-            }
-            $oldfunchash->{$ftr->{id}} = $ftr->{function};
-            $ftr->{function} = "hypothetical protein";
-        }
-        elsif ($ftr->{type} eq "gene") {
-            $ftr->{type} = 'Non-coding '.$ftr->{type};
-        }
-        $oldtype->{$ftr->{id}} = $ftr->{type};
-        if (exists $types{$ftr->{type}}) {
-            $types{$ftr->{type}} += 1;
-        } else {
-            $types{$ftr->{type}} = 1;
-        }
-    }
-    if (exists $inputgenome->{non_coding_features}) {
-        for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
-            my $ftr = $inputgenome->{non_coding_features}->[$i];
-            if (!defined($ftr->{type})) {
-                $ftr->{type} = "Non-coding";
-            }
-            $oldtype->{$ftr->{id}} = $ftr->{type};
-            if (exists $types{"Non-coding ".$ftr->{type}}) {
-                $types{"Non-coding ".$ftr->{type}} += 1;
-            } else {
-                $types{"Non-coding ".$ftr->{type}} = 1;
-            }
-        }
-    } else {
-    $inputgenome->{non_coding_features} = [];
-    }
-    if (%types) {
-        $message .= "Input genome has the following feature types:\n";
-        for my $key (sort keys(%types)) {
-            $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
-        }
-    }
-    if (@{$inputgenome->{features}} > 0) {
-        my $replace = [];
-        for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
-            my $ftr = $inputgenome->{features}->[$i];
-            if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-                push(@{$replace}, $ftr);
-            }
-        }
-    $inputgenome->{features} = $replace;
-    }
+    # 2. merge with the default gene call settings
+    my $default_params = $self->_set_default_parameters();
+    $parameters = $rast_details{parameters};
+    $parameters = { %$default_params, %$parameters };
+    $rast_details{parameters} = $parameters;
 
-    my $output_gn = {};
-    eval {
-    # my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
-    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-        $output_gn = $rast_client->run_pipeline($inputgenome, $wf_stages);
-    };
-    if ($@) {
-        croak "ERROR calling rast run_pipeline in _run_rast_genecalls ".$@."\n";
-    }
-    return $output_gn;
+    ## refactor 2 -- taking notes in $message
+    ($rast_ref, $inputgenome) = $self->_set_message(\%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
+
+    ## refactor 3 -- set gene call workflow
+    $rast_ref = $self->_set_genecall_workflow(
+                                    \%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
+    return (\%rast_details, $inputgenome);
 }
 
 ##----end gene call subs----##
@@ -1967,14 +2160,14 @@ sub _write_fasta_from_genome {
     my $fa_file = '';
     eval {
         my $genome_obj = $self->_fetch_object_data($input_obj_ref);
-    if ($genome_obj->{assembly_ref}) {
+        if ($genome_obj->{assembly_ref}) {
             print "*******Input genome's assembly ref is: $genome_obj->{assembly_ref}**********\n";
 
             $fa_file = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
             unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
-    }
-    else {
+        }
+        else {
             croak ("**_write_fasta_from_genome ERROR:\n".
             "No assembly can be found for genome $input_obj_ref\n");
         }
@@ -2011,7 +2204,7 @@ sub _write_gff_from_genome {
     return $gff_result->{file_path};
 }
 
-sub _save_genome {
+sub _save_genome_from_gff {
     my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
 
     my $req_params = "Missing required parameters for saving genome.\n";
@@ -2029,23 +2222,23 @@ sub _save_genome {
     print "GFF file: $_[4]\n";
 
     unless (defined($out_gn_name) && defined($ws)) {
-        croak "**In _save_genome: $req1";
+        croak "**In _save_genome_from_gff: $req1";
     }
     unless (defined($obj_ref) && defined($gff_file)) {
-        croak "**In _save_genome: $req2";
+        croak "**In _save_genome_from_gff: $req2";
     }
     unless (-e $gff_file) {
-        croak "**In _save_genome: GFF file not found.\n";
+        croak "**In _save_genome_from_gff: GFF file not found.\n";
     }
     unless (-s $gff_file) {
-        croak "**In _save_genome: GFF file is empty.\n";
+        croak "**In _save_genome_from_gff: GFF file is empty.\n";
     }
 
     eval {
         $self->_fetch_object_info($obj_ref);
     };
     if ($@) {
-        croak("**In _save_genome ERROR trying to access the input object:\n"
+        croak("**In _save_genome_from_gff ERROR trying to access the input object:\n"
                .$@."\n");
     }
 
@@ -2063,7 +2256,7 @@ sub _save_genome {
             "generate_missing_genes" => 1});
     };
     if ($@) {
-        croak("**In _save_genome ERROR calling GenomeFileUtil.ws_obj_gff_to_genome:\n"
+        croak("**In _save_genome_from_gff ERROR calling GenomeFileUtil.ws_obj_gff_to_genome:\n"
                .$@."\n");
     }
     else {
@@ -2854,13 +3047,13 @@ sub _get_fasta_gff_contents {
 
     # generating fasta_contents from the fasta file
     unless (-s $fasta_file) {
-        croak "**rast_genome ERROR: FASTA file is empty!\n";
+        croak "**_get_fasta_gff_contents ERROR: FASTA file is empty!\n";
     }
     $fasta_contents = $self->_parse_fasta($fasta_file);
 
     # generating gff_contents from the gff file
     unless (-s $gff_file) {
-        croak "**rast_genome ERROR: GFF file is empty!\n";
+        croak "**_get_fasta_gff_contents ERROR: GFF file is empty!\n";
     }
     ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_file, $attr_delimiter);
 
@@ -2895,7 +3088,6 @@ sub rast_genome {
     my($inparams) = @_;
 
     print "rast_genome input parameter=\n". Dumper($inparams). "\n";
-    
     my $params = $self->_check_annotation_params($inparams);
 
     # 1. getting the fasta file from $input_obj_ref according to its type

@@ -47,12 +47,13 @@ my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
 my $rast_impl = new RAST_SDK::RAST_SDKImpl();
-my $annoutil = new metag_utils($config, $ctx);
+my $annoutil = new anno_utils($config, $ctx);
 
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 my $rast_genome_dir = $annoutil->_create_rast_subdir($scratch, "genome_annotation_dir_");
 
 
+=begin
 sub genome_to_fasta {
     my($gn_ref) = @_;
 
@@ -63,7 +64,6 @@ sub genome_to_fasta {
     $annoutil->_print_fasta_gff(0, 10, $fasta_result->{file_path});
     return $fasta_result->{file_path};
 }
-
 
 sub generate_genome {
     my($ws, $gn_name, $gbff) = @_;
@@ -81,8 +81,7 @@ sub generate_genome {
     });
     return $gn;
 }
-
-=begin
+=cut
 
 ##-----------------Test Blocks--------------------##
 
@@ -109,6 +108,7 @@ my $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
 my $obj2_1 = "63171/315/1";
 
 
+=begin
 #my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
 my $ecoli_fasta = $annoutil->_write_fasta_from_genome($obj_Ecoli);
 unless (-s $ecoli_fasta) {
@@ -151,7 +151,276 @@ my $test_ftrs = [{
  ],
  }];
 
+subtest '_get_genome' => sub {
+    my $parameters = {
+         output_genome_name => 'test_out_gn_name',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+
+    my $obj_ref = $parameters->{object_ref};
+    my $ret_gn;
+    lives_ok { 
+        $ret_gn = $annoutil->_get_genome($obj_ref);
+        print "genome object returned on $obj_ref:\n".Dumper(keys %$ret_gn);
+    } '_get_genome runs successfully';
+    ok (@{$ret_gn->{features}} > 0, 'Genome has features!');
+    is ($ret_gn->{assembly_ref}, '2901/78/1', 'found genome assembly ref';
+};
+
+subtest '_get_contigs' => sub {
+    my $parameters = {
+         output_genome_name => 'test_out_gn_name',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+
+    my $obj_ref = $parameters->{object_ref};
+    my $obj = $annoutil->_fetch_object_data($obj_ref);
+    
+    lives_ok { 
+        my $contig_obj1 = $annoutil->_get_contigs($obj->{assembly_ref});
+        print "anno_tuils _get_contigs returns:\n".Dumper(keys %$contig_obj1);
+    } '_get_contigs runs successfully on genome';
+
+    lives_ok { 
+        my $contig_obj2 = $annoutil->_get_contigs($obj_asmb);
+        print "anno_tuils _get_contigs returns:\n".Dumper(keys %$contig_obj2);
+    } '_get_contigs runs successfully on assembly';
+
+};
+=cut
+
+#
+## Global variables for the annotation process steps to share ##
+#
+my ($rast_ref, %rast_details1, %rast_details2);
+my ($inputgenome1, $inputgenome2);
+my ($parameters1, $parameters2);
+
+# Testing with genome/assembly object refs in prod
+subtest '_set_parameters_by_input' => sub {
+    # a genome object
+    $parameters1 = {
+         output_genome_name => 'test_out_gn_name1',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+    # 1. creating default genome object
+    $inputgenome1 = {
+        id => $parameters1->{output_genome_name},
+        genetic_code => $parameters1->{genetic_code},
+        scientific_name => $parameters1->{scientific_name},
+        domain => $parameters1->{domain},
+        contigs => [],
+        features => []
+    };
+
+    if ($parameters1->{ncbi_taxon_id}) {
+        $inputgenome1->{taxon_assignments} = {
+            'ncbi' => '' . $parameters1->{ncbi_taxon_id}};
+    }
+    my $expected_params1 = {
+          'scientific_name' => 'Escherichia coli str. K-12 substr. MG1655',
+          'output_genome_name' => $parameters1->{output_genome_name},
+          'output_workspace' => $ws,
+          'object_ref' => $parameters1->{object_ref},
+          'genetic_code' => 11,
+          'domain' => 'Bacteria'
+    };
+
+    lives_ok {
+        ($rast_ref, $inputgenome1) = $annoutil->_set_parameters_by_input(
+                                            $parameters1, $inputgenome1);
+    } '_set_parameters_by_input runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    $parameters1 = $rast_details1{parameters};
+
+    ok (@{$inputgenome1->{features}} > 0, 'inputgenome has features.');
+    cmp_deeply($expected_params1, $parameters1, 'parameters are correct');
+    ok (@{$rast_details1{contigobj}{contigs}} == 1, 'inputgenome has 1 contig.');
+
+    #  merge with the default gene call settings
+    my $default_params = $annoutil->_set_default_parameters();
+    $parameters1 = { %$default_params, %$parameters1 };
+
+    my $expected_params2 = { %$default_params, %$expected_params1 };
+    cmp_deeply($expected_params2, $parameters1, 'parameters has default gene calls.');
+
+    # an assembly object
+    $parameters2 = {
+         output_genome_name => 'test_out_gn_name2',
+         output_workspace => $ws,
+         object_ref => $obj_asmb
+    };
+    # 2 creating default genome object
+    $inputgenome2 = {
+        id => $parameters2->{output_genome_name},
+        genetic_code => $parameters2->{genetic_code},
+        scientific_name => $parameters2->{scientific_name},
+        domain => $parameters2->{domain},
+        contigs => [],
+        features => []
+    };
+
+    if ($parameters2->{ncbi_taxon_id}) {
+        $inputgenome2->{taxon_assignments} = {
+            'ncbi' => '' . $parameters2->{ncbi_taxon_id}};
+    }
+
+    my $expected_params3 = {
+          'object_ref' => '55141/243/1',
+          'genetic_code' => undef,
+          'output_genome_name' => $parameters2->{output_genome_name},
+          'domain' => undef,
+          'scientific_name' => undef,
+          'output_workspace' => $ws
+    };
+    lives_ok {
+        ($rast_ref, $inputgenome2) = $annoutil->_set_parameters_by_input(
+                                            $parameters2, $inputgenome2);
+    } '_set_parameters_by_input runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+    print "parameters on assembly:\n".Dumper($rast_details2{parameters});
+    $parameters2 = $rast_details2{parameters};
+    cmp_deeply($expected_params3, $parameters2, 'parameters are correct');
+    ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
+    ok (@{$rast_details2{contigobj}{contigs}} == 1, 'inputgenome has 1 contig.');
+};
+
+
+# Testing with genome/assembly object refs in prod
+subtest '_set_message' => sub {
+    # a genome object
+    lives_ok {
+        ($rast_ref, $inputgenome1) = $annoutil->_set_message(
+                                            \%rast_details1, $inputgenome1);
+    } '_set_message runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    $parameters1 = $rast_details1{parameters};
+    
+    my $expected_params1 = {
+          'domain' => 'Bacteria',
+          'output_workspace' => $ws,
+          'object_ref' => $obj_Ecoli,
+          'output_genome_name' => 'test_out_gn_name1',
+          'scientific_name' => 'Escherichia coli str. K-12 substr. MG1655',
+          'genetic_code' => 11
+        };
+
+    ok (@{$inputgenome1->{features}} > 0, 'inputgenome has features.');
+    cmp_deeply($expected_params1, $parameters1, 'parameters are correct');
+
+    # an assembly object
+    lives_ok {
+        ($rast_ref, $inputgenome2) = $annoutil->_set_message(
+                                            \%rast_details2, $inputgenome2);
+    } '_set_message runs successfully on assembly';
+    my %rast_details2 = %{$rast_ref}; # dereference
+    $parameters2 = $rast_details2{parameters};
+    my $expected_params2 = {
+          'domain' => undef,
+          'output_genome_name' => 'test_out_gn_name2',
+          'object_ref' => $obj_asmb,
+          'output_workspace' => $ws,
+          'scientific_name' => undef,
+          'genetic_code' => undef
+        };
+    cmp_deeply($expected_params2, $parameters2, 'parameters are correct');
+    ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
+};
+
+
 =begin
+subtest '_build_genecall_workflow' => sub {
+    my $params = {
+         output_genome_name => 'build_gcwf_gn_name',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+    my $gc_build_ret;
+    lives_ok {
+        $gc_build_ret = $annoutil->_build_genecall_workflow($params);
+    } '_build_genecall_workflow returns normally';
+    print "_build_genecall_workflow:\n".Dumper($gc_build_ret->{genecall_workflow});
+
+};
+
+
+# test by using prod/appdev obj id
+#
+## Tesing only the annotation part of RAST
+#
+subtest '_run_rast_genecalls' => sub {
+    my $input_obj = $obj_Ecoli;
+    my $inparams = {
+        "object_ref" => $input_obj,
+        "output_genome_name" => "ann_gn",
+        "output_workspace" => $ws,
+        "create_report" => 0
+    };
+    throws_ok {
+        my $rast_ret = $annoutil->_run_rast_genecalls($inparams);
+    } qr/ERROR calling rast run_pipeline/,
+      '_run_rast_genecalls threw ERROR when local testing.';
+};
+
+
+#
+## Tesing only the annotation part of RAST
+#
+subtest '_run_rast_annotation' => sub {
+    my $inputgenome = {
+        features => []
+    };
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => $gene,
+            protein_translation => $protein_seqs->{$gene}
+        });
+    }
+
+    throws_ok {
+        my $rast_ret = $annoutil->_run_rast_annotation($inputgenome);
+    } qr/ERROR calling rast run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+};
+
+subtest 'Impl_annotate_genome' => sub {
+    my $obj_asmb1 = '1234/56/7';
+    my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
+    my $assembly_ref = prepare_assembly($assembly_obj_name);
+    my $genome_obj_name = 'Acidilobus_sp_CIS';
+
+    my $parms={
+        "input_contigset" => $assembly_obj_name,
+        "workspace" => $ws,
+        "output_genome" => 'Acidilobus_sp_7',
+        "scientific_name" => 'Acidilobus sp 7',
+        "domain" => 'A',
+        "genetic_code" => '4',
+        "call_features_CDS_prodigal" => '1',
+    };
+    my $rast_ann;
+    throws_ok {
+        $rast_ann = $rast_impl->annotate_genome($parms);
+        my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
+        my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
+        print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
+        print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
+
+        ok(defined($genome_obj->{features}), "Features array is present");
+        ok(scalar @{ $genome_obj->{features} } gt 0, "Number of features");
+        ok(defined($genome_obj->{cdss}), "CDSs array is present");
+        ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
+        ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
+        ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
+        ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
+        ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
+    } qr/Error invoking method call_/,
+      "test Impl annotate_genome on an assembly died.";
+};
+
 subtest '_check_annotation_params' => sub {
     my $obj = '1234/56/7';
 
@@ -512,41 +781,8 @@ subtest '_prodigal_then_glimmer3' => sub {
     ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
     print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
 };
-
-
-subtest '_run_rast_annotation' => sub {
-    my $inputgenome = {
-        features => []
-    };
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-            id => $gene,
-            protein_translation => $protein_seqs->{$gene}
-        });
-    }
-
-    throws_ok {
-        my $rast_ret = $annoutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
-};
-
-# test by using prod/appdev obj id
-subtest '_run_rast_genecalls' => sub {
-    my $input_obj = $obj_Ecoli;
-    my $inparams = {
-        "object_ref" => $input_obj,
-        "output_genome_name" => "ann_gn",
-        "output_workspace" => $ws,
-        "create_report" => 0
-    };
-    throws_ok {
-        my $rast_ret = $annoutil->_run_rast_genecalls($inparams);
-    } qr/ERROR calling rast run_pipeline/,
-      '_run_rast_genecalls threw ERROR when local testing.';
-};
-
 =cut
+
 
 =begin
 ## a CI object
@@ -608,7 +844,7 @@ subtest '_write_gff_from_genome' => sub {
 };
 
 
-subtest '_save_genome' => sub {
+subtest '_save_genome_from_gff' => sub {
     ## repeat the portion from testing prodigal and
     ## _prodigal_then_glimmer3 in order to get the GFF
     my $md = 'meta';
@@ -630,12 +866,13 @@ subtest '_save_genome' => sub {
     print "***********First 10 lines of prodigal gff file for $fa_input:\n";
     $annoutil->_print_fasta_gff(0, 10, $out_file);
 
-    ## Test the _save_genome function with Prodigal $out_file
+    ## Test the _save_genome_from_gff function with Prodigal $out_file
     my $out_gn = 'prd_ed_Carsonella';
     my $input_asmb = $obj_asmb;
     my $mygn = {};
     lives_ok {
-        $mygn = $annoutil->_save_genome($ws, $out_gn, $input_asmb, $out_file);
+        $mygn = $annoutil->_save_genome_from_gff(
+                   $ws, $out_gn, $input_asmb, $out_file);
     } "_save_genome run without errors on $input_asmb.\n";
     ok (exists $mygn->{genome_ref},
         "genome saved with genome_ref=$mygn->{genome_ref}");
@@ -662,7 +899,8 @@ subtest '_save_genome' => sub {
     $input_asmb = $obj_asmb;
     $mygn = {};
     lives_ok {
-        $mygn = $annoutil->_save_genome($ws, $out_gn, $input_asmb, $pNg_gff_file);
+        $mygn = $annoutil->_save_genome_from_gff(
+                    $ws, $out_gn, $input_asmb, $pNg_gff_file);
     } "_save_genome run without errors on $input_asmb.\n";
     ok (exists $mygn->{genome_ref},
         "genome saved with genome_ref=$mygn->{genome_ref}");
@@ -672,8 +910,8 @@ subtest '_save_genome' => sub {
 };
 
 
-subtest 'mgutil_rast_genome' => sub {
-    # testing metag_utils rast_genome using obj ids from prod ONLY
+subtest 'anno_utils_rast_genome' => sub {
+    # testing anno_utils rast_genome using obj ids from prod ONLY
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
@@ -683,7 +921,7 @@ subtest 'mgutil_rast_genome' => sub {
     throws_ok {
         $rast_ref = $annoutil->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
     if(defined($rast_ref)) {
         print "rast_genome returns: $rast_ref";
         ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returned an INVALID ref: $rast_ref");
@@ -698,7 +936,7 @@ subtest 'mgutil_rast_genome' => sub {
     throws_ok {
         $rast_ref = $annoutil->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
     if(defined($rast_ref)) {
         print "rast_genome returns: $rast_ref";
         ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returns an INVALID ref: $rast_ref");
@@ -713,7 +951,7 @@ subtest 'mgutil_rast_genome' => sub {
     throws_ok {
         $rast_ref = $annoutil->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
 
@@ -830,7 +1068,7 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_text} = '';
         my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
     throws_ok {
         $params->{output_workspace} = get_ws_name();
@@ -840,16 +1078,16 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_text} = '';
         my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
-	'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
     throws_ok {
         $params->{output_workspace} = get_ws_name();
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-	$params->{input_genomes} = [];
+    $params->{input_genomes} = [];
         $params->{input_text} = '';
         my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 
     throws_ok {
         $params->{output_workspace} = get_ws_name();
@@ -858,7 +1096,7 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_text} = '';
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
 

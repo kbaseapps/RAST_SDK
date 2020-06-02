@@ -929,23 +929,6 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
 
-subtest '_run_rast_annotation' => sub {
-    my $inputgenome = {
-        features => []
-    };
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-            id => $gene,
-            protein_translation => $protein_seqs->{$gene}
-        });
-    }
-
-    throws_ok {
-        my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
-};
-
 # test by using prod/appdev obj id
 subtest 'annotate_metagenome_prod' => sub {
     my $parms = {
@@ -1412,7 +1395,6 @@ subtest 'rast_metagenome_appdev' => sub {
     } qr/Invalid metagenome object reference/,
         'calling rast_metagenome fails to generate a valid metagenome';
 };
-=cut
 
 # testing rast_metagenome using obj ids from prod ONLY
 subtest 'rast_metagenome_prod' => sub {
@@ -1463,7 +1445,6 @@ subtest '_prepare_genome_4annotation' => sub {
         "_prepare_genome_4annotation returns genome with ". scalar @{$gn->{features}}." features.");
 };
 
-=begin
 # testing generate_metag_report using obj ids from prod ONLY
 subtest '_generate_stats_from_aa' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj4);
