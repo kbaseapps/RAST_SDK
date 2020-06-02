@@ -198,7 +198,7 @@ my ($rast_ref, %rast_details1, %rast_details2);
 my ($inputgenome1, $inputgenome2);
 my ($parameters1, $parameters2);
 
-# Testing with genome/assembly object refs in prod
+# Test _set_parameters_by_input with genome/assembly object refs in prod
 subtest '_set_parameters_by_input' => sub {
     # a genome object
     $parameters1 = {
@@ -239,12 +239,19 @@ subtest '_set_parameters_by_input' => sub {
     ok (@{$inputgenome1->{features}} > 0, 'inputgenome has features.');
     cmp_deeply($expected_params1, $parameters1, 'parameters are correct');
     ok (@{$rast_details1{contigobj}{contigs}} == 1, 'inputgenome has 1 contig.');
+    is ($inputgenome1->{assembly_ref}, '2901/78/1', 'inputgenome assembly_ref is correct.');
+
+    # before merging with default gene call settings
+    cmp_deeply($expected_params1, $parameters1, 'parameters has default gene calls.');
 
     #  merge with the default gene call settings
     my $default_params = $annoutil->_set_default_parameters();
     $parameters1 = { %$default_params, %$parameters1 };
+    $rast_details1{parameters} = $parameters1;
 
     my $expected_params2 = { %$default_params, %$expected_params1 };
+
+    # after merging with default gene call settings
     cmp_deeply($expected_params2, $parameters1, 'parameters has default gene calls.');
 
     # an assembly object
@@ -269,7 +276,7 @@ subtest '_set_parameters_by_input' => sub {
     }
 
     my $expected_params3 = {
-          'object_ref' => '55141/243/1',
+          'object_ref' => $obj_asmb,
           'genetic_code' => undef,
           'output_genome_name' => $parameters2->{output_genome_name},
           'domain' => undef,
@@ -283,51 +290,130 @@ subtest '_set_parameters_by_input' => sub {
     %rast_details2 = %{$rast_ref}; # dereference
     print "parameters on assembly:\n".Dumper($rast_details2{parameters});
     $parameters2 = $rast_details2{parameters};
+
+    # before merging with default gene call settings
     cmp_deeply($expected_params3, $parameters2, 'parameters are correct');
+
+    # merge with the default gene call settings
+    $parameters2 = { %$default_params, %$parameters2 };
+    my $expected_params4 = { %$default_params, %$expected_params3 };
+    $rast_details2{parameters} = $parameters2;
+
+    # after merging with default gene call settings
+    cmp_deeply($expected_params4, $parameters2, 'parameters are correct');
+
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$rast_details2{contigobj}{contigs}} == 1, 'inputgenome has 1 contig.');
+    is ($inputgenome2->{assembly_ref}, $obj_asmb, 'inputgenome assembly_ref is correct.');
 };
 
 
-# Testing with genome/assembly object refs in prod
-subtest '_set_message' => sub {
+# Test _set_messageNcontigs with genome/assembly object refs in prod
+subtest '_set_messageNcontigs' => sub {
     # a genome object
     lives_ok {
-        ($rast_ref, $inputgenome1) = $annoutil->_set_message(
+        ($rast_ref, $inputgenome1) = $annoutil->_set_messageNcontigs(
                                             \%rast_details1, $inputgenome1);
-    } '_set_message runs successfully on genome';
+    } '_set_messageNcontigs runs successfully on genome';
     %rast_details1 = %{ $rast_ref }; # dereference
     $parameters1 = $rast_details1{parameters};
-    
-    my $expected_params1 = {
-          'domain' => 'Bacteria',
-          'output_workspace' => $ws,
-          'object_ref' => $obj_Ecoli,
-          'output_genome_name' => 'test_out_gn_name1',
-          'scientific_name' => 'Escherichia coli str. K-12 substr. MG1655',
-          'genetic_code' => 11
-        };
+    my $msg1 = $rast_details1{message};
+    my $tax1 = $rast_details1{tax_domain};
 
-    ok (@{$inputgenome1->{features}} > 0, 'inputgenome has features.');
-    cmp_deeply($expected_params1, $parameters1, 'parameters are correct');
+    ok (@{$inputgenome1->{features}} > 0, 'inputgenome has feature(s).');
+    ok (@{$inputgenome1->{contigs}} > 0, 'inputgenome has contig(s).');
+    ok (length($msg1) > 0, "Message for genome input has contents:\n$msg1");
+    ok ($tax1 eq 'Bacteria', "tax_domain for genome input has value:\n$tax1");
 
     # an assembly object
     lives_ok {
-        ($rast_ref, $inputgenome2) = $annoutil->_set_message(
+        ($rast_ref, $inputgenome2) = $annoutil->_set_messageNcontigs(
                                             \%rast_details2, $inputgenome2);
-    } '_set_message runs successfully on assembly';
-    my %rast_details2 = %{$rast_ref}; # dereference
+    } '_set_messageNcontigs runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
     $parameters2 = $rast_details2{parameters};
-    my $expected_params2 = {
-          'domain' => undef,
-          'output_genome_name' => 'test_out_gn_name2',
-          'object_ref' => $obj_asmb,
-          'output_workspace' => $ws,
-          'scientific_name' => undef,
-          'genetic_code' => undef
-        };
-    cmp_deeply($expected_params2, $parameters2, 'parameters are correct');
+    my $msg2 = $rast_details2{message};
+    my $tax2 = $rast_details2{tax_domain};
+
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
+    ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
+    ok (length($msg2) == 0, "Message for assembly input has no contents.");
+    ok ($tax2 eq 'U', "tax_domain for assembly input has value:\n$tax2");
+
+};
+
+
+# Test _set_genecall_workflow with genome/assembly object refs in prod
+subtest '_set_genecall_workflow' => sub {
+    # a genome object
+    lives_ok {
+        ($rast_ref, $inputgenome1) = $annoutil->_set_genecall_workflow(
+                                            \%rast_details1, $inputgenome1);
+    } '_set_genecall_workflow runs successfully on genome';
+    %rast_details1 = %{ $rast_ref }; # dereference
+    $parameters1 = $rast_details1{parameters};
+    my $genecall_workflow1 = $rast_details1{genecall_workflow};
+
+    my $exp_gc_workflow1 = {
+        'stages' => [
+            {
+              'name' => 'call_features_rRNA_SEED'
+            },
+            {
+              'name' => 'call_features_tRNA_trnascan'
+            },
+            {
+              'name' => 'call_selenoproteins'
+            },
+            {
+              'name' => 'call_pyrrolysoproteins'
+            },
+            { 'name' => 'call_features_repeat_region_SEED',
+              'repeat_region_SEED_parameters' => {
+                                                   'min_length' => '100',
+                                                   'min_identity' => '95'
+                                                 }
+            },
+            { 'name' => 'call_features_crispr' },
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                         'min_training_len' => '2000'
+                                       }
+            },
+            { 'name' => 'call_features_CDS_prodigal' }
+        ]
+    };
+    cmp_deeply($exp_gc_workflow1, $genecall_workflow1, 'gc_workflow built correctly');
+
+    # an assembly object
+    my $exp_gc_workflow2 = {
+        'stages' => [
+            { 'name' => 'call_features_rRNA_SEED' },
+            { 'name' => 'call_features_tRNA_trnascan' },
+            { 'name' => 'call_features_repeat_region_SEED',
+              'repeat_region_SEED_parameters' => {
+                                                    'min_length' => '100',
+                                                    'min_identity' => '95'
+                                                 }
+            },
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                           'min_training_len' => '2000'
+                                       }
+            },
+            { 'name' => 'call_features_CDS_prodigal'}
+        ]
+    };
+
+    lives_ok {
+        ($rast_ref, $inputgenome2) = $annoutil->_set_genecall_workflow(
+                                            \%rast_details2, $inputgenome2);
+    } '_set_genecall_workflow runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+    $parameters2 = $rast_details2{parameters};
+    my $msg2 = $rast_details2{message};
+    my $genecall_workflow2 = $rast_details2{genecall_workflow};
+    cmp_deeply($exp_gc_workflow2, $genecall_workflow2, 'gc_workflow built correctly');
 };
 
 

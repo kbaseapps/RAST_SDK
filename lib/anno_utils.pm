@@ -586,7 +586,8 @@ sub _get_contigs {
             if (@{$obj->{contigs}} > $self->{max_contigs}) {
                 Bio::KBase::Exceptions::ArgumentValidationError->throw(
                     error => 'too many contigs',
-                    method_name => 'anno_utils._get_contigs');
+                    method_name => 'anno_utils._get_contigs'
+                );
             }
             if (length($array->[$i]) > 0) {
                 my $subarray = [split(/\|\|\|/,$array->[$i])];
@@ -819,7 +820,8 @@ sub _set_parameters_by_input {
         $parameters->{genetic_code} = $inputgenome->{genetic_code};
         $parameters->{domain} = $inputgenome->{domain};
         $parameters->{scientific_name} = $inputgenome->{scientific_name};
-        $contigobj = $self->_get_contigs($input_obj_ref);   
+        $contigobj = $self->_get_contigs($input_obj_ref);
+        $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
     } else {
         croak("Neither contigs nor genome specified!");
     }
@@ -834,7 +836,8 @@ sub _set_parameters_by_input {
 }
 
 #
-## Recording the annotation process by taking a note in $message
+## Recording the annotation process by taking a note in $message;
+## Inserting contigs into $inputgenome
 ## Input:
 ##  ($rast_details = {
 ##      parameters => $parameters,
@@ -854,7 +857,7 @@ sub _set_parameters_by_input {
 ##      tax_domain => $tax_domain
 ##  }, $inputgenome);
 #
-sub _set_message {
+sub _set_messageNcontigs {
     my ($self, $rast_in, $inputgenome) = @_;
 
     my %rast_details = %{ $rast_in };
@@ -870,7 +873,6 @@ sub _set_message {
             $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
         }
     }
-=begin
     if (defined($contigobj)) {
         my $count = 0;
         my $size = 0;
@@ -889,6 +891,7 @@ sub _set_message {
         } else {
             $inputgenome->{assembly_ref} = $contigobj->{_reference};
         }
+=begin
         if (defined($parameters->{input_contigset})) {
             $message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
         } else {
@@ -902,8 +905,8 @@ sub _set_message {
             $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
             $message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
         }
-    }
 =cut
+    }
     if (%types) {
         $message .= "Input genome has the following feature types:\n";
         for my $key (sort keys(%types)) {
@@ -993,7 +996,7 @@ sub _set_genecall_workflow {
                 Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
             }
         } else {
-            $message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
+            $message .= "Did not call selenoproteins because the tax_domain is 'U'\n\n";
         }
     }
     if (defined($parameters->{call_pyrrolysoproteins})
@@ -1010,7 +1013,7 @@ sub _set_genecall_workflow {
                 Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
             } 
         } else {
-            $message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";   
+            $message .= "Did not call pyrrolysoproteins because the tax_domain is 'U'\n\n";
         }
     }
     if (defined($parameters->{call_features_repeat_region_SEED})
@@ -1962,7 +1965,8 @@ sub _annotate_process_allInOne {
     }
 
     my (%para_group, $rast_ref);
-    ($rast_ref, $inputgenome) = $self->_set_parameters_by_input($parameters, $inputgenome);
+    ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
+                                    $parameters, $inputgenome);
 
     # 2. merge with the default gene call settings
     %para_group = %{ $rast_ref };
@@ -1972,7 +1976,8 @@ sub _annotate_process_allInOne {
     $para_group{parameters} = $parameters;
 
     ## refactor 2 -- taking notes in $message
-    ($rast_ref, $inputgenome) = $self->_set_message(\%para_group, $inputgenome);
+    ($rast_ref, $inputgenome) = $self->_set_messageNcontigs(
+                                    \%para_group, $inputgenome);
     %para_group = %{ $rast_ref };
 
     ## refactor 3 -- set gene call workflow
@@ -2125,7 +2130,8 @@ sub _build_genecall_workflow {
     $rast_details{parameters} = $parameters;
 
     ## refactor 2 -- taking notes in $message
-    ($rast_ref, $inputgenome) = $self->_set_message(\%rast_details, $inputgenome);
+    ($rast_ref, $inputgenome) = $self->_set_messageNcontigs(
+                                \%rast_details, $inputgenome);
     %rast_details = %{ $rast_ref };
 
     ## refactor 3 -- set gene call workflow
