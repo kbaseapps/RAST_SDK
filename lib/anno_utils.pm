@@ -1900,7 +1900,7 @@ sub _summarize_annotation {
     return $genome;
 }
 
-sub _save_annotation {
+sub _save_annotation_results {
     my ($self, $genome, $inputgenome, $parameters, $message) = @_;
 #   print "SEND OFF FOR SAVING\n";
 #   print "***** Domain       = $genome->{domain}\n";
@@ -1942,11 +1942,19 @@ sub _save_annotation {
 }
 
 #
-#--------------------------------------------------------------
-## Runs RAST by connecting ALL the factoral procedures together
-#--------------------------------------------------------------
+## return:
+#  {inputgenome=>$inputgenome,
+#   workflow=>$workflow,
+#   oldfunchash=>$oldfunchash,
+#   oldtype=>$oldtype,
+#   message=>$message,
+#   types=>%types,
+#   contigobj=>$contigobj,
+#   parameters=>$parameters,
+#   ...
+#  }
 #
-sub _annotate_process_allInOne {
+sub _build_genecall_workflow {
     my ($self, $parameters) = @_;
 
     ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
@@ -1982,6 +1990,19 @@ sub _annotate_process_allInOne {
     ## refactor 3 -- set gene call workflow
     $rast_ref = $self->_set_genecall_workflow(\%rast_details, $inputgenome);
     %rast_details = %{ $rast_ref };
+
+    return (\%rast_details, $inputgenome);
+}
+#
+#--------------------------------------------------------------
+## Runs RAST by connecting ALL the factoral procedures together
+#--------------------------------------------------------------
+#
+sub _annotate_process_allInOne {
+    my ($self, $parameters) = @_;
+
+    my ($rast_ref, $inputgenome) = $self->_build_genecall_workflow($parameters);
+    my %rast_details = %{ $rast_ref };
 
     ## refactor 4 -- set annotation workflow
     $rast_ref = $self->_set_annotation_workflow(\%rast_details);
@@ -2022,7 +2043,7 @@ sub _annotate_process_allInOne {
     %rast_details = %{ $rast_ref };
 
     ## refactor 12 -- save the annotated genome
-    $genome_final = $self->_save_annotation($genome_final, $inputgenome,
+    $genome_final = $self->_save_annotation_result($genome_final, $inputgenome,
                                             $parameters, $message);
 =cut
     return $genome_renumed;
@@ -2079,69 +2100,6 @@ sub _run_rast_genecalls {
         croak "ERROR calling rast run_pipeline from _run_rast_genecalls: ".$@."\n";
     }
     return ($rasted_gn, $gene_call_params);
-}
-
-#
-## return:
-#  {inputgenome=>$inputgenome,
-#   workflow=>$workflow,
-#   oldfunchash=>$oldfunchash,
-#   oldtype=>$oldtype,
-#   message=>$message,
-#   types=>%types,
-#   contigobj=>$contigobj,
-#   parameters=>$parameters,
-#   ...
-#  }
-#
-sub _build_genecall_workflow {
-    my ($self, $parameters) = @_;
-
-    my $oldfunchash = {};
-    my $oldtype     = {};
-    my %types = ();
-    my $contigobj;
-    my ($message, $extragenecalls, $genecalls) = ("", "", "");
-    my $genecall_workflow = {stages => []};
-
-    my $rast_ref;
-    my %rast_details = ();
-
-    ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
-    # 1. creating default genome object
-    my $inputgenome = {
-        id => $parameters->{output_genome},
-        genetic_code => $parameters->{genetic_code},
-        scientific_name => $parameters->{scientific_name},
-        domain => $parameters->{domain},
-        contigs => [],
-        features => []
-    };
-    if ($parameters->{ncbi_taxon_id}) {
-        $inputgenome->{taxon_assignments} = {
-            'ncbi' => '' . $parameters->{ncbi_taxon_id}};
-    }
-
-    ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
-                                    $parameters, $inputgenome);
-    %rast_details = %{ $rast_ref };
-
-    # 2. merge with the default gene call settings
-    my $default_params = $self->_set_default_parameters();
-    $parameters = $rast_details{parameters};
-    $parameters = { %$default_params, %$parameters };
-    $rast_details{parameters} = $parameters;
-
-    ## refactor 2 -- taking notes in $message
-    ($rast_ref, $inputgenome) = $self->_set_messageNcontigs(
-                                \%rast_details, $inputgenome);
-    %rast_details = %{ $rast_ref };
-
-    ## refactor 3 -- set gene call workflow
-    $rast_ref = $self->_set_genecall_workflow(
-                                    \%rast_details, $inputgenome);
-    %rast_details = %{ $rast_ref };
-    return (\%rast_details, $inputgenome);
 }
 
 ##----end gene call subs----##

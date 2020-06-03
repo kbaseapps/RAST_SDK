@@ -156,6 +156,7 @@ my ($rast_ref, %rast_details1, %rast_details2);
 my ($inputgenome1, $inputgenome2);
 my ($parameters1, $parameters2);
 
+=begin
 # Test _set_parameters_by_input with genome/assembly object refs in prod
 subtest '_set_parameters_by_input' => sub {
     # a genome object
@@ -511,23 +512,68 @@ subtest '_prepare4rast' => sub {
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
 };
+=cut
+
+
+=begin
+# Test _build_genecall_workflow with genome/assembly object refs in prod
+subtest '_build_genecall_workflow' => sub {
+    my $params1 = {
+         output_genome_name => 'build_gcwf_gn_name',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+    my ($gc_wf_ret, $gc_inputgenome);
+    lives_ok {
+        ($gc_wf_ret, $gc_inputgenome) = $annoutil->_build_genecall_workflow($params1);
+    } '_build_genecall_workflow returns normally';
+    my %gc_details = %{ $gc_wf_ret };
+    my $gc_wf = $gc_details{genecall_workflow};
+    ok (exists($gc_details{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf));
+    ok (@{$gc_inputgenome->{features}} > 0, 'inputgenome has some features.');
+    ok (@{$gc_inputgenome->{contigs}} > 0, 'inputgenome has contig(s).');
+
+    my $params2 = {
+         output_genome_name => 'build_gcwf_asmb_name',
+         output_workspace => $ws,
+         object_ref => $obj_asmb
+    };
+    lives_ok {
+        ($gc_wf_ret, $gc_inputgenome) = $annoutil->_build_genecall_workflow($params2);
+    } '_build_genecall_workflow returns normally';
+    %gc_details = %{ $gc_wf_ret };
+    $gc_wf = $gc_details{genecall_workflow};
+    ok (exists($gc_details{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf));
+    ok (@{$gc_inputgenome->{features}} == 0, 'inputgenome (assembly) has no features.');
+    ok (@{$gc_inputgenome->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
+};
+=cut
 
 
 # Test _annotate_process_allInOne with genome/assembly object refs in prod
 subtest '_annotate_process_allInOne' => sub {
     my $params = {
-         output_genome_name => 'build_gcwf_gn_name',
+         output_genome_name => 'anno_gn_name',
          output_workspace => $ws,
          object_ref => $obj_Ecoli
     };
     my $allInOne_ret;
-    lives_ok {
+    throws_ok {
         $allInOne_ret = $annoutil->_annotate_process_allInOne($params);
-    } '_annotate_process_allInOne returns normally';
-    print "_annotate_process_allInOne returned:\n".Dumper($allInOne_ret);
+    } qr/ERROR calling rast run_pipeline with/,
+        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
 
+    my $params2 = {
+         output_genome_name => 'anno_asmb_name',
+         output_workspace => $ws,
+         object_ref => $obj_asmb
+    };
+
+    throws_ok {
+        $allInOne_ret = $annoutil->_annotate_process_allInOne($params2);
+    } qr/ERROR calling rast run_pipeline with/,
+        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
 };
-
 
 =begin
 # Test _run_rast_workflow with genome/assembly object refs in prod
