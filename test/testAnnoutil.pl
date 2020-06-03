@@ -492,6 +492,9 @@ subtest '_prepare4rast' => sub {
         ok (@{$inputgenome1->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome1->{ontology_events}}." ontology events for genome.");
     }
+    ok (@{$inputgenome1->{features}} > 0, 'inputgenome has feature(s).');
+    ok (@{$inputgenome1->{contigs}} > 0, 'inputgenome has contig(s).');
+
     # an assembly object
     lives_ok {
         ($rast_ref, $inputgenome2) = $annoutil->_prepare4rast(
@@ -505,40 +508,51 @@ subtest '_prepare4rast' => sub {
         ok (@{$inputgenome2->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome2->{ontology_events}}." ontology events for assembly.");
     }
+    ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
+    ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
 };
 
-=begin
-subtest '_build_genecall_workflow' => sub {
+
+# Test _annotate_process_allInOne with genome/assembly object refs in prod
+subtest '_annotate_process_allInOne' => sub {
     my $params = {
          output_genome_name => 'build_gcwf_gn_name',
          output_workspace => $ws,
          object_ref => $obj_Ecoli
     };
-    my $gc_build_ret;
+    my $allInOne_ret;
     lives_ok {
-        $gc_build_ret = $annoutil->_build_genecall_workflow($params);
-    } '_build_genecall_workflow returns normally';
-    print "_build_genecall_workflow:\n".Dumper($gc_build_ret->{genecall_workflow});
+        $allInOne_ret = $annoutil->_annotate_process_allInOne($params);
+    } '_annotate_process_allInOne returns normally';
+    print "_annotate_process_allInOne returned:\n".Dumper($allInOne_ret);
 
 };
 
 
-# test by using prod/appdev obj id
-#
-## Tesing only the annotation part of RAST
-#
-subtest '_run_rast_genecalls' => sub {
-    my $input_obj = $obj_Ecoli;
-    my $inparams = {
-        "object_ref" => $input_obj,
-        "output_genome_name" => "ann_gn",
-        "output_workspace" => $ws,
-        "create_report" => 0
-    };
-    throws_ok {
-        my $rast_ret = $annoutil->_run_rast_genecalls($inparams);
-    } qr/ERROR calling rast run_pipeline/,
-      '_run_rast_genecalls threw ERROR when local testing.';
+=begin
+# Test _run_rast_workflow with genome/assembly object refs in prod
+subtest '_run_rast_workflow' => sub {
+    # a genome object
+    my $gc_wf1 = $rast_details1{genecall_workflow};
+    my $rast_gn1;
+
+    lives_ok {
+        $rast_gn1 = $annoutil->_run_rast_workflow($gc_wf1, $inputgenome1);
+    } '_run_rast_workflow runs successfully on genome';
+    print Dumper($rast_gn1);
+    #ok (@{$inputgenome1->{features}} > 0,
+    #    "Genome inputgenome has ".scalar @{$inputgenome1->{features}}." features.");
+
+    # an assembly object
+    my $gc_wf2 = $rast_details2{genecall_workflow};
+    my $rast_gn2;
+
+    lives_ok {
+        $rast_gn2 = $annoutil->_run_rast_workflow($gc_wf2, $inputgenome2);
+    } '_run_rast_workflow runs successfully on assembly';
+    print Dumper($rast_gn2);
+    #ok (@{$inputgenome1->{features}} > 0,
+    #    "Genome inputgenome has ".scalar @{$inputgenome1->{features}}." features.");
 };
 
 
@@ -561,7 +575,9 @@ subtest '_run_rast_annotation' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
+=begin
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";

@@ -1439,7 +1439,7 @@ sub _prepare4rast {
 sub _run_rast_annotation {
     my ($self, $in_genome) = @_;
     my $count = scalar @{$in_genome->{features}};
-    print "******INFO: Run RAST annotation on $in_genome with $count features.******\n";
+    print "******INFO: Run RAST annotation on $in_genome->{id} with $count features.******\n";
     print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
 
     my $rasted_gn = {};
@@ -1457,10 +1457,10 @@ sub _run_rast_annotation {
         );
     };
     if ($@) {
-        croak "ERROR calling rast run_pipeline for annotation only on \n$in_genome".$@."\n";
+        croak "********ERROR calling rast run_pipeline for annotation only on $in_genome->{id}:\n$@\n";
     }
     else {
-        print "SUCCEEDED: calling rast run_pipeline for annotation only on \n $in_genome".$@."\n";
+        print "********SUCCEEDED: calling rast run_pipeline for annotation only on $in_genome->{id}";
     }
     return $rasted_gn;
 };
@@ -1474,8 +1474,8 @@ sub _run_rast_annotation {
 sub _run_rast_workflow {
     my ($self, $workflow, $in_genome) = @_;
     my $count = scalar @{$in_genome->{features}};
-    print "******INFO: Run RAST pipeline on $in_genome with $count features.******\n";
-    print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
+    print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
+    # print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
 
     my $rasted_gn = {};
     eval {
@@ -1484,10 +1484,10 @@ sub _run_rast_workflow {
         $rasted_gn = $rast_client->run_pipeline($in_genome, $workflow);
     };
     if ($@) {
-        croak "ERROR calling rast run_pipeline with $workflow on \n $in_genome".$@."\n";
+        croak "********ERROR calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}:\n$@\n";
     }
     else {
-        print "SUCCEEDED: calling rast run_pipeline with $workflow on \n $in_genome".$@."\n";
+        print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}.\n";
     }
     return $rasted_gn;
 }
@@ -1949,12 +1949,6 @@ sub _save_annotation {
 sub _annotate_process_allInOne {
     my ($self, $parameters) = @_;
 
-    my $oldfunchash = {};
-    my $oldtype     = {};
-    my %types = ();
-    my $contigobj; 
-    my ($message, $extragenecalls, $genecalls) = ("", "", "");
-
     ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
     # 1. creating default genome object
     my $inputgenome = {
@@ -1969,44 +1963,47 @@ sub _annotate_process_allInOne {
         $inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
     }
 
-    my (%para_group, $rast_ref);
+    my (%rast_details, $rast_ref);
     ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
                                     $parameters, $inputgenome);
 
     # 2. merge with the default gene call settings
-    %para_group = %{ $rast_ref };
-    $parameters = $para_group{parameters};
+    %rast_details = %{ $rast_ref };
+    $parameters = $rast_details{parameters};
     my $default_params = $self->_set_default_parameters();
     $parameters = { %$default_params, %$parameters };
-    $para_group{parameters} = $parameters;
+    $rast_details{parameters} = $parameters;
 
     ## refactor 2 -- taking notes in $message
     ($rast_ref, $inputgenome) = $self->_set_messageNcontigs(
-                                    \%para_group, $inputgenome);
-    %para_group = %{ $rast_ref };
+                                    \%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
 
     ## refactor 3 -- set gene call workflow
-    $rast_ref = $self->_set_genecall_workflow(\%para_group, $inputgenome);
-    %para_group = %{ $rast_ref };
+    $rast_ref = $self->_set_genecall_workflow(\%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
 
     ## refactor 4 -- set annotation workflow
-    $rast_ref = $self->_set_annotation_workflow(\%para_group);
-    %para_group = %{ $rast_ref };
+    $rast_ref = $self->_set_annotation_workflow(\%rast_details);
+    %rast_details = %{ $rast_ref };
 
     ## refactor 5 -- merge messages, update $inputgenome and $extra_workflow
-    ($rast_ref, $inputgenome) = $self->_merge_messages(\%para_group, $inputgenome); 
-    %para_group = %{ $rast_ref };
+    ($rast_ref, $inputgenome) = $self->_merge_messages(\%rast_details, $inputgenome); 
+    %rast_details = %{ $rast_ref };
 
     ## refactor 6 -- prepare for rasting
-    ($rast_ref, $inputgenome) = $self->_prepare4rast(\%para_group, $inputgenome);
-    %para_group = %{ $rast_ref };
+    ($rast_ref, $inputgenome) = $self->_prepare4rast(\%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
     
     ## refactor 7 -- finally...rasting
-    my $genecall_workflow = $para_group{genecall_workflow};
+    my $genecall_workflow = $rast_details{genecall_workflow};
+    my $annotate_workflow = $rast_details{annotate_workflow};
+    my $extra_workflow = $rast_details{extra_workflow};
     my $genome_genecalled = $self->_run_rast_workflow($genecall_workflow, $inputgenome);
-    my $genome_annotated = $self->_run_rast_workflow($genecall_workflow, $genome_genecalled);
-    my $genome_renumed = $self->_run_rast_workflow($genecall_workflow, $genome_annotated);
+    my $genome_annotated = $self->_run_rast_workflow($annotate_workflow, $genome_genecalled);
+    my $genome_renumed = $self->_run_rast_workflow($extra_workflow, $genome_annotated);
 
+=begin
     ## refactor 8 -- post-rasting processing
     my $genome_final = $self->_post_rast_processing($genome_renumed,
                                                     $inputgenome,
@@ -2016,18 +2013,19 @@ sub _annotate_process_allInOne {
     $genome_final = $self->_move_non_coding_features($genome_final, $contigobj);
 
     ## refactor 10 -- build seed ontology
-    ($rast_ref, $inputgenome) = $self->_build_seed_ontology( \%para_group, $inputgenome);
-    %para_group = %{ $rast_ref };
+    ($rast_ref, $inputgenome) = $self->_build_seed_ontology( \%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
 
     ## refactor 11 -- summarize annotation
     ($rast_ref, $inputgenome) = $self->_summarize_annotation(
-                                            \%para_group, $inputgenome);
-    %para_group = %{ $rast_ref };
+                                            \%rast_details, $inputgenome);
+    %rast_details = %{ $rast_ref };
 
     ## refactor 12 -- save the annotated genome
     $genome_final = $self->_save_annotation($genome_final, $inputgenome,
                                             $parameters, $message);
-
+=cut
+    return $genome_renumed;
 }
 
 
