@@ -1146,7 +1146,7 @@ subtest '_save_genome_from_gff' => sub {
     is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
-
+=cut
 
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
@@ -1216,7 +1216,7 @@ subtest 'Impl_rast_genome_assembly' => sub {
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
-
+=begin
 ## testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
