@@ -226,6 +226,8 @@ module RAST_SDK {
         typedef structure {
             data_obj_ref object_ref;
             string output_workspace;
+            int genetic_code;
+            string domain;
             int ncbi_taxon_id;
             int relation_engine_timestamp_ms;
             string scientific_name;

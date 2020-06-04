@@ -32,7 +32,7 @@
     }
   },
   {
-    "id": "AMA_text",
+    "id": "input_text",
     "optional": true,
     "advanced": false,
     "allow_multiple": false,
@@ -43,7 +43,7 @@
     }
   },
   {
-    "id": "output_AMASet",
+    "id": "output_AMASet_name",
     "optional": false,
     "advanced": false,
     "allow_multiple": false,
@@ -71,15 +71,15 @@
           "target_type_transform": "resolved-ref"
         },
         {
-          "input_parameter": "AMA_text",
-          "target_property": "AMA_text"
+          "input_parameter": "input_text",
+          "target_property": "input_text"
         },
         {
-          "input_parameter": "output_AMASet",
+          "input_parameter": "output_AMASet_name",
           "generated_value": {
               "prefix": "AMAset_"
           },
-          "target_property": "output_AMASet"
+          "target_property": "output_AMASet_name"
         },
         {
           "narrative_system_variable": "workspace",

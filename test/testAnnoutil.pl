@@ -569,10 +569,11 @@ subtest '_annotate_process_allInOne' => sub {
          object_ref => $obj_asmb
     };
 
-    throws_ok {
+    ## This should be fixed by using prodigal gene calling first...
+    lives_ok {
         $allInOne_ret = $annoutil->_annotate_process_allInOne($params2);
-    } qr/ERROR calling rast run_pipeline with/,
-        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
+        print "_annotate_process_allInOne on assembly results:\n".Dumper($allInOne_ret);
+    } '_annotate_process_allInOne exits normally.';
 };
 
 =begin
@@ -1183,9 +1184,9 @@ subtest 'anno_utils_rast_genome' => sub {
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws,
-        "create_report" => 1
+        "output_workspace" => $ws
     };
+
     throws_ok {
         $rast_ref = $annoutil->rast_genome($parms);
     } qr/ERROR calling rast run_pipeline/,
@@ -1193,6 +1194,7 @@ subtest 'anno_utils_rast_genome' => sub {
 };
 
 
+=begin
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
@@ -1216,7 +1218,6 @@ subtest 'Impl_rast_genome_assembly' => sub {
         'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
-=begin
 ## testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';

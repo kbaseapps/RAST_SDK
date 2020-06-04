@@ -40,7 +40,7 @@ parameters :
             AMAs/AMASets
         short-hint : |
             Multiple Annotated Metagenome Assemblies and/or AMASets to re-annotate
-    AMA_text :
+    input_text :
         ui-name : |
             AMA list
         short-hint : |
@@ -49,7 +49,7 @@ parameters :
             or IDs: 55141/110/1;55141/111/1 or delimited by new lines (list each name or ID on a separate line).
             You can also mix names and IDs as long as there are no spaces (e.g., EB271-05-03_AA_S_4_E_Prodigal-Rfam-FILTER-2000-NOFUNC.gff_metagenome;55141/111/1).
 
-    output_AMASet :
+    output_AMASet_name :
         ui-name : |
             Optional Output AMASet Name
         short-hint : |

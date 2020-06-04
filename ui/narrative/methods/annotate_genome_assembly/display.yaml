@@ -35,31 +35,31 @@ parameters :
         ui-name : |
             Assembly/Genome
         short-hint : |
-            An assembly or genome (set of DNA contigs) including structural and functional annotations.
-
-    ncbi_taxon_id :
-        ui-name : |
-            numeric ID of the NCBI taxon
-        short-hint : |
-            numeric ID of the NCBI taxon to which this genome belongs
-
-    relation_engine_timestamp_ms :
-        ui-name : |
-            relation engine timestamp in microseconds
-        short-hint : |
-            timestamp to send to the Relation Engine when looking up taxon information in milliseconds since the epoch
+            An assembly or genome object to annotate
 
     scientific_name :
         ui-name : |
             scientific name
         short-hint : |
-            scientific name of the genome. Overridden by ncbi_taxon_id.
+            scientific name to assign to the genome as found at https://www.ncbi.nlm.nih.gov/taxonomy
+
+    domain :
+        ui-name : |
+            Domain
+        short-hint : |
+            domain of life of the organism being annotated (Bacteria and Archaea are acceptable values.)
+
+    genetic_code :
+        ui-name : |
+            Genetic Code
+        short-hint : |
+            genetic code used in translating to protein sequences (See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for more information on genetic codes.)
 
     output_genome_name :
         ui-name : |
-            Output Annotated Assembly/Genome Name
+            Output Annotated Genome/Assembly Name
         short-hint : |
-            An assembly/genome with updated structural and functional annotations.
+            Name to assign the output genome/assembly
         placeholder : |
             Name to assign to the annotated assembly/genome
 

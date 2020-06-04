@@ -632,8 +632,6 @@ sub _get_contigs {
                         sequence => $subarray->[1],
                         description => $description
                     };
-                    $contigobject->{name} = $id;
-                    $contigobject->{description} = $description;
                     push(@{$obj->{contigs}}, $contigobject);
                 }
             }
@@ -839,18 +837,16 @@ sub _set_parameters_by_input {
             }
             $contigobj = $self->_get_contigs($contigref);
         }
-        $parameters->{genetic_code} = $inputgenome->{genetic_code};
-        $parameters->{domain} = $inputgenome->{domain};
-        $parameters->{scientific_name} = $inputgenome->{scientific_name};
     } elsif ($is_assembly) {
-        $parameters->{genetic_code} = $inputgenome->{genetic_code};
-        $parameters->{domain} = $inputgenome->{domain};
-        $parameters->{scientific_name} = $inputgenome->{scientific_name};
-        $contigobj = $self->_get_contigs($input_obj_ref);
         $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
+        $contigobj = $self->_get_contigs($input_obj_ref);
     } else {
         croak("Neither contigs nor genome specified!");
     }
+
+    $parameters->{genetic_code} = $inputgenome->{genetic_code};
+    $parameters->{domain} = $inputgenome->{domain};
+    $parameters->{scientific_name} = $inputgenome->{scientific_name};
 
     my %rast_details = ();
     $rast_details{parameters} = $parameters;
@@ -858,6 +854,8 @@ sub _set_parameters_by_input {
     $rast_details{oldtype} = $oldtype;
     $rast_details{ftr_types} = \%types;
     $rast_details{contigobj} = $contigobj;
+    $rast_details{is_genome} = $is_genome;
+    $rast_details{is_assembly} = $is_assembly;
     return (\%rast_details, $inputgenome);
 }
 
@@ -890,6 +888,7 @@ sub _set_messageNcontigs {
     my $parameters = $rast_details{parameters};
     my %types = %{$rast_details{ftr_types}};
     my $contigobj = $rast_details{contigobj};
+    my $is_assembly = $rast_details{is_assembly};
 
     my $tax_domain = 'U';
     my $message = "";
@@ -917,8 +916,8 @@ sub _set_messageNcontigs {
         } else {
             $inputgenome->{assembly_ref} = $contigobj->{_reference};
         }
-=begin
-        if (defined($parameters->{input_contigset})) {
+
+        if ($is_assembly) {
             $message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
         } else {
             $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
@@ -931,7 +930,6 @@ sub _set_messageNcontigs {
             $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
             $message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
         }
-=cut
     }
     if (%types) {
         $message .= "Input genome has the following feature types:\n";
@@ -1465,8 +1463,12 @@ sub _prepare4rast {
 sub _run_rast_annotation {
     my ($self, $in_genome) = @_;
     my $count = scalar @{$in_genome->{features}};
+    return $in_genome unless $count > 0;
+
     print "******INFO: Run RAST annotation on $in_genome->{id} with $count features.******\n";
-    print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
+    if ($count > 0) {
+        print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
+    }
 
     my $rasted_gn = {};
     eval {
@@ -1500,7 +1502,6 @@ sub _run_rast_annotation {
 sub _run_rast_workflow {
     my ($self, $workflow, $in_genome) = @_;
     my $count = scalar @{$in_genome->{features}};
-	return $in_genome unless $count > 0;
 
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
@@ -1986,7 +1987,7 @@ sub _build_genecall_workflow {
     ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
     # 1. creating default genome object
     my $inputgenome = {
-        id => $parameters->{output_genome},
+        id => $parameters->{output_genome_name},
         genetic_code => $parameters->{genetic_code},
         scientific_name => $parameters->{scientific_name},
         domain => $parameters->{domain},
@@ -2085,12 +2086,14 @@ sub _run_rast_genecalls {
 
     my ($rast_ref, $in_genome) = $self->_build_genecall_workflow($inparams);
 
+    my $count = scalar @{$in_genome->{features}};
+    print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
+    if ($count > 0) {
+        print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
+    }
+
     my %rast_details = %{ $rast_ref };
     my $wf_genecall = $rast_details{genecall_workflow};
-    my $count = scalar @{$in_genome->{features}};
-    print "******Run RAST pipeline on genome with $count features.******\n";
-    print "For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
-
     my $gced_gn = $self->_run_rast_workflow($wf_genecall, $in_genome);
     return ($gced_gn, \%rast_details);
 }

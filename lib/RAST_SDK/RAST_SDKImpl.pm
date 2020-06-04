@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '6bb3c55efaa81509cc20aeb7c8c2d2ffefc5261e';
+our $GIT_COMMIT_HASH = 'bed711216e740d8c0754c4271b3efbba3937941d';
 
 =head1 NAME
 
@@ -2006,6 +2006,8 @@ $output is a RAST_SDK.RastGenomeAssemblyOutput
 RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
@@ -2031,6 +2033,8 @@ $output is a RAST_SDK.RastGenomeAssemblyOutput
 RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
 	object_ref has a value which is a RAST_SDK.data_obj_ref
 	output_workspace has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
@@ -3002,6 +3006,8 @@ Optional parameters for rast_genome_assembly:
 a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
@@ -3017,6 +3023,8 @@ create_report has a value which is a RAST_SDK.bool
 a reference to a hash where the following keys are defined:
 object_ref has a value which is a RAST_SDK.data_obj_ref
 output_workspace has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
