@@ -3050,16 +3050,15 @@ sub rast_genome {
     print "rast_genome input parameter=\n". Dumper($inparams). "\n";
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
+	my $gff_contents = $self->_get_genome_gff_contents($input_obj_ref);
 
     ## 1. call rast to call genes first, then parse for gff_contents
     my ($inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
-
     my $ftr_count = scalar @{$inputgenome->{features}};
     unless ($ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
         return $input_obj_ref;
     }
-	my $gff_contents = $self->_get_genome_gff_contents($inputgenome);
 
     ## 2. call rast to annotate features
     my $rasted_genome = $self->_run_rast_annotation($inputgenome);
