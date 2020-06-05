@@ -2207,8 +2207,8 @@ sub rast_genomes_assemblies
     }
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-    my $mg_util = new metag_utils($config, $ctx);
-    my $rast_out = $mg_util->bulk_rast_genomes($params);
+    my $ann_util = new anno_utils($config, $ctx);
+    my $rast_out = $ann_util->bulk_rast_genomes($params);
     $output = {
         output_genome_ref => $rast_out->{output_genomeSet_ref},
         report_ref => $rast_out->{"report_ref"},

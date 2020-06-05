@@ -1470,7 +1470,7 @@ sub _run_rast_annotation {
         print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
     }
 
-    my $rasted_gn = {};
+    my $rasted_gn = $in_genome;
     eval {
         #my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
@@ -1485,7 +1485,7 @@ sub _run_rast_annotation {
         );
     };
     if ($@) {
-        croak "********ERROR calling rast run_pipeline for annotation only on $in_genome->{id}:\n$@\n";
+        print "********ERROR calling rast run_pipeline for annotation only on $in_genome->{id}:\n$@\n";
     }
     else {
         print "********SUCCEEDED: calling rast run_pipeline for annotation only on $in_genome->{id}";
@@ -1505,13 +1505,13 @@ sub _run_rast_workflow {
 
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
-    my $rasted_gn = {};
+    my $rasted_gn = $in_genome;
     eval {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($in_genome, $workflow);
     };
     if ($@) {
-        croak "********ERROR calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}:\n$@\n";
+        print "********ERROR calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}:\n$@\n";
     }
     else {
         print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}.\n";
@@ -1520,18 +1520,20 @@ sub _run_rast_workflow {
 }
 
 #
-## process the rast result
+## process the rast genecall result
 #
-sub _post_rast_processing {
-    my ($self, $genome, $inputgenome, $parameters) = @_;
+sub _post_genecalls {
+    my ($self, $inputgenome, $parameters, $contigobj) = @_;
+
+    my $genome = $inputgenome;
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
     delete $genome->{analysis_events};
     $genome->{genetic_code} = $genome->{genetic_code}+0;
-    $genome->{id} = $parameters->{output_genome};
+    $genome->{id} = $parameters->{output_genome_name};
     if (!defined($genome->{source})) {
         $genome->{source} = "KBase";
-        $genome->{source_id} = $parameters->{output_genome};
+        $genome->{source_id} = $parameters->{output_genome_name};
     }
     if (defined($inputgenome->{gc_content})) {
         $genome->{gc_content} = $inputgenome->{gc_content};
@@ -1546,7 +1548,7 @@ sub _post_rast_processing {
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
     }
-    return $genome;
+    return $self->_move_non_coding_features($genome, $contigobj);
 }
 
 sub _move_non_coding_features {
@@ -2053,9 +2055,9 @@ sub _annotate_process_allInOne {
 
 =begin
     ## refactor 8 -- post-rasting processing
-    my $genome_final = $self->_post_rast_processing($genome_renumed,
-                                                    $inputgenome,
-                                                    $parameters);
+    my $genome_final = $self->_post_genecalls($genome_renumed,
+                                              $inputgenome,
+                                              $parameters);
 
     ## refactor 9 -- move non-coding features
     $genome_final = $self->_move_non_coding_features($genome_final, $contigobj);
@@ -2166,6 +2168,20 @@ sub _write_gff_from_genome {
     }
     return $gff_result->{file_path};
 }
+
+
+sub _save_one_genome {
+    my ($self, $in_genome, $ws, $gn_name) = @_;
+
+    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+    my $gaout = $gfu->save_one_genome({
+		workspace => $ws,
+        name => $gn_name,
+        data => $in_genome,
+	});
+    return $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4];
+}
+
 
 sub _save_genome_from_gff {
     my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
@@ -3053,15 +3069,38 @@ sub rast_genome {
     print "rast_genome input parameter=\n". Dumper($inparams). "\n";
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
-	my $gff_contents = $self->_get_genome_gff_contents($input_obj_ref);
 
     ## 1. call rast to call genes first, then parse for gff_contents
     my ($inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
-    my $ftr_count = scalar @{$inputgenome->{features}};
-    unless ($ftr_count >= 1) {
+    my %gc_rast = %{ $rast_ref };
+    my $gc_params = $gc_rast{parameters};
+    my $gc_contigobj = $gc_rast{contigobj};
+    my $gc_genome = $self->_post_genecalls($inputgenome, $gc_params, $gc_contigobj);
+    my $gc_ftrs = $gc_genome->{features};
+    my $gc_ftr_count = scalar @{$gc_ftrs};
+    unless ($gc_ftr_count >= 1) {
         print "Empty input genome features, skip rasting, return original genome object.\n";
-        return $input_obj_ref;
+        return {
+            output_genome_ref => $input_obj_ref,
+            output_workspace => $params->{output_workspace},
+            report_name => undef,
+            report_ref => undef
+        };
     }
+
+    print "***********The first 10 or fewer gene-called features, for example***************\n";
+    my $prnt_lines = ($gc_ftr_count > 10) ? 10 : $gc_ftr_count;
+    for (my $j=0; $j<$prnt_lines; $j++) {
+        my $f_id = $gc_ftrs->[$j]->{id};
+        my $f_func = defined($gc_ftrs->[$j]->{function}) ? $gc_ftrs->[$j]->{function} : '';
+        my $f_protein = defined($gc_ftrs->[$j]->{protein_translation}) ? $gc_ftrs->[$j]->{protein_translation} : '';
+        print "$f_id\t$f_func\t$f_protein\n";
+    }
+    ## save the genome for parsing the gff_contents
+    my $gc_gn_ref = $self->_save_one_genome($gc_genome,
+                                            $params->{output_workspace},
+                                            $params->{output_genome_name});
+	my $gff_contents = $self->_get_genome_gff_contents($gc_gn_ref);
 
     ## 2. call rast to annotate features
     my $rasted_genome = $self->_run_rast_annotation($inputgenome);
@@ -3070,7 +3109,7 @@ sub rast_genome {
     print "RAST resulted ".$rasted_ftr_count." features.\n";
 
     print "***********The first 10 or fewer rasted features, for example***************\n";
-    my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
+    $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
     for (my $j=0; $j<$prnt_lines; $j++) {
         my $f_id = $ftrs->[$j]->{id};
         my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';

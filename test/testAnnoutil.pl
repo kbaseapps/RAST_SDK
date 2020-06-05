@@ -514,8 +514,12 @@ subtest '_prepare4rast' => sub {
 };
 =cut
 
-
 =begin
+## variables for testing _build_genecall_workflow, _run_rast_workflow
+## and _post_genecalls
+my ($gc_wf_ret1, $gc_inputgenome1, $gc_wf1, %gc_details1,
+    $gc_wf_ret2, $gc_inputgenome2, $gc_wf2, %gc_details2);
+
 # Test _build_genecall_workflow with genome/assembly object refs in prod
 subtest '_build_genecall_workflow' => sub {
     my $params1 = {
@@ -523,15 +527,15 @@ subtest '_build_genecall_workflow' => sub {
          output_workspace => $ws,
          object_ref => $obj_Ecoli
     };
-    my ($gc_wf_ret, $gc_inputgenome);
+
     lives_ok {
-        ($gc_wf_ret, $gc_inputgenome) = $annoutil->_build_genecall_workflow($params1);
+        ($gc_wf_ret1, $gc_inputgenome1) = $annoutil->_build_genecall_workflow($params1);
     } '_build_genecall_workflow returns normally';
-    my %gc_details = %{ $gc_wf_ret };
-    my $gc_wf = $gc_details{genecall_workflow};
-    ok (exists($gc_details{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf));
-    ok (@{$gc_inputgenome->{features}} > 0, 'inputgenome has some features.');
-    ok (@{$gc_inputgenome->{contigs}} > 0, 'inputgenome has contig(s).');
+    %gc_details1 = %{ $gc_wf_ret1 };
+    $gc_wf1 = $gc_details1{genecall_workflow};
+    ok (exists($gc_details1{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf1));
+    ok (@{$gc_inputgenome1->{features}} > 0, 'inputgenome has some features.');
+    ok (@{$gc_inputgenome1->{contigs}} > 0, 'inputgenome has contig(s).');
 
     my $params2 = {
          output_genome_name => 'build_gcwf_asmb_name',
@@ -539,17 +543,113 @@ subtest '_build_genecall_workflow' => sub {
          object_ref => $obj_asmb
     };
     lives_ok {
-        ($gc_wf_ret, $gc_inputgenome) = $annoutil->_build_genecall_workflow($params2);
+        ($gc_wf_ret2, $gc_inputgenome2) = $annoutil->_build_genecall_workflow($params2);
     } '_build_genecall_workflow returns normally';
-    %gc_details = %{ $gc_wf_ret };
-    $gc_wf = $gc_details{genecall_workflow};
-    ok (exists($gc_details{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf));
-    ok (@{$gc_inputgenome->{features}} == 0, 'inputgenome (assembly) has no features.');
-    ok (@{$gc_inputgenome->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
+    %gc_details2 = %{ $gc_wf_ret2 };
+    $gc_wf2 = $gc_details2{genecall_workflow};
+    ok (exists($gc_details2{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf2));
+    ok (@{$gc_inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
+    ok (@{$gc_inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
+};
+
+
+# Test _run_rast_workflow with genome/assembly object refs in prod
+subtest '_run_rast_workflow' => sub {
+    # a genome object
+    my $rast_gn1;
+    lives_ok {
+        $rast_gn1 = $annoutil->_run_rast_workflow($gc_wf1, $gc_inputgenome1);
+    } 'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+    ok (@{$rast_gn1->{features}} > 0, "Returned genome has features.");
+    cmp_deeply($rast_gn1, $gc_inputgenome1, 'rast workflow will not run locally');
+
+    # an assembly object
+    my $rast_gn2;
+    lives_ok {
+        $rast_gn2 = $annoutil->_run_rast_workflow($gc_wf2, $gc_inputgenome2);
+    } 'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+    ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
+    cmp_deeply($rast_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
+};
+
+
+# Test _post_genecalls with genome/assembly object refs in prod
+subtest '_post_genecalls' => sub {
+    # a genome object
+    my $gc_params = $gc_details1{parameters};
+    my $gc_contigobj = $gc_details1{contigobj};
+    my $rast_gn1;
+    lives_ok {
+        $rast_gn1 = $annoutil->_post_genecalls($gc_inputgenome1, 
+                                               $gc_params, $gc_contigobj);
+    } '_post_genecalls runs successfully on genome';
+    ok (@{$rast_gn1->{features}} > 0, "Returned genome has features.");
+
+    # an assembly object
+    $gc_params = $gc_details2{parameters};
+    $gc_contigobj = $gc_details2{contigobj};
+    my $rast_gn2;
+    lives_ok {
+        $rast_gn2 = $annoutil->_post_genecalls($gc_inputgenome2, 
+                                               $gc_params, $gc_contigobj);
+    } '_post_genecalls runs successfully on assembly';
+    ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
+};
+
+
+# Test _run_rast_genecalls with genome/assembly object refs in prod
+subtest '_run_rast_genecalls' => sub {
+    # a genome object
+    my $params1 = {
+         output_genome_name => 'gc_gn_name',
+         output_workspace => $ws,
+         object_ref => $obj_Ecoli
+    };
+    my ($rast_ref1, $gc_gn1);
+    lives_ok {
+        ($gc_gn1, $rast_ref1) = $annoutil->_run_rast_genecalls($params1);
+    } '_run_rast_genecalls returns ERROR due to kmer data absence or other causes.';
+    ok (@{$gc_gn1->{features}} > 0, "Returned genome has features.");
+    cmp_deeply($gc_gn1, $gc_inputgenome1, 'rast workflow will not run locally');
+
+    # an assembly object
+    my $params2 = {
+         output_genome_name => 'gc_asmb_name',
+         output_workspace => $ws,
+         object_ref => $obj_asmb
+    };
+    my ($rast_ref2, $gc_gn2);
+    lives_ok {
+        ($gc_gn2, $rast_ref2) = $annoutil->_run_rast_genecalls($params2);
+    } '_run_rast_genecalls returns ERROR due to kmer data absence or other causes.';
+    ok (@{$gc_gn2->{features}} == 0, "Returned genome has NO features.");
+    cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
 =cut
 
+=begin
+#
+## Tesing only the annotation part of RAST
+#
+subtest '_run_rast_annotation' => sub {
+    my $inputgenome = {
+        features => []
+    };
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => $gene,
+            protein_translation => $protein_seqs->{$gene}
+        });
+    }
 
+    throws_ok {
+        my $rast_ret = $annoutil->_run_rast_annotation($inputgenome);
+    } qr/ERROR calling rast run_pipeline/,
+        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+};
+=cut
+
+=begin
 # Test _annotate_process_allInOne with genome/assembly object refs in prod
 subtest '_annotate_process_allInOne' => sub {
     my $params = {
@@ -574,53 +674,6 @@ subtest '_annotate_process_allInOne' => sub {
         $allInOne_ret = $annoutil->_annotate_process_allInOne($params2);
         print "_annotate_process_allInOne on assembly results:\n".Dumper($allInOne_ret);
     } '_annotate_process_allInOne exits normally.';
-};
-
-=begin
-# Test _run_rast_workflow with genome/assembly object refs in prod
-subtest '_run_rast_workflow' => sub {
-    # a genome object
-    my $gc_wf1 = $rast_details1{genecall_workflow};
-    my $rast_gn1;
-
-    lives_ok {
-        $rast_gn1 = $annoutil->_run_rast_workflow($gc_wf1, $inputgenome1);
-    } '_run_rast_workflow runs successfully on genome';
-    print Dumper($rast_gn1);
-    #ok (@{$inputgenome1->{features}} > 0,
-    #    "Genome inputgenome has ".scalar @{$inputgenome1->{features}}." features.");
-
-    # an assembly object
-    my $gc_wf2 = $rast_details2{genecall_workflow};
-    my $rast_gn2;
-
-    lives_ok {
-        $rast_gn2 = $annoutil->_run_rast_workflow($gc_wf2, $inputgenome2);
-    } '_run_rast_workflow runs successfully on assembly';
-    print Dumper($rast_gn2);
-    #ok (@{$inputgenome1->{features}} > 0,
-    #    "Genome inputgenome has ".scalar @{$inputgenome1->{features}}." features.");
-};
-
-
-#
-## Tesing only the annotation part of RAST
-#
-subtest '_run_rast_annotation' => sub {
-    my $inputgenome = {
-        features => []
-    };
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-            id => $gene,
-            protein_translation => $protein_seqs->{$gene}
-        });
-    }
-
-    throws_ok {
-        my $rast_ret = $annoutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
 =cut
 
@@ -1156,14 +1209,13 @@ subtest 'anno_utils_rast_genome' => sub {
         "output_genome_name" => "rasted_ecoli_prod",
         "output_workspace" => $ws
     };
-    my $rast_ref;
-    throws_ok {
-        $rast_ref = $annoutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-    if(defined($rast_ref)) {
-        print "rast_genome returns: $rast_ref";
-        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returned an INVALID ref: $rast_ref");
+    my $rast_ret;
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } 'anno_utils rast_genome call returns unchanged genome because of ERROR due to kmer data absence or other causes.';
+    if(defined($rast_ret)) {
+        print "rast_genome returns:\n".Dumper($rast_ret);
+        ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref:$rast_ret->{output_genome_ref}");
     }
 
     $parms = {
@@ -1172,13 +1224,12 @@ subtest 'anno_utils_rast_genome' => sub {
         "output_workspace" => $ws
     };
 
-    throws_ok {
-        $rast_ref = $annoutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-    if(defined($rast_ref)) {
-        print "rast_genome returns: $rast_ref";
-        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returns an INVALID ref: $rast_ref");
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } 'anno_utils rast_genome call returns unchanged genome because of ERROR due to kmer data absence or other causes.';
+    if(defined($rast_ret)) {
+        print "rast_genome returns:\n".Dumper($rast_ret);
+        ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
     }
 
     $parms = {
@@ -1187,10 +1238,12 @@ subtest 'anno_utils_rast_genome' => sub {
         "output_workspace" => $ws
     };
 
-    throws_ok {
-        $rast_ref = $annoutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } 'anno_utils rast_genome call returns unchanged genome because of ERROR due to kmer data absence or other causes.';
+    if(defined($rast_ret)) {
+        ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
+    }
 };
 
 

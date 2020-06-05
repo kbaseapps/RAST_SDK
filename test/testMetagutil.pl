@@ -1020,168 +1020,6 @@ subtest '_write_gff_from_genome' => sub {
 };
 
 
-subtest '_save_genome' => sub {
-    ## repeat the portion from testing prodigal and
-    ## _prodigal_then_glimmer3 in order to get the GFF
-    my $md = 'meta';
-    my $out_type = 'gff';
-    my $trans = catfile($rast_genome_dir, 'protein_translation');
-    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
-
-    my $fa_input = $asmb_fasta;
-    my $prd_gene_results;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $fa_input returns result.");
-    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigal gff file for $fa_input:\n";
-    $mgutil->_print_fasta_gff(0, 10, $out_file);
-
-    ## Test the _save_genome function with Prodigal $out_file
-    my $out_gn = 'prd_ed_Carsonella';
-    my $input_asmb = $obj_asmb;
-    my $mygn = {};
-    lives_ok {
-        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $out_file);
-    } "_save_genome run without errors on $input_asmb.\n";
-    ok (exists $mygn->{genome_ref},
-        "genome saved with genome_ref=$mygn->{genome_ref}");
-    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
-    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
-    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
-
-    ## prodigal_then_glimmer3
-    $fa_input = $asmb_fasta;
-    my ($pNg_gff_file, $pNg_gene_results);
-    my $out_file1 = catfile($rast_genome_dir, 'prodigal_output1').'.'.$out_type;
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file1, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run on $fa_input.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
-    ## Test the _save_genome function with prodigal_then_glimmer3 $gff_fpath
-    $out_gn = 'pNg_Carsonella';
-    $input_asmb = $obj_asmb;
-    $mygn = {};
-    lives_ok {
-        $mygn = $mgutil->_save_genome($ws, $out_gn, $input_asmb, $pNg_gff_file);
-    } "_save_genome run without errors on $input_asmb.\n";
-    ok (exists $mygn->{genome_ref},
-        "genome saved with genome_ref=$mygn->{genome_ref}");
-    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
-    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
-    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
-};
-
-
-subtest 'mgutil_rast_genome' => sub {
-    # testing metag_utils rast_genome using obj ids from prod ONLY
-    my $parms = {
-        "object_ref" => $obj_Ecoli,
-        "output_genome_name" => "rasted_ecoli_prod",
-        "output_workspace" => $ws
-    };
-    my $rast_ref;
-    throws_ok {
-        $rast_ref = $mgutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-    if(defined($rast_ref)) {
-        print "rast_genome returns: $rast_ref";
-        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returned an INVALID ref: $rast_ref");
-    }
-
-    $parms = {
-        "object_ref" => $obj_Echinacea,
-        "output_genome_name" => "rasted_Echinace_prod",
-        "output_workspace" => $ws
-    };
-
-    throws_ok {
-        $rast_ref = $mgutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-    if(defined($rast_ref)) {
-        print "rast_genome returns: $rast_ref";
-        ok (($rast_ref !~ m/[^\\w\\|._-]/), "rast_genome returns an INVALID ref: $rast_ref");
-    }
-
-    $parms = {
-        "object_ref" => $obj_asmb,
-        "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws,
-        "create_report" => 1
-    };
-    throws_ok {
-        $rast_ref = $mgutil->rast_genome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-};
-
-
-subtest 'Impl_rast_genome_assembly' => sub {
-    my $parms = {
-        "object_ref" => $obj_Ecoli,
-        "output_genome_name" => "rasted_genome",
-        "output_workspace" => $ws
-    };
-    my $rast_ann;
-    throws_ok {
-        $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
-
-    $parms = {
-        "object_ref" => $obj_asmb,
-        "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws
-    };
-    throws_ok {
-        $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
-};
-
-
-## testing generate_genome_report using obj ids from prod ONLY
-subtest 'generate_genome_report' => sub {
-    my $stats_ok = 'stats generation runs ok.\n';
-
-    my $gff_path = $mgutil->_write_gff_from_genome($obj_asmb_ann);
-
-    my ($gff_contents, $attr_delimiter) = ([], '=');
-
-    my %ret_stats;
-    lives_ok {
-        ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
-        %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-        #print "Stats on $obj_asmb_ann: \n".Dumper(\%ret_stats);
-    } $stats_ok;
-    is(keys %ret_stats, 2, "_generate_stats_from_gffContents on $obj_asmb_ann should return non-empty.\n");
-    ok(exists($ret_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
-    ok(exists($ret_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
-
-    my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
-    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $mgutil->_generate_genome_report($obj_asmb, $obj_asmb_ann, [],
-                                            $gff_contents, \%ftr_tab);
-    print "Report return: \n".Dumper($ret_rpt);
-    ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
-    ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
-    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
-};
-
-
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -1226,53 +1064,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
-
-subtest 'rast_genomes_assemblies' => sub {
-    my $error_message = qr/ERROR:Missing required inputs/;
-    my $error_mand = qr/Mandatory arguments missing/;
-
-    my $params = {
-        "output_GenomeSet_name" => "out_genomeSet"
-    };
-
-    throws_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
-        $params->{input_text} = '';
-        my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-
-    throws_ok {
-        $params->{output_workspace} = get_ws_name();
-        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
-        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [];
-        $params->{input_text} = '';
-        my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-	'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-
-    throws_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-	$params->{input_genomes} = [];
-        $params->{input_text} = '';
-        my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-
-    throws_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-        $params->{input_text} = '';
-        my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'metag_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
-};
-
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
@@ -1395,6 +1186,8 @@ subtest 'rast_metagenome_appdev' => sub {
     } qr/Invalid metagenome object reference/,
         'calling rast_metagenome fails to generate a valid metagenome';
 };
+=cut
+
 
 # testing rast_metagenome using obj ids from prod ONLY
 subtest 'rast_metagenome_prod' => sub {
@@ -1423,6 +1216,7 @@ subtest 'rast_metagenome_prod' => sub {
         'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
 };
 
+=begin
 subtest '_prepare_genome_4annotation' => sub {
     # a prod assembly
     my ($gff, $gn, $fa_file, $gff_file);
