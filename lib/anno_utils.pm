@@ -135,7 +135,7 @@ sub _run_prodigal {
 #       protein translations (with the -a option),
 #       nucleotide sequences (with the -d option),
 #       a complete listing of all start/stop pairs along with score information (with the -s option),
-#       a summary of statistical information about the genome or metagenome (with the -w option).
+#       a summary of statistical information about the genome or (meta)genome (with the -w option).
 #
 # By default, Prodigal produces a Genbank-like feature table; however, the user can
 # specify some other output types via the -f option:
@@ -2825,13 +2825,12 @@ sub _write_html_from_stats {
     chop $rpt_data;
     $rpt_data .= "\n]);\n";
 
-    my $rpt_footer = '';
     my $gene_count = keys %$genes;
+    my $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
     if (defined($obj_stats{contig_count}) && defined($obj_stats{num_features})) {
-        $rpt_footer = "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
+        $rpt_footer .= "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
         $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
-        $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
-        $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
+        # $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
     }
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
     my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
@@ -2841,7 +2840,7 @@ sub _write_html_from_stats {
     $file_content =~ s/$srch2/$rpt_footer/;
     $file_content =~ s/$srch3/$rpt_data/;
 
-    my $report_file_path = catfile($self->{metag_dir}, 'genome_report.html');
+    my $report_file_path = catfile($self->{genome_dir}, 'genome_report.html');
     my $fh2 = $self->_openWrite($report_file_path);
     print $fh2 $file_content;
     close $fh2;

@@ -107,6 +107,44 @@ my $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
 #####RAST_SDK Module test objects #####
 my $obj2_1 = "63171/315/1";
 
+# used for function lookup in report testing
+my $test_ftrs = [{
+ 'id' => '10000_1',
+ 'protein_translation' => 'VVVLLHGGCCEDMQRGRRESAPDLTLVVYPHALHALDMRLPDRTVLGMRLGFDAHAAADARRQVLDFLTARGVAPPDR*'
+ },
+ {
+ 'function' => 'L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
+ 'quality' => {
+ 'hit_count' => 3
+ },
+ 'annotations' => [
+ [
+ 'Function updated to L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
+ 'annotate_proteins_kmer_v1',
+ '1583389302.95393',
+ '6c670c83-2a11-49ff-97bf-b1c3e2121f30'
+ ]
+ ],
+ 'id' => '10000_2'
+ },
+ {
+ 'id' => '10000_3',
+ 'protein_translation' => 'MLAVNEPTVVLASAETKSLGPVVTGDRLETEAEVERTDGRKRWVKVTVRRAGAPVMEGQFLAVVPDRHILDAKDARR*'
+ },
+ {
+ 'id' => '10000_madeup',
+ 'function' => 'completely fake function',
+ 'annotations' => [
+ [
+ 'completely fake function',
+ 'annotate_maedup_source',
+ '1583389302.95394',
+ '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
+ ]
+ ],
+ }];
+
+
 
 =begin
 subtest '_get_genome' => sub {
@@ -948,8 +986,8 @@ subtest '_parseNwrite_gff' => sub {
 
 
 subtest '_parse_prodigal_results' => sub {
-    my $prd_out_path = catfile($rast_metag_dir, 'prodigal_output.gff');
-    my $trans_path = catfile($rast_metag_dir, 'protein_translation');
+    my $prd_out_path = catfile($rast_genome_dir, 'prodigal_output.gff');
+    my $trans_path = catfile($rast_genome_dir, 'protein_translation');
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     # Prodigal generate a GFF output file
@@ -973,10 +1011,10 @@ subtest '_prodigal_gene_call' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
     my $out_type = 'gff';
-    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
-    my $trans = catfile($rast_metag_dir, 'protein_translation');
-    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
+    my $gff_filename = catfile($rast_genome_dir, 'genome.gff');
+    my $trans = catfile($rast_genome_dir, 'protein_translation');
+    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
 
     my $prd_gene_results;
     lives_ok {
@@ -1048,10 +1086,10 @@ subtest '_prodigal_then_glimmer3' => sub {
     my $fa_input = $fasta4; # $ecoli_fasta;
     my $md = 'meta';
     my $out_type = 'gff';
-    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
-    my $trans = catfile($rast_metag_dir, 'protein_translation');
-    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
+    my $gff_filename = catfile($rast_genome_dir, 'genome.gff');
+    my $trans = catfile($rast_genome_dir, 'protein_translation');
+    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
 
     my ($pNg_gene_results, $pNg_gff_file);
     lives_ok {
@@ -1201,7 +1239,7 @@ subtest '_save_genome_from_gff' => sub {
     is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
-=cut
+
 
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
@@ -1271,7 +1309,7 @@ subtest 'anno_utils_rast_genome' => sub {
 };
 
 
-=begin
+## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
@@ -1279,48 +1317,19 @@ subtest 'Impl_rast_genome_assembly' => sub {
         "output_workspace" => $ws
     };
     my $rast_ann;
-    throws_ok {
+    lives_ok {
         $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
+    } 'Impl rast_genome call returns normally.';
 
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
         "output_workspace" => $ws
     };
-    throws_ok {
-        $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'Impl rast_genome call returns ERROR due to kmer data absence or other causes.';
-};
-
-## testing generate_genome_report using obj ids from prod ONLY
-subtest 'generate_genome_report' => sub {
-    my $stats_ok = 'stats generation runs ok.\n';
-
-    my $gff_path = $annoutil->_write_gff_from_genome($obj_asmb_ann);
-
-    my ($gff_contents, $attr_delimiter) = ([], '=');
-
-    my %ret_stats;
     lives_ok {
-        ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
-        %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
-        #print "Stats on $obj_asmb_ann: \n".Dumper(\%ret_stats);
-    } $stats_ok;
-    is(keys %ret_stats, 2, "_generate_stats_from_gffContents on $obj_asmb_ann should return non-empty.\n");
-    ok(exists($ret_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
-    ok(exists($ret_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
-
-    my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
-    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $annoutil->_generate_genome_report($obj_asmb, $obj_asmb_ann, [],
-                                            $gff_contents, \%ftr_tab);
-    print "Report return: \n".Dumper($ret_rpt);
-    ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
-    ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
-    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
+        $rast_ann = $rast_impl->rast_genome_assembly($parms);
+    } 'Impl rast_genome call returns normally.';
+    print "rast_genome_assembly returns:\n".Dumper($rast_ann);
 };
 
 
@@ -1415,7 +1424,6 @@ subtest 'rast_genomes_assemblies' => sub {
         'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
 };
 
-
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 
@@ -1423,45 +1431,70 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     my ($gff_contents, $attr_delimiter) = ([], '=');
     my $gff_path = '';
 
+    my $aa_stats_ok = 'stats generation from AA runs ok.\n';
+    my $gff_stats_ok = 'stats generation from GFF runs ok.\n';
+
+    my %ret_stats = ();
+
+    # $obj_Ecoli
+    lives_ok {
+        %ret_stats = $annoutil->_generate_stats_from_aa($obj_Ecoli);
+    } $aa_stats_ok;
+    print "Stats from annoated genome on $obj_Ecoli:\n".Dumper(\%ret_stats);
+    ok(keys %ret_stats, "Statistics generated from annotated genome $obj_Ecoli.");
+
     # $obj_Ecoli_ann
-    my %ret_stats = $annoutil->_generate_stats_from_aa($obj_Ecoli_ann);
+    %ret_stats = ();
+    lives_ok {
+        %ret_stats = $annoutil->_generate_stats_from_aa($obj_Ecoli_ann);
+    } $aa_stats_ok;
     print "Stats from annoated genome on $obj_Ecoli_ann:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from annotated genome $obj_Ecoli_ann.");
 
-    $gff_path = $annoutil->_write_gff_from_genome($obj_Ecoli_ann);
-    ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
-    %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+    %ret_stats = ();
+    lives_ok {
+        $gff_path = $annoutil->_write_gff_from_genome($obj_Ecoli_ann);
+        ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
+        %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+    } $gff_stats_ok;
     #print "Stats from GFF on $obj_Ecoli_ann: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj_Ecoli_ann.");
+    is(keys %ret_stats, 2, "Statistics generated from gffContents on $obj_Ecoli_ann.");
 
     # $obj_asmb_ann
-    %ret_stats = $annoutil->_generate_stats_from_aa($obj_asmb_ann);
+    %ret_stats = ();
+    lives_ok {
+        %ret_stats = $annoutil->_generate_stats_from_aa($obj_asmb_ann);
+    } $aa_stats_ok;
     print "Stats from annoated assembly on $obj_asmb_ann:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from annotated assembly $obj_asmb_ann.");
 
-    $gff_path = $annoutil->_write_gff_from_genome($obj_asmb_ann);
-    ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
-    %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+    %ret_stats = ();
+    lives_ok {
+        $gff_path = $annoutil->_write_gff_from_genome($obj_asmb_ann);
+        ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
+        %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+    } $gff_stats_ok;
     #print "Stats from GFF on $obj_asmb_ann: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj_asmb_ann.");
+    is(keys %ret_stats, 2, "Statistics generated from gffContents on $obj_asmb_ann.");
 };
+=cut
+
 
 # testing generate_genome_report using obj ids from prod ONLY
-subtest 'generate_genome_report' => sub {
+subtest 'generate_genome_report1' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
-    my $gff_path1 = $annoutil->_write_gff_from_ama($obj6);
-
-    my $gff_path2 = $annoutil->_write_gff_from_ama($obj7);
+    my $gff_path1 = $annoutil->_write_gff_from_genome($obj_Ecoli);
+    my $gff_path2 = $annoutil->_write_gff_from_genome($obj_Ecoli_ann);
 
     my ($gff_contents1, $attr_delimiter) = ([], '=');
     my %ret_stats1;
     lives_ok {
         ($gff_contents1, $attr_delimiter) = $annoutil->_parse_gff($gff_path1, $attr_delimiter);
         %ret_stats1 = $annoutil->_generate_stats_from_gffContents($gff_contents1);
-        #print "Stats on $obj6: \n".Dumper(\%ret_stats1);
+        #print "Stats on $obj_Ecoli: \n".Dumper(\%ret_stats1);
     } $stats_ok;
-    is(keys %ret_stats1, 0, "_generate_stats_from_gffContents on $obj6 should return empty.\n");
+    is(keys %ret_stats1, 2, "_generate_stats_from_gffContents on $obj_Ecoli should return non-empty.\n");
 
     my $gff_contents2 = [];
     my %ret_stats2;
@@ -1470,13 +1503,13 @@ subtest 'generate_genome_report' => sub {
         %ret_stats2 = $annoutil->_generate_stats_from_gffContents($gff_contents2);
         #print "Stats on $obj7: \n".Dumper(\%ret_stats2);
     } $stats_ok;
-    is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj7 should return non-empty.\n");
+    is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj_Ecoli_ann should return non-empty.\n");
     ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
     ok(exists($ret_stats2{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
     my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
     #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $annoutil->generate_genome_report($obj6, $obj7, $gff_contents1,
+    my $ret_rpt = $annoutil->_generate_genome_report($obj_Ecoli, $obj_Ecoli_ann, $gff_contents1,
                                             $gff_contents2, \%ftr_tab);
     print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
@@ -1484,49 +1517,35 @@ subtest 'generate_genome_report' => sub {
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
 
+## testing generate_genome_report using obj ids from prod ONLY
+subtest 'generate_genome_report2' => sub {
+    my $stats_ok = 'stats generation runs ok.\n';
 
-# testing rast_metagenome using obj ids from appdev ONLY
-subtest 'rast_metagenome_appdev' => sub {
-    # an appdev assembly
-    my $parms = {
-        "object_ref" => "37798/14/1",
-        "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
-    };
-    my $rast_mg_ref = $annoutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+    my $gff_path = $annoutil->_write_gff_from_genome($obj_asmb_ann);
 
-    # an appdev genome
-    my $parms = {
-        "object_ref" => "37798/15/1",
-        "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
-    };
-    my $rast_mg_ref = $annoutil->rast_metagenome($parms);
-    print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-    ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
-    $parms = {
-        object_ref => $ret_metag->{metagenome_ref},
-        output_metagenome_name => 'rasted_metagenome',
-        output_workspace => $ws
-    };
+    my ($gff_contents, $attr_delimiter) = ([], '=');
 
-    throws_ok {
-        $rast_mg_ref = $annoutil->rast_metagenome($parms);
-    } qr/**rast_metagenome ERROR/,
-        'calling rast_metagenome dies file not found';
+    my %ret_stats;
+    lives_ok {
+        ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
+        %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+        #print "Stats on $obj_asmb_ann: \n".Dumper(\%ret_stats);
+    } $stats_ok;
+    is(keys %ret_stats, 2, "_generate_stats_from_gffContents on $obj_asmb_ann should return non-empty.\n");
+    ok(exists($ret_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
+    ok(exists($ret_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
-    throws_ok {
-        $rast_mg_ref = $annoutil->rast_metagenome($parms);
-        print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
-        if ($rast_mg_ref !~ m/[^\\w\\|._-]/) {
-            croak "Invalid metagenome object reference:$rast_mg_ref.";
-        }
-    } qr/Invalid metagenome object reference/,
-        'calling rast_metagenome fails to generate a valid metagenome';
+    my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
+    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
+    my $ret_rpt = $annoutil->_generate_genome_report($obj_asmb, $obj_asmb_ann, [],
+                                            $gff_contents, \%ftr_tab);
+    print "Report return: \n".Dumper($ret_rpt);
+    ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
+    ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
+    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
 
+=begin
 # testing _generate_stats_from_aa using obj ids from prod ONLY
 subtest '_generate_stats_from_aa' => sub {
     my %ret_stats = $annoutil->_generate_stats_from_aa($obj4);
