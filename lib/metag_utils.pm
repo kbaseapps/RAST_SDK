@@ -615,31 +615,6 @@ sub _write_fasta_from_ama {
     return $fasta_filename;
 }
 
-sub _write_gff_from_genome {
-    my ($self, $genome_ref) = @_;
-
-    my $obj_info = $self->_fetch_object_info($genome_ref);
-    my $in_type = $obj_info->[2];
-    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations.Assembly/ ||
-                       $in_type =~ /KBaseGenomes.ContigSet/);
-    my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
-                     $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
-
-    unless ($is_genome) {
-        croak "ValueError: Object is not an KBaseAnnotations.GenomeAnnotation or Genome, will throw an error.\n";
-    }
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $gff_result;
-    eval {
-        $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
-
-        unless (-s $gff_result->{file_path}) {print "GFF is empty ";}
-    };
-    if ($@) {
-        croak "**_write_gff_from_genome ERROR: ".$@."\n";
-    }
-    return $gff_result->{file_path};
-}
 
 sub _write_gff_from_ama {
     my ($self, $genome_ref) = @_;
@@ -862,11 +837,11 @@ sub _generate_stats_from_aa {
 
     my $gn_info = $self->_fetch_object_info($gn_ref);
     my $in_type = $gn_info->[2];
-    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations.Assembly/ ||
-                       $in_type =~ /KBaseGenomes.ContigSet/);
-    my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
-                     $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
-    my $is_meta_assembly = $in_type =~ m/Metagenomes.AnnotatedMetagenomeAssembly/;
+    my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
+                       $in_type =~ /KBaseGenomes\.ContigSet/);
+    my $is_genome = ($in_type =~ /KBaseGenomes\.Genome/ ||
+                     $in_type =~ /KBaseGenomeAnnotations\.GenomeAnnotation/);
+    my $is_meta_assembly = $in_type =~ m/Metagenomes\.AnnotatedMetagenomeAssembly/;
 
     my %gn_stats = ();
     $gn_stats{workspace} = $gn_info->[7];
