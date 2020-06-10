@@ -47,21 +47,24 @@ parameters :
             A string of genome/assembly ids/names delimited by semicolon(;), newline or bar(|)
         long-hint : |
             This list is in addition to the input genomes/assemblies above. Example names: Carsonella_rudii_PC;Carsonella_rudii_CE [no spaces] or IDs 21677/17/1;21677/16/1; or delimited by new lines (list each name or ID on a separate line). You can also mix names and IDs as long as there are no spaces (e.g., Carsonella_rudii_PC;21677/18/1).
-    ncbi_taxon_id:
-        ui-name : |
-            NCBI taxon ID
-        short-hint : |
-            The numeric ID of the NCBI taxon to which this genome belongs
+
     scientific_name :
         ui-name : |
-            Scientific name
+            scientific name
         short-hint : |
-            The scientific name of the genome, to be overridden by ncbi_taxon_id
-    relation_engine_timestamp_ms :
+            scientific name to assign to the genome as found at https://www.ncbi.nlm.nih.gov/taxonomy
+
+    domain :
         ui-name : |
-            relation_engine_timestamp (ms)
+            Domain
         short-hint : |
-            The timestamp to send to the Relation Engine when looking up taxon information in milliseconds since the epoch
+            domain of life of the organism being annotated (Bacteria and Archaea are acceptable values.)
+
+    genetic_code :
+        ui-name : |
+            Genetic Code
+        short-hint : |
+            genetic code used in translating to protein sequences (See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for more information on genetic codes.)
     output_GenomeSet_name :
         ui-name : |
             Output Annotated GenomeSet Name

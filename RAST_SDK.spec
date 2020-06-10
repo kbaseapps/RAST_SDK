@@ -258,10 +258,12 @@ module RAST_SDK {
             list<data_obj_ref> input_genomes;
             list<data_obj_ref> input_assemblies;
             string input_text;
-            string output_workspace;
+            string scientific_name;
+            int genetic_code;
+            string domain;
             int ncbi_taxon_id;
             int relation_engine_timestamp_ms;
-            string scientific_name;
+            string output_workspace;
             string output_GenomeSet_name;
         } BulkRastGenomesAssembliesParams;
 

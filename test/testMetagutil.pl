@@ -51,7 +51,6 @@ my $mgutil = new metag_utils($config, $ctx);
 
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 my $rast_metag_dir = $mgutil->_create_rast_subdir($scratch, "metag_annotation_dir_");
-my $rast_genome_dir = $mgutil->_create_rast_subdir($scratch, "genome_annotation_dir_");
 
 
 sub genome_to_fasta {
@@ -65,23 +64,6 @@ sub genome_to_fasta {
     return $fasta_result->{file_path};
 }
 
-
-sub generate_genome {
-    my($ws, $gn_name, $gbff) = @_;
-    my $gbff_path = catfile($rast_metag_dir, $gbff);
-
-    copy($gbff, $gbff_path) || croak "Copy file failed: $!\n";
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-
-    my $gn = $gfu->genbank_to_genome({
-        "file" => {'path' => $gbff_path},
-        "genome_name" => $gn_name,
-        "workspace_name" => $ws,
-        "generate_missing_genes" => 1
-    });
-    return $gn;
-}
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
@@ -926,70 +908,6 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
     $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
 
-
-## testing rast-annotating genome functions
-subtest '_write_fasta_from_genome' => sub {
-    # testing get the fasta from a genome using obj ids from prod ONLY
-    my $fasta_fpath;
-    lives_ok {
-        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Ecoli);
-    } 'Writing fasta from a genome runs ok';
-
-    ok ((-s $fasta_fpath), "fasta file written for $obj_Ecoli.\n");
-    print "First 10 lines of the FASTA file:\n";
-    $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
-
-    lives_ok {
-        $fasta_fpath = $mgutil->_write_fasta_from_genome($obj_Echinacea);
-    } 'Writing fasta from a genome runs ok';
-    ok ((-s $fasta_fpath), "fasta file written for $obj_Echinacea.\n");
-};
-
-
-# Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
-subtest 'annotation_genomes_throw_messages' => sub {
-    my $error_message = qr/ERROR:Missing required inputs/;
-
-    my $params = {
-        "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{genome_text} = '';
-        my $ret_ann1 = $rast_impl->annotate_genomes($params);
-    } $error_message,
-      'Blank genome_text plus undef input_genoms die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{input_genomes} = [];
-        my $ret_ann2 = $rast_impl->annotate_genomes($params);
-    } $error_message,
-      'Empty input_genomes plus undef genome_text die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
-    };
-    throws_ok {
-        $params->{input_genomes} = [];
-        $params->{genome_text} = '';
-        my $ret_ann3 = $rast_impl->annotate_genomes($params);
-    } $error_message,
-      'Blank genome_text AND empty input_genoms die correctly'
-      or diag explain $params;
-    lives_ok {
-        #$params->{input_genomes} = ["31020/5/1"]; # an appdev object
-        $params->{input_genomes} = ["48109/9/1"]; # an prod object
-        $params->{genome_text} = '';
-        my $ret_ann4 = $rast_impl->annotate_genomes($params);
-    } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
-};
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';

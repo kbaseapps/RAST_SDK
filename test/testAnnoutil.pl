@@ -1118,7 +1118,7 @@ subtest '_prodigal_then_glimmer3' => sub {
 ## a CI object
 my $ci_obj_id = '47032/4/8';
 
-subtest 'mgutil_write_fasta_from_genome' => sub {
+subtest 'annoutil_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
     my $fasta_fpath;
     lives_ok {
@@ -1129,8 +1129,9 @@ subtest 'mgutil_write_fasta_from_genome' => sub {
     print "First 10 lines of the FASTA file:\n";
     $annoutil->_print_fasta_gff(0, 10, $fasta_fpath);
 };
+=cut
 
-
+=begin
 ## testing rast-annotating genome functions
 subtest '_write_fasta_from_genome' => sub {
     # testing get the fasta from a genome using obj ids from prod ONLY
@@ -1377,53 +1378,48 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
+=cut
 
 subtest 'rast_genomes_assemblies' => sub {
-    my $error_message = qr/ERROR:Missing required inputs/;
-    my $error_mand = qr/Mandatory arguments missing/;
-
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
 
-    throws_ok {
+    lives_ok {
         $params->{output_workspace} = get_ws_name();
         $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
         $params->{input_text} = '';
         my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    } "anno_utils rast_genomes_assemblies call on 1N1 returns normally.";
 
-    throws_ok {
+    lives_ok {
         $params->{output_workspace} = get_ws_name();
         #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
         $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [];
         $params->{input_text} = '';
         my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-    'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    } "anno_utils rast_genomes_assemblies call on array of 2 genomes returns normally.";
 
-    throws_ok {
+    lives_ok {
         $params->{output_workspace} = get_ws_name();
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-    $params->{input_genomes} = [];
+        $params->{input_genomes} = [];
         $params->{input_text} = '';
         my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    } "anno_utils rast_genomes_assemblies call on array of 2 assemblies returns normally.";
 
-    throws_ok {
+    lives_ok {
         $params->{output_workspace} = get_ws_name();
         $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
         $params->{input_text} = '';
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
-    } qr/ERROR calling rast run_pipeline/,
-        'anno_utils rast_genome call returns ERROR due to kmer data absence or other causes.';
+    } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
 };
 
+=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 
@@ -1479,7 +1475,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 };
 =cut
 
-
+=begin
 # testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report1' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
@@ -1544,6 +1540,7 @@ subtest 'generate_genome_report2' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
+=cut
 
 =begin
 # testing _generate_stats_from_aa using obj ids from prod ONLY
@@ -1572,6 +1569,22 @@ subtest '_generate_stats_from_gffContents' => sub {
     ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
 };
 
+# Testing two small uniq functions
+subtest 'annoutil_uniq_functions' => sub {
+    my @words_array = qw(foo bar baz foo zorg baz);
+    my @expected_array = qw(foo bar baz zorg);
+
+    # uniq arrays
+    my @data = @words_array;
+    my @uniq_arr = $annoutil->_uniq(@data);
+    cmp_deeply(sort @expected_array, sort @uniq_arr, 'unique array is correct');
+
+    # uniq refs to arrays
+    my $data = \@words_array;
+    my $uniq_ref = $annoutil->_uniq_ref($data);
+    my @sorted_ret = sort @{$uniq_ref};
+    cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
+};
 =cut
 
 done_testing();

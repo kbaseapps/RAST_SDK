@@ -5,7 +5,7 @@ use Bio::KBase::Exceptions;
 # http://semver.org 
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
-our $GIT_COMMIT_HASH = 'bed711216e740d8c0754c4271b3efbba3937941d';
+our $GIT_COMMIT_HASH = 'a5381330fb86bfe20a1ff78face6a09fce435727';
 
 =head1 NAME
 
@@ -2130,10 +2130,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_text has a value which is a string
-	output_workspace has a value which is a string
+	scientific_name has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
-	scientific_name has a value which is a string
+	output_workspace has a value which is a string
 	output_GenomeSet_name has a value which is a string
 data_obj_ref is a string
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
@@ -2155,10 +2157,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_text has a value which is a string
-	output_workspace has a value which is a string
+	scientific_name has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
-	scientific_name has a value which is a string
+	output_workspace has a value which is a string
 	output_GenomeSet_name has a value which is a string
 data_obj_ref is a string
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
@@ -3123,10 +3127,12 @@ a reference to a hash where the following keys are defined:
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_text has a value which is a string
-output_workspace has a value which is a string
+scientific_name has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
-scientific_name has a value which is a string
+output_workspace has a value which is a string
 output_GenomeSet_name has a value which is a string
 
 </pre>
@@ -3139,10 +3145,12 @@ a reference to a hash where the following keys are defined:
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_text has a value which is a string
-output_workspace has a value which is a string
+scientific_name has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
-scientific_name has a value which is a string
+output_workspace has a value which is a string
 output_GenomeSet_name has a value which is a string
 
 

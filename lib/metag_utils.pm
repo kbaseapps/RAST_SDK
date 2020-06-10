@@ -573,30 +573,6 @@ sub _get_fasta_from_assembly {
     }
 }
 
-sub _write_fasta_from_genome {
-    my ($self, $input_obj_ref) = @_;
-
-    my $fa_file = '';
-    eval {
-        my $genome_obj = $self->_fetch_object_data($input_obj_ref);
-	if ($genome_obj->{assembly_ref}) {
-            print "*******Input genome's assembly ref is: $genome_obj->{assembly_ref}**********\n";
-
-            $fa_file = $self->_get_fasta_from_assembly(
-                          $input_obj_ref.";".$genome_obj->{assembly_ref});
-            unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
-	}
-	else {
-            croak ("**_write_fasta_from_genome ERROR:\n".
-		    "No assembly can be found for genome $input_obj_ref\n");
-        }
-    };
-    if ($@) {
-        croak "**_write_fasta_from_genome ERROR: ".$@."\n";
-    }
-    return $fa_file;
-}
-
 sub _write_fasta_from_ama {
     my ($self, $input_obj_ref) = @_;
 

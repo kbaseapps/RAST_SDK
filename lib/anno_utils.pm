@@ -2581,20 +2581,34 @@ sub _check_bulk_annotation_params {
     elsif (ref $params->{input_genomes} ne 'ARRAY') {
         $params->{input_genomes} = [$params->{input_genomes}];
     }
+    $params->{input_genomes} = $self->_uniq_ref($params->{input_genomes});
     if (!defined($params->{input_AMAs})) {
         $params->{input_AMAs} = [];
     }
     elsif (ref $params->{input_AMAs} ne 'ARRAY') {
         $params->{input_AMAs} = [$params->{input_AMAs}];
     }
+    $params->{input_AMAs} = $self->_uniq_ref($params->{input_AMAs});
     if (!defined($params->{input_assemblies})) {
         $params->{input_assemblies} = [];
     }
     elsif (ref $params->{input_assemblies} ne 'ARRAY') {
         $params->{input_assemblies} = [$params->{input_assemblies}];
     }
+    $params->{input_assemblies} = $self->_uniq_ref($params->{input_assemblies});
     unless ($params->{input_text}) {
-    $params->{input_text} = '';
+        $params->{input_text} = '';
+    }
+    if (!defined($params->{scientific_name})
+        || $params->{scientific_name} eq '') {
+        $params->{scientific_name} = "Unknown species";
+    }
+    if (!defined($params->{genetic_code})) {
+        $params->{genetic_code} = 11;
+    }
+    if (!defined($params->{domain})
+        || $params->{domain} eq '') {
+        $params->{domain} = "Bacteria";
     }
     return $params;
 }
@@ -3390,6 +3404,9 @@ sub bulk_rast_genomes {
     my $in_assemblies = $params->{input_assemblies};
     my $in_genomes = $params->{input_genomes};
     my $in_text = $params->{input_text};
+    my $scientific_name = $params->{scientific_name};
+    my $genetic_code = $params->{genetic_code};
+    my $domain = $params->{domain};
 
     my $bulk_inparams = ();
 
@@ -3399,6 +3416,9 @@ sub bulk_rast_genomes {
             object_ref => $asmb,
             output_workspace => $ws,
             output_genome_name => $out_genomeSet . '_' .$obj_name,
+            scientific_name => $scientific_name,
+            genetic_code => $genetic_code,
+            domain => $domain,
             create_report => 0
         });
     }
@@ -3409,17 +3429,24 @@ sub bulk_rast_genomes {
             object_ref => $gn,
             output_workspace => $ws,
             output_genome_name => $out_genomeSet . '_' .$obj_name,
+            scientific_name => $scientific_name,
+            genetic_code => $genetic_code,
+            domain => $domain,
             create_report => 0
         });
     }
 
     if ($in_text) {
         my $input_list = [split(/[\n;\|]+/, $in_text)];
+        $input_list = $self->_uniq_ref($input_list);
         for (my $i=0; $i < @{$input_list}; $i++) {
             push(@{$bulk_inparams}, {
                 object_ref => $input_list->[$i],
                 output_workspace => $ws,
                 output_genome_name => $out_genomeSet . '_intext_'.$i,
+                scientific_name => $scientific_name,
+                genetic_code => $genetic_code,
+                domain => $domain,
                 create_report => 0
             });
         }
@@ -3457,7 +3484,27 @@ sub bulk_rast_genomes {
     return $ret_val;
 }
 
+#
+## for use with arrays, e.g.,
+## my @unique = uniq(@data);
+#
+sub _uniq {
+    my $self = shift;
+    keys { map { $_ => 1 } @_ };
+}
 
+#
+## for use with array refs, e.g.,
+## my $unique = uniq($data);
+#
+sub _uniq_ref {
+    my $self = shift;
+    [ keys { map { $_ => 1 } @{$_[0]} } ];
+}
+
+#
+## Initialization
+#
 sub doInitialization {
     my $self = shift;
 
@@ -3482,6 +3529,9 @@ sub doInitialization {
     return 1;
 }
 
+#
+## constructor
+#
 sub new {
     my $class = shift;
 
