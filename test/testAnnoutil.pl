@@ -187,6 +187,7 @@ subtest '_get_contigs' => sub {
 };
 =cut
 
+=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -194,7 +195,6 @@ my ($rast_ref, %rast_details1, %rast_details2);
 my ($inputgenome1, $inputgenome2);
 my ($parameters1, $parameters2);
 
-=begin
 # Test _set_parameters_by_input with genome/assembly object refs in prod
 subtest '_set_parameters_by_input' => sub {
     # a genome object
@@ -334,7 +334,7 @@ subtest '_set_messageNcontigs' => sub {
 
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
-    ok (length($msg2) == 0, "Message for assembly input has no contents.");
+    ok (length($msg2) > 0, "Message for assembly input has contents.");
     ok ($tax2 eq 'U', "tax_domain for assembly input has value:$tax2");
 
 };
@@ -352,6 +352,12 @@ subtest '_set_genecall_workflow' => sub {
 
     my $exp_gc_workflow1 = {
         'stages' => [
+            { 'name' => 'call_features_CDS_prodigal' },
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                         'min_training_len' => '2000'
+                                       }
+            },
             {
               'name' => 'call_features_rRNA_SEED'
             },
@@ -370,13 +376,7 @@ subtest '_set_genecall_workflow' => sub {
                                                    'min_identity' => '95'
                                                  }
             },
-            { 'name' => 'call_features_crispr' },
-            { 'name' => 'call_features_CDS_glimmer3',
-              'glimmer3_parameters' => {
-                                         'min_training_len' => '2000'
-                                       }
-            },
-            { 'name' => 'call_features_CDS_prodigal' }
+            { 'name' => 'call_features_crispr' }
         ]
     };
     cmp_deeply($exp_gc_workflow1, $genecall_workflow1, 'gc_workflow built correctly');
@@ -384,6 +384,12 @@ subtest '_set_genecall_workflow' => sub {
     # an assembly object
     my $exp_gc_workflow2 = {
         'stages' => [
+            { 'name' => 'call_features_CDS_prodigal'},
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                           'min_training_len' => '2000'
+                                       }
+            },
             { 'name' => 'call_features_rRNA_SEED' },
             { 'name' => 'call_features_tRNA_trnascan' },
             { 'name' => 'call_features_repeat_region_SEED',
@@ -391,13 +397,7 @@ subtest '_set_genecall_workflow' => sub {
                                                     'min_length' => '100',
                                                     'min_identity' => '95'
                                                  }
-            },
-            { 'name' => 'call_features_CDS_glimmer3',
-              'glimmer3_parameters' => {
-                                           'min_training_len' => '2000'
-                                       }
-            },
-            { 'name' => 'call_features_CDS_prodigal'}
+            }
         ]
     };
 
@@ -491,13 +491,13 @@ subtest '_set_annotation_workflow' => sub {
 };
 
 
-# Test _merge_messages with genome/assembly object refs in prod
-subtest '_merge_messages' => sub {
+# Test _renumber_features with genome/assembly object refs in prod
+subtest '_renumber_features' => sub {
     # a genome object
     lives_ok {
-        ($rast_ref, $inputgenome1) = $annoutil->_merge_messages(
+        ($rast_ref, $inputgenome1) = $annoutil->_renumber_features(
                         \%rast_details1, $inputgenome1);
-    } '_merge_messages runs successfully on genome';
+    } '_renumber_features runs successfully on genome';
     %rast_details1 = %{ $rast_ref }; # dereference
     my $msg1 = $rast_details2{message};
     print "genome merged-msg:\n$msg1";
@@ -506,9 +506,9 @@ subtest '_merge_messages' => sub {
 
     # an assembly object
     lives_ok {
-        ($rast_ref, $inputgenome2) = $annoutil->_merge_messages(
+        ($rast_ref, $inputgenome2) = $annoutil->_renumber_features(
                         \%rast_details2, $inputgenome2);
-    } '_merge_messages runs successfully on assembly';
+    } '_renumber_features runs successfully on assembly';
     %rast_details2 = %{$rast_ref}; # dereference
     my $msg2 = $rast_details2{message};
     print "genome merged-msg:\n$msg2";
@@ -516,13 +516,13 @@ subtest '_merge_messages' => sub {
 };
 
 
-# Test _prepare4rast with genome/assembly object refs in prod
-subtest '_prepare4rast' => sub {
+# Test _pre_rast_call with genome/assembly object refs in prod
+subtest '_pre_rast_call' => sub {
     # a genome object
     lives_ok {
-        ($rast_ref, $inputgenome1) = $annoutil->_prepare4rast(
+        ($rast_ref, $inputgenome1) = $annoutil->_pre_rast_call(
                         \%rast_details1, $inputgenome1);
-    } '_prepare4rast runs successfully on genome';
+    } '_pre_rast_call runs successfully on genome';
     %rast_details1 = %{ $rast_ref }; # dereference
     my $genehash1 = $rast_details1{genehash};
 
@@ -536,9 +536,9 @@ subtest '_prepare4rast' => sub {
 
     # an assembly object
     lives_ok {
-        ($rast_ref, $inputgenome2) = $annoutil->_prepare4rast(
+        ($rast_ref, $inputgenome2) = $annoutil->_pre_rast_call(
                         \%rast_details2, $inputgenome2);
-    } '_merge_messages runs successfully on assembly';
+    } '_renumber_features runs successfully on assembly';
     %rast_details2 = %{$rast_ref}; # dereference
     my $genehash2 = $rast_details2{genehash};
 
@@ -553,13 +553,14 @@ subtest '_prepare4rast' => sub {
 =cut
 
 =begin
-## variables for testing _build_genecall_workflow, _run_rast_workflow
-## and _post_genecalls
+#
+## variables for testing _build_workflows, _run_rast_workflow
+## and _pre_rast_call
 my ($gc_wf_ret1, $gc_inputgenome1, $gc_wf1, %gc_details1,
     $gc_wf_ret2, $gc_inputgenome2, $gc_wf2, %gc_details2);
 
-# Test _build_genecall_workflow with genome/assembly object refs in prod
-subtest '_build_genecall_workflow' => sub {
+# Test _build_workflows with genome/assembly object refs in prod
+subtest '_build_workflows' => sub {
     my $params1 = {
          output_genome_name => 'build_gcwf_gn_name',
          output_workspace => $ws,
@@ -567,11 +568,11 @@ subtest '_build_genecall_workflow' => sub {
     };
 
     lives_ok {
-        ($gc_wf_ret1, $gc_inputgenome1) = $annoutil->_build_genecall_workflow($params1);
-    } '_build_genecall_workflow returns normally';
+        ($gc_wf_ret1, $gc_inputgenome1) = $annoutil->_build_workflows($params1);
+    } '_build_workflows returns normally';
     %gc_details1 = %{ $gc_wf_ret1 };
     $gc_wf1 = $gc_details1{genecall_workflow};
-    ok (exists($gc_details1{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf1));
+    ok (exists($gc_details1{genecall_workflow}), "generate genecall workflow:\n".Dumper($gc_wf1));
     ok (@{$gc_inputgenome1->{features}} > 0, 'inputgenome has some features.');
     ok (@{$gc_inputgenome1->{contigs}} > 0, 'inputgenome has contig(s).');
 
@@ -581,11 +582,11 @@ subtest '_build_genecall_workflow' => sub {
          object_ref => $obj_asmb
     };
     lives_ok {
-        ($gc_wf_ret2, $gc_inputgenome2) = $annoutil->_build_genecall_workflow($params2);
-    } '_build_genecall_workflow returns normally';
+        ($gc_wf_ret2, $gc_inputgenome2) = $annoutil->_build_workflows($params2);
+    } '_build_workflows returns normally';
     %gc_details2 = %{ $gc_wf_ret2 };
     $gc_wf2 = $gc_details2{genecall_workflow};
-    ok (exists($gc_details2{genecall_workflow}), "generate genecall workflow".Dumper($gc_wf2));
+    ok (exists($gc_details2{genecall_workflow}), "generate genecall workflow:\n".Dumper($gc_wf2));
     ok (@{$gc_inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$gc_inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
 };
@@ -596,7 +597,7 @@ subtest '_run_rast_workflow' => sub {
     # a genome object
     my $rast_gn1;
     lives_ok {
-        $rast_gn1 = $annoutil->_run_rast_workflow($gc_wf1, $gc_inputgenome1);
+        $rast_gn1 = $annoutil->_run_rast_workflow($gc_inputgenome1, $gc_wf1);
     } 'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
     ok (@{$rast_gn1->{features}} > 0, "Returned genome has features.");
     cmp_deeply($rast_gn1, $gc_inputgenome1, 'rast workflow will not run locally');
@@ -604,34 +605,10 @@ subtest '_run_rast_workflow' => sub {
     # an assembly object
     my $rast_gn2;
     lives_ok {
-        $rast_gn2 = $annoutil->_run_rast_workflow($gc_wf2, $gc_inputgenome2);
+        $rast_gn2 = $annoutil->_run_rast_workflow($gc_inputgenome2, $gc_wf2);
     } 'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
     ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($rast_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
-};
-
-
-# Test _post_genecalls with genome/assembly object refs in prod
-subtest '_post_genecalls' => sub {
-    # a genome object
-    my $gc_params = $gc_details1{parameters};
-    my $gc_contigobj = $gc_details1{contigobj};
-    my $rast_gn1;
-    lives_ok {
-        $rast_gn1 = $annoutil->_post_genecalls($gc_inputgenome1, 
-                                               $gc_params, $gc_contigobj);
-    } '_post_genecalls runs successfully on genome';
-    ok (@{$rast_gn1->{features}} > 0, "Returned genome has features.");
-
-    # an assembly object
-    $gc_params = $gc_details2{parameters};
-    $gc_contigobj = $gc_details2{contigobj};
-    my $rast_gn2;
-    lives_ok {
-        $rast_gn2 = $annoutil->_post_genecalls($gc_inputgenome2, 
-                                               $gc_params, $gc_contigobj);
-    } '_post_genecalls runs successfully on assembly';
-    ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
 };
 
 
@@ -687,7 +664,6 @@ subtest '_run_rast_annotation' => sub {
 };
 =cut
 
-=begin
 # Test _annotate_process_allInOne with genome/assembly object refs in prod
 subtest '_annotate_process_allInOne' => sub {
     my $params = {
@@ -713,7 +689,6 @@ subtest '_annotate_process_allInOne' => sub {
         print "_annotate_process_allInOne on assembly results:\n".Dumper($allInOne_ret);
     } '_annotate_process_allInOne exits normally.';
 };
-=cut
 
 =begin
 subtest 'Impl_annotate_genome' => sub {
@@ -1241,7 +1216,6 @@ subtest '_save_genome_from_gff' => sub {
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
 
-
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my ($parms, $rast_ret, $genome_obj);
@@ -1378,7 +1352,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
         my $ret_ann4 = $rast_impl->annotate_genomes($params);
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
-=cut
 
 subtest 'rast_genomes_assemblies' => sub {
     my $params = {
@@ -1419,7 +1392,6 @@ subtest 'rast_genomes_assemblies' => sub {
     } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
 };
 
-=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 

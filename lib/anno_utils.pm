@@ -558,23 +558,23 @@ sub _get_genome {
 #
 sub _get_genome_gff_contents {
     my ($self, $obj_ref) = @_;
-    my $input_gff_filename = catfile($self->{genome_dir}, 'input_genome.gff');
+    my $gff_filename = catfile($self->{genome_dir}, 'genome.gff');
 
     # getting gff_contents from $obj_ref if it is of genome type
-    my $input_obj_info = $self->_fetch_object_info($obj_ref);
-    my $in_type = $input_obj_info->[2];
+    my $obj_info = $self->_fetch_object_info($obj_ref);
+    my $in_type = $obj_info->[2];
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
                      $in_type =~ /KBaseGenomeAnnotatioVns.GenomeAnnotation/);
     my ($gff_contents, $attr_delimiter) = ([], "=");
 
     if ($is_genome) {
         # generating the gff file directly from genome
-        $input_gff_filename = $self->_write_gff_from_genome($obj_ref);
-        unless (-s $input_gff_filename) {
+        $gff_filename = $self->_write_gff_from_genome($obj_ref);
+        unless (-s $gff_filename) {
             croak "**rast_genome ERROR: GFF file is empty!\n";
         }
         ($gff_contents, $attr_delimiter) = $self->_parse_gff(
-											$input_gff_filename, $attr_delimiter);
+											$gff_filename, $attr_delimiter);
     }
 	return $gff_contents;
 }
@@ -742,7 +742,6 @@ sub _create_inputgenome_from_genome_original {
     my $oldtype     = {};
     my %types = ();
 
-    $inputgenome = $self->_get_genome($input_obj_ref);
     for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
         my $ftr = $inputgenome->{features}->[$i];
         if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
@@ -953,7 +952,7 @@ sub _create_inputgenome_from_assembly {
                                                   $output_file,
                                                   $output_type,
                                                   $mode);
-
+=begin
     foreach my $entry (@{$prodigal_out}) {
     my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$entry;
         push(@{$inputgenome->{features}}, {
@@ -965,6 +964,7 @@ sub _create_inputgenome_from_assembly {
                     protein_translation => $seq
         });
     }
+=cut
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
     my $contigobj = $self->_get_contigs($input_obj_ref);
     return ($inputgenome, $contigobj, $fasta_filename, $gff_filename);
@@ -1022,7 +1022,7 @@ sub _set_parameters_by_input {
             print "Input object '$input_obj_ref' is a genome and has $num_ftrs features.\n";
         }
 
-        ($inputgenome, $contigobj,$fasta_file, $gff_file,
+        ($inputgenome, $contigobj, $fasta_file, $gff_file,
          $oldfunchash, $oldtype, $types_ref) = $self->_create_inputgenome_from_genome(
                                                     $inputgenome, $input_obj_ref);
         %types = %{$types_ref};
@@ -1696,8 +1696,8 @@ sub _run_rast_annotation {
 #
 sub _run_rast_workflow {
     my ($self, $in_genome, $workflow) = @_;
-    my $count = scalar @{$in_genome->{features}};
 
+    my $count = scalar @{$in_genome->{features}};
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
     my $rasted_gn = $in_genome;
@@ -1717,7 +1717,7 @@ sub _run_rast_workflow {
 #
 ## process the rast genecall result
 #
-sub _post_rast_call {
+sub _post_rast_ann_call {
     my ($self, $inputgenome, $parameters, $contigobj) = @_;
 
     my $genome = $inputgenome;
@@ -1806,14 +1806,20 @@ sub _move_non_coding_features {
     return $genome;
 }
 
-
+## Getting the seed ontology dictionary
 sub _build_seed_ontology {
-    my ($self, $genome, $genehash, $inputgenome, $oldfunchash, $oldtype, $parameters) = @_;
+    my ($self, $rast_ref, $genome, $inputgenome) = @_;
     
     my $output = Bio::KBase::kbaseenv::get_objects([{
         workspace => "KBaseOntology",
         name => "seed_subsystem_ontology"
     }]);
+
+    my %rast_details  = %{ $rast_ref };
+    my $genehash = $rast_details{genehash};
+    my $parameters = $rast_details{parameters};
+    my $oldfunchash = $rast_details{oldfunchash};
+    my $oldtype = $rast_details{oldtype};
 
     #Building a hash of standardized seed function strings
     my $num_coding = 0;
@@ -2057,12 +2063,31 @@ sub _build_seed_ontology {
             }
         }
     }
-    return ($genome, %types, $num_coding, $newncfs, $newftrs, $genomefunchash);
+    $rast_details{types} = %types;
+    $rast_details{num_coding} = $num_coding;
+    $rast_details{newncfs} = $newncfs;
+    $rast_details{newftrs} = $newftrs;
+    $rast_details{genomefunchash} = $genomefunchash;
+    $rast_details{seedfunctions} = $seedfunctions;
+    $rast_details{seedfunchash} = $seedfunchash;
+
+    return ($genome, \%rast_details);
 }
 
 sub _summarize_annotation {
-    my ($self, $genome, $inputgenome, $message, $contigobj, %types, $num_coding, $genehash,
-        $newncfs, $newftrs, $genomefunchash, $seedfunctions, $seedfunchash) = @_;
+    my ($self, $rast_ref, $genome, $inputgenome) = @_;
+
+    my %rast_details = %{ $rast_ref };
+    my $message = $rast_details{message};
+    my $contigobj = $rast_details{contigobj};
+    my %types = %{$rast_details{types}};
+    my $num_coding = $rast_details{num_coding};
+    my $genehash = $rast_details{genehash};
+    my $newncfs = $rast_details{newncfs};
+    my $newftrs = $rast_details{newftrs};
+    my $genomefunchash = $rast_details{genomefunchash};
+    my $seedfunctions = $rast_details{seedfunctions};
+    my $seedfunchash = $rast_details{seedfunchash};
 
     my $num_non_coding = 0;
     if (defined($genome->{non_coding_features})) {
@@ -2121,11 +2146,25 @@ sub _summarize_annotation {
             $genome->{assembly_ref} = $contigobj->{_reference};
         }
     }
-    return $genome;
+    $rast_details{message} = $message;
+    $rast_details{num_coding} = $num_coding;
+    $rast_details{newncfs} = $newncfs;
+    $rast_details{newftrs} = $newftrs;
+    $rast_details{genomefunchash} = $genomefunchash;
+    $rast_details{seedfunctions} = $seedfunctions;
+    $rast_details{seedfunchash} = $seedfunchash;
+    return (\%rast_details, $genome);
+}
+
+
+sub _util_version {
+	my ($self) = @_;
+	my $VERSION = '0.1.6';
+    return $VERSION;
 }
 
 sub _save_annotation_results {
-    my ($self, $genome, $inputgenome, $parameters, $message) = @_;
+    my ($self, $genome, $parameters, $message) = @_;
 #   print "SEND OFF FOR SAVING\n";
 #   print "***** Domain       = $genome->{domain}\n";
 #   print "***** Genitic_code = $genome->{genetic_code}\n";
@@ -2136,12 +2175,12 @@ sub _save_annotation_results {
 #   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gaout = $gfu_client->save_one_genome({
-        workspace => $parameters->{workspace},
-        name => $parameters->{output_genome},
+        workspace => $parameters->{output_workspace},
+        name => $parameters->{output_genome_name},
         data => $genome,
         provenance => [{
             "time" => DateTime->now()->datetime()."+0000",
-            service_ver => $self->util_version(),
+            service_ver => $self->_util_version(),
             service => "RAST_SDK",
             method => Bio::KBase::utilities::method(),
             method_params => [$parameters],
@@ -2178,7 +2217,7 @@ sub _save_annotation_results {
 #   ...
 #  }
 #
-sub _build_genecall_workflow {
+sub _build_workflows {
     my ($self, $parameters) = @_;
 
     ## refactor 1 -- set the parameter values from $parameters and initiate $inputgenome
@@ -2212,15 +2251,17 @@ sub _build_genecall_workflow {
 
     ## refactor 3 -- set gene call workflow
     $rast_ref = $self->_set_genecall_workflow($rast_ref, $inputgenome);
-    %rast_details = %{ $rast_ref };
 
-    ## refactor 4 -- merge_messages
+    ## refactor 4 -- set annotation workflow
+    $rast_ref = $self->_set_annotation_workflow($rast_ref);
+
+    ## refactor 5 -- combine messages and renumber features
     ($rast_ref, $inputgenome) = $self->_renumber_features($rast_ref, $inputgenome);
 
-    ## refactor 5 -- pre_rast_call
+    ## refactor 6 -- pre_rast_call
     ($rast_ref, $inputgenome) = $self->_pre_rast_call($rast_ref, $inputgenome);
 
-    return (\%rast_details, $inputgenome);
+    return ($rast_ref, $inputgenome);
 }
 #
 #--------------------------------------------------------------
@@ -2230,52 +2271,37 @@ sub _build_genecall_workflow {
 sub _annotate_process_allInOne {
     my ($self, $parameters) = @_;
 
-    my ($rast_ref, $inputgenome) = $self->_build_genecall_workflow($parameters);
+    my ($rast_ref, $inputgenome) = $self->_build_workflows($parameters);
     my %rast_details = %{ $rast_ref };
-
-    ## refactor 4 -- set annotation workflow
-    $rast_ref = $self->_set_annotation_workflow(\%rast_details);
-    %rast_details = %{ $rast_ref };
-
-    ## refactor 5 -- merge messages, update $inputgenome and $extra_workflow
-    ($rast_ref, $inputgenome) = $self->_merge_messages(\%rast_details, $inputgenome); 
-    %rast_details = %{ $rast_ref };
-
-    ## refactor 6 -- prepare for rasting
-    ($rast_ref, $inputgenome) = $self->_prepare4rast(\%rast_details, $inputgenome);
-    %rast_details = %{ $rast_ref };
     
-    ## refactor 7 -- finally...rasting
+    ## rasting
     my $genecall_workflow = $rast_details{genecall_workflow};
     my $annotate_workflow = $rast_details{annotate_workflow};
     my $extra_workflow = $rast_details{extra_workflow};
     my $genome_genecalled = $self->_run_rast_workflow($inputgenome, $genecall_workflow);
     my $genome_annotated = $self->_run_rast_workflow($genome_genecalled, $annotate_workflow);
     my $genome_renumed = $self->_run_rast_workflow($genome_annotated, $extra_workflow);
+    my $contigobj = $rast_details{contigobj};
 
-=begin
     ## refactor 8 -- post-rasting processing
-    my $genome_final = $self->_post_rast_call($genome_renumed,
-                                              $inputgenome,
-                                              $parameters);
+    my $genome_final = $self->_post_rast_ann_call($genome_renumed,
+                                                  $parameters,
+                                                  $contigobj);
 
-    ## refactor 9 -- move non-coding features
-    $genome_final = $self->_move_non_coding_features($genome_final, $contigobj);
+    ## refactor 9 -- build seed ontology
+    ($genome_final, $rast_ref) = $self->_build_seed_ontology(
+                                        \%rast_details, $genome_final, $inputgenome);
 
-    ## refactor 10 -- build seed ontology
-    ($rast_ref, $inputgenome) = $self->_build_seed_ontology( \%rast_details, $inputgenome);
+    ## refactor 10 -- summarize annotation
+    ($rast_ref, $genome_final) = $self->_summarize_annotation(
+                                        $rast_ref, $genome_final, $inputgenome);
+
+    ## refactor 11 -- save the annotated genome
     %rast_details = %{ $rast_ref };
-
-    ## refactor 11 -- summarize annotation
-    ($rast_ref, $inputgenome) = $self->_summarize_annotation(
-                                            \%rast_details, $inputgenome);
-    %rast_details = %{ $rast_ref };
-
-    ## refactor 12 -- save the annotated genome
-    $genome_final = $self->_save_annotation_result($genome_final, $inputgenome,
-                                            $parameters, $message);
-=cut
-    return $genome_renumed;
+    my $msg = $rast_details{message};
+    my ($aa_out, $out_msg) = $self->_save_annotation_results(
+                                $genome_final, $parameters, $msg);
+    return ($aa_out, $out_msg);
 }
 
 
@@ -2286,13 +2312,7 @@ sub _annotate_process_allInOne {
 sub _run_rast_genecalls {
     my ($self, $inparams) = @_;
 
-    my ($rast_ref, $in_genome) = $self->_build_genecall_workflow($inparams);
-
-    my $count = scalar @{$in_genome->{features}};
-    print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
-    if ($count > 0) {
-        print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
-    }
+    my ($rast_ref, $in_genome) = $self->_build_workflows($inparams);
 
     my %rast_details = %{ $rast_ref };
     my $wf_genecall = $rast_details{genecall_workflow};
@@ -3321,6 +3341,8 @@ sub rast_genome {
     my $input_fasta_file = $gc_rast{fasta_file};
     my $input_gff_file = $gc_rast{gff_file};
 
+    my ($fa_contents, $gff_contents) = $self->_get_fasta_gff_contents(
+                                            $input_fasta_file, $input_gff_file);
     my $gc_ftrs = $gc_genome->{features};
     my $gc_ftr_count = scalar @{$gc_ftrs};
     unless ($gc_ftr_count >= 1) {
@@ -3332,7 +3354,6 @@ sub rast_genome {
             report_ref => undef
         };
     }
-
     print "***********The first 10 or fewer gene-called features, for example***********\n";
     my $prnt_lines = ($gc_ftr_count > 10) ? 10 : $gc_ftr_count;
     for (my $j=0; $j<$prnt_lines; $j++) {
@@ -3342,12 +3363,18 @@ sub rast_genome {
         print "$f_id\t$f_func\t$f_protein\n";
     }
 
-    my $gff_contents;
-    ($gff_contents, $inputgenome) = $self->_prepare_genome_4annotation(
-                           $inputgenome, $input_fasta_file, $input_gff_file);
+    ## 2. run rast workflows after genecall
+    my $annotate_workflow = $gc_rast{annotate_workflow};
+    my $extra_workflow = $gc_rast{extra_workflow};
+    my $annotated_genome = $self->_run_rast_workflow($gc_genome, $annotate_workflow);
+    my $renumed_genome = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
 
-    ## 2. call rast to annotate features
-    my $rasted_genome = $self->_run_rast_annotation($inputgenome);
+    #my $gff_contents;
+    #($gff_contents, $inputgenome) = $self->_prepare_genome_4annotation(
+    #                       $renumed_genome, $input_fasta_file, $input_gff_file);
+
+    ## 3. call rast to annotate features
+    my $rasted_genome = $renumed_genome;  # $self->_run_rast_annotation($inputgenome);
     my $ftrs = $rasted_genome->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "RAST resulted ".$rasted_ftr_count." features.\n";
@@ -3362,6 +3389,7 @@ sub rast_genome {
     }
 
     my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
+=begin
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
                                    $gff_contents, \%ftr_func_lookup);
     my $attr_delimiter = '=';
@@ -3373,6 +3401,22 @@ sub rast_genome {
                                               $params->{output_genome_name},
                                               $input_obj_ref, $new_gff_file);
     my $aa_ref = $out_gn->{genome_ref};
+=cut
+
+    ## 4. Post processing genome for saving by _save_annotation_results
+    my $final_genome = $self->_post_rast_ann_call($rasted_genome,
+                                                  $inputgenome,
+                                                  $gc_rast{contigobj});
+=begin
+    my ($out_genome, $types, $num_coding, $newncfs, $newftrs,
+        $genomefunchash) = $self->_build_seed_ontology(
+            $final_genome, $genehash, $inputgenome, $oldfunchash, $oldtype, $parameters);
+=cut
+    my $message = $gc_rast{message};
+    my ($aa_out, $out_msg) = $self->_save_annotation_results(
+                                $final_genome, $params, $message);
+    my $aa_ref = $aa_out->{ref};
+    my $upd_gff_contents = $self->_get_genome_gff_contents($aa_ref);
 
     my $rast_ret = {
         output_genome_ref => $aa_ref,
@@ -3385,7 +3429,7 @@ sub rast_genome {
         $params->{create_report} == 1) {
         $rast_ret = $self->_generate_genome_report(
                           $input_obj_ref, $aa_ref, $gff_contents,
-                          $updated_gff_contents, \%ftr_func_lookup);
+                          $upd_gff_contents, \%ftr_func_lookup);
     }
     return $rast_ret;
 }

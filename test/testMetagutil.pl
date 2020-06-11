@@ -141,12 +141,6 @@ my $asmb_fasta = $mgutil->_get_fasta_from_assembly($obj_asmb);
 my $obj2_1 = "63171/315/1";
 
 
-#my $ecoli_fasta = genome_to_fasta($obj_Ecoli);
-my $ecoli_fasta = $mgutil->_write_fasta_from_genome($obj_Ecoli);
-unless (-s $ecoli_fasta) {
-    print "**_write_fasta_from_genome on $obj_Ecoli ERROR: FASTA file is empty!\n";
-}
-
 my $test_ftrs = [{
  'id' => '10000_1',
  'protein_translation' => 'VVVLLHGGCCEDMQRGRRESAPDLTLVVYPHALHALDMRLPDRTVLGMRLGFDAHAAADARRQVLDFLTARGVAPPDR*'
@@ -703,7 +697,7 @@ subtest '_prodigal_gene_call' => sub {
     print "***********First 10 lines of prodigal gff file for $p_input:\n";
     $mgutil->_print_fasta_gff(0, 10, $out_file);
 
-    $p_input = $ecoli_fasta;
+    $p_input = $fasta4;
     lives_ok {
         ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
                                $p_input, $trans, $nuc, $out_file, $out_type, $md);
@@ -748,7 +742,7 @@ subtest '_glimmer3_gene_call' => sub {
         '_glimmer3_gene_call errors with contigs too short';
 
     lives_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($ecoli_fasta);
+        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
     } $glimmer3_ok;
 
     lives_ok {
@@ -759,7 +753,7 @@ subtest '_glimmer3_gene_call' => sub {
 };
 
 subtest '_prodigal_then_glimmer3' => sub {
-    my $fa_input = $fasta4; # $ecoli_fasta;
+    my $fa_input = $fasta4;
     my $md = 'meta';
     my $out_type = 'gff';
     my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
