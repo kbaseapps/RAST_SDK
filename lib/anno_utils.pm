@@ -27,6 +27,7 @@ use Encode qw(encode decode);
 use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
+use Data::Structure::Util qw( unbless );
 
 use Bio::KBase::Exceptions;
 use Bio::KBase::utilities;
@@ -372,7 +373,7 @@ sub _glimmer3_gene_call {
     }
 }
 
-
+#
 # Expect to return the final GFF file and $gene_call_result of the following data structure:
 # An array of [$contig_id, $fid, $ftr_type, $start, $end, $strand, $seq, $source]
 #
@@ -416,57 +417,54 @@ sub _prodigal_then_glimmer3 {
 
             my @glm_prim = ($ctg_id, $beg, $end);
 
-        my $found_in_prd = 0;
-        my @prd_prim = ();
+            my $found_in_prd = 0;
+            my @prd_prim = ();
             foreach my $prd_entry (@{$prodigal_out}) {
                 my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
                 @prd_prim = ($pctg_id, $pbeg, $pend);
 
-            # check if arrays contain same members
+                # check if arrays contain same members
                 if (!array_diff(@glm_prim, @prd_prim)) {
                     # print "Found $fid match in prodigal.\n";
                     $found_in_prd = 1;
                     $prd_match_cnt += 1;
                     last;
                 }
-            if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
-            ((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
-                 (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
-                 (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
+                if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
+                     ((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
+                     (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
+                     (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
                     # print "Found $fid +/-12 check match in prodigal.\n";
                     $found_in_prd = 1;
-            $prd_approxmatch_cnt += 1;
+                    $prd_approxmatch_cnt += 1;
                     last;
                 }
-            next;
+                next;
             }
 
             # Not found in Prodigal genes
             # prepare the new feature for seq translation
             if (defined($fid) && $found_in_prd == 0) {
-            $glm_gene_seqs{$fid} = $dna_seq;
-            $glm_ftrs{$fid} = \@glm_prim;
+                $glm_gene_seqs{$fid} = $dna_seq;
+                $glm_ftrs{$fid} = \@glm_prim;
                 # $prd_gff_contents is an array of
                 # [$contig_id, $source_id, $feature_type, $start, $end,
                 # $score, $strand, $phase, \%ftr_attributes]
-            my $strd = ($beg < $end) ? '+': '-';
-        if ($strd eq '+') {
-            push @{$prd_gff_contents}, [
-                         $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-            }
-=begin
-        else {
-            # if $strd eq '-', only pick the ones whose length is within the contig range
-            # reject cases when either $begin or $end is outside of the contig
+                my $strd = ($beg < $end) ? '+': '-';
+                if ($strd eq '+') {
+                   push @{$prd_gff_contents}, [
+                       $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
+                }
+                else {
+                    # if $strd eq '-', only pick the ones whose length is within the contig range
+                    # reject cases when either $begin or $end is outside of the contig
                     my $len = abs($end - $beg) + 1;
-            if ($len <= length $dna_seq) {
-            print Dumper($glm_entry);
-                push @{$prd_gff_contents}, [
+                    if ($len <= length $dna_seq) {
+                        push @{$prd_gff_contents}, [
                             $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
                     }
                 }
-=cut
-        }
+            }
         }
         print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
         print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
@@ -480,10 +478,10 @@ sub _prodigal_then_glimmer3 {
 
         # add the additional glimmer genes to the prodigal result array
         foreach my $ftr (sort keys %{$glm_protein_seqs}) {
-        my $beg1 = $glm_ftrs{$ftr}[1];
-        my $end1 = $glm_ftrs{$ftr}[2];
-        my $strand = ($beg1 < $end1) ? '+': '-';
-        my $len1 = abs($end1 - $beg1) + 1;
+            my $beg1 = $glm_ftrs{$ftr}[1];
+            my $end1 = $glm_ftrs{$ftr}[2];
+            my $strand = ($beg1 < $end1) ? '+': '-';
+            my $len1 = abs($end1 - $beg1) + 1;
             if ($strand eq '+' || ($strand eq '-' && $len1 <= length $dna_seq)) {
                 push(@{$gene_call_result}, [
                     $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
@@ -703,9 +701,7 @@ sub _default_genecall_workflow {
         { name => 'call_features_strep_pneumo_repeat',
               condition => '$genome->{scientific_name} =~ /^Streptococcus\s/' },
         { name => 'call_features_crispr', failure_is_not_fatal => 1 },
-        { name => 'resolve_overlapping_features' },
-        { name => 'call_features_prophage_phispy' },
-        { name => 'retain_old_anno_for_hypotheticals' }
+        { name => 'call_features_CDS_genemark' }
       );
       return { stages => \@stages };
 }
@@ -1516,7 +1512,7 @@ sub _renumber_features {
     
     if (length($genecalls) > 0) {
         push(@{$workflow->{stages}},{name => "renumber_features"});
-=begin
+
         if (@{$inputgenome->{features}} > 0) {
             my $replace = [];
             for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
@@ -1528,7 +1524,7 @@ sub _renumber_features {
             }
             $inputgenome->{features} = $replace;
         }
-=cut
+
         $message .= $genecalls;
     }
     if (length($extragenecalls) > 0) {
@@ -1701,6 +1697,12 @@ sub _run_rast_workflow {
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
     my $rasted_gn = $in_genome;
+    my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
+    if ($g_data_type ne 'ref2Hash') {
+        print "**********Genome input passed to the run_rast_workflow with:\n".Dumper($workflow)." is of type of $g_data_type, unbless it**********.\n";
+        $rasted_gn = unbless($rasted_gn);
+    }
+
     eval {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($in_genome, $workflow);
@@ -1724,7 +1726,9 @@ sub _post_rast_ann_call {
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
     delete $genome->{analysis_events};
-    $genome->{genetic_code} = $genome->{genetic_code}+0;
+    if (defined($genome->{genetic_code})) {
+        $genome->{genetic_code} = $genome->{genetic_code}+0;
+    }
     $genome->{id} = $parameters->{output_genome_name};
     if (!defined($genome->{source})) {
         $genome->{source} = "KBase";
@@ -2063,7 +2067,9 @@ sub _build_seed_ontology {
             }
         }
     }
-    $rast_details{types} = %types;
+    if (scalar(keys %types)) {
+        $rast_details{types} = %types;
+    }
     $rast_details{num_coding} = $num_coding;
     $rast_details{newncfs} = $newncfs;
     $rast_details{newftrs} = $newftrs;
@@ -2080,7 +2086,10 @@ sub _summarize_annotation {
     my %rast_details = %{ $rast_ref };
     my $message = $rast_details{message};
     my $contigobj = $rast_details{contigobj};
-    my %types = %{$rast_details{types}};
+    my %types = ();
+    if (exists($rast_details{types})) {
+        %types = %{$rast_details{types}};
+    }
     my $num_coding = $rast_details{num_coding};
     my $genehash = $rast_details{genehash};
     my $newncfs = $rast_details{newncfs};
@@ -2278,6 +2287,7 @@ sub _annotate_process_allInOne {
     my $genecall_workflow = $rast_details{genecall_workflow};
     my $annotate_workflow = $rast_details{annotate_workflow};
     my $extra_workflow = $rast_details{extra_workflow};
+
     my $genome_genecalled = $self->_run_rast_workflow($inputgenome, $genecall_workflow);
     my $genome_annotated = $self->_run_rast_workflow($genome_genecalled, $annotate_workflow);
     my $genome_renumed = $self->_run_rast_workflow($genome_annotated, $extra_workflow);
@@ -2317,7 +2327,7 @@ sub _run_rast_genecalls {
     my %rast_details = %{ $rast_ref };
     my $wf_genecall = $rast_details{genecall_workflow};
     my $gced_gn = $self->_run_rast_workflow($in_genome, $wf_genecall);
-    return ($gced_gn, \%rast_details);
+    return ($gced_gn, $in_genome, \%rast_details);
 }
 
 ##----end gene call subs----##
@@ -3332,55 +3342,41 @@ sub rast_genome {
     my $input_obj_ref = $params->{object_ref};
 
     ## 1. call rast to call genes first, then parse for gff_contents
-    my ($inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
+    my ($gc_genome, $inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
     my %gc_rast = %{ $rast_ref };
-    my $gc_genome = $inputgenome;
-    my $gc_params = $gc_rast{parameters};
-    my $gc_contigobj = $gc_rast{contigobj};
-    my $is_assembly = $gc_rast{is_assembly};
     my $input_fasta_file = $gc_rast{fasta_file};
     my $input_gff_file = $gc_rast{gff_file};
-
     my ($fa_contents, $gff_contents) = $self->_get_fasta_gff_contents(
                                             $input_fasta_file, $input_gff_file);
     my $gc_ftrs = $gc_genome->{features};
     my $gc_ftr_count = scalar @{$gc_ftrs};
     unless ($gc_ftr_count >= 1) {
-        print "Empty input genome features, skip rasting, return original genome object.\n";
-        return {
-            output_genome_ref => $input_obj_ref,
-            output_workspace => $params->{output_workspace},
-            report_name => undef,
-            report_ref => undef
-        };
-    }
-    print "***********The first 10 or fewer gene-called features, for example***********\n";
-    my $prnt_lines = ($gc_ftr_count > 10) ? 10 : $gc_ftr_count;
-    for (my $j=0; $j<$prnt_lines; $j++) {
-        my $f_id = $gc_ftrs->[$j]->{id};
-        my $f_func = defined($gc_ftrs->[$j]->{function}) ? $gc_ftrs->[$j]->{function} : '';
-        my $f_protein = defined($gc_ftrs->[$j]->{protein_translation}) ? $gc_ftrs->[$j]->{protein_translation} : '';
-        print "$f_id\t$f_func\t$f_protein\n";
+        print "Empty input genome features, skip rasting, return an empty object.\n";
+        return {};
     }
 
-    ## 2. run rast workflows after genecall
+    ## 2. run rast annotation and extra workflows after genecall
     my $annotate_workflow = $gc_rast{annotate_workflow};
     my $extra_workflow = $gc_rast{extra_workflow};
     my $annotated_genome = $self->_run_rast_workflow($gc_genome, $annotate_workflow);
-    my $renumed_genome = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
+    my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
 
-    #my $gff_contents;
-    #($gff_contents, $inputgenome) = $self->_prepare_genome_4annotation(
-    #                       $renumed_genome, $input_fasta_file, $input_gff_file);
+    ## 3. post-rasting processing
+    my $genome_final = $self->_post_rast_ann_call($genome_renumed,
+                                                  $gc_rast{parameters},
+                                                  $gc_rast{contigobj});
+    ## build seed ontology
+    ($genome_final, $rast_ref) = $self->_build_seed_ontology(
+                                        \%gc_rast, $genome_final, $inputgenome);
+    ## refactor 10 -- summarize annotation
+    ($rast_ref, $genome_final) = $self->_summarize_annotation(
+                                        $rast_ref, $genome_final, $inputgenome);
 
-    ## 3. call rast to annotate features
-    my $rasted_genome = $renumed_genome;  # $self->_run_rast_annotation($inputgenome);
-    my $ftrs = $rasted_genome->{features};
+    my $ftrs = $genome_final->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
-    print "RAST resulted ".$rasted_ftr_count." features.\n";
-
+    print "***********Finally RAST resulted ".$rasted_ftr_count." features.\n";
     print "***********The first 10 or fewer rasted features, for example***************\n";
-    $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
+    my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
     for (my $j=0; $j<$prnt_lines; $j++) {
         my $f_id = $ftrs->[$j]->{id};
         my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
@@ -3388,36 +3384,13 @@ sub rast_genome {
         print "$f_id\t$f_func\t$f_protein\n";
     }
 
-    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
-=begin
-    my $updated_gff_contents = $self->_update_gff_functions_from_features(
-                                   $gff_contents, \%ftr_func_lookup);
-    my $attr_delimiter = '=';
-    my $new_gff_file = catfile($self->{genome_dir}, 'new_genome.gff');
-    $self->_write_gff($updated_gff_contents, $new_gff_file, $attr_delimiter);
-
-    ## 4. save rast re-annotated fasta/gff data
-    my $out_gn = $self->_save_genome_from_gff($params->{output_workspace},
-                                              $params->{output_genome_name},
-                                              $input_obj_ref, $new_gff_file);
-    my $aa_ref = $out_gn->{genome_ref};
-=cut
-
-    ## 4. Post processing genome for saving by _save_annotation_results
-    my $final_genome = $self->_post_rast_ann_call($rasted_genome,
-                                                  $inputgenome,
-                                                  $gc_rast{contigobj});
-=begin
-    my ($out_genome, $types, $num_coding, $newncfs, $newftrs,
-        $genomefunchash) = $self->_build_seed_ontology(
-            $final_genome, $genehash, $inputgenome, $oldfunchash, $oldtype, $parameters);
-=cut
-    my $message = $gc_rast{message};
+    ## save the annotated genome
+    my %rast_details = %{ $rast_ref };
+    my $msg = $rast_details{message};
     my ($aa_out, $out_msg) = $self->_save_annotation_results(
-                                $final_genome, $params, $message);
-    my $aa_ref = $aa_out->{ref};
-    my $upd_gff_contents = $self->_get_genome_gff_contents($aa_ref);
+                          $genome_final, $rast_details{parameters}, $msg);
 
+    my $aa_ref = $aa_out->{ref};
     my $rast_ret = {
         output_genome_ref => $aa_ref,
         output_workspace => $params->{output_workspace},
@@ -3425,6 +3398,8 @@ sub rast_genome {
         report_ref => undef
     };
 
+    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
+    my $upd_gff_contents = $self->_get_genome_gff_contents($aa_ref);
     if (defined($aa_ref) && defined($params->{create_report}) &&
         $params->{create_report} == 1) {
         $rast_ret = $self->_generate_genome_report(
@@ -3508,8 +3483,10 @@ sub bulk_rast_genomes {
 
     my $anngns = [];
     foreach my $parm (@{$bulk_inparams}) {
-    my $rast_out = $self->rast_genome($parm);
-        push (@$anngns, $rast_out->{output_genome_ref});
+        my $rast_out = $self->rast_genome($parm);
+        if (keys %{ $rast_out }) {
+            push (@$anngns, $rast_out->{output_genome_ref});
+        }
     }
 
     # create, save and then return that GenomeSet object's ref
