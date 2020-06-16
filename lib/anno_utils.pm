@@ -1633,7 +1633,7 @@ sub _pre_rast_call {
             my $ont_event = {
                 "id" => "SSO",
                 "method" => Bio::KBase::utilities::method(),
-                "method_version" => $self->util_version(),
+                "method_version" => $self->_util_version(),
                 "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
                 "timestamp" => Bio::KBase::utilities::timestamp()
             };
@@ -1952,7 +1952,7 @@ sub _build_seed_ontology {
                             for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
                                 if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
                                     $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
-                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->_util_version();
                                     $found = 1;
                                     last;
                                 }
@@ -1962,7 +1962,7 @@ sub _build_seed_ontology {
                                     @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
                                     {
                                         method         => Bio::KBase::utilities::method(),
-                                        method_version => $self->util_version(),
+                                        method_version => $self->_util_version(),
                                         timestamp      => Bio::KBase::utilities::timestamp()
                                     });
                             }
@@ -2214,9 +2214,10 @@ sub _save_annotation_results {
 }
 
 #
-## return:
-#  {inputgenome=>$inputgenome,
-#   workflow=>$workflow,
+## return:(
+#  {genecall_workflow=>$workflow1,
+#   annotation_workflow=>$workflow2,
+#   extra_workflow=>$workflow3
 #   oldfunchash=>$oldfunchash,
 #   oldtype=>$oldtype,
 #   message=>$message,
@@ -2224,7 +2225,7 @@ sub _save_annotation_results {
 #   contigobj=>$contigobj,
 #   parameters=>$parameters,
 #   ...
-#  }
+#  }, $inputgenome)
 #
 sub _build_workflows {
     my ($self, $parameters) = @_;
@@ -3357,8 +3358,10 @@ sub rast_genome {
 
     ## 2. run rast annotation and extra workflows after genecall
     my $annotate_workflow = $gc_rast{annotate_workflow};
-    my $extra_workflow = $gc_rast{extra_workflow};
     my $annotated_genome = $self->_run_rast_workflow($gc_genome, $annotate_workflow);
+
+    ## could be skipped: running the renumber_features workflow
+    my $extra_workflow = $gc_rast{extra_workflow};
     my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
 
     ## 3. post-rasting processing
