@@ -32,6 +32,7 @@ use Data::Structure::Util qw( unbless );
 use Bio::KBase::Exceptions;
 use Bio::KBase::utilities;
 use Bio::KBase::kbaseenv;
+use GenomeTypeObject;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -1684,7 +1685,6 @@ sub _run_rast_annotation {
     return $rasted_gn;
 };
 
-
 #
 #--------------------------------------------------------------------------
 ## Runs RAST with input workflow for gene calls and/or annotation on genome
@@ -1698,14 +1698,14 @@ sub _run_rast_workflow {
 
     my $rasted_gn = $in_genome;
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
-    if ($g_data_type ne 'ref2Hash') {
-        print "**********Genome input passed to the run_rast_workflow with:\n".Dumper($workflow)." is of type of $g_data_type, unbless it**********.\n";
-        $rasted_gn = unbless($rasted_gn);
+    if ($g_data_type eq 'GenomeTypeObject') {
+        print "**********Genome input passed to the run_rast_workflow with:\n".Dumper($workflow)." is of type of $g_data_type, prepare it**********.\n";
+        $rasted_gn = $rasted_gn->prepare_for_return();
     }
 
     eval {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-        $rasted_gn = $rast_client->run_pipeline($in_genome, $workflow);
+        $rasted_gn = $rast_client->run_pipeline($rasted_gn, $workflow);
     };
     if ($@) {
         print "********ERROR calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}:\n$@\n";
@@ -1813,27 +1813,30 @@ sub _move_non_coding_features {
 ## Getting the seed ontology dictionary
 sub _build_seed_ontology {
     my ($self, $rast_ref, $genome, $inputgenome) = @_;
-    
-    my $output = Bio::KBase::kbaseenv::get_objects([{
-        workspace => "KBaseOntology",
-        name => "seed_subsystem_ontology"
-    }]);
 
+    print "**************_build_seed_ontology*************\n";
     my %rast_details  = %{ $rast_ref };
     my $genehash = $rast_details{genehash};
     my $parameters = $rast_details{parameters};
     my $oldfunchash = $rast_details{oldfunchash};
     my $oldtype = $rast_details{oldtype};
 
+    my $output = $self->{ws_client}->get_objects2({
+                            'objects'=>[{
+                                workspace => "KBaseOntology",
+                                name => "seed_subsystem_ontology"
+                            }]
+                        })->{data}->[0]->{data};
+
     #Building a hash of standardized seed function strings
     my $num_coding = 0;
     my $funchash = {};
-    foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
-        my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
+    foreach my $term (keys(%{$output->{term_hash}})) {
+        my $rolename = lc($output->{term_hash}->{$term}->{name});
         $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
         $rolename =~ s/\s//g;
         $rolename =~ s/\#.*$//g;
-        $funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
+        $funchash->{$rolename} = $output->{term_hash}->{$term};
     }
     my $newftrs = 0;
     my $newncfs = 0;
@@ -2083,11 +2086,13 @@ sub _build_seed_ontology {
 sub _summarize_annotation {
     my ($self, $rast_ref, $genome, $inputgenome) = @_;
 
+    print "**************In _summarize_annotation*************\n";
     my %rast_details = %{ $rast_ref };
     my $message = $rast_details{message};
     my $contigobj = $rast_details{contigobj};
     my %types = ();
     if (exists($rast_details{types})) {
+        print "Checking the data in %types:\n".Dumper($rast_details{types});
         %types = %{$rast_details{types}};
     }
     my $num_coding = $rast_details{num_coding};
@@ -2132,7 +2137,9 @@ sub _summarize_annotation {
         }
     }
     if (defined($inputgenome)) {
+        if (defined($num_coding) && defined($num_non_coding) && defined($newftrs) && defined($newncfs)) {
         $message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
+        }
         if (%types) {
             $message .= "Output genome has the following feature types:\n";
             for my $key (sort keys(%types)) {
@@ -2141,9 +2148,15 @@ sub _summarize_annotation {
         }
     }
 
-    $message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
+    if (defined($genomefunchash)) {
+        $message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions";
+    }
+    if (defined($seedfunctions) && defined($seedfunchash)) {
+        $message .= "\nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
+    }
     $message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
     print($message);
+
     if (!defined($genome->{assembly_ref})) {
         delete $genome->{assembly_ref};
     }
@@ -2156,13 +2169,7 @@ sub _summarize_annotation {
         }
     }
     $rast_details{message} = $message;
-    $rast_details{num_coding} = $num_coding;
-    $rast_details{newncfs} = $newncfs;
-    $rast_details{newftrs} = $newftrs;
-    $rast_details{genomefunchash} = $genomefunchash;
-    $rast_details{seedfunctions} = $seedfunctions;
-    $rast_details{seedfunchash} = $seedfunchash;
-    return (\%rast_details, $genome);
+    return ($genome, \%rast_details);
 }
 
 
@@ -2182,11 +2189,17 @@ sub _save_annotation_results {
 #   print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #   print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
 #   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
+    my $rasted_gn = $genome;
+    my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
+    if ($g_data_type eq 'GenomeTypeObject') {
+        print "**********Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving**********.\n";
+        $rasted_gn = $rasted_gn->prepare_for_return();
+    }
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my $gaout = $gfu_client->save_one_genome({
         workspace => $parameters->{output_workspace},
         name => $parameters->{output_genome_name},
-        data => $genome,
+        data => $rasted_gn,
         provenance => [{
             "time" => DateTime->now()->datetime()."+0000",
             service_ver => $self->_util_version(),
@@ -2301,18 +2314,17 @@ sub _annotate_process_allInOne {
 
     ## refactor 9 -- build seed ontology
     ($genome_final, $rast_ref) = $self->_build_seed_ontology(
-                                        \%rast_details, $genome_final, $inputgenome);
+                                        $rast_ref, $genome_final, $inputgenome);
 
     ## refactor 10 -- summarize annotation
-    ($rast_ref, $genome_final) = $self->_summarize_annotation(
+    ($genome_final, $rast_ref) = $self->_summarize_annotation(
                                         $rast_ref, $genome_final, $inputgenome);
 
     ## refactor 11 -- save the annotated genome
     %rast_details = %{ $rast_ref };
-    my $msg = $rast_details{message};
-    my ($aa_out, $out_msg) = $self->_save_annotation_results(
-                                $genome_final, $parameters, $msg);
-    return ($aa_out, $out_msg);
+    return $self->_save_annotation_results($genome_final,
+                                           $parameters,
+                                           $rast_details{message});
 }
 
 
@@ -2338,15 +2350,15 @@ sub _get_fasta_from_assembly {
     my ($self, $assembly_ref) = @_;
 
     my $au = new installed_clients::AssemblyUtilClient($self->{call_back_url});
-    my $output = {};
+    my $outfa = {};
     eval {
-        $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
+        $outfa = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
     };
     if ($@) {
         croak "ERROR calling AssemblyUtil.get_assembly_as_fasta: ".$@."\n";
     }
     else {
-        return $output->{path};
+        return $outfa->{path};
     }
 }
 
@@ -3361,18 +3373,18 @@ sub rast_genome {
     my $annotated_genome = $self->_run_rast_workflow($gc_genome, $annotate_workflow);
 
     ## could be skipped: running the renumber_features workflow
-    my $extra_workflow = $gc_rast{extra_workflow};
-    my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
+    #my $extra_workflow = $gc_rast{extra_workflow};
+    #my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
 
     ## 3. post-rasting processing
-    my $genome_final = $self->_post_rast_ann_call($genome_renumed,
+    my $genome_final = $self->_post_rast_ann_call($annotated_genome,
                                                   $gc_rast{parameters},
                                                   $gc_rast{contigobj});
     ## build seed ontology
     ($genome_final, $rast_ref) = $self->_build_seed_ontology(
                                         \%gc_rast, $genome_final, $inputgenome);
     ## refactor 10 -- summarize annotation
-    ($rast_ref, $genome_final) = $self->_summarize_annotation(
+    ($genome_final, $rast_ref) = $self->_summarize_annotation(
                                         $rast_ref, $genome_final, $inputgenome);
 
     my $ftrs = $genome_final->{features};
@@ -3389,9 +3401,9 @@ sub rast_genome {
 
     ## save the annotated genome
     my %rast_details = %{ $rast_ref };
-    my $msg = $rast_details{message};
-    my ($aa_out, $out_msg) = $self->_save_annotation_results(
-                          $genome_final, $rast_details{parameters}, $msg);
+    my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final,
+                                                             $rast_details{parameters},
+                                                             $rast_details{message});
 
     my $aa_ref = $aa_out->{ref};
     my $rast_ret = {

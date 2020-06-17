@@ -550,6 +550,96 @@ subtest '_pre_rast_call' => sub {
     ok (@{$inputgenome2->{features}} == 0, 'inputgenome (assembly) has no features.');
     ok (@{$inputgenome2->{contigs}} > 0, 'inputgenome (assembly) has contig(s).');
 };
+
+
+# Test _run_rast_workflow on annotation workflow with object refs in prod
+my ($ann_genome1, $ann_genome2, $final_genome1, $final_genome2);
+subtest '_run_rast_workflow_ann' => sub {
+    # a genome object
+    lives_ok {
+        $ann_genome1 = $annoutil->_run_rast_workflow(
+              $inputgenome1, $rast_details1{annotate_workflow});
+    } '_run_rast_workflow on annotation runs successfully on genome';
+
+    # an assembly object
+    lives_ok {
+        $ann_genome2 = $annoutil->_run_rast_workflow(
+              $inputgenome2, $rast_details2{annotate_workflow});
+    } '_run_rast_workflow returns normally on assembly';
+};
+
+
+# Test _post_rast_ann_call with genome/assembly object refs in prod
+subtest '_post_rast_ann_call' => sub {
+    # a genome object
+    lives_ok {
+        $final_genome1 = $annoutil->_post_rast_ann_call(
+              $ann_genome1, $rast_details1{parameters}, $rast_details1{contigobj});
+    } '_post_rast_ann_call runs successfully on genome';
+
+    # an assembly object
+    lives_ok {
+        $final_genome2 = $annoutil->_post_rast_ann_call(
+              $ann_genome2, $rast_details2{parameters}, $rast_details2{contigobj});
+    } '_post_rast_ann_call runs successfully on assembly';
+};
+
+
+# Test _build_seed_ontology with genome/assembly object refs in prod
+subtest '_build_seed_ontology' => sub {
+    # a genome object
+    lives_ok {
+        ($final_genome1, $rast_ref) = $annoutil->_build_seed_ontology(
+              \%rast_details1, $final_genome1, $inputgenome1);
+    } '_build_seed_ontology returns normally on genome';
+    %rast_details1 = %{$rast_ref}; # dereference
+
+    # an assembly object
+    lives_ok {
+        ($final_genome2, $rast_ref) = $annoutil->_build_seed_ontology(
+              \%rast_details2, $final_genome2, $inputgenome2);
+    } '_build_seed_ontology returns on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+
+};
+
+
+# Test _summarize_annotation with genome/assembly object refs in prod
+subtest '_summarize_annotation' => sub {
+    # a genome object
+    lives_ok {
+        ($final_genome1, $rast_ref) = $annoutil->_summarize_annotation(
+              \%rast_details1, $final_genome1, $inputgenome1);
+    } '_summarize_annotation runs successfully on genome';
+    %rast_details1 = %{$rast_ref}; # dereference
+
+    # an assembly object
+    lives_ok {
+        ($final_genome2, $rast_ref) = $annoutil->_summarize_annotation(
+              \%rast_details2, $final_genome2, $inputgenome2);
+    } '_summarize_annotation runs successfully on assembly';
+    %rast_details2 = %{$rast_ref}; # dereference
+};
+
+
+# Test _save_annotation_results with genome/assembly object refs in prod
+subtest '_save_annotation_results' => sub {
+    my ($aa_out, $out_msg);
+
+    # a genome object
+    throws_ok {
+        ($aa_out, $out_msg) = $annoutil->_save_annotation_results(
+              $final_genome1, $rast_details1{parameters});
+    } qr/Can't call method/,
+      '_save_annotation_results throws an error on genome';
+
+    # an assembly object
+    throws_ok {
+        ($aa_out, $out_msg) = $annoutil->_save_annotation_results(
+              \%rast_details2, $final_genome2, $inputgenome2);
+    } qr/Can't call method/,
+      '_save_annotation_results throws an error on assembly';
+};
 =cut
 
 =begin
@@ -642,6 +732,7 @@ subtest '_run_rast_genecalls' => sub {
 };
 =cut
 
+
 =begin
 #
 ## Tesing only the annotation part of RAST
@@ -662,7 +753,9 @@ subtest '_run_rast_annotation' => sub {
     } qr/ERROR calling rast run_pipeline/,
         'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
+=begin
 # Test _annotate_process_allInOne with genome/assembly object refs in prod
 subtest '_annotate_process_allInOne' => sub {
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -691,8 +784,9 @@ subtest '_annotate_process_allInOne' => sub {
     } qr/$allre/,
         '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
 };
+=cut
 
-
+=begin
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
@@ -1217,8 +1311,9 @@ subtest '_save_genome_from_gff' => sub {
     is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
     is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
 };
+=cut
 
-
+=begin
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -1234,7 +1329,7 @@ subtest 'anno_utils_rast_genome' => sub {
     throws_ok {
         $rast_ret = $annoutil->rast_genome($parms);
     } qr/$allre/,
-        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
+        '$annoutil->rast_genome returns ERROR due to kmer data absence or other causes.';
     $parms = {
         "object_ref" => $obj_Echinacea,
         "output_genome_name" => "rasted_Echinace_prod",
@@ -1244,7 +1339,7 @@ subtest 'anno_utils_rast_genome' => sub {
     throws_ok {
         $rast_ret = $annoutil->rast_genome($parms);
     } qr/$allre/,
-        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
+        '$annoutil->rast_genome returns ERROR due to kmer data absence or other causes.';
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
@@ -1254,11 +1349,11 @@ subtest 'anno_utils_rast_genome' => sub {
     lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
     } '$annoutil->rast_genome returns the original input because of empty features.';
-    if(defined($rast_ret)) {
+    if(defined($rast_ret) && defined($rast_ret->{output_genome_ref})) {
         ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
     }
 };
-
+=cut
 
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly' => sub {
@@ -1282,7 +1377,47 @@ subtest 'Impl_rast_genome_assembly' => sub {
     } 'Impl rast_genome call returns normally.';
     print "rast_genome_assembly returns:\n".Dumper($rast_ann);
 };
-=cut
+
+
+## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
+subtest 'rast_genomes_assemblies' => sub {
+    my $params = {
+        "output_GenomeSet_name" => "out_genomeSet"
+    };
+
+    lives_ok {
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
+        $params->{input_text} = '';
+        my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
+    } "anno_utils rast_genomes_assemblies call on 1N1 returns normally.";
+
+    lives_ok {
+        $params->{output_workspace} = get_ws_name();
+        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
+        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [];
+        $params->{input_text} = '';
+        my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
+    } "anno_utils rast_genomes_assemblies call on array of 2 genomes returns normally.";
+
+    lives_ok {
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
+        $params->{input_genomes} = [];
+        $params->{input_text} = '';
+        my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
+    } "anno_utils rast_genomes_assemblies call on array of 2 assemblies returns normally.";
+
+    lives_ok {
+        $params->{output_workspace} = get_ws_name();
+        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
+        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
+        $params->{input_text} = '';
+        my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
+    } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
+};
 
 
 =begin
@@ -1331,46 +1466,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
     } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
 =cut
-
-
-subtest 'rast_genomes_assemblies' => sub {
-    my $params = {
-        "output_GenomeSet_name" => "out_genomeSet"
-    };
-
-    lives_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
-        $params->{input_text} = '';
-        my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on 1N1 returns normally.";
-
-    lives_ok {
-        $params->{output_workspace} = get_ws_name();
-        #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
-        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [];
-        $params->{input_text} = '';
-        my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on array of 2 genomes returns normally.";
-
-    lives_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-        $params->{input_genomes} = [];
-        $params->{input_text} = '';
-        my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on array of 2 assemblies returns normally.";
-
-    lives_ok {
-        $params->{output_workspace} = get_ws_name();
-        $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-        $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-        $params->{input_text} = '';
-        my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
-};
 
 =begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
