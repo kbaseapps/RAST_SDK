@@ -510,8 +510,7 @@ subtest '_renumber_features' => sub {
                         \%rast_details2, $inputgenome2);
     } '_renumber_features runs successfully on assembly';
     %rast_details2 = %{$rast_ref}; # dereference
-    my $msg2 = $rast_details2{message};
-    print "genome merged-msg:\n$msg2";
+    ok (exists($rast_details2{extra_workflow}), "extra_workflow is created");
     ok (@{$inputgenome2->{features}} == 0, "Assembly inputgenome has no features.");
 };
 
@@ -538,7 +537,7 @@ subtest '_pre_rast_call' => sub {
     lives_ok {
         ($rast_ref, $inputgenome2) = $annoutil->_pre_rast_call(
                         \%rast_details2, $inputgenome2);
-    } '_renumber_features runs successfully on assembly';
+    } '_pre_rast_call runs successfully on assembly';
     %rast_details2 = %{$rast_ref}; # dereference
     my $genehash2 = $rast_details2{genehash};
 
@@ -574,13 +573,15 @@ subtest '_post_rast_ann_call' => sub {
     # a genome object
     lives_ok {
         $final_genome1 = $annoutil->_post_rast_ann_call(
-              $ann_genome1, $rast_details1{parameters}, $rast_details1{contigobj});
+                          $ann_genome1, $inputgenome1,
+                          $rast_details1{parameters}, $rast_details1{contigobj});
     } '_post_rast_ann_call runs successfully on genome';
 
     # an assembly object
     lives_ok {
         $final_genome2 = $annoutil->_post_rast_ann_call(
-              $ann_genome2, $rast_details2{parameters}, $rast_details2{contigobj});
+                          $ann_genome2, $inputgenome2,
+                          $rast_details2{parameters}, $rast_details2{contigobj});
     } '_post_rast_ann_call runs successfully on assembly';
 };
 
@@ -754,6 +755,7 @@ subtest '_run_rast_annotation' => sub {
         'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
 };
 =cut
+
 
 =begin
 # Test _annotate_process_allInOne with genome/assembly object refs in prod
@@ -1355,6 +1357,8 @@ subtest 'anno_utils_rast_genome' => sub {
 };
 =cut
 
+
+=begin
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
@@ -1362,10 +1366,11 @@ subtest 'Impl_rast_genome_assembly' => sub {
         "output_genome_name" => "rasted_genome",
         "output_workspace" => $ws
     };
-    my $rast_ann;
+    my $rast_ret;
     lives_ok {
-        $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } 'Impl rast_genome call returns normally.';
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } 'Impl rast_genome call returns normally on genome.';
+    ok ($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/, "rast_genome_assembly returns a VALID ref: $rast_ret->{output_genome_ref}");
 
     $parms = {
         "object_ref" => $obj_asmb,
@@ -1373,10 +1378,11 @@ subtest 'Impl_rast_genome_assembly' => sub {
         "output_workspace" => $ws
     };
     lives_ok {
-        $rast_ann = $rast_impl->rast_genome_assembly($parms);
-    } 'Impl rast_genome call returns normally.';
-    print "rast_genome_assembly returns:\n".Dumper($rast_ann);
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } 'Impl rast_genome call returns without annotation due to local assembly did not run.';
+    ok (!defined($rast_ret ->{output_genome_ref}), "due to local annotation on assembly with empty features, no rast was run.");
 };
+=cut
 
 
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
