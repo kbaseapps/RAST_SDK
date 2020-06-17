@@ -1133,7 +1133,7 @@ sub _fetch_object_data {
     my $ret_obj_data = {};
     eval {
         $ret_obj_data = $self->{ws_client}->get_objects2(
-                            {'objects'=>[{ref=>$obj_ref, 'included'=>["assembly_ref"]}]}
+                            {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
     };
     if ($@) {

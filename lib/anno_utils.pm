@@ -2230,8 +2230,7 @@ sub _save_annotation_results {
         html => 0
     });
 
-    my $ref = {"ref" => $ref};
-    return ($ref, $message);
+    return ({"ref" => $ref}, $message);
 }
 
 #
@@ -2668,7 +2667,9 @@ sub _check_bulk_annotation_params {
 sub _generate_stats_from_aa {
     my ($self, $gn_ref) = @_;
 
+    print "++++++++++++++_generate_stats_from_aa on $gn_ref++++++++++++\n";
     my $gn_info = $self->_fetch_object_info($gn_ref);
+
     my $in_type = $gn_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -2819,7 +2820,7 @@ sub _find_function_source {
             if ($funcs =~ /\Q$func\E/) {
                 $func_src = $func_tab_ref->{$ftr_id}->{'annotation_src'};
                 last;
-        }
+            }
         }
     }
     return $func_src;
@@ -2986,7 +2987,7 @@ sub _fetch_object_data {
     my $ret_obj_data = {};
     eval {
         $ret_obj_data = $self->{ws_client}->get_objects2(
-                            {'objects'=>[{ref=>$obj_ref, 'included'=>["assembly_ref"]}]}
+                            {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
     };
     if ($@) {
