@@ -137,7 +137,7 @@ my $test_ftrs = [{
  'annotations' => [
  [
  'completely fake function',
- 'annotate_maedup_source',
+ 'annotate_madeup_source',
  '1583389302.95394',
  '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
  ]
@@ -185,9 +185,41 @@ subtest '_get_contigs' => sub {
     } '_get_contigs runs successfully on assembly';
 
 };
+
+
+## Testing the feature_function_lookup related functions
+subtest '_get_feature_function_lookup' => sub {
+    my %ffunc_lookup = ();
+    lives_ok { 
+        %ffunc_lookup = $annoutil->_get_feature_function_lookup($test_ftrs);
+    } '_get_feature_function_lookup runs successfully on assembly';
+    ok (exists($ffunc_lookup{'10000_2'}), 'found one key'); 
+    ok (exists($ffunc_lookup{'10000_madeup'}), 'found another key'); 
+    ok (exists($ffunc_lookup{'10000_2'}->{functions}), 'found functions in one'); 
+    ok (exists($ffunc_lookup{'10000_madeup'}->{functions}), 'found functions in another'); 
+    ok (exists($ffunc_lookup{'10000_2'}->{annotation_src}), 'found annotation_src in one'); 
+    ok (exists($ffunc_lookup{'10000_madeup'}->{annotation_src}),
+                                'found annotation_src in another');
+
+    my $func_role = 'completely fake function';
+    my $exp_src1 = 'annotate_madeup_source';
+    my $ann_src1 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
+    is ($ann_src1, $exp_src1, "Found function $func_role with annotation source of: $ann_src1"); 
+
+    $func_role = 'L-carnitine dehydratase/bile acid-inducible protein';
+    my $exp_src2 = 'annotate_proteins_kmer_v1';
+    my $ann_src2 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
+    is ($ann_src2, $exp_src2, "Found function $func_role with annotation source of: $ann_src2"); 
+
+    $func_role = 'non-existent function';
+    my $exp_src3 = 'N/A';
+    my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
+    is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3"); 
+};
 =cut
 
-#=begin
+
+=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -641,7 +673,7 @@ subtest '_save_annotation_results' => sub {
     } qr/Can't call method/,
       '_save_annotation_results throws an error on assembly';
 };
-#=cut
+=cut
 
 
 =begin
@@ -1316,7 +1348,6 @@ subtest '_save_genome_from_gff' => sub {
 };
 =cut
 
-=begin
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -1356,7 +1387,6 @@ subtest 'anno_utils_rast_genome' => sub {
         ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
     }
 };
-=cut
 
 =begin
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY

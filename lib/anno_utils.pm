@@ -872,18 +872,6 @@ sub _get_oldfunchash_oldtype_types {
 sub _create_inputgenome_from_genome {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
-    # generating the fasta and gff files directly from genome
-    my $fasta_filename = $self->_write_fasta_from_genome($input_obj_ref);
-    unless (-s $fasta_filename) {
-        croak "**rast_genome ERROR: FASTA file is empty!\n";
-    }
-
-    my $gff_file = $self->_write_gff_from_genome($input_obj_ref);
-    unless (-s $gff_file) {
-        croak "**rast_genome ERROR: GFF file is empty.\n";
-    }
-    my ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_file, "=");
-
     $inputgenome = $self->_get_genome($input_obj_ref);
 
     my ($contigref, $contigobj);
@@ -900,8 +888,7 @@ sub _create_inputgenome_from_genome {
     ($oldfunchash, $oldtype, $types_ref,
         $inputgenome) = $self->_get_oldfunchash_oldtype_types($inputgenome);
     %types = %{$types_ref};
-    return ($inputgenome, $contigobj, $gff_contents,
-            $oldfunchash, $oldtype, \%types);
+    return ($inputgenome, $contigobj, $oldfunchash, $oldtype, \%types);
 }
 
 
@@ -912,7 +899,7 @@ sub _create_inputgenome_from_assembly {
 
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
     my $contigobj = $self->_get_contigs($input_obj_ref);
-    return ($inputgenome, $contigobj, []);
+    return ($inputgenome, $contigobj);
 }
 
 
@@ -958,7 +945,7 @@ sub _set_parameters_by_input {
                "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
     }
 
-    my ($gff_contents, $types_ref);
+    my $types_ref;
     if ($is_genome) {
         # print "INFO:input_obj_ref points to a genome----";
         if (defined($input_obj_info->[10])) {
@@ -966,15 +953,14 @@ sub _set_parameters_by_input {
             print "Input object '$input_obj_ref' is a genome and has $num_ftrs features.\n";
         }
 
-        ($inputgenome, $contigobj, $gff_contents,
-         $oldfunchash, $oldtype, $types_ref) = $self->_create_inputgenome_from_genome(
+        ($inputgenome, $contigobj, $oldfunchash,
+            $oldtype, $types_ref) = $self->_create_inputgenome_from_genome(
                                                     $inputgenome, $input_obj_ref);
         $rast_details{oldfunchash} = $oldfunchash;
         $rast_details{oldtype} = $oldtype;
         $rast_details{types} = $types_ref;
     } elsif ($is_assembly) {
-        ($inputgenome,
-         $contigobj, $gff_contents) = $self->_create_inputgenome_from_assembly(
+        ($inputgenome, $contigobj) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
 
@@ -986,7 +972,6 @@ sub _set_parameters_by_input {
     $rast_details{contigobj} = $contigobj;
     $rast_details{is_genome} = $is_genome;
     $rast_details{is_assembly} = $is_assembly;
-    $rast_details{gff_contents} = $gff_contents;
     return (\%rast_details, $inputgenome);
 }
 
@@ -2130,6 +2115,7 @@ sub _util_version {
     return $VERSION;
 }
 
+
 sub _save_annotation_results {
     my ($self, $genome, $parameters, $message) = @_;
 #   print "SEND OFF FOR SAVING\n";
@@ -2850,7 +2836,7 @@ sub _write_html_from_stats {
     my $srch3 = "(<replaceTableData>)(.*)(</replaceTableData>)";
 
     $file_content =~ s/$srch1/$rpt_header/;
-    $file_content =~ s/$srch2/$rpt_footer/;
+    #$file_content =~ s/$srch2/$rpt_footer/;
     $file_content =~ s/$srch3/$rpt_data/;
 
     my $report_file_path = catfile($self->{genome_dir}, 'genome_report.html');
@@ -3085,7 +3071,7 @@ sub _get_feature_function_lookup {
     #    print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
     #}
     #else {
-    #    print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
+    print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
     #}
 
     #Feature Lookup Hash
@@ -3106,6 +3092,7 @@ sub _get_feature_function_lookup {
     }
     my $ksize = keys %function_lookup;
     print "INFO: Feature function look up table contains $ksize entries.\n";
+    print "INFO:All function lookups from RAST features:\n".Dumper(\%function_lookup);
     return %function_lookup;
 }
 
@@ -3301,9 +3288,10 @@ sub rast_genome {
     my $rasted_ftr_count = scalar @{$ftrs};
     print "\n***********Finally RAST resulted ".$rasted_ftr_count." features.\n";
 
+    my $prnt_num = 10;
     if ($rasted_ftr_count) {
-        print "***********The first 10 or fewer rasted features, for example***************\n";
-        my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
+        print "***********The first $prnt_num or fewer rasted features, for example***************\n";
+        my $prnt_lines = ($rasted_ftr_count > $prnt_num) ? $prnt_num : $rasted_ftr_count;
         for (my $j=0; $j<$prnt_lines; $j++) {
             my $f_id = $ftrs->[$j]->{id};
             my $f_func = defined($ftrs->[$j]->{function}) ? $ftrs->[$j]->{function} : '';
@@ -3317,7 +3305,6 @@ sub rast_genome {
     my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final,
                                                              $gc_rast{parameters},
                                                              $gc_rast{message});
-
     my $aa_ref = $aa_out->{ref};
     my $rast_ret = {
         output_genome_ref => $aa_ref,
@@ -3337,7 +3324,25 @@ sub rast_genome {
     return $rast_ret;
 }
 
-
+## Parse the inputs into an array $bulk_inparams of the following object structure:
+ # {
+ #    object_ref => $asmb,
+ #    output_workspace => $ws,
+ #    output_genome_name => $out_genomeSet . '_' .$obj_name,
+ #    scientific_name => $scientific_name,
+ #    genetic_code => $genetic_code,
+ #    domain => $domain,
+ #    create_report => 0
+ # }
+ # Then loop through the array to call the above rast_genome function on each.
+ # After creating a genomeSet in the workspace, return the following object:
+ # {
+ #     "output_genomeSet_ref"=>$ws."/".$out_genomeSet,
+ #     "output_workspace"=>$ws,
+ #     "report_name"=>$kbutil_output->{report_name},
+ #     "report_ref"=>$kbutil_output->{report_ref}
+ # }
+##
 sub bulk_rast_genomes {
     my $self = shift;
     my($inparams) = @_;
@@ -3426,11 +3431,10 @@ sub bulk_rast_genomes {
         desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
     });
 
-    my $ret_val = {"output_genomeSet_ref"=>$ws."/".$out_genomeSet,
-                   "output_workspace"=>$ws,
-                   "report_name"=>$kbutil_output->{report_name},
-                   "report_ref"=>$kbutil_output->{report_ref}};
-    return $ret_val;
+    return {"output_genomeSet_ref"=>$ws."/".$out_genomeSet,
+            "output_workspace"=>$ws,
+            "report_name"=>$kbutil_output->{report_name},
+            "report_ref"=>$kbutil_output->{report_ref}};
 }
 
 #

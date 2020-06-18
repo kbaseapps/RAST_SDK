@@ -2,7 +2,7 @@
     "ver" : "1.0.0",
     "name" : "Annotate Lists of Genomes and/or Assemblies with RAST - v1.073",
     "authors" : [ "chenry", "qzhang" ],
-    "contact" : "help@kbase.us",
+    "contact" : "http://kbase.us/contact-us/",
     "visble" : true,
     "categories" : ["active","annotation"],
     "widgets" : {
