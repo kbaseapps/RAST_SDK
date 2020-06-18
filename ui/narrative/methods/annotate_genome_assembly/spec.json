@@ -6,7 +6,7 @@
     "visble" : true,
     "categories" : ["active","annotation"],
     "widgets" : {
-      "input" : "kbaseNarrativeMethodInput",
+      "input" : null,
       "output" : "no-display"
     },
     "parameters" : [
@@ -149,7 +149,7 @@
           "target_property": "output_workspace"
         },
         {
-            "constant_value" : "0",
+            "constant_value" : "1",
             "target_property": "create_report"
         }
       ],

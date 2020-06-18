@@ -187,7 +187,7 @@ subtest '_get_contigs' => sub {
 };
 =cut
 
-=begin
+#=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -641,7 +641,8 @@ subtest '_save_annotation_results' => sub {
     } qr/Can't call method/,
       '_save_annotation_results throws an error on assembly';
 };
-=cut
+#=cut
+
 
 =begin
 #
@@ -1357,14 +1358,14 @@ subtest 'anno_utils_rast_genome' => sub {
 };
 =cut
 
-
 =begin
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_genome",
-        "output_workspace" => $ws
+        "output_workspace" => $ws,
+        "create_report" => 1
     };
     my $rast_ret;
     lives_ok {
@@ -1382,7 +1383,6 @@ subtest 'Impl_rast_genome_assembly' => sub {
     } 'Impl rast_genome call returns without annotation due to local assembly did not run.';
     ok (!defined($rast_ret ->{output_genome_ref}), "due to local annotation on assembly with empty features, no rast was run.");
 };
-=cut
 
 
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
@@ -1424,6 +1424,7 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
 };
+=cut
 
 
 =begin
@@ -1542,7 +1543,6 @@ subtest 'generate_genome_report1' => sub {
     lives_ok {
         ($gff_contents1, $attr_delimiter) = $annoutil->_parse_gff($gff_path1, $attr_delimiter);
         %ret_stats1 = $annoutil->_generate_stats_from_gffContents($gff_contents1);
-        #print "Stats on $obj_Ecoli: \n".Dumper(\%ret_stats1);
     } $stats_ok;
     is(keys %ret_stats1, 2, "_generate_stats_from_gffContents on $obj_Ecoli should return non-empty.\n");
 
@@ -1551,7 +1551,6 @@ subtest 'generate_genome_report1' => sub {
     lives_ok {
         ($gff_contents2, $attr_delimiter) = $annoutil->_parse_gff($gff_path2, $attr_delimiter);
         %ret_stats2 = $annoutil->_generate_stats_from_gffContents($gff_contents2);
-        #print "Stats on $obj7: \n".Dumper(\%ret_stats2);
     } $stats_ok;
     is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj_Ecoli_ann should return non-empty.\n");
     ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
@@ -1559,13 +1558,15 @@ subtest 'generate_genome_report1' => sub {
 
     my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
     #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $annoutil->_generate_genome_report($obj_Ecoli, $obj_Ecoli_ann, $gff_contents1,
-                                            $gff_contents2, \%ftr_tab);
-    print "Report return: \n".Dumper($ret_rpt);
+    my $test_msg = "Test message for reporting of annotation details";
+    my $ftr_cnt = scalar @{$test_ftrs};
+    my $ret_rpt = $annoutil->_generate_genome_report(
+                $obj_Ecoli_ann, $gff_contents2, \%ftr_tab, $ftr_cnt, $test_msg);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
+
 
 ## testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report2' => sub {
@@ -1579,17 +1580,16 @@ subtest 'generate_genome_report2' => sub {
     lives_ok {
         ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
         %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
-        #print "Stats on $obj_asmb_ann: \n".Dumper(\%ret_stats);
     } $stats_ok;
     is(keys %ret_stats, 2, "_generate_stats_from_gffContents on $obj_asmb_ann should return non-empty.\n");
     ok(exists($ret_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
     ok(exists($ret_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
     my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
-    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $annoutil->_generate_genome_report($obj_asmb, $obj_asmb_ann, [],
-                                            $gff_contents, \%ftr_tab);
-    print "Report return: \n".Dumper($ret_rpt);
+    my $test_msg = "Test message for reporting of annotation details";
+    my $ftr_cnt = scalar @{$test_ftrs};
+    my $ret_rpt = $annoutil->_generate_genome_report(
+                $obj_asmb_ann, $gff_contents, \%ftr_tab, $ftr_cnt, $test_msg);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');

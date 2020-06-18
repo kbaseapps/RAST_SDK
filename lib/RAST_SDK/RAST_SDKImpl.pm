@@ -2094,7 +2094,7 @@ sub rast_genome_assembly
     my $rast_out = $ann_util->rast_genome($params);
     $output = {
         output_genome_ref => $rast_out->{output_genome_ref},
-        report_ref => $rast_out->{"report_ref"},
+        report_ref => $rast_out->{report_ref},
         report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
     };

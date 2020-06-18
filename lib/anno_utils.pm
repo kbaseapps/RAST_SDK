@@ -805,25 +805,6 @@ sub _create_inputgenome_from_genome_original {
 }
 
 
-sub _prepare_genome_4annotation {
-    my ($self, $in_genome, $fa_file, $gff_file) = @_;
-
-    my ($fasta_contents, $gff_contents) = $self->_get_fasta_gff_contents($fa_file, $gff_file);
-
-    # fetch protein sequences and gene IDs from fasta and gff files
-    my $gene_seqs = $self->_extract_cds_sequences_from_fasta($fasta_contents, $gff_contents);
-    my $protein_seqs = $self->_translate_gene_to_protein_sequences($gene_seqs);
-
-    $in_genome->{features} = [];
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$in_genome->{features}},{
-            id => $gene,
-            protein_translation => $protein_seqs->{$gene}
-        });
-    }
-    return ($gff_contents, $in_genome);
-}
-
 sub _get_oldfunchash_oldtype_types {
     my ($self, $in_genome) = @_;
 
@@ -897,10 +878,11 @@ sub _create_inputgenome_from_genome {
         croak "**rast_genome ERROR: FASTA file is empty!\n";
     }
 
-    my $gff_filename = $self->_write_gff_from_genome($input_obj_ref);
-    unless (-s $gff_filename) {
+    my $gff_file = $self->_write_gff_from_genome($input_obj_ref);
+    unless (-s $gff_file) {
         croak "**rast_genome ERROR: GFF file is empty.\n";
     }
+    my ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_file, "=");
 
     $inputgenome = $self->_get_genome($input_obj_ref);
 
@@ -918,7 +900,7 @@ sub _create_inputgenome_from_genome {
     ($oldfunchash, $oldtype, $types_ref,
         $inputgenome) = $self->_get_oldfunchash_oldtype_types($inputgenome);
     %types = %{$types_ref};
-    return ($inputgenome, $contigobj, $fasta_filename, $gff_filename,
+    return ($inputgenome, $contigobj, $gff_contents,
             $oldfunchash, $oldtype, \%types);
 }
 
@@ -928,44 +910,9 @@ sub _create_inputgenome_from_genome {
 sub _create_inputgenome_from_assembly {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
-    my $output_type = 'gff';
-    my $gff_filename = catfile($self->{genome_dir}, 'genome.gff');
-    my $fasta_filename = catfile($self->{genome_dir}, 'prodigal_input.fasta');
-    my $trans_file = catfile($self->{genome_dir}, 'protein_translation');
-    my $nuc_file = catfile($self->{genome_dir}, 'nucleotide_seq');
-    my $output_file = catfile($self->{genome_dir}, 'prodigal_output').'.'.$output_type;
-
-    # generating the fasta file directly from assembly
-    $fasta_filename = $self->_get_fasta_from_assembly($input_obj_ref);
-    unless (-s $fasta_filename) {
-        croak "**rast_genome ERROR: FASTA file is empty!\n";
-    }
-
-    my $mode = 'meta';
-    my $prodigal_out;
-    ($gff_filename, $prodigal_out) = $self->_prodigal_gene_call(
-                                                  $fasta_filename,
-                                                  $trans_file,
-                                                  $nuc_file,
-                                                  $output_file,
-                                                  $output_type,
-                                                  $mode);
-=begin
-    foreach my $entry (@{$prodigal_out}) {
-    my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$entry;
-        push(@{$inputgenome->{features}}, {
-                    id                  => $fid,
-                    type                => $ftr_type,
-                    location            => [[ $contig, $start, $strand, $end ]],
-                    annotator           => $source,
-                    annotation          => 'Add feature called by PRODIGAL',
-                    protein_translation => $seq
-        });
-    }
-=cut
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
     my $contigobj = $self->_get_contigs($input_obj_ref);
-    return ($inputgenome, $contigobj, $fasta_filename, $gff_filename);
+    return ($inputgenome, $contigobj, []);
 }
 
 
@@ -1011,7 +958,7 @@ sub _set_parameters_by_input {
                "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
     }
 
-    my ($fasta_file, $gff_file, $types_ref);
+    my ($gff_contents, $types_ref);
     if ($is_genome) {
         # print "INFO:input_obj_ref points to a genome----";
         if (defined($input_obj_info->[10])) {
@@ -1019,15 +966,15 @@ sub _set_parameters_by_input {
             print "Input object '$input_obj_ref' is a genome and has $num_ftrs features.\n";
         }
 
-        ($inputgenome, $contigobj, $fasta_file, $gff_file,
+        ($inputgenome, $contigobj, $gff_contents,
          $oldfunchash, $oldtype, $types_ref) = $self->_create_inputgenome_from_genome(
                                                     $inputgenome, $input_obj_ref);
         $rast_details{oldfunchash} = $oldfunchash;
         $rast_details{oldtype} = $oldtype;
         $rast_details{types} = $types_ref;
     } elsif ($is_assembly) {
-        ($inputgenome, $contigobj,
-         $fasta_file, $gff_file) = $self->_create_inputgenome_from_assembly(
+        ($inputgenome,
+         $contigobj, $gff_contents) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
 
@@ -1039,8 +986,7 @@ sub _set_parameters_by_input {
     $rast_details{contigobj} = $contigobj;
     $rast_details{is_genome} = $is_genome;
     $rast_details{is_assembly} = $is_assembly;
-    $rast_details{fasta_file} = $fasta_file;
-    $rast_details{gff_file} = $gff_file;
+    $rast_details{gff_contents} = $gff_contents;
     return (\%rast_details, $inputgenome);
 }
 
@@ -2832,6 +2778,7 @@ sub _write_html_from_stats {
     my $gff_stats_ref = shift;
     my $subsys_ref = shift;
     my $func_tab_ref = shift;
+
     my $template_file = shift;
     if (ref $obj_stats_ref ne "HASH" || ref $gff_stats_ref ne "HASH"
              || ref $subsys_ref ne "HASH" || ref $func_tab_ref ne "HASH") {
@@ -2922,42 +2869,14 @@ sub _write_html_from_stats {
 
 #Create a KBaseReport with brief info/stats on a reannotated genome
 sub _generate_genome_report {
-    my ($self, $src_ref, $aa_ref, $src_gff_conts, $aa_gff_conts, $func_tab) = @_;
+    my ($self, $aa_ref, $aa_gff_conts, $func_tab, $ftr_cnt, $msg) = @_;
 
     my $gn_info = $self->_fetch_object_info($aa_ref);
     my $gn_ws = $gn_info->[7];
 
-    my %src_stats = $self->_generate_stats_from_aa($src_ref);
     my %aa_stats = $self->_generate_stats_from_aa($aa_ref);
-    my %src_gff_stats = $self->_generate_stats_from_gffContents($src_gff_conts);
     my %aa_gff_stats = $self->_generate_stats_from_gffContents($aa_gff_conts);
     my %subsys_info = $self->_fetch_subsystem_info();
-
-    my $report_message;
-    my ($src_gene_count, $src_role_count, $aa_gene_count, $aa_role_count);
-    if (keys %aa_gff_stats) {
-        if (keys %src_gff_stats) {
-            $src_gene_count = keys $src_gff_stats{gene_role_map};
-            $src_role_count = keys $src_gff_stats{function_roles};
-        }
-        else {
-            $src_gene_count = 0;
-            $src_role_count = 0;
-        }
-        $aa_gene_count = keys $aa_gff_stats{gene_role_map};
-        $aa_role_count = keys $aa_gff_stats{function_roles};
-        $report_message = ("Genome Ref: $aa_ref\n".
-                           "Genome type: $aa_stats{genome_type}\n".
-                           "Number of features: $aa_stats{num_features}\n".
-                           "Number of unique function roles: $aa_role_count\n".
-                           "Number of genes: $aa_gene_count\n");
-    }
-    else {
-        $report_message = ("Genome Ref: $aa_ref\n".
-                           "Genome type: $aa_stats{genome_type}\n".
-                           "Number of features: $src_stats{num_features}\n".
-                           "No data on functional roles available\n");
-    }
 
     my @html_files = $self->_write_html_from_stats(\%aa_stats,
                                                    \%aa_gff_stats,
@@ -2965,18 +2884,20 @@ sub _generate_genome_report {
                                                    $func_tab);
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
+    my $report_message = $msg;
+    print "Report message: $report_message";
     my $report_info = $kbr->create_extended_report(
-        {"message"=>$report_message,
-         "objects_created"=>[{"ref"=>$aa_ref, "description"=>"RAST re-annotated genome"}],
-         "html_links"=> \@html_files,
-         "direct_html_link_index"=> 0,
-         "html_window_height"=> 366,
-         "report_object_name"=>"kb_RAST_genome_report_".$self->_create_uuid(),
-         "workspace_name"=>$gn_ws
+            {"message"=>$report_message,
+             "objects_created"=>[{"ref"=>$aa_ref, "description"=>"RAST re-annotated genome"}],
+             "html_links"=> \@html_files,
+             "direct_html_link_index"=> 0,
+             "html_window_height"=> 366,
+             "report_object_name"=>"kb_RAST_genome_report_".$self->_create_uuid(),
+             "workspace_name"=>$gn_info->[7]
         });
 
     return {"output_genome_ref"=>$aa_ref,
-            "workspace_name"=>$gn_ws,
+            "workspace_name"=>$report_info->{workspace_name},
             "report_name"=>$report_info->{name},
             "report_ref"=>$report_info->{ref}};
 }
@@ -3160,12 +3081,12 @@ sub _get_feature_function_lookup {
     my $ftr_count = scalar @{$features};
 
     print "INFO: Creating feature function lookup table from $ftr_count RAST features.\n";
-    if ($ftr_count > 10) {
-        print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
-    }
-    else {
-        print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
-    }
+    #if ($ftr_count > 10) {
+    #    print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
+    #}
+    #else {
+    #    print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
+    #}
 
     #Feature Lookup Hash
     my %function_lookup = ();
@@ -3330,29 +3251,6 @@ sub _translate_gene_to_protein_sequences {
     return \%protein_seqs;
 }
 
-#
-# generate fasta_contents and gff_contents from given fasta and gff files
-#
-sub _get_fasta_gff_contents {
-    my ($self, $fasta_file, $gff_file) = @_;
-
-    my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
-
-    # generating fasta_contents from the fasta file
-    unless (-s $fasta_file) {
-        croak "**_get_fasta_gff_contents ERROR: FASTA file is empty!\n";
-    }
-    $fasta_contents = $self->_parse_fasta($fasta_file);
-
-    # generating gff_contents from the gff file
-    unless (-s $gff_file) {
-        croak "**_get_fasta_gff_contents ERROR: GFF file is empty!\n";
-    }
-    ($gff_contents, $attr_delimiter) = $self->_parse_gff($gff_file, $attr_delimiter);
-
-    return ($fasta_contents, $gff_contents);
-}
-
 
 ##----main function----##
 sub rast_genome {
@@ -3366,10 +3264,6 @@ sub rast_genome {
     ## 1. call rast to call genes first, then parse for gff_contents
     my ($gc_genome, $inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
     my %gc_rast = %{ $rast_ref };
-    my $input_fasta_file = $gc_rast{fasta_file};
-    my $input_gff_file = $gc_rast{gff_file};
-    my ($fa_contents, $gff_contents) = $self->_get_fasta_gff_contents(
-                                            $input_fasta_file, $input_gff_file);
     my $gc_ftrs = $gc_genome->{features};
     my $gc_ftr_count = scalar @{$gc_ftrs};
     unless ($gc_ftr_count >= 1) {
@@ -3433,12 +3327,12 @@ sub rast_genome {
     };
 
     my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
-    my $upd_gff_contents = $self->_get_genome_gff_contents($aa_ref);
+    my $gff_contents = $self->_get_genome_gff_contents($aa_ref);
     if (defined($aa_ref) && defined($params->{create_report}) &&
         $params->{create_report} == 1) {
-        $rast_ret = $self->_generate_genome_report(
-                          $input_obj_ref, $aa_ref, $gff_contents,
-                          $upd_gff_contents, \%ftr_func_lookup);
+            $rast_ret = $self->_generate_genome_report(
+                          $aa_ref, $gff_contents, \%ftr_func_lookup,
+                          $rasted_ftr_count, $out_msg);
     }
     return $rast_ret;
 }
