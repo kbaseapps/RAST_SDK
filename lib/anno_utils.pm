@@ -24,6 +24,7 @@ use Bio::Perl;
 use Bio::Tools::CodonTable;
 use JSON;
 use Encode qw(encode decode);
+use URI::Encode qw(uri_encode uri_decode);
 use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
@@ -2798,6 +2799,7 @@ sub _write_html_from_stats {
     foreach my $role_k (sort keys %$roles) {
         # add escape to preserve double quote (")
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
+        $new_role_k = uri_decode($new_role_k);
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
         #my $ann_src = $self->_find_function_source($func_tab_ref, $role_k);
         #$rpt_data .= "\"$ann_src\",";

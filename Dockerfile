@@ -15,6 +15,7 @@ RUN cpanm -i Config::IniFiles && \
     cpanm -i WWW::Mechanize --force && \
     cpanm -i MIME::Base64 && \
     cpanm -i Text::Trim && \
+    cpanm -i URI::Encode && \
     cpanm -i Test::Most
 
 ADD ./bootstrap bootstrap
