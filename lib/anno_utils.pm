@@ -2787,7 +2787,7 @@ sub _write_html_from_stats {
     my $report_title = "Feature function report for genome <font color=green>$obj_stats{id}</font>";
     my $rpt_header = "<h3>$report_title:</h3>";
     my $rpt_data = ("data.addColumn('string', 'function role');\n".
-                    "data.addColumn('string', 'annotation source');\n".
+                    #"data.addColumn('string', 'annotation source');\n".
                     "data.addColumn('number', 'gene count');\n".
                     "data.addColumn('string', 'subsystem name');\n".
                     "data.addColumn('string', 'subsystem class');\n".
@@ -2799,8 +2799,8 @@ sub _write_html_from_stats {
         # add escape to preserve double quote (")
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $rpt_data .= '["<span style=\"white-space:nowrap;\">'."$new_role_k</span>\",";
-        my $ann_src = $self->_find_function_source($func_tab_ref, $role_k);
-        $rpt_data .= "\"$ann_src\",";
+        #my $ann_src = $self->_find_function_source($func_tab_ref, $role_k);
+        #$rpt_data .= "\"$ann_src\",";
         $rpt_data .= "$roles->{$role_k}->{gene_count},";
         #$rpt_data .= "\"$roles->{$role_k}->{gene_list}\"],\n";
 
@@ -2871,7 +2871,6 @@ sub _generate_genome_report {
 
     my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
     my $report_message = $msg;
-    print "Report message: $report_message";
     my $report_info = $kbr->create_extended_report(
             {"message"=>$report_message,
              "objects_created"=>[{"ref"=>$aa_ref, "description"=>"RAST re-annotated genome"}],
@@ -3071,7 +3070,7 @@ sub _get_feature_function_lookup {
     #    print "INFO: First 10 RAST feature examples:\n".Dumper(@{$features}[0..9]);
     #}
     #else {
-    print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
+    #    print "INFO:All $ftr_count RAST features:\n".Dumper(@{$features});
     #}
 
     #Feature Lookup Hash
@@ -3092,7 +3091,6 @@ sub _get_feature_function_lookup {
     }
     my $ksize = keys %function_lookup;
     print "INFO: Feature function look up table contains $ksize entries.\n";
-    print "INFO:All function lookups from RAST features:\n".Dumper(\%function_lookup);
     return %function_lookup;
 }
 
