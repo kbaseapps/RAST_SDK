@@ -3324,6 +3324,73 @@ sub rast_genome {
     return $rast_ret;
 }
 
+
+#
+## Helper function 1 for bulk_rast_genomes
+sub _build_param_from_obj {
+    my ($self, $obj_ref, $ws, $out_genomeSet,
+        $scientific_name, $genetic_code, $domain) = @_;
+
+    my $obj_name = $self->_fetch_object_info($obj_ref)->[1];
+    return {
+        object_ref => $obj_ref,
+        output_workspace => $ws,
+        output_genome_name => $out_genomeSet . '_' .$obj_name,
+        scientific_name => $scientific_name,
+        genetic_code => $genetic_code,
+        domain => $domain,
+        create_report => 0
+    };
+}
+
+#
+## Helper function 2 for bulk_rast_genomes
+sub _get_bulk_rast_parameters {
+    my $self = shift;
+    my ($params) = @_;
+
+    my $ws = $params->{output_workspace};
+    my $out_genomeSet = $params->{output_GenomeSet_name};
+    my $in_assemblies = $params->{input_assemblies};
+    my $in_genomes = $params->{input_genomes};
+    my $in_text = $params->{input_text};
+    my $scientific_name = $params->{scientific_name};
+    my $genetic_code = $params->{genetic_code};
+    my $domain = $params->{domain};
+
+    my $bulk_inparams = ();
+
+    foreach my $asmb (@$in_assemblies) {
+        next if $self->_value_in_array($asmb, $bulk_inparams);
+        push(@{$bulk_inparams},
+             $self->_build_param_from_obj($asmb, $ws, $out_genomeSet,
+                                          $scientific_name, $genetic_code, $domain)
+        );
+    }
+
+    foreach my $gn (@$in_genomes) {
+        next if $self->_value_in_array($gn, $bulk_inparams);
+        push(@{$bulk_inparams},
+             $self->_build_param_from_obj($gn, $ws, $out_genomeSet,
+                                          $scientific_name, $genetic_code, $domain)
+        );
+    }
+
+    if ($in_text) {
+        my $input_list = [split(/[\n;\|]+/, $in_text)];
+        $input_list = $self->_uniq_ref($input_list);
+        for (my $i=0; $i < @{$input_list}; $i++) {
+            my $gn = $input_list->[$i];
+            next if $self->_value_in_array($gn, $bulk_inparams);
+            push(@{$bulk_inparams},
+                 $self->_build_param_from_obj($gn, $ws, $out_genomeSet,
+                                              $scientific_name, $genetic_code, $domain)
+            );
+        }
+    }
+    return $bulk_inparams;
+}
+
 ## Parse the inputs into an array $bulk_inparams of the following object structure:
  # {
  #    object_ref => $asmb,
@@ -3345,65 +3412,14 @@ sub rast_genome {
 ##
 sub bulk_rast_genomes {
     my $self = shift;
-    my($inparams) = @_;
-
-    print "bulk_rast_genomes input parameter=\n". Dumper($inparams). "\n";
+    my ($inparams) = @_;
+    print "*********bulk_rast_genomes input parameter=\n". Dumper($inparams). "\n";
 
     my $params = $self->_check_bulk_annotation_params($inparams);
 
     my $ws = $params->{output_workspace};
     my $out_genomeSet = $params->{output_GenomeSet_name};
-    my $in_assemblies = $params->{input_assemblies};
-    my $in_genomes = $params->{input_genomes};
-    my $in_text = $params->{input_text};
-    my $scientific_name = $params->{scientific_name};
-    my $genetic_code = $params->{genetic_code};
-    my $domain = $params->{domain};
-
-    my $bulk_inparams = ();
-
-    foreach my $asmb (@$in_assemblies) {
-        my $obj_name = $self->_fetch_object_info($asmb)->[1];
-        push(@{$bulk_inparams}, {
-            object_ref => $asmb,
-            output_workspace => $ws,
-            output_genome_name => $out_genomeSet . '_' .$obj_name,
-            scientific_name => $scientific_name,
-            genetic_code => $genetic_code,
-            domain => $domain,
-            create_report => 0
-        });
-    }
-
-    foreach my $gn (@$in_genomes) {
-        my $obj_name = $self->_fetch_object_info($gn)->[1];
-        push(@{$bulk_inparams}, {
-            object_ref => $gn,
-            output_workspace => $ws,
-            output_genome_name => $out_genomeSet . '_' .$obj_name,
-            scientific_name => $scientific_name,
-            genetic_code => $genetic_code,
-            domain => $domain,
-            create_report => 0
-        });
-    }
-
-    if ($in_text) {
-        my $input_list = [split(/[\n;\|]+/, $in_text)];
-        $input_list = $self->_uniq_ref($input_list);
-        for (my $i=0; $i < @{$input_list}; $i++) {
-            push(@{$bulk_inparams}, {
-                object_ref => $input_list->[$i],
-                output_workspace => $ws,
-                output_genome_name => $out_genomeSet . '_intext_'.$i,
-                scientific_name => $scientific_name,
-                genetic_code => $genetic_code,
-                domain => $domain,
-                create_report => 0
-            });
-        }
-    }
-
+    my $bulk_inparams = $self->_get_bulk_rast_parameters($params);
     #
     # Throw an error IF $bulks_inparams is NOT a ref to a non-empty ARRAY
     #
@@ -3453,6 +3469,19 @@ sub _uniq {
 sub _uniq_ref {
     my $self = shift;
     [ keys { map { $_ => 1 } @{$_[0]} } ];
+}
+
+#
+## for use to check if a key value is in an array of hash
+#
+sub _value_in_array {
+     my ($self, $val, $arr) = @_;
+     for my $href (@{$arr}) {
+        if ($href->{object_ref} eq $val) {
+            return 1;
+        }
+     }
+     return 0;
 }
 
 #

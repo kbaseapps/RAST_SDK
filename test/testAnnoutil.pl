@@ -1348,6 +1348,7 @@ subtest '_save_genome_from_gff' => sub {
 };
 =cut
 
+=begin
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -1388,7 +1389,7 @@ subtest 'anno_utils_rast_genome' => sub {
     }
 };
 
-=begin
+
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
@@ -1415,6 +1416,36 @@ subtest 'Impl_rast_genome_assembly' => sub {
 };
 
 
+## testing _get_bulk_rast_parameters using obj ids from prod ONLY
+subtest '_get_bulk_rast_parameters' => sub {
+    my $parms = {
+          'input_genomes' => [
+                               '55141/242/1',
+                               '55141/212/1'
+                             ],
+          'create_report' => 0,
+          'output_workspace' => 'test_RAST_SDK_1592592098000',
+          'output_GenomeSet_name' => 'out_genomeSet',
+          'input_assemblies' => [
+                                  '55141/266/3',
+                                  '55141/243/1'
+                                ],
+          'input_text' => '55141/266/3;55141/212/1;63171/394/1'
+    };
+    my $refs = ['63171/394/1', '55141/242/1', '55141/212/1', '55141/243/1', '55141/266/3'];
+
+    my $params;
+    lives_ok {
+        $params = $annoutil->_get_bulk_rast_parameters($parms);
+    } "anno_utils _get_bulk_rast_parameters call returns normally.";
+
+    for my $ref (@{$refs}) {
+        ok ($annoutil->_value_in_array($ref, $params), "$ref is included in the parameters\n");
+    }
+};
+=cut
+
+
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
 subtest 'rast_genomes_assemblies' => sub {
     my $params = {
@@ -1427,7 +1458,7 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
         $params->{input_text} = '';
         my $ret_ann6 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on 1N1 returns normally.";
+    } "rast_impl rast_genomes_assemblies call on 1N1 returns normally.";
 
     lives_ok {
         $params->{output_workspace} = get_ws_name();
@@ -1436,7 +1467,7 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_assemblies} = [];
         $params->{input_text} = '';
         my $ret_ann7 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on array of 2 genomes returns normally.";
+    } "rast_impl rast_genomes_assemblies call on array of 2 genomes returns normally.";
 
     lives_ok {
         $params->{output_workspace} = get_ws_name();
@@ -1444,17 +1475,16 @@ subtest 'rast_genomes_assemblies' => sub {
         $params->{input_genomes} = [];
         $params->{input_text} = '';
         my $ret_ann8 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on array of 2 assemblies returns normally.";
+    } "rast_impl rast_genomes_assemblies call on array of 2 assemblies returns normally.";
 
     lives_ok {
         $params->{output_workspace} = get_ws_name();
         $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-        $params->{input_text} = '';
+        $params->{input_text} = '55141/266/3;55141/212/1;63171/394/1';
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
-    } "anno_utils rast_genomes_assemblies call on two arrays returns normally.";
+    } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
-=cut
 
 
 =begin
