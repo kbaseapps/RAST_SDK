@@ -791,37 +791,6 @@ subtest '_run_rast_annotation' => sub {
 
 
 =begin
-# Test _annotate_process_allInOne with genome/assembly object refs in prod
-subtest '_annotate_process_allInOne' => sub {
-    my @regexes = ( qr/ERROR calling rast run_pipeline/,
-                    qr/Can\'t call method/);
-    my $allre= "(".join("|",@regexes).")";
-    my $params = {
-         output_genome_name => 'anno_gn_name',
-         output_workspace => $ws,
-         object_ref => $obj_Ecoli
-    };
-    my ($ain1_out, $out_msg);
-    throws_ok {
-        ($ain1_out, $out_msg) = $annoutil->_annotate_process_allInOne($params);
-    } qr/$allre/,
-        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
-
-    my $params2 = {
-         output_genome_name => 'anno_asmb_name',
-         output_workspace => $ws,
-         object_ref => $obj_asmb
-    };
-
-    ## This should be fixed by using prodigal gene calling first...
-    throws_ok {
-        ($ain1_out, $out_msg) = $annoutil->_annotate_process_allInOne($params2);
-    } qr/$allre/,
-        '_annotate_process_allInOne returns ERROR due to kmer data absence or other causes.';
-};
-=cut
-
-=begin
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
@@ -856,6 +825,42 @@ subtest 'Impl_annotate_genome' => sub {
     } qr/Error invoking method call_/,
       "test Impl annotate_genome on an assembly died.";
 };
+
+
+subtest '_validate_KB_objref' => sub {
+	my $object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome';
+	my $passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome/1';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '52755332/short_one/1';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '5332/345/3';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '5332/3wda9/123';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '5332/39';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '5332/3wda9';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+
+	$object_ref = '5332/3wda9/a';
+	$passed_test = $annoutil->_validate_KB_objref($object_ref);
+	ok ($passed_test == 0, "$object_ref is an invalid workspace object.\n");
+};
+
 
 subtest '_check_annotation_params' => sub {
     my $obj = '1234/56/7';
@@ -1432,15 +1437,33 @@ subtest '_get_bulk_rast_parameters' => sub {
                                 ],
           'input_text' => '55141/266/3;55141/212/1;63171/394/1'
     };
-    my $refs = ['63171/394/1', '55141/242/1', '55141/212/1', '55141/243/1', '55141/266/3'];
+    my @refs = split(';', $parms->{input_text});
+    push(@refs, @{$parms->{input_assemblies}});
+    push(@refs, @{$parms->{input_genomes}});
 
     my $params;
     lives_ok {
         $params = $annoutil->_get_bulk_rast_parameters($parms);
     } "anno_utils _get_bulk_rast_parameters call returns normally.";
 
-    for my $ref (@{$refs}) {
+    for my $ref (@refs) {
         ok ($annoutil->_value_in_array($ref, $params), "$ref is included in the parameters\n");
+    }
+
+    # testing invalid object name/id inputs
+    $parms->{input_text} = '55141/266/3;55141/212/1;63171/394/1;abc/3/2;333/22/a';
+    @refs = split(';', $parms->{input_text});
+
+    lives_ok {
+        $params = $annoutil->_get_bulk_rast_parameters($parms);
+    } "anno_utils _get_bulk_rast_parameters call returns normally.";
+    for my $ref (@refs) {
+        if ($ref ne 'abc/3/2' && $ref ne '333/22/a') {
+            ok ($annoutil->_value_in_array($ref, $params), "$ref is included in the parameters\n");
+		}
+        else {
+            ok ($annoutil->_value_in_array($ref, $params) == 0, "invalid reference $ref is excluded from the parameters\n");
+		}
     }
 };
 =cut
@@ -1485,7 +1508,6 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
-
 
 =begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text

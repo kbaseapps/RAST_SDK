@@ -558,14 +558,18 @@ sub _get_genome {
 #
 sub _get_genome_gff_contents {
     my ($self, $obj_ref) = @_;
+
+    return [] unless ($self->_validate_KB_objref($obj_ref));
+
     my $gff_filename = catfile($self->{genome_dir}, 'genome.gff');
+    my ($gff_contents, $attr_delimiter) = ([], "=");
 
     # getting gff_contents from $obj_ref if it is of genome type
     my $obj_info = $self->_fetch_object_info($obj_ref);
+
     my $in_type = $obj_info->[2];
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
                      $in_type =~ /KBaseGenomeAnnotatioVns.GenomeAnnotation/);
-    my ($gff_contents, $attr_delimiter) = ([], "=");
 
     if ($is_genome) {
         # generating the gff file directly from genome
@@ -585,8 +589,9 @@ sub _get_genome_gff_contents {
 #
 sub _get_contigs {
     my ($self, $ref) = @_;
+
+    return {} unless ($self->_validate_KB_objref($ref));
     my $info = $self->_fetch_object_info($ref);
-    print "Object $ref information:\n".Dumper($info);
 
     my $obj = {
         _reference => $ref,
@@ -647,7 +652,7 @@ sub _get_contigs {
         print("Assembly $obj->{_reference} Downloaded\n");
         $obj->{md5} = Digest::MD5::md5_hex($str);
         $obj->{_kbasetype} = "Assembly";
-    }elsif ($info->[2] =~ /ContigSet/) {
+    } elsif ($info->[2] =~ /ContigSet/) {
         $obj = $self->_fetch_object_data($ref);
         $obj->{_kbasetype} = "ContigSet";
         $obj->{_reference} = $ref;
@@ -931,9 +936,12 @@ sub _set_parameters_by_input {
 
     # 1. getting the fasta & gff files from $input_obj_ref according to its type
     my $input_obj_ref = $parameters->{object_ref};
+    return ((), {}) unless ($self->_validate_KB_objref($input_obj_ref));
+
     my $ws = $parameters->{output_workspace};
     my $gn_name = $parameters->{output_genome_name};
     my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
+
     my $in_type = $input_obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -2227,48 +2235,6 @@ sub _build_workflows {
     return ($rast_ref, $inputgenome);
 }
 #
-#--------------------------------------------------------------
-## Runs RAST by connecting ALL the factoral procedures together
-#--------------------------------------------------------------
-#
-sub _annotate_process_allInOne {
-    my ($self, $parameters) = @_;
-
-    my ($rast_ref, $inputgenome) = $self->_build_workflows($parameters);
-    my %rast_details = %{ $rast_ref };
-    
-    ## rasting
-    my $genecall_workflow = $rast_details{genecall_workflow};
-    my $annotate_workflow = $rast_details{annotate_workflow};
-    my $extra_workflow = $rast_details{extra_workflow};
-
-    my $genome_genecalled = $self->_run_rast_workflow($inputgenome, $genecall_workflow);
-    my $genome_annotated = $self->_run_rast_workflow($genome_genecalled, $annotate_workflow);
-    my $genome_renumed = $self->_run_rast_workflow($genome_annotated, $extra_workflow);
-
-    ## refactor 8 -- post-rasting processing
-    my $genome_final = $self->_post_rast_ann_call($genome_renumed,
-                                                  $inputgenome,
-                                                  $parameters,
-                                                  $rast_details{contigobj});
-
-    ## refactor 9 -- build seed ontology
-    ($genome_final, $rast_ref) = $self->_build_seed_ontology(
-                                        \%rast_details, $genome_final, $inputgenome);
-
-    ## refactor 10 -- summarize annotation
-    ($genome_final, $rast_ref) = $self->_summarize_annotation(
-                                        $rast_ref, $genome_final, $inputgenome);
-
-    ## refactor 11 -- save the annotated genome
-    %rast_details = %{ $rast_ref };
-    return $self->_save_annotation_results($genome_final,
-                                           $parameters,
-                                           $rast_details{message});
-}
-
-
-#
 # Making gene calls on the input genomes with the input workflow stages:
 # return the following data structure:
 #
@@ -2329,7 +2295,9 @@ sub _write_fasta_from_genome {
 sub _write_gff_from_genome {
     my ($self, $genome_ref) = @_;
 
+    return '' unless ($self->_validate_KB_objref($genome_ref));
     my $obj_info = $self->_fetch_object_info($genome_ref);
+
     my $in_type = $obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -2364,7 +2332,6 @@ sub _save_one_genome {
 	});
     return $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4];
 }
-
 
 sub _save_genome_from_gff {
     my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
@@ -2401,7 +2368,7 @@ sub _save_genome_from_gff {
     };
     if ($@) {
         croak("**In _save_genome_from_gff ERROR trying to access the input object:\n"
-               .$@."\n");
+                .$@."\n");
     }
 
     #print "*********First 20 lines of GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
@@ -2419,61 +2386,32 @@ sub _save_genome_from_gff {
     };
     if ($@) {
         croak("**In _save_genome_from_gff ERROR calling GenomeFileUtil.ws_obj_gff_to_genome:\n"
-               .$@."\n");
+                .$@."\n");
     }
     else {
         return $annotated_genome;
     }
 }
 
+sub _validate_KB_objref {
+    my ($self, $obj_ref) = @_;
 
-sub _fasta_gff_to_genome {
-    my ($self, $ws, $gn_name, $fa_file, $gff_file) = @_;
+    my @str_arr = split ('/', $obj_ref);
 
-    print "Parameters for saving annotated genome-----------------\n";
-    print "Workspace name: $_[1]\n";
-    print "Annotated genome name: $_[2]\n";
-    print "Fasta file name: $_[3]\n";
-    print "GFF file name: $_[4]\n";
+    my $check_passed = 1;
+    return 0 if @str_arr < 2;
 
-    unless (defined($gn_name) && defined($ws)) {
-        croak "**In _fasta_gff_to_genome: both genome name and workspace are required.";
-    }
-    unless (defined($fa_file) && defined($gff_file)) {
-        croak "**In _fasta_gff_to_genome: both fasta and gff files are required.";
-    }
-    unless (-e $fa_file) {
-        croak "**In _fasta_gff_to_genome: fasta file not found.\n";
-    }
-    unless (-s $fa_file) {
-        croak "**In _fasta_gff_to_genome: fasta file is empty.\n";
-    }
-    unless (-e $gff_file) {
-        croak "**In _save_genome_from_gff: GFF file not found.\n";
-    }
-    unless (-s $gff_file) {
-        croak "**In _save_genome_from_gff: GFF file is empty.\n";
-    }
+    $check_passed = $str_arr[0] =~ m/[^\\w\\|._-]/;
+    return 0 unless $check_passed;
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $annotated_genome = {};
-    eval {
-        $annotated_genome = $gfu->fasta_gff_to_genome ({
-            "fasta_file" => {'path' => $fa_file},
-            "gff_file" => {'path' => $gff_file},
-            "genome_name" => $gn_name,
-            "workspace_name" => $ws,
-            "generate_missing_genes" => 1});
-    };
-    if ($@) {
-        croak("**In _fasta_gff_to_genome ERROR calling GenomeFileUtil.fast_gff_to_genome:\n"
-               .$@."\n");
+    $check_passed = $str_arr[1] =~ m/[^\\w\\|._-]/;
+    return 0 unless $check_passed;
+
+    if (exists($str_arr[2])) {
+       $check_passed = $str_arr[2] =~ m/^\d+$/;
     }
-    else {
-        return $annotated_genome;
-    }
+    return $check_passed;
 }
-
 
 sub _check_annotation_params {
     my ($self, $params) = @_;
@@ -2498,12 +2436,8 @@ sub _check_annotation_params {
     }
 
     my $req2 = "'object_ref' is required for running rast_genome.\n";
-    my $invald2 = "Invalid workspace object reference:";
     if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
         croak $req2;
-    }
-    elsif ($params->{object_ref} !~ m/[^\\w\\|._-]/) {
-        croak $invald2 .$params->{object_ref}.'\n';
     }
     if (!defined($params->{output_genome_name})
         || $params->{output_genome_name} eq '') {
@@ -2582,10 +2516,6 @@ sub _check_bulk_annotation_params {
     unless ($params->{input_text}) {
         $params->{input_text} = '';
     }
-    if (!defined($params->{scientific_name})
-        || $params->{scientific_name} eq '') {
-        $params->{scientific_name} = "Unknown species";
-    }
     if (!defined($params->{genetic_code})) {
         $params->{genetic_code} = 11;
     }
@@ -2600,6 +2530,9 @@ sub _check_bulk_annotation_params {
 sub _generate_stats_from_aa {
     my ($self, $gn_ref) = @_;
 
+    my %gn_stats = ();
+    return %gn_stats unless ($self->_validate_KB_objref($gn_ref));
+
     print "++++++++++++++_generate_stats_from_aa on $gn_ref++++++++++++\n";
     my $gn_info = $self->_fetch_object_info($gn_ref);
 
@@ -2610,7 +2543,6 @@ sub _generate_stats_from_aa {
                      $in_type =~ /KBaseGenomeAnnotations\.GenomeAnnotation/);
     my $is_meta_assembly = $in_type =~ m/Metagenomes\.AnnotatedMetagenomeAssembly/;
 
-    my %gn_stats = ();
     $gn_stats{workspace} = $gn_info->[7];
     $gn_stats{id} = $gn_info->[1];
     $gn_stats{genome_type} = $gn_info->[2];
@@ -2859,6 +2791,13 @@ sub _write_html_from_stats {
 sub _generate_genome_report {
     my ($self, $aa_ref, $aa_gff_conts, $func_tab, $ftr_cnt, $msg) = @_;
 
+    unless ($self->_validate_KB_objref($aa_ref)) {
+		return {"output_genome_ref"=>$aa_ref,
+                "workspace_name"=>undef,
+                "report_name"=>undef,
+                "report_ref"=>undef};
+    }
+
     my $gn_info = $self->_fetch_object_info($aa_ref);
     my $gn_ws = $gn_info->[7];
 
@@ -2889,34 +2828,55 @@ sub _generate_genome_report {
             "report_ref"=>$report_info->{ref}};
 }
 
-
+#
+## Check the given ref string to make sure it conforms to the expected
+## object reference format and actually exists in KBase.
+## Return the object data if it passes, die otherwise.
+#
 sub _fetch_object_data {
     my ($self, $obj_ref) = @_;
     my $ret_obj_data = {};
+
+    unless ($obj_ref =~ m/^\d+\/\d+\/\d+$/) {
+		print "invalid object reference: $obj_ref\n";
+        return $ret_obj_data;
+    }
+
     eval {
         $ret_obj_data = $self->{ws_client}->get_objects2(
                             {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
     };
     if ($@) {
-        croak "ERROR Workspace.get_objects2 failed: ".$@."\n";
+        croak "ERROR Workspace.get_objects2 failed to access $obj_ref:$@\n";
     }
     return $ret_obj_data;
 }
 
+
+#
+## Check the given ref string to make sure it conforms to the expected
+## object reference format and actually exists in KBase.
+## Return the object info if it passes, undef otherwise.
+#
 sub _fetch_object_info {
     my ($self, $obj_ref) = @_;
-    my $obj_info = {};
+
+    my $ret_obj_info = undef;
     eval {
-        $obj_info = $self->{ws_client}->get_object_info3(
+        $ret_obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>[{ref=>$obj_ref}]}
                         )->{infos}->[0];
     };
     if ($@) {
-        croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
+        print "INFO: Workspace.get_object_info3 failed to access $obj_ref.\n";
+        #print "ERROR message:$@\n";
+	    return undef;
     }
-    # print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
-    return $obj_info;
+    else {
+        print "INFO: object info for $obj_ref------\n".Dumper($ret_obj_info);
+        return $ret_obj_info;
+    }
 }
 
 # create a 12 char string unique enough here
@@ -3245,6 +3205,12 @@ sub rast_genome {
     my($inparams) = @_;
 
     print "rast_genome input parameter=\n". Dumper($inparams). "\n";
+    ## 0. Doing nothing on an invalid input
+    unless ($self->_validate_KB_objref($inparams->{object_ref})) {
+        print "INFO: Invalid workspace object reference: $inparams->{object_ref}";
+        return {};
+    }
+
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
 
@@ -3328,69 +3294,25 @@ sub rast_genome {
 #
 ## Helper function 1 for bulk_rast_genomes
 sub _build_param_from_obj {
-    my ($self, $obj_ref, $ws, $out_genomeSet,
-        $scientific_name, $genetic_code, $domain) = @_;
+    my ($self, $obj_ref, $ws, $out_genomeSet) = @_;
 
-    my $obj_name = $self->_fetch_object_info($obj_ref)->[1];
-    return {
-        object_ref => $obj_ref,
-        output_workspace => $ws,
-        output_genome_name => $out_genomeSet . '_' .$obj_name,
-        scientific_name => $scientific_name,
-        genetic_code => $genetic_code,
-        domain => $domain,
-        create_report => 0
-    };
+    my $obj_info = $self->_fetch_object_info($obj_ref);
+    if (defined($obj_info)) {
+        my $obj_name = $obj_info->[1];
+        return {
+            object_ref => $obj_ref,
+            output_workspace => $ws,
+            output_genome_name => $out_genomeSet . '_' .$obj_name,
+            create_report => 0
+        };
+    }
+    else {
+        return undef;
+    }
 }
 
 #
-## Helper function 2 for bulk_rast_genomes
-sub _get_bulk_rast_parameters {
-    my $self = shift;
-    my ($params) = @_;
-
-    my $ws = $params->{output_workspace};
-    my $out_genomeSet = $params->{output_GenomeSet_name};
-    my $in_assemblies = $params->{input_assemblies};
-    my $in_genomes = $params->{input_genomes};
-    my $in_text = $params->{input_text};
-    my $scientific_name = $params->{scientific_name};
-    my $genetic_code = $params->{genetic_code};
-    my $domain = $params->{domain};
-
-    my $bulk_inparams = ();
-
-    foreach my $asmb (@$in_assemblies) {
-        next if $self->_value_in_array($asmb, $bulk_inparams);
-        push(@{$bulk_inparams},
-             $self->_build_param_from_obj($asmb, $ws, $out_genomeSet,
-                                          $scientific_name, $genetic_code, $domain)
-        );
-    }
-
-    foreach my $gn (@$in_genomes) {
-        next if $self->_value_in_array($gn, $bulk_inparams);
-        push(@{$bulk_inparams},
-             $self->_build_param_from_obj($gn, $ws, $out_genomeSet,
-                                          $scientific_name, $genetic_code, $domain)
-        );
-    }
-
-    if ($in_text) {
-        my $input_list = [split(/[\n;\|]+/, $in_text)];
-        $input_list = $self->_uniq_ref($input_list);
-        for (my $i=0; $i < @{$input_list}; $i++) {
-            my $gn = $input_list->[$i];
-            next if $self->_value_in_array($gn, $bulk_inparams);
-            push(@{$bulk_inparams},
-                 $self->_build_param_from_obj($gn, $ws, $out_genomeSet,
-                                              $scientific_name, $genetic_code, $domain)
-            );
-        }
-    }
-    return $bulk_inparams;
-}
-
+## Helper function 3 for bulk_rast_genomes
 ## Parse the inputs into an array $bulk_inparams of the following object structure:
  # {
  #    object_ref => $asmb,
@@ -3401,7 +3323,55 @@ sub _get_bulk_rast_parameters {
  #    domain => $domain,
  #    create_report => 0
  # }
- # Then loop through the array to call the above rast_genome function on each.
+##
+#
+sub _get_bulk_rast_parameters {
+    my $self = shift;
+    my ($params) = @_;
+
+    my $ws = $params->{output_workspace};
+    my $out_genomeSet = $params->{output_GenomeSet_name};
+    my $in_assemblies = $params->{input_assemblies};
+    my $in_genomes = $params->{input_genomes};
+    my $in_text = $params->{input_text};
+
+    my $bulk_inparams = ();
+    foreach my $asmb (@$in_assemblies) {
+        next unless ($self->_validate_KB_objref($asmb));
+        next if $self->_value_in_array($asmb, $bulk_inparams);
+        my $tmp_parm = $self->_build_param_from_obj($asmb, $ws, $out_genomeSet);
+        if (defined($tmp_parm)) {
+            push @{$bulk_inparams}, $tmp_parm;
+        }
+    }
+
+    foreach my $gn (@$in_genomes) {
+        next unless ($self->_validate_KB_objref($gn));
+        next if $self->_value_in_array($gn, $bulk_inparams);
+        my $tmp_parm = $self->_build_param_from_obj($gn, $ws, $out_genomeSet);
+        if (defined($tmp_parm)) {
+            push @{$bulk_inparams}, $tmp_parm;
+        }
+    }
+
+    if ($in_text) {
+        my $input_list = [split(/[\n;\|]+/, $in_text)];
+        $input_list = $self->_uniq_ref($input_list);
+        for (my $i=0; $i < @{$input_list}; $i++) {
+            my $gn = $input_list->[$i];
+            next unless ($self->_validate_KB_objref($gn));
+            next if $self->_value_in_array($gn, $bulk_inparams);
+            my $tmp_parm = $self->_build_param_from_obj($gn, $ws, $out_genomeSet);
+            if (defined($tmp_parm)) {
+                push @{$bulk_inparams}, $tmp_parm;
+            }
+        }
+    }
+    return $bulk_inparams;
+}
+
+##
+ # Loop through the array to call the above rast_genome function on each.
  # After creating a genomeSet in the workspace, return the following object:
  # {
  #     "output_genomeSet_ref"=>$ws."/".$out_genomeSet,
@@ -3424,7 +3394,7 @@ sub bulk_rast_genomes {
     # Throw an error IF $bulks_inparams is NOT a ref to a non-empty ARRAY
     #
     my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
-               "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n");
+            "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n");
     Bio::KBase::Exceptions::ArgumentValidationError->throw(
         error        => $empty_input_msg,
         method_name  => 'bulk_rast_genomes'
