@@ -1,6 +1,11 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.7
+__Changes__
+Found the cause and fixed it for the issue 'RAST annotation of MG assembly (meaning make fresh gene call) fails.'
+Add new app `Annotate Genome/Assembly` that combines two previous apps to handle annotation of both genome and assembly; app `Bulk Annotate Genomes/Assemblies` for multiple genomes/assemblies annotation
+
 ### Version 0.1.6
 __Changes__
 annotate_genome(s) now takes a taxon ID and timestamp to allow exact specification of the taxon ID
