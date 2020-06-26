@@ -549,7 +549,8 @@ sub _get_genome {
     });
     my $genome = $output->{genomes}->[0];
     $genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
-    print("Genome $genome->{data}->{'_reference'} downloaded\n");
+    my $ftr_cnt = @{$genome->{data}->{features}};
+    print("Genome $genome->{data}->{'_reference'} downloaded with $ftr_cnt features.\n");
     return $genome->{data};
 }
 
@@ -937,11 +938,11 @@ sub _set_parameters_by_input {
     # 1. getting the fasta & gff files from $input_obj_ref according to its type
     my $input_obj_ref = $parameters->{object_ref};
     return ((), {}) unless ($self->_validate_KB_objref($input_obj_ref));
+    my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
+    return ((), {}) unless defined($input_obj_info);
 
     my $ws = $parameters->{output_workspace};
     my $gn_name = $parameters->{output_genome_name};
-    my $input_obj_info = $self->_fetch_object_info($input_obj_ref);
-
     my $in_type = $input_obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -956,10 +957,10 @@ sub _set_parameters_by_input {
 
     my $types_ref;
     if ($is_genome) {
-        # print "INFO:input_obj_ref points to a genome----";
+        print "INFO:----$input_obj_ref points to a genome----\n";
         if (defined($input_obj_info->[10])) {
             my $num_ftrs = $input_obj_info->[10]->{'Number features'};
-            print "Input object '$input_obj_ref' is a genome and has $num_ftrs features.\n";
+            print "Input object $input_obj_ref is a genome and has $num_ftrs features.\n";
         }
 
         ($inputgenome, $contigobj, $oldfunchash,
@@ -969,6 +970,7 @@ sub _set_parameters_by_input {
         $rast_details{oldtype} = $oldtype;
         $rast_details{types} = $types_ref;
     } elsif ($is_assembly) {
+        print "INFO:----$input_obj_ref points to an assembly----\n";
         ($inputgenome, $contigobj) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
