@@ -1687,7 +1687,6 @@ sub _post_rast_ann_call {
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
     }
-
     $genome = $self->_move_non_coding_features($genome, $contigobj);
     return $genome;
 }
@@ -1704,8 +1703,8 @@ sub _move_non_coding_features {
                 # Found some pseudogenes that have wrong structure for aliases
                     my $tmp = [];
                     foreach my $key (@{$ftr->{aliases}})  {
-                        my @ary = ('alias',$key);
-                        push(@{$tmp},\@ary);
+                        my @ary = ('alias', $key);
+                        push(@{$tmp}, \@ary);
                     }
                     $ftr->{aliases} = $tmp;
                 }
@@ -1747,8 +1746,11 @@ sub _move_non_coding_features {
         }
     }
 
+    if ($count > 0) {
+        print "\n***INFO:***$count features have been moved to non_coding_features.\n";
+    }
     my $nc_ftr_count = @{$genome->{non_coding_features}};
-    print "\n***********$nc_ftr_count features moved to non_coding_features.";
+    print "\n***INFO:***There are $nc_ftr_count non_coding_features.\n";
 
     if (defined($contigobj) && defined($contigobj->{contigs})
             && scalar(@{$contigobj->{contigs}})>0 ) {
@@ -2139,41 +2141,51 @@ sub _save_annotation_results {
 #   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
     my $rasted_gn = $genome;
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
+
     if ($g_data_type eq 'GenomeTypeObject') {
         print "**********Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving**********.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
+
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $gaout_info = $gfu_client->save_one_genome({
-        workspace => $parameters->{output_workspace},
-        name => $parameters->{output_genome_name},
-        data => $rasted_gn,
-        provenance => [{
-            "time" => DateTime->now()->datetime()."+0000",
-            service_ver => $self->_util_version(),
-            service => "RAST_SDK",
-            method => Bio::KBase::utilities::method(),
-            method_params => [$parameters],
-            input_ws_objects => [],
-            resolved_ws_objects => [],
-            intermediate_incoming => [],
-            intermediate_outgoing => []
-        }],
-        hidden => 0
-    })->{info};
+    my ($gaout, $gaout_info);
 
-    my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
-    Bio::KBase::kbaseenv::add_object_created({
-        "ref" => $ref,
-        "description" => "Annotated genome"
-    });
-    Bio::KBase::utilities::print_report_message({
-        message => "<pre>".$message."</pre>",
-        append => 0,
-        html => 0
-    });
-
-    return ({"ref" => $ref}, $message);
+    eval {
+        $gaout = $gfu_client->save_one_genome({
+            workspace => $parameters->{output_workspace},
+            name => $parameters->{output_genome_name},
+            data => $rasted_gn,
+            provenance => [{
+                "time" => DateTime->now()->datetime()."+0000",
+                service_ver => $self->_util_version(),
+                service => "RAST_SDK",
+                method => Bio::KBase::utilities::method(),
+                method_params => [$parameters],
+                input_ws_objects => [],
+                resolved_ws_objects => [],
+                intermediate_incoming => [],
+                intermediate_outgoing => []
+            }],
+            hidden => 0
+        });
+    };
+    if ($@) {
+        croak "ERROR: Calling GFU.save_one_genome failed with error message:\n$@\n";
+    }
+    else {
+        $gaout_info = $gaout->{info};
+        my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
+        Bio::KBase::kbaseenv::add_object_created({
+            "ref" => $ref,
+            "description" => "Annotated genome"
+        });
+        Bio::KBase::utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+        return ({"ref" => $ref}, $message);
+    }
 }
 
 #
