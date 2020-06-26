@@ -2147,6 +2147,18 @@ sub _save_annotation_results {
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
 
+    my $ncoding_features = $genome->{non_coding_features};
+    my $cnt = 0;
+    for my $ncoding_ftr (@{$ncoding_features}) {
+        if(exists($ncoding_ftr->{type})) {
+            $cnt++;
+            #print "type value: $ncoding_ftr->{type}\n";
+        }
+    }
+    if ($cnt == scalar @{$ncoding_features}) {
+        print "***INFO***: All non-coding features have defined type**********\n";
+    }
+
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my ($gaout, $gaout_info);
 

@@ -887,7 +887,7 @@ subtest '_post_rast_ann_call' => sub {
     for my $ncoding_ftr (@{$ncoding_features01}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            # print "type value: $ncoding_ftr->{type}\n";
+            print "type value: $ncoding_ftr->{type}\n";
         }
     }
     print "**for $obj_65386_1:Count of non_coding_features WITH 'type' AFTER _post_rast_ann_call:$cnt\n";
@@ -914,7 +914,6 @@ subtest '_post_rast_ann_call' => sub {
     for my $ncoding_ftr (@{$ncoding_features02}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            print "type value: $ncoding_ftr->{type}\n";
         }
     }
     print "**for $obj_65386_2:Count of non_coding_features WITH 'type' AFTER _post_rast_ann_call:$cnt\n";
@@ -940,18 +939,28 @@ subtest '_post_rast_ann_call' => sub {
 # Test _build_seed_ontology with genome/assembly object refs in prod
 subtest '_build_seed_ontology' => sub {
     # a genome object in workspace #65386
+    my $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nBEFORE _build_seed_ontology there are $nc_ftr_count non_coding features.\n";
+
     lives_ok {
         ($final_genome01, $rast_ref) = $annoutil->_build_seed_ontology(
               \%rast_details01, $final_genome01, $inputgenome01);
     } "_build_seed_ontology returns normally on genome $obj_65386_1";
     %rast_details01 = %{$rast_ref}; # dereference
+    $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nAFTER _build_seed_ontology there are $nc_ftr_count non_coding features.\n";
 
     # another genome object in workspace #65386
+    $nc_ftr_count = @{$final_genome02->{non_coding_features}};
+    print "\n********For case $obj_65386_2*********\nBEFORE _build_seed_ontology there are $nc_ftr_count non_coding features.\n";
+
     lives_ok {
         ($final_genome02, $rast_ref) = $annoutil->_build_seed_ontology(
               \%rast_details02, $final_genome02, $inputgenome02);
     } "_build_seed_ontology returns normally on genome $obj_65386_2";
     %rast_details02 = %{$rast_ref}; # dereference
+    $nc_ftr_count = @{$final_genome02->{non_coding_features}};
+    print "\n********For case $obj_65386_2*********\nAFTER _build_seed_ontology there are $nc_ftr_count non_coding features.\n";
 
     # a genome object
     lives_ok {
@@ -966,25 +975,35 @@ subtest '_build_seed_ontology' => sub {
               \%rast_details2, $final_genome2, $inputgenome2);
     } "_build_seed_ontology returns on assembly $obj_asmb";
     %rast_details2 = %{$rast_ref}; # dereference
-
 };
 
 
 # Test _summarize_annotation with genome/assembly object refs in prod
 subtest '_summarize_annotation' => sub {
     # a genome object in workspace #65386
+    my $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nBEFORE _summarize_annotation there are $nc_ftr_count non_coding features.\n";
+
     lives_ok {
-        ($final_genome02, $rast_ref) = $annoutil->_summarize_annotation(
-              \%rast_details02, $final_genome02, $inputgenome02);
-    } "_summarize_annotation runs successfully on genome $obj_65386_2";
-    %rast_details02 = %{$rast_ref}; # dereference
+        ($final_genome01, $rast_ref) = $annoutil->_summarize_annotation(
+              \%rast_details01, $final_genome01, $inputgenome01);
+    } "_summarize_annotation runs successfully on genome $obj_65386_1";
+    %rast_details01 = %{$rast_ref}; # dereference
+
+    $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nAFTER _summarize_annotation there are $nc_ftr_count non_coding features.\n";
 
     # another genome object in workspace #65386
+    $nc_ftr_count = @{$final_genome02->{non_coding_features}};
+    print "\n********For case $obj_65386_2*********\nBEFORE _summarize_annotation there are $nc_ftr_count non_coding features.\n";
+
     lives_ok {
         ($final_genome02, $rast_ref) = $annoutil->_summarize_annotation(
               \%rast_details02, $final_genome02, $inputgenome02);
     } "_summarize_annotation runs successfully on genome $obj_65386_2";
     %rast_details02 = %{$rast_ref}; # dereference
+    $nc_ftr_count = @{$final_genome02->{non_coding_features}};
+    print "\n********For case $obj_65386_2*********\nAFTER _summarize_annotation there are $nc_ftr_count non_coding features.\n";
 
     # a genome object
     lives_ok {
@@ -1007,11 +1026,27 @@ subtest '_save_annotation_results' => sub {
     my ($aa_out, $out_msg);
 
     # a genome object in workspace #65386
+    my $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nBEFORE _save_annotation_results there are $nc_ftr_count non_coding features.\n";
+
+    my $ncoding_features01 = $final_genome01->{non_coding_features};
+    my $cnt = 0;
+    for my $ncoding_ftr (@{$ncoding_features01}) {
+        if(exists($ncoding_ftr->{type})) {
+            $cnt++;
+            print "type value: $ncoding_ftr->{type}\n";
+        }
+    }
+    is ($nc_ftr_count, $cnt++, "All non-coding features have defined type.\n");
+
     throws_ok {
         ($aa_out, $out_msg) = $annoutil->_save_annotation_results(
               $final_genome01, $rast_details01{parameters});
     } qr/Can't call method/,
       "_save_annotation_results throws an error on genome $obj_65386_1";
+
+    $nc_ftr_count = @{$final_genome01->{non_coding_features}};
+    print "\n********For case $obj_65386_1*********\nAFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
 
     # another genome object in workspace #65386
     throws_ok {
