@@ -1145,8 +1145,7 @@ sub _set_genecall_workflow {
         push(@{$workflow->{stages}},{
             name => "call_features_CDS_glimmer3",
             "glimmer3_parameters" => {
-                            "min_training_len" => "2000"
-            }
+                        "min_training_len" => "2000"}
         });
         if (!defined($contigobj)) {
             Bio::KBase::utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
@@ -1176,7 +1175,7 @@ sub _set_genecall_workflow {
             $extragenecalls .= "; ";
         }
         $extragenecalls .= "tRNA";
-        push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
+        push(@{$workflow->{stages}}, {name => "call_features_tRNA_trnascan"});
         if (!defined($contigobj)) {
             Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
         }
@@ -1394,7 +1393,7 @@ sub _set_annotation_workflow {
     if (defined($parameters->{call_features_prophage_phispy})
             && $parameters->{call_features_prophage_phispy} == 1) {
         if ($tax_domain ne 'U' ) {
-            push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+            push(@{$workflow->{stages}}, {name => "call_features_prophage_phispy"});
         } else {
             $message .= "Did not call call features prophage phispy because tax_domain is 'U'\n\n";
         }

@@ -281,15 +281,14 @@ subtest '_set_parameters_by_input' => sub {
     $parameters01 = { %$default_params, %$parameters01 };
     $rast_details01{parameters} = $parameters01;
 
-    my $expected_params012 = { %$default_params, %$expected_params01 };
-
+    my $expected_params011 = { %$default_params, %$expected_params01 };
     # after merging with default gene call settings
-    cmp_deeply($parameters01, $expected_params012, "parameters has default workflows.");
+    cmp_deeply($parameters01, $expected_params011, "parameters has default workflows.");
 
     # another genome object in workspace #65386 that did not have a problem to run
     $parameters02 = {
          output_genome_name => 'test_out_gn_name02',
-         scientific_name => 'Clostridium botulinum',
+         scientific_name => 'Methanosarcina acetivorans C2A',
          output_workspace => $ws,
          object_ref => $obj_65386_2
     };
@@ -313,7 +312,7 @@ subtest '_set_parameters_by_input' => sub {
           output_workspace => $ws,
           object_ref => $parameters02->{object_ref},
           genetic_code => 11,
-          domain => 'Bacteria'
+          domain => 'Archaea'
     };
 
     lives_ok {
@@ -332,14 +331,12 @@ subtest '_set_parameters_by_input' => sub {
     cmp_deeply($parameters02, $expected_params02, "parameters has expected input param values.");
 
     #  merge with the default gene call settings
-    $default_params = $annoutil->_set_default_parameters();
-    $parameters01 = { %$default_params, %$parameters01 };
-    $rast_details01{parameters} = $parameters01;
-
-    my $expected_params022 = { %$default_params, %$expected_params01 };
+    $parameters02 = { %$default_params, %$parameters02 };
+    $rast_details02{parameters} = $parameters02;
+    my $expected_params022 = { %$default_params, %$expected_params02};
 
     # after merging with default gene call settings
-    cmp_deeply($parameters01, $expected_params022, "parameters has default workflows.");
+    cmp_deeply($parameters02, $expected_params022, "parameters has default workflows.");
 
     # a genome object
     $parameters1 = {
@@ -430,7 +427,6 @@ subtest '_set_parameters_by_input' => sub {
                                             $parameters2, $inputgenome2);
     } "_set_parameters_by_input runs successfully on assembly $obj_asmb";
     %rast_details2 = %{$rast_ref}; # dereference
-    print "parameters on assembly:\n".Dumper($rast_details2{parameters});
     $parameters2 = $rast_details2{parameters};
 
     # before merging with default gene call settings
@@ -486,7 +482,7 @@ subtest '_set_messageNcontigs' => sub {
     ok (@{$inputgenome02->{contigs}} > 0,
         "inputgenome has ".scalar @{$inputgenome02->{contigs}} . " contig(s).");
     ok (length($msg02) > 0, "Message for genome input has contents:\n$msg02");
-    ok ($tax02 eq 'Bacteria', "tax_domain for genome input has value:$tax02");
+    ok ($tax02 eq 'Archaea', "tax_domain for genome input has value:$tax02");
 
     # a genome object
     lives_ok {
@@ -525,14 +521,6 @@ subtest '_set_messageNcontigs' => sub {
 
 # Test _set_genecall_workflow with genome/assembly object refs in prod
 subtest '_set_genecall_workflow' => sub {
-    # a genome object in workspace #65386
-    lives_ok {
-        $rast_ref = $annoutil->_set_genecall_workflow(
-                                            \%rast_details01, $inputgenome01);
-    } "_set_genecall_workflow runs successfully on genome $obj_65386_1";
-    %rast_details01 = %{ $rast_ref }; # dereference
-    my $genecall_workflow01 = $rast_details01{genecall_workflow};
-
     my $exp_gc_workflow = {
         'stages' => [
             { 'name' => 'call_features_CDS_prodigal' },
@@ -562,6 +550,14 @@ subtest '_set_genecall_workflow' => sub {
             { 'name' => 'call_features_crispr' }
         ]
     };
+
+    # a genome object in workspace #65386
+    lives_ok {
+        $rast_ref = $annoutil->_set_genecall_workflow(
+                                            \%rast_details01, $inputgenome01);
+    } "_set_genecall_workflow runs successfully on genome $obj_65386_1";
+    %rast_details01 = %{ $rast_ref }; # dereference
+    my $genecall_workflow01 = $rast_details01{genecall_workflow};
     cmp_deeply($genecall_workflow01, $exp_gc_workflow, 'gc_workflow built correctly');
 
     # another genome object in workspace #65386
@@ -615,14 +611,6 @@ subtest '_set_genecall_workflow' => sub {
 
 # Test _set_annotation_workflow with genome/assembly object refs in prod
 subtest '_set_annotation_workflow' => sub {
-    # a genome object in workspace #65386
-    lives_ok {
-        $rast_ref = $annoutil->_set_annotation_workflow(\%rast_details01);
-    } "_set_genecall_workflow runs successfully on genome $obj_65386_1";
-    %rast_details01 = %{ $rast_ref }; # dereference
-    my $annomessage01 = $rast_details01{annomessage};
-    my $annotate_workflow01 = $rast_details01{annotate_workflow};
-
     my $exp_ann_workflow = {
         'stages' => [
             { 'name' => 'annotate_proteins_kmer_v2',
@@ -650,6 +638,14 @@ subtest '_set_annotation_workflow' => sub {
             }
         ]
     };
+
+    # a genome object in workspace #65386
+    lives_ok {
+        $rast_ref = $annoutil->_set_annotation_workflow(\%rast_details01);
+    } "_set_genecall_workflow runs successfully on genome $obj_65386_1";
+    %rast_details01 = %{ $rast_ref }; # dereference
+    my $annomessage01 = $rast_details01{annomessage};
+    my $annotate_workflow01 = $rast_details01{annotate_workflow};
     print "genome annotation-msg:\n$annomessage01";
     cmp_deeply($annotate_workflow01, $exp_ann_workflow, 'ann_workflow built correctly');
 
@@ -753,7 +749,7 @@ subtest '_renumber_features' => sub {
     %rast_details2 = %{$rast_ref}; # dereference
     ok (exists($rast_details2{extra_workflow}), "extra_workflow is created");
     ok (@{$inputgenome2->{features}} == 0,
-        "_renumber_features: Assembly inputgenome has no features.");
+        "_renumber_features: Assembly inputgenome has NO features.");
 };
 
 
@@ -766,7 +762,6 @@ subtest '_pre_rast_call' => sub {
     } "_pre_rast_call runs successfully on genome $obj_65386_1";
     %rast_details01 = %{ $rast_ref }; # dereference
     my $genehash01 = $rast_details01{genehash};
-
     ok (keys %{$genehash01}, "Gene hash created from genome with elements.");
     if (defined($inputgenome01->{ontology_events})){
         ok (@{$inputgenome01->{ontology_events}} > 0,
@@ -774,8 +769,8 @@ subtest '_pre_rast_call' => sub {
     }
     ok (@{$inputgenome01->{features}} == 0,
         "_pre_rast_call: inputgenome has NO feature(s).");
-    ok (@{$rast_details01{contigobj}{contigs}} > 0,
-        "_pre_rast_call: inputgenome has ".scalar @{$rast_details01{contigobj}{contigs}} ." contig(s).");
+    ok (@{$rast_details01{contigobj}{contigs}} == 2,
+        "_pre_rast_call: inputgenome has 2 contig(s).");
 
     # another genome object in workspace #65386
     lives_ok {
@@ -793,7 +788,7 @@ subtest '_pre_rast_call' => sub {
     ok (@{$inputgenome02->{features}} == 0,
         "_pre_rast_call: inputgenome has NO feature(s).");
     ok (@{$rast_details02{contigobj}{contigs}} > 0,
-        "_pre_rast_call: inputgenome has ".scalar @{$rast_details02{contigobj}{contigs}} ." contig(s).");
+        "_pre_rast_call: inputgenome has 2 contig(s).");
 
     # a genome object
     lives_ok {
@@ -887,7 +882,7 @@ subtest '_post_rast_ann_call' => sub {
     for my $ncoding_ftr (@{$ncoding_features01}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            print "type value: $ncoding_ftr->{type}\n";
+            # print "type value: $ncoding_ftr->{type}\n";
         }
     }
     print "**for $obj_65386_1:Count of non_coding_features WITH 'type' AFTER _post_rast_ann_call:$cnt\n";
@@ -1034,10 +1029,10 @@ subtest '_save_annotation_results' => sub {
     for my $ncoding_ftr (@{$ncoding_features01}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            print "type value: $ncoding_ftr->{type}\n";
+            # print "type value: $ncoding_ftr->{type}\n";
         }
     }
-    is ($nc_ftr_count, $cnt++, "All non-coding features have defined type.\n");
+    is ($nc_ftr_count, $cnt++, "All $cnt non-coding features have defined type.\n");
 
     throws_ok {
         ($aa_out, $out_msg) = $annoutil->_save_annotation_results(
