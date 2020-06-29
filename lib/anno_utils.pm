@@ -2151,11 +2151,11 @@ sub _save_annotation_results {
     for my $ncoding_ftr (@{$ncoding_features}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            #print "type value: $ncoding_ftr->{type}\n";
+            print "Non-conding feature type value= $ncoding_ftr->{type}\n";
         }
     }
     if ($cnt == scalar @{$ncoding_features}) {
-        print "***INFO***: All non-coding features have defined type**********\n";
+        print "***INFO***: All $cnt non-coding features have defined type**********\n";
     }
 
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});

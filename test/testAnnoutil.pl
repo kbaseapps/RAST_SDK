@@ -1029,10 +1029,12 @@ subtest '_save_annotation_results' => sub {
     for my $ncoding_ftr (@{$ncoding_features01}) {
         if(exists($ncoding_ftr->{type})) {
             $cnt++;
-            # print "type value: $ncoding_ftr->{type}\n";
+            if ($cnt < 20) {
+                print "type value: $ncoding_ftr->{type}\n";
+            }
         }
     }
-    is ($nc_ftr_count, $cnt++, "All $cnt non-coding features have defined type.\n");
+    ok ($nc_ftr_count==$cnt, "All $cnt non-coding features have defined type.\n");
 
     throws_ok {
         ($aa_out, $out_msg) = $annoutil->_save_annotation_results(
