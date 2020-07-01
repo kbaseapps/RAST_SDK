@@ -584,6 +584,55 @@ sub _get_genome_gff_contents {
 	return $gff_contents;
 }
 
+
+sub _get_contigs_from_fastafile {
+    my ($self, $fpath) = @_;
+
+    my @contigs;
+    my $contigID_hash = {};
+    my $fasta = "";
+    my $fh = $self->_openRead($fpath);
+    while (my $line = <$fh>) {
+        $fasta .= $line;
+    }
+    close($fh);
+    $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
+    $fasta =~ s/\n//g;
+    my $array = [split(/\>/,$fasta)];
+    for (my $i=0; $i < @{$array}; $i++) {
+        if (scalar @contigs > $self->{max_contigs}) {
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(
+                error => 'too many contigs',
+                method_name => 'anno_utils._get_contigs'
+            );
+        }
+        if (length($array->[$i]) > 0) {
+            my $subarray = [split(/\|\|\|/,$array->[$i])];
+            if (@{$subarray} == 2) {
+                my $description = "unknown";
+                my $id = $subarray->[0];
+                if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
+                    $id = $1;
+                    $description = $2;
+                }
+                my $tmp_contigID = 'contigID_'.$i;
+                $contigID_hash->{$tmp_contigID} = $id;
+                my $contigobject = {
+                    id => $tmp_contigID,
+                    name => $tmp_contigID,
+                    "length" => length($subarray->[1]),
+                    md5 => Digest::MD5::md5_hex($subarray->[1]),
+                    sequence => $subarray->[1],
+                    description => $description
+                };
+                push(@contigs, $contigobject);
+            }
+        }
+    }
+    return (\@contigs, $contigID_hash);
+}
+
+
 #
 ## get the contigs via WorkspaceClient and AssemblyUtilClient
 ## Note: the input $ref has a value which is a Workspace.ref_string
@@ -593,6 +642,7 @@ sub _get_contigs {
 
     return {} unless ($self->_validate_KB_objref($ref));
     my $info = $self->_fetch_object_info($ref);
+    my ($contigs, $contigID_hash);
 
     my $obj = {
         _reference => $ref,
@@ -605,43 +655,9 @@ sub _get_contigs {
     };
     if ($info->[2] =~ /Assembly/) {
         my $fpath = $self->_get_fasta_from_assembly($ref);
-        my $fasta = "";
-        my $fh = $self->_openRead($fpath);
-        while (my $line = <$fh>) {
-            $fasta .= $line;
-        }
-        close($fh);
-        $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
-        $fasta =~ s/\n//g;
-        my $array = [split(/\>/,$fasta)];
-        for (my $i=0; $i < @{$array}; $i++) {
-            if (@{$obj->{contigs}} > $self->{max_contigs}) {
-                Bio::KBase::Exceptions::ArgumentValidationError->throw(
-                    error => 'too many contigs',
-                    method_name => 'anno_utils._get_contigs'
-                );
-            }
-            if (length($array->[$i]) > 0) {
-                my $subarray = [split(/\|\|\|/,$array->[$i])];
-                if (@{$subarray} == 2) {
-                    my $description = "unknown";
-                    my $id = $subarray->[0];
-                    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
-                        $id = $1;
-                        $description = $2;
-                    }
-                    my $contigobject = {
-                        id => $id,
-                        name => $id,
-                        "length" => length($subarray->[1]),
-                        md5 => Digest::MD5::md5_hex($subarray->[1]),
-                        sequence => $subarray->[1],
-                        description => $description
-                    };
-                    push(@{$obj->{contigs}}, $contigobject);
-                }
-            }
-        }
+        ($contigs, $contigID_hash) = $self->_get_contigs_from_fastafile($fpath);
+        $obj->{contigs} = $contigs;
+
         my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
         my $str = "";
         for (my $i=0; $i < @{$sortedarray}; $i++) {
@@ -669,7 +685,7 @@ sub _get_contigs {
     }
     $obj->{_gc} = int(1000*$gclength/$totallength+0.5);
     $obj->{_gc} = $obj->{_gc}/1000;
-    return $obj;
+    return ($obj, $contigID_hash);
 }
 
 #
@@ -799,16 +815,16 @@ sub _create_inputgenome_from_genome_original {
         $inputgenome->{non_coding_features} = [];
     }
 
-    my ($contigref, $contigobj);
+    my ($contigref, $contigobj, $contigID_hash);
     if($inputgenome->{domain} !~ /Eukaryota|Plant/){
         if (defined($inputgenome->{contigset_ref})) {
             $contigref = $inputgenome->{contigset_ref};
         } elsif (defined($inputgenome->{assembly_ref})) {
             $contigref = $inputgenome->{assembly_ref};
         }
-        $contigobj = $self->_get_contigs($contigref);
+        ($contigobj, $contigID_hash) = $self->_get_contigs($contigref);
     }
-    return ($inputgenome, $contigobj, $oldfunchash, $oldtype, %types);
+    return ($inputgenome, $contigobj, $contigID_hash, $oldfunchash, $oldtype, %types);
 }
 
 
@@ -881,21 +897,21 @@ sub _create_inputgenome_from_genome {
 
     $inputgenome = $self->_get_genome($input_obj_ref);
 
-    my ($contigref, $contigobj);
+    my ($contigref, $contigobj, $contigID_hash);
     if($inputgenome->{domain} !~ /Eukaryota|Plant/){
         if (defined($inputgenome->{contigset_ref})) {
             $contigref = $inputgenome->{contigset_ref};
         } elsif (defined($inputgenome->{assembly_ref})) {
             $contigref = $inputgenome->{assembly_ref};
         }
-        $contigobj = $self->_get_contigs($contigref);
+        ($contigobj, $contigID_hash) = $self->_get_contigs($contigref);
     }
     my ($oldfunchash, $oldtype, $types_ref);
     my %types = ();
     ($oldfunchash, $oldtype, $types_ref,
         $inputgenome) = $self->_get_oldfunchash_oldtype_types($inputgenome);
     %types = %{$types_ref};
-    return ($inputgenome, $contigobj, $oldfunchash, $oldtype, \%types);
+    return ($inputgenome, $contigobj, $contigID_hash, $oldfunchash, $oldtype, \%types);
 }
 
 
@@ -905,8 +921,8 @@ sub _create_inputgenome_from_assembly {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
-    my $contigobj = $self->_get_contigs($input_obj_ref);
-    return ($inputgenome, $contigobj);
+    my ($contigobj, $contigID_hash) = $self->_get_contigs($input_obj_ref);
+    return ($inputgenome, $contigobj, $contigID_hash);
 }
 
 
@@ -930,6 +946,7 @@ sub _set_parameters_by_input {
 
     #print "_set_parameters_by_input's input parameters:\n". Dumper($parameters). "\n";
     my $contigobj;
+    my $contigID_hash = {};
     my $oldfunchash = {};
     my $oldtype     = {};
     my %types = ();
@@ -963,7 +980,7 @@ sub _set_parameters_by_input {
             print "Input object $input_obj_ref is a genome and has $num_ftrs features.\n";
         }
 
-        ($inputgenome, $contigobj, $oldfunchash,
+        ($inputgenome, $contigobj, $contigID_hash, $oldfunchash,
             $oldtype, $types_ref) = $self->_create_inputgenome_from_genome(
                                                     $inputgenome, $input_obj_ref);
         $rast_details{oldfunchash} = $oldfunchash;
@@ -971,7 +988,8 @@ sub _set_parameters_by_input {
         $rast_details{types} = $types_ref;
     } elsif ($is_assembly) {
         print "INFO:----$input_obj_ref points to an assembly----\n";
-        ($inputgenome, $contigobj) = $self->_create_inputgenome_from_assembly(
+        ($inputgenome, $contigobj,
+            $contigID_hash) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
 
@@ -981,6 +999,7 @@ sub _set_parameters_by_input {
 
     $rast_details{parameters} = $parameters;
     $rast_details{contigobj} = $contigobj;
+    $rast_details{contigID_hash} = $contigID_hash;
     $rast_details{is_genome} = $is_genome;
     $rast_details{is_assembly} = $is_assembly;
     return (\%rast_details, $inputgenome);
@@ -2127,10 +2146,41 @@ sub _util_version {
     return $VERSION;
 }
 
+## Checking on non_coding_features for ones that have undefined type field
+sub _check_NC_features {
+    my ($self, $genome) = @_;
+
+    my $ncoding_features = $genome->{non_coding_features};
+    my $cnt = 0;
+    for my $ncoding_ftr (@{$ncoding_features}) {
+        if(exists($ncoding_ftr->{type})) {
+            $cnt++;
+            #print "Non-conding feature type value= $ncoding_ftr->{type}\n";
+        }
+    }
+    if ($cnt == scalar @{$ncoding_features}) {
+        print "***INFO***: All $cnt non-coding features have defined type**********\n";
+    }
+}
+
+
+## Mapping the contigIDs back to their original (long) names
+sub _remap_contigIDs {
+    my ($self, $contigID_hash, $genome) = @_;
+
+    my $contigs = $genome->{contigs};
+    foreach my $ctg_obj (@{$contigs}) {
+        my $cid = $ctg_obj->{id};
+        $ctg_obj->{id} = $contigID_hash->{$cid};
+        $ctg_obj->{name} = $contigID_hash->{$cid};
+    }
+    return $genome;
+}
 
 sub _save_annotation_results {
-    my ($self, $genome, $parameters, $message) = @_;
-#   print "SEND OFF FOR SAVING\n";
+    my ($self, $genome, $rast_ref) = @_;
+
+    print "SEND OFF FOR SAVING\n";
 #   print "***** Domain       = $genome->{domain}\n";
 #   print "***** Genitic_code = $genome->{genetic_code}\n";
 #   print "***** Scientific_namee = $genome->{scientific_name}\n";
@@ -2138,25 +2188,20 @@ sub _save_annotation_results {
 #   print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #   print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
 #   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
-    my $rasted_gn = $genome;
-    my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
 
+    my %gc_rast = %{ $rast_ref };
+    my $parameters = $gc_rast{parameters},
+    my $message = $gc_rast{message};
+    my $rasted_gn = $genome;
+
+    my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
         print "**********Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving**********.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
 
-    my $ncoding_features = $genome->{non_coding_features};
-    my $cnt = 0;
-    for my $ncoding_ftr (@{$ncoding_features}) {
-        if(exists($ncoding_ftr->{type})) {
-            $cnt++;
-            print "Non-conding feature type value= $ncoding_ftr->{type}\n";
-        }
-    }
-    if ($cnt == scalar @{$ncoding_features}) {
-        print "***INFO***: All $cnt non-coding features have defined type**********\n";
-    }
+    $self->_check_NC_features($rasted_gn);
+    $rasted_gn = $self->_remap_contigIDs($gc_rast{contigID_hash}, $rasted_gn);
 
     my $gfu_client = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -3292,10 +3337,7 @@ sub rast_genome {
     }
 
     ## save the annotated genome
-    %gc_rast = %{ $rast_ref };
-    my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final,
-                                                             $gc_rast{parameters},
-                                                             $gc_rast{message});
+    my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final, $rast_ref);
     my $aa_ref = $aa_out->{ref};
     my $rast_ret = {
         output_genome_ref => $aa_ref,

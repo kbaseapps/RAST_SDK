@@ -41,6 +41,7 @@ my $fasta3 = 'data/GCA_000350285.1_OR1_genomic.fna';
 my $fasta4 = 'data/metag_test/Test_v1.0.fa';
 my $gff1 = 'data/short_one.gff';
 my $fasta2 = 'data/metag_test/59111.assembled.fna';
+my $fa_LOng = 'data/LOng_contig_names.fa';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
@@ -147,8 +148,42 @@ my $test_ftrs = [{
  }];
 
 
-
 =begin
+## Re-mapping the contigIDs back to their original (long) names
+subtest '_remap_contigIDs' => sub {
+    my $contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1'
+    };
+    my $gn = {
+        contigs => [
+            {id => 'contigID_1',
+             name => 'contigID_1'},
+            {id => 'contigID_2',
+             name => 'contigID_2'}
+        ]
+    };
+    $gn = $annoutil->_remap_contigIDs($contigID_hash, $gn);
+    my $contig1 = $gn->{contigs}[0];
+    my $contig2 = $gn->{contigs}[1];
+    ok ($contig1->{id} eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
+    ok ($contig2->{id} eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+};
+
+subtest '_get_contigs_from_fastafile' => sub {
+    my $fa_file = $fa_LOng;
+    my $contigs;
+    my $contigID_hash;
+    lives_ok {
+        ($contigs, $contigID_hash) = $annoutil->_get_contigs_from_fastafile($fa_file);
+    } '_get_contigs_from_fastafile runs successfully';
+    is ($contigID_hash->{contigID_1},
+        'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome',
+        'contigID hash map generated correctly');
+    ok ($contigs->[0]->{id} eq 'contigID_1', 'contig id correctly shortened for downstream');
+    ok ($contigs->[0]->{name} eq 'contigID_1', 'contig name correctly shortened for downstream');
+};
+
 subtest '_get_genome' => sub {
     my $parameters = {
          output_genome_name => 'test_out_gn_name',
@@ -221,7 +256,7 @@ subtest '_get_feature_function_lookup' => sub {
 =cut
 
 
-#=begin
+=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -284,6 +319,12 @@ subtest '_set_parameters_by_input' => sub {
     my $expected_params011 = { %$default_params, %$expected_params01 };
     # after merging with default gene call settings
     cmp_deeply($parameters01, $expected_params011, "parameters has default workflows.");
+    my $expected_contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1'
+    };
+    cmp_deeply($rast_details01{contigID_hash},
+               $expected_contigID_hash, "contigID hash was generated correctly.");
 
     # another genome object in workspace #65386 that did not have a problem to run
     $parameters02 = {
@@ -292,6 +333,7 @@ subtest '_set_parameters_by_input' => sub {
          output_workspace => $ws,
          object_ref => $obj_65386_2
     };
+
     # 02. creating default genome object
     $inputgenome02 = {
         id => $parameters02->{output_genome_name},
@@ -1066,7 +1108,7 @@ subtest '_save_annotation_results' => sub {
     } qr/Can't call method/,
       "_save_annotation_results throws an error on assembly $obj_asmb";
 };
-#=cut
+=cut
 
 
 =begin
@@ -1789,7 +1831,8 @@ subtest '_save_genome_from_gff' => sub {
 };
 =cut
 
-=begin
+
+#=begin
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -1843,7 +1886,8 @@ subtest 'Impl_rast_genome_assembly' => sub {
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } 'Impl rast_genome call returns normally on genome.';
-    ok ($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/, "rast_genome_assembly returns a VALID ref: $rast_ret->{output_genome_ref}");
+    ok ($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/,
+        "rast_genome_assembly returns a VALID ref: $rast_ret->{output_genome_ref}");
 
     $parms = {
         "object_ref" => $obj_asmb,
@@ -1853,7 +1897,8 @@ subtest 'Impl_rast_genome_assembly' => sub {
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } 'Impl rast_genome call returns without annotation due to local assembly did not run.';
-    ok (!defined($rast_ret ->{output_genome_ref}), "due to local annotation on assembly with empty features, no rast was run.");
+    ok (!defined($rast_ret ->{output_genome_ref}),
+        "due to local annotation on assembly with empty features, no rast was run.");
 };
 
 
@@ -1902,10 +1947,8 @@ subtest '_get_bulk_rast_parameters' => sub {
 		}
     }
 };
-=cut
 
 
-=begin
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
 subtest 'rast_genomes_assemblies' => sub {
     my $params = {
@@ -1946,7 +1989,10 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
+#=cut
 
+
+=begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -1984,12 +2030,6 @@ subtest 'annotation_genomes_throw_messages' => sub {
     } $error_message,
       'Blank genome_text AND empty input_genoms die correctly'
       or diag explain $params;
-    lives_ok {
-        #$params->{input_genomes} = ["31020/5/1"]; # an appdev object
-        $params->{input_genomes} = ["48109/9/1"]; # an prod object
-        $params->{genome_text} = '';
-        my $ret_ann4 = $rast_impl->annotate_genomes($params);
-    } 'Should not throw error due to blank genome_text AND non-empty input_genoms';
 };
 =cut
 
