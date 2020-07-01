@@ -1268,7 +1268,7 @@ subtest '_run_rast_annotation' => sub {
 =cut
 
 
-=begin
+#=begin
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
@@ -1303,8 +1303,9 @@ subtest 'Impl_annotate_genome' => sub {
     } qr/Error invoking method call_/,
       "test Impl annotate_genome on an assembly died.";
 };
+#=cut
 
-
+=begin
 subtest '_validate_KB_objref' => sub {
 	my $object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome';
 	my $passed_test = $annoutil->_validate_KB_objref($object_ref);

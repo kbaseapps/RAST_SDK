@@ -85,168 +85,172 @@ sub max_contigs {
 }
 
 sub util_get_contigs {
-	my ($self,$workspace,$objid) = @_;
-	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
-	my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
-	my $obj;
-	if ($info->[0]->[2] =~ /Assembly/) {
-		my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
-			"ref" => $ref
-		});
-		my $fasta = "";
-		open(my $fh, "<", $output->{path}) || die "Could not find file:".$output->{path};
-		while (my $line = <$fh>) {
-			$fasta .= $line;
-		}
-		close($fh);
-		$obj = {
-			_reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
-			id => $objid,
-			name => $objid,
-			source_id => $objid,
-			source => "KBase",
-			type => "SingleGenome",
-			contigs => []
-		};
-		$fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
-		$fasta =~ s/\n//g;
-		my $array = [split(/\>/,$fasta)];
-		my $max_contigs = max_contigs();
-		for (my $i=0; $i < @{$array}; $i++) {
-			if (@{$obj->{contigs}} > $max_contigs){
-				Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs', 
-										method_name => 'util_get_contigs');
-			}
-			if (length($array->[$i]) > 0) {
-				my $subarray = [split(/\|\|\|/,$array->[$i])];
-				if (@{$subarray} == 2) {
-				    my $description = "unknown";
-				    my $id = $subarray->[0];
-				    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
-				    	$id = $1;
-				    	$description = $2;
-				    }
-				    my $contigobject = {
-						id => $id,
-						name => $id,
-						"length" => length($subarray->[1]),
-						md5 => Digest::MD5::md5_hex($subarray->[1]),
-						sequence => $subarray->[1],
-						description => $description
-					};
-					$contigobject->{name} = $id;
-					$contigobject->{description} = $description;
-					push(@{$obj->{contigs}},$contigobject);
-	 			}
-			}
-		}
-		my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
-		my $str = "";
-		for (my $i=0; $i < @{$sortedarray}; $i++) {
-			if (length($str) > 0) {
-				$str .= ";";
-			}
-			$str .= $sortedarray->[$i]->{sequence};
-		}
-		print("Assembly $obj->{_reference} Downloaded\n");
-		$obj->{md5} = Digest::MD5::md5_hex($str);
-		$obj->{_kbasetype} = "Assembly";
-	} else {
-		$obj = Bio::KBase::kbaseenv::get_objects([{
-			ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
-		}]);
-		$obj = $obj->[0]->{data};
-		$obj->{_kbasetype} = "ContigSet";
-		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
-		print("Contigset $obj->{_reference}  Downloaded\n");
-	}
-	my $totallength = 0;
-	my $gclength = 0;
-	for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
-		my $newseq = $obj->{contigs}->[$i]->{sequence};
-		$totallength += length($newseq);
-		$newseq =~ s/[atAT]//g;
-		$gclength += length($newseq);	
-	}
-	$obj->{_gc} = int(1000*$gclength/$totallength+0.5);
-	$obj->{_gc} = $obj->{_gc}/1000;
-	return $obj;
+    my ($self,$workspace,$objid) = @_;
+    my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
+    my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+    my $obj;
+    my $contigID_hash = {};
+    if ($info->[0]->[2] =~ /Assembly/) {
+        my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
+            "ref" => $ref
+        });
+        my $fasta = "";
+        open(my $fh, "<", $output->{path}) || die "Could not find file:".$output->{path};
+        while (my $line = <$fh>) {
+            $fasta .= $line;
+        }
+        close($fh);
+        $obj = {
+            _reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
+            id => $objid,
+            name => $objid,
+            source_id => $objid,
+            source => "KBase",
+            type => "SingleGenome",
+            contigs => []
+        };
+        $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
+        $fasta =~ s/\n//g;
+        my $array = [split(/\>/,$fasta)];
+        my $max_contigs = max_contigs();
+        for (my $i=0; $i < @{$array}; $i++) {
+            if (@{$obj->{contigs}} > $max_contigs){
+                Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs',
+                                        method_name => 'util_get_contigs');
+            }
+            if (length($array->[$i]) > 0) {
+                my $subarray = [split(/\|\|\|/,$array->[$i])];
+                if (@{$subarray} == 2) {
+                    my $description = "unknown";
+                    my $id = $subarray->[0];
+                    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
+                        $id = $1;
+                        $description = $2;
+                    }
+                    my $tmp_contigID = 'contigID_'.$i;
+                    $contigID_hash->{$tmp_contigID} = $id;
+                    my $contigobject = {
+                        id => $tmp_contigID,
+                        name => $tmp_contigID,
+                        "length" => length($subarray->[1]),
+                        md5 => Digest::MD5::md5_hex($subarray->[1]),
+                        sequence => $subarray->[1],
+                        description => $description
+                    };
+                    push(@{$obj->{contigs}},$contigobject);
+                }
+            }
+        }
+        my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
+        my $str = "";
+        for (my $i=0; $i < @{$sortedarray}; $i++) {
+            if (length($str) > 0) {
+                $str .= ";";
+            }
+            $str .= $sortedarray->[$i]->{sequence};
+        }
+        print("Assembly $obj->{_reference} Downloaded\n");
+        $obj->{md5} = Digest::MD5::md5_hex($str);
+        $obj->{_kbasetype} = "Assembly";
+    } else {
+        $obj = Bio::KBase::kbaseenv::get_objects([{
+            ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
+        }]);
+        $obj = $obj->[0]->{data};
+        $obj->{_kbasetype} = "ContigSet";
+        $obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
+        print("Contigset $obj->{_reference}  Downloaded\n");
+    }
+    my $totallength = 0;
+    my $gclength = 0;
+    for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
+        my $newseq = $obj->{contigs}->[$i]->{sequence};
+        $totallength += length($newseq);
+        $newseq =~ s/[atAT]//g;
+        $gclength += length($newseq);
+    }
+    $obj->{_gc} = int(1000*$gclength/$totallength+0.5);
+    $obj->{_gc} = $obj->{_gc}/1000;
+    return ($obj, $contigID_hash);
 }
 
 sub annotate_process {
-	my ($self,$parameters) = @_;	
-	my $oldfunchash = {};
-	my $oldtype     = {};
-	#Creating default genome object
-	my $inputgenome = {
-  		id => $parameters->{output_genome},
-  		genetic_code => $parameters->{genetic_code},
-  		scientific_name => $parameters->{scientific_name},
-  		domain => $parameters->{domain},
-  		contigs => [],
-  		features => []
-  	};
-	if ($parameters->{ncbi_taxon_id}) {
-		$inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
-	}
-  	my $contigobj;
-  	my $message = "";
-	my %types = ();
+    my ($self,$parameters, $config, $ctx) = @_;
+    my $ann_util = new anno_utils($config, $ctx);
 
-	if (defined($parameters->{input_genome})) {
-		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
-		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			my $ftr = $inputgenome->{features}->[$i];
-			if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
-				if (defined($ftr->{protein_translation})) {
-					$ftr->{type} = 'gene';
-				} else {
-					$ftr->{type} = 'other'; 
-				}
-			}
+    my $oldfunchash = {};
+    my $contigID_hash = {};
+    my $oldtype     = {};
+    #Creating default genome object
+    my $inputgenome = {
+        id => $parameters->{output_genome},
+        genetic_code => $parameters->{genetic_code},
+        scientific_name => $parameters->{scientific_name},
+        domain => $parameters->{domain},
+        contigs => [],
+        features => []
+    };
+    if ($parameters->{ncbi_taxon_id}) {
+        $inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
+    }
+    my $contigobj;
+    my $message = "";
+    my %types = ();
 
-			# Reset functions in protein features to "hypothetical protein" to make them available
-			# for re-annotation in RAST service (otherwise these features will be skipped).
-			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
-					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
-				if (defined($ftr->{functions})){
-					$ftr->{function} = join("; ", @{$ftr->{functions}});
-				}
-				$oldfunchash->{$ftr->{id}} = $ftr->{function};
-				$ftr->{function} = "hypothetical protein";
-			}
-			elsif ($ftr->{type} eq "gene") {
-				$ftr->{type} = 'Non-coding '.$ftr->{type};
-			}
-			$oldtype->{$ftr->{id}} = $ftr->{type};
-			#
-			#	Count the input feature types
-			#
-			if (exists $types{$ftr->{type}}) {
-				$types{$ftr->{type}} += 1;
-			} else {
-				$types{$ftr->{type}} = 1;
-			}
-		}
-		if (exists $inputgenome->{non_coding_features}) {
-			for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
-				my $ftr = $inputgenome->{non_coding_features}->[$i];
-				if (!defined($ftr->{type})) {
-					$ftr->{type} = "Non-coding";
-				} 
-				$oldtype->{$ftr->{id}} = $ftr->{type};
-				#
-				#	Count the input feature types
-				#
-				if (exists $types{"Non-coding ".$ftr->{type}}) {
-					$types{"Non-coding ".$ftr->{type}} += 1;
-				} else {
-					$types{"Non-coding ".$ftr->{type}} = 1;
-				}
-			}
-		} else {
-			$inputgenome->{non_coding_features} = [];
-		}
+    if (defined($parameters->{input_genome})) {
+        $inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
+        for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+            my $ftr = $inputgenome->{features}->[$i];
+            if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
+                if (defined($ftr->{protein_translation})) {
+                    $ftr->{type} = 'gene';
+                } else {
+                    $ftr->{type} = 'other';
+                }
+            }
+
+            # Reset functions in protein features to "hypothetical protein" to make them available
+            # for re-annotation in RAST service (otherwise these features will be skipped).
+            if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
+                    ($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+                if (defined($ftr->{functions})){
+                    $ftr->{function} = join("; ", @{$ftr->{functions}});
+                }
+                $oldfunchash->{$ftr->{id}} = $ftr->{function};
+                $ftr->{function} = "hypothetical protein";
+            }
+            elsif ($ftr->{type} eq "gene") {
+                $ftr->{type} = 'Non-coding '.$ftr->{type};
+            }
+            $oldtype->{$ftr->{id}} = $ftr->{type};
+            #
+            #	Count the input feature types
+            #
+            if (exists $types{$ftr->{type}}) {
+                $types{$ftr->{type}} += 1;
+            } else {
+                $types{$ftr->{type}} = 1;
+            }
+        }
+        if (exists $inputgenome->{non_coding_features}) {
+            for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
+                my $ftr = $inputgenome->{non_coding_features}->[$i];
+                if (!defined($ftr->{type})) {
+                    $ftr->{type} = "Non-coding";
+                }
+                $oldtype->{$ftr->{id}} = $ftr->{type};
+                #
+                #	Count the input feature types
+                #
+                if (exists $types{"Non-coding ".$ftr->{type}}) {
+                    $types{"Non-coding ".$ftr->{type}} += 1;
+                } else {
+                    $types{"Non-coding ".$ftr->{type}} = 1;
+                }
+            }
+        } else {
+            $inputgenome->{non_coding_features} = [];
+        }
 		
 		my $contigref;
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
@@ -255,7 +259,8 @@ sub annotate_process {
 		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
 		    }
-			$contigobj = $self->util_get_contigs(undef,$inputgenome->{_reference}.";".$contigref)
+			($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
+                                                $inputgenome->{_reference}.";".$contigref)
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -264,7 +269,9 @@ sub annotate_process {
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
 		$parameters->{scientific_name} = $inputgenome->{scientific_name};
-		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});	
+		($contigobj, $contigID_hash) = $self->util_get_contigs(
+                                           $parameters->{workspace},
+                                           $parameters->{input_contigset});
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
@@ -637,51 +644,54 @@ sub annotate_process {
 	#----------------------
 	# Runs, the annotation, comment out if you dont have the reference files
 	#---------------------
-	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+    $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
-	delete $genome->{contigs};
-	delete $genome->{feature_creation_event};
-	delete $genome->{analysis_events};
-	$genome->{genetic_code} = $genome->{genetic_code}+0;
-	$genome->{id} = $parameters->{output_genome};
-	if (!defined($genome->{source})) {
-		$genome->{source} = "KBase";
-		$genome->{source_id} = $parameters->{output_genome};
-	}
-	if (defined($inputgenome->{gc_content})) {
-		$genome->{gc_content} = $inputgenome->{gc_content};
-	}
-	if (defined($genome->{gc})) {
-		$genome->{gc_content} = $genome->{gc}+0;
-		delete $genome->{gc};
-	}
-	if (!defined($genome->{gc_content})) {
-		$genome->{gc_content} = 0.5;
-	}
-	if (not defined($genome->{non_coding_features})) {
-		$genome->{non_coding_features} = [];
-	}
-	my @splice_list = ();
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
-				if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-				# Found some pseudogenes that have wrong structure for aliases
-					my $tmp = [];
-					foreach my $key (@{$ftr->{aliases}})  {
-						my @ary = ('alias',$key);
-						push(@{$tmp},\@ary); 
-					}
-					$ftr->{aliases} = $tmp;
-				}
-			 }
-			if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
-				push(@splice_list,$i);
+    delete $genome->{contigs};
+    delete $genome->{feature_creation_event};
+    delete $genome->{analysis_events};
+    $genome->{genetic_code} = $genome->{genetic_code}+0;
+    $genome->{id} = $parameters->{output_genome};
+    if (!defined($genome->{source})) {
+        $genome->{source} = "KBase";
+        $genome->{source_id} = $parameters->{output_genome};
+    }
+    if (defined($inputgenome->{gc_content})) {
+        $genome->{gc_content} = $inputgenome->{gc_content};
+    }
+    if (defined($genome->{gc})) {
+        $genome->{gc_content} = $genome->{gc}+0;
+        delete $genome->{gc};
+    }
+    if (!defined($genome->{gc_content})) {
+        $genome->{gc_content} = 0.5;
+    }
+    if (not defined($genome->{non_coding_features})) {
+        $genome->{non_coding_features} = [];
+    }
+    ## re-mapping the contig ids back to their original names/ids
+    $genome = $ann_util->_remap_contigIDs($contigID_hash, $genome);
+
+    my @splice_list = ();
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
+                if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
+                # Found some pseudogenes that have wrong structure for aliases
+                    my $tmp = [];
+                    foreach my $key (@{$ftr->{aliases}})  {
+                        my @ary = ('alias',$key);
+                        push(@{$tmp},\@ary);
+                    }
+                    $ftr->{aliases} = $tmp;
+                }
             }
-		}
-	}
-	my $count = 0;
+            if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
+                push(@splice_list,$i);
+            }
+        }
+    }
+    my $count = 0;
 
 #	
 #	Move non-coding features from features to non_coding_features
@@ -1279,26 +1289,29 @@ sub annotate_genome
 			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
 	}
 
-    my $output = $self->annotate_process($params);
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+
+    my $output = $self->annotate_process($params, $config, $ctx);
     my $reportout = Bio::KBase::kbaseenv::create_report({
-    	workspace_name => $params->{workspace},
-    	report_object_name => $params->{output_genome}.".report",
+        workspace_name => $params->{workspace},
+        report_object_name => $params->{output_genome}.".report",
     });
-	$return = {
-    	workspace => $params->{workspace},
-    	id => $params->{output_genome},
-    	report_ref => $reportout->{"ref"},
-    	report_name => $params->{output_genome}.".report",
-    	ws_report_id => $params->{output_genome}.".report"
+    $return = {
+        workspace => $params->{workspace},
+        id => $params->{output_genome},
+        report_ref => $reportout->{"ref"},
+        report_name => $params->{output_genome}.".report",
+        ws_report_id => $params->{output_genome}.".report"
     };
     Bio::KBase::utilities::close_debug();
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
     if (@_bad_returns) {
-	my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
-	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-							       method_name => 'annotate_genome');
+        my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                       method_name => 'annotate_genome');
     }
     return($return);
 }
@@ -1604,17 +1617,20 @@ sub annotate_genomes
 			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
 			
-		eval {
-			my ($output,$message) = $self->annotate_process($currentparams);
-			push(@$output_genomes,$output->{ref});
-			$htmlmessage .= $message;
-		};
-		if ($@) {
-			$htmlmessage .= $input." failed!\n\n";
-		} else {
-			$htmlmessage .= $input." succeeded!\n\n";
-		}
-	}
+        eval {
+            my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+            my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+            my ($output, $message) = $self->annotate_process($currentparams,
+                                                             $config, $ctx);
+            push(@$output_genomes,$output->{ref});
+            $htmlmessage .= $message;
+        };
+        if ($@) {
+            $htmlmessage .= $input." failed!\n\n";
+        } else {
+            $htmlmessage .= $input." succeeded!\n\n";
+        }
+    }
 		
     my $output_genomeset;
     if (defined $params->{output_genome} && $params->{output_genome} gt ' ') {
