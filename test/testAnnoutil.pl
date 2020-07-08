@@ -45,7 +45,6 @@ my $fa_LOng = 'data/LOng_contig_names.fa';
 my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
-my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
 my $rast_impl = new RAST_SDK::RAST_SDKImpl();
 my $annoutil = new anno_utils($config, $ctx);
@@ -53,36 +52,6 @@ my $annoutil = new anno_utils($config, $ctx);
 my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 my $rast_genome_dir = $annoutil->_create_rast_subdir($scratch, "genome_annotation_dir_");
 
-
-=begin
-sub genome_to_fasta {
-    my($gn_ref) = @_;
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-
-    my $fasta_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $gn_ref});
-    print "First 10 lines of the FASTA file from gfu->genome_proteins_to_fasta:\n";
-    $annoutil->_print_fasta_gff(0, 10, $fasta_result->{file_path});
-    return $fasta_result->{file_path};
-}
-
-sub generate_genome {
-    my($ws, $gn_name, $gbff) = @_;
-    my $gbff_path = catfile($rast_genome_dir, $gbff);
-
-    copy($gbff, $gbff_path) || croak "Copy file failed: $!\n";
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-
-    my $gn = $gfu->genbank_to_genome({
-        "file" => {'path' => $gbff_path},
-        "genome_name" => $gn_name,
-        "workspace_name" => $ws,
-        "generate_missing_genes" => 1
-    });
-    return $gn;
-}
-=cut
 
 ##-----------------Test Blocks--------------------##
 
@@ -121,12 +90,12 @@ my $test_ftrs = [{
  'hit_count' => 3
  },
  'annotations' => [
- [
- 'Function updated to L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
- 'annotate_proteins_kmer_v1',
- '1583389302.95393',
- '6c670c83-2a11-49ff-97bf-b1c3e2121f30'
- ]
+     [
+     'Function updated to L-carnitine dehydratase/bile acid-inducible protein F (EC 2.8.3.16)',
+     'annotate_proteins_kmer_v1',
+     '1583389302.95393',
+     '6c670c83-2a11-49ff-97bf-b1c3e2121f30'
+     ]
  ],
  'id' => '10000_2'
  },
@@ -138,17 +107,16 @@ my $test_ftrs = [{
  'id' => '10000_madeup',
  'function' => 'completely fake function',
  'annotations' => [
- [
- 'completely fake function',
- 'annotate_madeup_source',
- '1583389302.95394',
- '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
- ]
+     [
+     'completely fake function',
+     'annotate_madeup_source',
+     '1583389302.95394',
+     '6c670c83-2a11-49ff-97bf-b1c3e2121f33'
+     ]
  ],
  }];
 
 
-=begin
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
     my $contigID_hash = {
@@ -195,10 +163,10 @@ subtest '_get_genome' => sub {
     my $ret_gn;
     lives_ok { 
         $ret_gn = $annoutil->_get_genome($obj_ref);
-        print "genome object returned on $obj_ref:\n".Dumper(keys %$ret_gn);
+        # print "genome object returned on $obj_ref:\n".Dumper(keys %$ret_gn);
     } '_get_genome runs successfully';
     ok (@{$ret_gn->{features}} > 0, 'Genome has features!');
-    is ($ret_gn->{assembly_ref}, '2901/78/1', 'found genome assembly ref';
+    is ($ret_gn->{assembly_ref}, '2901/78/1', 'found genome assembly ref');
 };
 
 subtest '_get_contigs' => sub {
@@ -253,10 +221,8 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3"); 
 };
-=cut
 
 
-=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -1108,10 +1074,8 @@ subtest '_save_annotation_results' => sub {
     } qr/Can't call method/,
       "_save_annotation_results throws an error on assembly $obj_asmb";
 };
-=cut
 
 
-=begin
 #
 ## variables for testing _build_workflows, _run_rast_workflow
 ## and _pre_rast_call
@@ -1242,33 +1206,8 @@ subtest '_run_rast_genecalls' => sub {
     ok (@{$gc_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
-=cut
 
 
-=begin
-#
-## Tesing only the annotation part of RAST
-#
-subtest '_run_rast_annotation' => sub {
-    my $inputgenome = {
-        features => []
-    };
-    foreach my $gene (sort keys %$protein_seqs){
-        push(@{$inputgenome->{features}},{
-            id => $gene,
-            protein_translation => $protein_seqs->{$gene}
-        });
-    }
-
-    throws_ok {
-        my $rast_ret = $annoutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
-};
-=cut
-
-
-#=begin
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
@@ -1303,9 +1242,7 @@ subtest 'Impl_annotate_genome' => sub {
     } qr/Error invoking method call_/,
       "test Impl annotate_genome on an assembly died.";
 };
-#=cut
 
-=begin
 subtest '_validate_KB_objref' => sub {
 	my $object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome';
 	my $passed_test = $annoutil->_validate_KB_objref($object_ref);
@@ -1527,6 +1464,7 @@ subtest '_check_bulk_annotation_params' => sub {
 subtest '_parseNwrite_gff' => sub {
     # testing get the gff from a genome using obj ids from prod ONLY
     my $gff_fpath;
+    my $attr_delimiter = '=';
     lives_ok {
         $gff_fpath = $annoutil->_write_gff_from_genome($obj_Echinacea);
     } 'Writing gff from a genome runs ok';
@@ -1575,171 +1513,6 @@ subtest '_parseNwrite_gff' => sub {
 };
 
 
-subtest '_parse_prodigal_results' => sub {
-    my $prd_out_path = catfile($rast_genome_dir, 'prodigal_output.gff');
-    my $trans_path = catfile($rast_genome_dir, 'protein_translation');
-    copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
-
-    # Prodigal generate a GFF output file
-    my $out_type = 'gff';
-    copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
-    my ($prd_results, %trans_tab) = $annoutil->_parse_prodigal_results(
-                          $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, "Prodigal GFF parsing returns result.");
-    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
-
-    # Prodigal generate an SCO output file
-    $out_type = 'sco';
-    copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
-    ($prd_results, %trans_tab) = $annoutil->_parse_prodigal_results(
-                          $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
-    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
-};
-
-subtest '_prodigal_gene_call' => sub {
-    my $p_input = $fasta1;
-    my $md = 'meta';
-    my $out_type = 'gff';
-    my $gff_filename = catfile($rast_genome_dir, 'genome.gff');
-    my $trans = catfile($rast_genome_dir, 'protein_translation');
-    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
-
-    my $prd_gene_results;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $annoutil->_prodigal_gene_call(
-                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run 1.';
-    ok( @{$prd_gene_results}=0, "Prodigal gene call on $p_input returns 0 result.");
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigal gff file for $p_input:\n";
-    $annoutil->_print_fasta_gff(0, 10, $out_file);
-
-    $p_input = $ecoli_fasta;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $annoutil->_prodigal_gene_call(
-                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run 2.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results2:\n".Dumper(@{$prd_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigal gff file for $p_input:\n";
-    $annoutil->_print_fasta_gff(0, 10, $out_file);
-
-    $p_input = $fasta4;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $annoutil->_prodigal_gene_call(
-                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run 3.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
-
-    $p_input = $asmb_fasta;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $annoutil->_prodigal_gene_call(
-                               $p_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run 4.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $p_input returns result.");
-    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigal gff file for $p_input:\n";
-    $annoutil->_print_fasta_gff(0, 10, $out_file);
-};
-
-# test _glimmer3_gene_call
-subtest '_glimmer3_gene_call' => sub {
-    my $glimmer3_ok = "Glimmer3 gene call runs ok.";
-    my $glimmer3_notOk = "ERROR";
-
-    my $glimmer3_ret;
-    throws_ok {
-        $glimmer3_ret = $annoutil->_glimmer3_gene_call($fasta1);
-    } qr/$glimmer3_notOk/,
-        '_glimmer3_gene_call errors with contigs too short';
-
-    lives_ok {
-        $glimmer3_ret = $annoutil->_glimmer3_gene_call($ecoli_fasta);
-    } $glimmer3_ok;
-
-    lives_ok {
-        $glimmer3_ret = $annoutil->_glimmer3_gene_call($fasta4);
-    } $glimmer3_ok;
-    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
-    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
-};
-
-subtest '_prodigal_then_glimmer3' => sub {
-    my $fa_input = $fasta4; # $ecoli_fasta;
-    my $md = 'meta';
-    my $out_type = 'gff';
-    my $gff_filename = catfile($rast_genome_dir, 'genome.gff');
-    my $trans = catfile($rast_genome_dir, 'protein_translation');
-    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
-
-    my ($pNg_gene_results, $pNg_gff_file);
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $annoutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run 1.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $fa_input returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    # print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    # $annoutil->_print_fasta_gff(0, 10, $pNg_gff_file);
-
-    $fa_input = $asmb_fasta;
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $annoutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run 2.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-};
-=cut
-
-
-=begin
-## a CI object
-my $ci_obj_id = '47032/4/8';
-
-subtest 'annoutil_write_fasta_from_genome' => sub {
-    # testing get the fasta from a genome using obj ids from prod ONLY
-    my $fasta_fpath;
-    lives_ok {
-        $fasta_fpath = $annoutil->_write_fasta_from_genome($ci_obj_id);
-    } 'Writing fasta from a genome runs ok';
-
-    ok ((-s $fasta_fpath), "fasta file written for $ci_obj_id.\n");
-    print "First 10 lines of the FASTA file:\n";
-    $annoutil->_print_fasta_gff(0, 10, $fasta_fpath);
-};
-=cut
-
-=begin
-## testing rast-annotating genome functions
-subtest '_write_fasta_from_genome' => sub {
-    # testing get the fasta from a genome using obj ids from prod ONLY
-    my $fasta_fpath;
-    lives_ok {
-        $fasta_fpath = $annoutil->_write_fasta_from_genome($obj_Ecoli);
-    } 'Writing fasta from a genome runs ok';
-
-    ok ((-s $fasta_fpath), "fasta file written for $obj_Ecoli.\n");
-    print "First 10 lines of the FASTA file:\n";
-    $annoutil->_print_fasta_gff(0, 10, $fasta_fpath);
-
-    lives_ok {
-        $fasta_fpath = $annoutil->_write_fasta_from_genome($obj_Echinacea);
-    } 'Writing fasta from a genome runs ok';
-    ok ((-s $fasta_fpath), "fasta file written for $obj_Echinacea.\n");
-};
-
 subtest '_write_gff_from_genome' => sub {
     # testing get the gff from a genome using obj ids from prod ONLY
     my $gff_fpath;
@@ -1765,75 +1538,6 @@ subtest '_write_gff_from_genome' => sub {
 };
 
 
-subtest '_save_genome_from_gff' => sub {
-    ## repeat the portion from testing prodigal and
-    ## _prodigal_then_glimmer3 in order to get the GFF
-    my $md = 'meta';
-    my $out_type = 'gff';
-    my $trans = catfile($rast_genome_dir, 'protein_translation');
-    my $nuc = catfile($rast_genome_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_genome_dir, 'prodigal_output').'.'.$out_type;
-
-    my $fa_input = $asmb_fasta;
-    my $prd_gene_results;
-    lives_ok {
-        ($out_file, $prd_gene_results) = $annoutil->_prodigal_gene_call(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } 'Prodigal finished run.';
-    ok( @{$prd_gene_results}, "Prodigal gene call on $fa_input returns result.");
-    print "Prodigal gene call results3:\n".Dumper(@{$prd_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigal gff file for $fa_input:\n";
-    $annoutil->_print_fasta_gff(0, 10, $out_file);
-
-    ## Test the _save_genome_from_gff function with Prodigal $out_file
-    my $out_gn = 'prd_ed_Carsonella';
-    my $input_asmb = $obj_asmb;
-    my $mygn = {};
-    lives_ok {
-        $mygn = $annoutil->_save_genome_from_gff(
-                   $ws, $out_gn, $input_asmb, $out_file);
-    } "_save_genome run without errors on $input_asmb.\n";
-    ok (exists $mygn->{genome_ref},
-        "genome saved with genome_ref=$mygn->{genome_ref}");
-    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
-    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
-    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
-
-    ## prodigal_then_glimmer3
-    $fa_input = $asmb_fasta;
-    my ($pNg_gff_file, $pNg_gene_results);
-    my $out_file1 = catfile($rast_genome_dir, 'prodigal_output1').'.'.$out_type;
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $annoutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file1, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run on $fa_input.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    $annoutil->_print_fasta_gff(0, 10, $pNg_gff_file);
-
-    ## Test the _save_genome_from_gff function with prodigal_then_glimmer3 $gff_fpath
-    $out_gn = 'pNg_Carsonella';
-    $input_asmb = $obj_asmb;
-    $mygn = {};
-    lives_ok {
-        $mygn = $annoutil->_save_genome_from_gff(
-                    $ws, $out_gn, $input_asmb, $pNg_gff_file);
-    } "_save_genome_from_gff run without errors on $input_asmb.\n";
-    ok (exists $mygn->{genome_ref},
-        "genome saved with genome_ref=$mygn->{genome_ref}");
-    ok (exists $mygn->{genome_info}, 'genome saved with genome_info');
-    is ($mygn->{genome_info}[1], $out_gn, 'saved genome name is correct');
-    is ($mygn->{genome_info}[7], $ws, 'saved genome to the correct workspace');
-};
-=cut
-
-
-#=begin
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my @regexes = ( qr/ERROR calling rast run_pipeline/,
@@ -1990,10 +1694,8 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
-#=cut
 
 
-=begin
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
@@ -2032,9 +1734,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
       'Blank genome_text AND empty input_genoms die correctly'
       or diag explain $params;
 };
-=cut
 
-=begin
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
 
@@ -2088,9 +1788,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     #print "Stats from GFF on $obj_asmb_ann: \n".Dumper(\%ret_stats);
     is(keys %ret_stats, 2, "Statistics generated from gffContents on $obj_asmb_ann.");
 };
-=cut
 
-=begin
 # testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report1' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
@@ -2154,33 +1852,14 @@ subtest 'generate_genome_report2' => sub {
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };
-=cut
 
-=begin
 # testing _generate_stats_from_aa using obj ids from prod ONLY
 subtest '_generate_stats_from_aa' => sub {
-    my %ret_stats = $annoutil->_generate_stats_from_aa($obj4);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj4 returns result.");
+    my %ret_stats = $annoutil->_generate_stats_from_aa($obj_Ecoli_ann);
+    ok(keys %ret_stats, "Statistics generation from $obj_Ecoli_ann returns result.");
 
-    %ret_stats = $annoutil->_generate_stats_from_aa($obj5);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj5 returns result.");
-
-    %ret_stats = $annoutil->_generate_stats_from_aa($obj7);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj7 returns result.");
-};
-
-# testing _generate_stats_from_gffContents using obj ids from prod ONLY
-subtest '_generate_stats_from_gffContents' => sub {
-    my $gff_path = $annoutil->_write_gff_from_ama($obj7);
-
-    my ($gff_contents, $attr_delimiter) = ([], '=');
-    ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
-
-    my %ret_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
-    ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
+    %ret_stats = $annoutil->_generate_stats_from_aa($obj_Echinacea_ann);
+    ok(keys %ret_stats, "Statistics generation from $obj_Echinacea_ann returns result.");
 };
 
 # Testing two small uniq functions
@@ -2199,7 +1878,6 @@ subtest 'annoutil_uniq_functions' => sub {
     my @sorted_ret = sort @{$uniq_ref};
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
-=cut
 
 done_testing();
 

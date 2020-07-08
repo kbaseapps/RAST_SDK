@@ -45,463 +45,6 @@ use installed_clients::KBaseReportClient;
 use installed_clients::kb_SetUtilitiesClient;
 
 
-################################Begin Prodigal code###############################
-#-------------------------Reference from prodigal command line-------------------
-#Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
-#                 [-g tr_table] [-h] [-i input_file] [-m] [-n] [-o output_file]
-#                 [-p mode] [-q] [-s start_file] [-t training_file] [-v]
-#
-#         -a:  Write protein translations to the selected file.
-#         -c:  Closed ends.  Do not allow genes to run off edges.
-#         -d:  Write nucleotide sequences of genes to the selected file.
-#         -f:  Select output format (gbk, gff, or sco).  Default is gbk.
-#         -g:  Specify a translation table to use (default 11).
-#         -h:  Print help menu and exit.
-#         -i:  Specify FASTA/Genbank input file (default reads from stdin).
-#         -m:  Treat runs of N as masked sequence; don't build genes across them.
-#         -n:  Bypass Shine-Dalgarno trainer and force a full motif scan.
-#         -o:  Specify output file (default writes to stdout).
-#         -p:  Select procedure (single or meta).  Default is single.
-#         -q:  Run quietly (suppress normal stderr output).
-#         -s:  Write all potential genes (with scores) to the selected file.
-#         -t:  Write a training file (if none exists); otherwise, read and use
-#              the specified training file.
-#         -v:  Print version number and exit.
-#--------------------------------------------------------------------------------
-sub _build_prodigal_cmd {
-    my ($self, $input_file, $trans_file, $nuc_file, $output_file, $output_type,
-        $mode, $start_file, $training_file) = @_;
-
-    if (!defined($input_file)) {
-       croak "An input FASTA/Genbank file is required for Prodigal to run.\n";
-    }
-    # setting defaults
-    if (!defined($output_type) || $output_type eq '') {
-        $output_type = 'gff';
-    }
-    if (!defined($mode) || $mode eq '') {
-        $mode = 'meta';
-    }
-    my($vol, $f_path, $file) = splitpath($input_file);
-    if (!defined($output_file) || $output_file eq '') {
-        $output_file = catfile($f_path, 'prodigal_output.'.$output_type);
-    }
-    if (!defined($trans_file) || $trans_file eq '') {
-       $trans_file = catfile($f_path, 'protein_translation');
-    }
-    if (!defined($nuc_file) || $nuc_file eq '') {
-       $nuc_file = catfile($f_path, 'nucleotide_seq');
-    }
-
-    # building the Prodigal command
-    my @cmd = ('/kb/runtime/bin/prodigal');
-    push @cmd, '-i'; push @cmd, "$input_file";
-    push @cmd, '-f'; push @cmd, "$output_type";
-    push @cmd, '-o'; push @cmd, "$output_file";
-    push @cmd, '-a'; push @cmd, "$trans_file";
-    push @cmd, '-d'; push @cmd, "$nuc_file";
-    push @cmd, '-c';
-    push @cmd, '-g'; push @cmd, 11;
-    push @cmd, '-q';
-    push @cmd, '-p'; push @cmd, "$mode";
-    push @cmd, '-m';
-    if ($start_file) {
-        push @cmd, '-s';
-        push @cmd, "$start_file";
-    }
-    if ($training_file) {
-        push @cmd, '-t';
-        push @cmd, "$training_file";
-    }
-    return @cmd;
-}
-
-
-sub _run_prodigal {
-    my ($self, @cmd) = @_;
-    my $ret = 0;
-    eval {
-        $ret = system(@cmd);
-    };
-    if ($@) {
-        print Dumper(\@cmd);
-        croak "ERROR Prodigal run failed: ".$@."\n";
-    }
-    print "Prodigal returns: $ret\n";
-    return $ret;
-}
-
-#--From https://github.com/hyattpd/prodigal/wiki/understanding-the-prodigal-output---
-# By default, Prodigal produces one output file, which consists of gene coordinates
-# and some metadata associated with each gene.
-# However, the program can produce four more output files at the user's request:
-#       protein translations (with the -a option),
-#       nucleotide sequences (with the -d option),
-#       a complete listing of all start/stop pairs along with score information (with the -s option),
-#       a summary of statistical information about the genome or (meta)genome (with the -w option).
-#
-# By default, Prodigal produces a Genbank-like feature table; however, the user can
-# specify some other output types via the -f option:
-#       gbk:  Genbank-like format (Default)
-#       gff:  GFF format
-#       sqn:  Sequin feature table format
-#       sco:  Simple coordinate output
-#
-# In the following parsing method, we assume "sco" is the output_type together
-# with a translation file (protein translations) and a nucleotide file (sequences).
-#
-# An sco file has a head portion like:
-#-----------------------------------------------------------
-# # Sequence Data: seqnum=1;seqlen=4641652;seqhdr="Escherichia coli str. K-12 substr. MG1655, complete genome."
-# Model Data: version=Prodigal.v2.6.3;run_type=Single;model="Ab initio";gc_cont=50.79;transl_table=11;uses_sd=1
-# >1_337_2799_+
-# >2_2801_3733_+
-# >3_3734_5020_+
-# >4_5234_5530_+
-# >5_5683_6459_-
-# >6_6529_7959_-
-# >7_8238_9191_+
-# ...
-#
-# ##gff-version  3
-# Sequence Data: seqnum=1;seqlen=4639675;seqhdr="NC_000913 # Escherichia coli str. K-12 substr. MG1655, complete genome."
-# Model Data: version=Prodigal.v3.0.0-devel.1.0;run_type=Normal;model="Ab initio";gc_cont=50.79;transl_table=11;uses_sd=1
-# NC_000913 Prodigal_v3.0.0-devel.1.0   CDS 337 2799    338.7   +   0   ID=1_2;partial=00;start_type=ATG;stop_type=TGA;rbs_motif=GGAG/GAGG;rbs_spacer=5-10bp;gc_cont=0.531;conf=99.99;score=338.70;cscore=322.16;sscore=16.54;rscore=11.24;uscore=1.35;tscore=3.95;
-# ...
-#
-# Protein Translations:
-# The protein translation file consists of all the proteins from all the sequences
-# in multiple FASTA format. The FASTA header begins with a text id consisting of
-# the first word of the original FASTA sequence header followed by an underscore
-# followed by the ordinal ID of the protein. This text id is not guaranteed to be
-# unique (it depends on the FASTA headers supplied by the user), which is why we
-# recommend using the "ID" field in the final semicolon-delimited string instead.
-#
-# A translation file has an entry like;
-#-----------------------------------------------------------
-# >Escherichia_2 # 2801 # 3733 # 1 # ID=1_2;partial=00;start_type=ATG;rbs_motif=AGGAG;rbs_spacer=5-10bp;gc_cont=0.563
-# MVKVYAPASSANMSVGFDVLGAAVTPVDGALLGDVVTVEAAETFSLNNLGRFADKLPSEP
-# RENIVYQCWERFCQELGKQIPVAMTLEKNMPIGSGLGSSACSVVAALMAMNEHCGKPLND
-# TRLLALMGELEGRISGSIHYDNVAPCFLGGMQLMIEENDIISQQVPGFDEWLWVLAYPGI
-# KVSTAEARAILPAQYRRQDCIAHGRHLAGFIHACYSRQPELAAKLMKDVIAEPYRERLLP
-# GFRQARQAVAEIGAVASGISGSGPTLFALCDKPETAQRVADWLGKNYLQNQEGFVHICRL
-# DTAGARVLEN*
-# ...
-#--------------------------------------------------------------------------------
-sub _parse_prodigal_results {
-    my ($self, $trans_file, $output_file, $output_type) = @_;
-    my %transH = $self->_parse_translation($trans_file);
-    if ($output_type eq 'gff') {
-        my ($gff_contents, $attr_del) = $self->_parse_gff($output_file, '=');
-        return ($gff_contents, %transH);
-    }
-    elsif ($output_type eq 'sco') {
-        my $sco_tbl = $self->_parse_sco($output_file, %transH);
-        return ($sco_tbl, %transH);
-    }
-    return ([], %transH);
-}
-
-sub _parse_translation {
-    my ($self, $trans_file) = @_;
-
-    my %transH;
-    my ($fh_trans, $trans_id, $comment, $seq);
-    $fh_trans = $self->_openRead($trans_file);
-
-    while (($trans_id, $comment, $seq) = &gjoseqlib::read_next_fasta_seq($fh_trans)) {
-        my ($contig_id) = ($trans_id =~ m/^(\S+)_\d+$/o);
-        my ($left, $right, $strand, $left_trunc, $right_trunc) 
-            = ($comment =~ m/^\#\s+(\d+)\s+\#\s+(\d+)\s+\#\s+(-?1)\s+\#.*partial=([01])([01])/o);
-    
-        if (defined($contig_id) && $left && $right && $strand && defined($left_trunc) && defined($right_trunc)) {
-            $seq =~ s/\*$//o;
-            $strand = ($strand == 1) ? q(+) : q(-);
-            $transH{"$contig_id\t$left\t$right\t$strand"} = [ $seq, $left_trunc, $right_trunc ];
-        }
-        else {
-            croak ("Could not parse record:\n",
-                 "trans_id=$trans_id\n",
-                 "comment=$comment",
-                 "left=$left\n",
-                 "right=$right\n",
-                 "strand=$strand\n",
-                 "left_trunc=$left_trunc\n",
-                 "right_trunc=$right_trunc\n",
-            );
-        }
-    }
-    # print "Translation table:\n".Dumper(\%transH);
-    return %transH;
-}
-
-sub _parse_sco {
-    my ($self, $sco_file, %transH) = @_;
-
-    my $encoded_tbl = [];
-    my $fh_sco = $self->_openRead($sco_file);
-    my $contig_id;
-    while (defined(my $line = <$fh_sco>)) {
-        chomp $line;
-        if ($line =~ m/^\# Sequence Data:.*seqhdr=\"([^\"]+)\"/o) {
-            my @words = split / /, $1;
-            $contig_id = $words[0];
-            next;
-        }
-        
-        if ($line =~ m/^\# Model Data/o) {
-            next;
-        }
-        if ($contig_id) {
-            if (my ($num, $left, $right, $strand) = ($line =~ m/^\>(\d+)_(\d+)_(\d+)_([+-])/o)) {
-                my ($beg, $end, $trunc_flag);
-                if ($transH{"$contig_id\t$left\t$right\t$strand"}) {
-                    if (my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig_id\t$left\t$right\t$strand"}}) {
-                        my $len = 1 + $right - $left;
-                        if ($strand eq q(+)) {
-                            ($beg, $end) = ($left, $right);
-                            $trunc_flag = "$trunc_left,$trunc_right";
-                        }
-                        else {
-                            ($beg, $end) = ($right, $left);
-                            $trunc_flag = "$trunc_right,$trunc_left";
-                        }
-                        push @$encoded_tbl, [$contig_id, $beg, $end, $strand, $len, $seq, $trunc_flag];
-                    }
-                    else {
-                        # warn "No translation found for \"$sco_file\" line: $line\n";
-                    }
-                }
-                else {
-                    # warn "No key \"$contig_id\t$left\t$right\t$strand\" found for \"$sco_file\" line: $line\n";
-                }
-            }
-            else {
-                warn "Could not parse calls for \"$sco_file\" line: $line\n";
-            }
-        }
-    }
-    close $fh_sco;
-    return $encoded_tbl;
-}
-##----end for prodigal parsing----##
-
-################################End Prodigal code###############################
-
-############################Begin gene calling subs#############################
-#
-# prodigal gene call--by calling the above subs
-# return: an array of arrays of the structure:
-# [contig_id, # e.g.,'Ga0065724_100001'
-#  feature_id, # e.g.,'1_1'
-#  feature_type, # e.g., 'CDS'
-#  start, # e.g., '325'
-#  end, # e.g., '849'
-#  strand, # e.g., '+'
-#  protein_sequence # e.g.,'MKREIRLVEVLLMAGLGLIFLFMLFHDWVPMGSLNDVEAVKAHQGVSQLVLVTAFNAAQIAVLMG...'
-# ]
-#
-sub _prodigal_gene_call {
-    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
-    $mode = 'meta' unless defined($mode);
-
-    my @prodigal_cmd = $self->_build_prodigal_cmd($input_fasta,
-                                                  $trans,
-                                                  $nuc,
-                                                  $out_file,
-                                                  $out_type,
-                                                  $mode);
- 
-    my @prodigal_out;
-    if ($self->_run_prodigal(@prodigal_cmd) == 0) {
-        print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
-        print "First 10 lines of the GFF file from Prodigal-----------\n";
-        $self->_print_fasta_gff(0, 10, $out_file);
-
-        my ($gff_contents, %transH) = $self->_parse_prodigal_results(
-                                                  $trans,
-                                                  $out_file,
-                                                  $out_type);
-
-        my $count = @$gff_contents;
-    if ($count > 0) {
-            print "Prodigal returned $count entries.\n";  # .Dumper(@{$gff_contents}[0]);
-
-            foreach my $entry (@$gff_contents) {
-                my ($contig, $source, $ftr_type, $beg, $end, $score, $strand,
-                $phase, $attribs) = @$entry;
-                next if $contig =~ m/^#.*/;
-                my ($seq, $trunc_left, $trunc_right) = @{$transH{"$contig\t$beg\t$end\t$strand"}};
-                my $fid = $attribs->{id};
-                my $start = ($strand eq q(+)) ? $beg : $end;
-                $end = ($strand eq q(+)) ? $end : $beg;
-                push @prodigal_out, [$contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source];
-            }
-        }
-    }
-    else {# Prodigal throws an error
-    }
-    return ($out_file, \@prodigal_out);
-}
-
-#
-# Glimmer::call_genes_with_glimmer (glimmer3 gene call)
-# return: an array of arrays of the structure:
-# [feature_id, # e.g.,'prot.1'
-#  contig_id, # e.g.,'Chr01'
-#  /* push(@output, [$fid, $contig_id, $beg, $end, $dna]);
-#  start, # e.g., '931'
-#  end, # e.g., '230'
-#  dna_sequence # e.g.,'gtgtcggatataattttagatggaagatgggcattccctcctgggcactc...'
-# ]
-#
-sub _glimmer3_gene_call {
-    my ($self, $input_fasta, $min_len) = @_;
-    $min_len = 2000 unless defined($min_len);
-
-    my $glimmer_out;
-    eval {
-        $glimmer_out = &Glimmer::call_genes_with_glimmer(
-                   $input_fasta,
-               { verbose => 0, min_training_len => $min_len});
-    };
-    if ($@) {
-        croak "ERROR calling Glimmer::call_genes_with_glimmer: ".$@."\n";
-    }
-    else {
-        my $count = scalar @{$glimmer_out};
-        print "Glimmer returned $count entries.\n";
-        return $glimmer_out;
-    }
-}
-
-#
-# Expect to return the final GFF file and $gene_call_result of the following data structure:
-# An array of [$contig_id, $fid, $ftr_type, $start, $end, $strand, $seq, $source]
-#
-sub _prodigal_then_glimmer3 {
-    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
-    $mode = 'meta' unless defined($mode);
-
-    my ($out_gff_file, $prd_gff_contents, $gene_call_result, $prodigal_out, $attr_dlmtr);
-    eval {
-        ($out_gff_file, $prodigal_out) = $self->_prodigal_gene_call(
-                                                      $input_fasta,
-                                                      $trans,
-                                                      $nuc,
-                                                      $out_file,
-                                                      $out_type,
-                                                      $mode);
-        $gene_call_result = $prodigal_out;
-        ($prd_gff_contents, $attr_dlmtr) = $self->_parse_gff($out_gff_file, "=");
-    };
-    if ($@) {
-        print "Prodigal gene calling failed with ERROR:\n".$@."\n";
-    }
-
-    my $glimmer_out; # an array of [$fid, $contig_id, $beg, $end, $dna]
-    eval {
-        $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
-    };
-    if ($@) {
-        print "Glimmer3 gene calling failed with ERROR:\n".$@."\n";
-    }
-    else {
-        # find gene features that are found by glimmer and not by prodigal
-        my %glm_gene_seqs = ();
-        my %glm_ftrs = ();
-        my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
-        my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
-        my ($fid, $ctg_id, $beg, $end, $dna_seq);
-        foreach my $glm_entry (@{$glimmer_out}) {
-            ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
-            next if !defined($fid) || !defined($ctg_id);
-
-            my @glm_prim = ($ctg_id, $beg, $end);
-
-            my $found_in_prd = 0;
-            my @prd_prim = ();
-            foreach my $prd_entry (@{$prodigal_out}) {
-                my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
-                @prd_prim = ($pctg_id, $pbeg, $pend);
-
-                # check if arrays contain same members
-                if (!array_diff(@glm_prim, @prd_prim)) {
-                    # print "Found $fid match in prodigal.\n";
-                    $found_in_prd = 1;
-                    $prd_match_cnt += 1;
-                    last;
-                }
-                if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
-                     ((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
-                     (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
-                     (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
-                    # print "Found $fid +/-12 check match in prodigal.\n";
-                    $found_in_prd = 1;
-                    $prd_approxmatch_cnt += 1;
-                    last;
-                }
-                next;
-            }
-
-            # Not found in Prodigal genes
-            # prepare the new feature for seq translation
-            if (defined($fid) && $found_in_prd == 0) {
-                $glm_gene_seqs{$fid} = $dna_seq;
-                $glm_ftrs{$fid} = \@glm_prim;
-                # $prd_gff_contents is an array of
-                # [$contig_id, $source_id, $feature_type, $start, $end,
-                # $score, $strand, $phase, \%ftr_attributes]
-                my $strd = ($beg < $end) ? '+': '-';
-                if ($strd eq '+') {
-                   push @{$prd_gff_contents}, [
-                       $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-                }
-                else {
-                    # if $strd eq '-', only pick the ones whose length is within the contig range
-                    # reject cases when either $begin or $end is outside of the contig
-                    my $len = abs($end - $beg) + 1;
-                    if ($len <= length $dna_seq) {
-                        push @{$prd_gff_contents}, [
-                            $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-                    }
-                }
-            }
-        }
-        print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
-        print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
-
-        my $glm_gene_size = keys %glm_ftrs;
-        print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
-
-        # translate the additional glimmer gene sequences into protein sequences
-        my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
-        print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
-
-        # add the additional glimmer genes to the prodigal result array
-        foreach my $ftr (sort keys %{$glm_protein_seqs}) {
-            my $beg1 = $glm_ftrs{$ftr}[1];
-            my $end1 = $glm_ftrs{$ftr}[2];
-            my $strand = ($beg1 < $end1) ? '+': '-';
-            my $len1 = abs($end1 - $beg1) + 1;
-            if ($strand eq '+' || ($strand eq '-' && $len1 <= length $dna_seq)) {
-                push(@{$gene_call_result}, [
-                    $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
-                    $beg1, $end1, $strand,
-                    $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
-            }
-        }
-    }
-    # updating the GFF file by writing the $prd_gff_contents back to $out_gff_file
-    $self->_print_fasta_gff(0, 20, $out_gff_file);
-    $self->_write_gff($prd_gff_contents, $out_gff_file, $attr_dlmtr);
-    $self->_print_fasta_gff(0, 20, $out_gff_file);
-    return ($out_gff_file, $gene_call_result);
-}
-
-############################End gene calling subs#############################
-
-
 #######################Begin refactor annotate_process########################
 ## helper subs
 sub _get_scientific_name_for_NCBI_taxon {
@@ -603,7 +146,7 @@ sub _get_contigs_from_fastafile {
         if (scalar @contigs > $self->{max_contigs}) {
             Bio::KBase::Exceptions::ArgumentValidationError->throw(
                 error => 'too many contigs',
-                method_name => 'anno_utils._get_contigs'
+                method_name => 'anno_utils._get_contigs_from_fastafile'
             );
         }
         if (length($array->[$i]) > 0) {
@@ -754,80 +297,6 @@ sub _set_default_parameters {
 }
 
 
-# When the input object_ref is referencing to a genome object
-sub _create_inputgenome_from_genome_original {
-    my ($self, $inputgenome, $input_obj_ref) = @_;
-
-    my $oldfunchash = {};
-    my $oldtype     = {};
-    my %types = ();
-
-    for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-        my $ftr = $inputgenome->{features}->[$i];
-        if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
-            if (defined($ftr->{protein_translation})) {
-                $ftr->{type} = 'gene';
-            } else {
-                $ftr->{type} = 'other';
-            }
-        }
-
-        # Reset functions in protein features to "hypothetical protein" to make them available
-        # for re-annotation in RAST service (otherwise these features will be skipped).
-        if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
-                ($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
-            if (defined($ftr->{functions})){
-                $ftr->{function} = join("; ", @{$ftr->{functions}});
-            }
-            $oldfunchash->{$ftr->{id}} = $ftr->{function};
-            $ftr->{function} = "hypothetical protein";
-        }
-        elsif ($ftr->{type} eq "gene") {
-            $ftr->{type} = 'Non-coding '.$ftr->{type};
-        }
-        $oldtype->{$ftr->{id}} = $ftr->{type};
-        #
-        #   Count the input feature types
-        #
-        if (exists $types{$ftr->{type}}) {
-            $types{$ftr->{type}} += 1;
-        } else {
-            $types{$ftr->{type}} = 1;
-        }
-    }
-    if (exists $inputgenome->{non_coding_features}) {
-        for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
-            my $ftr = $inputgenome->{non_coding_features}->[$i];
-            if (!defined($ftr->{type})) {
-                $ftr->{type} = "Non-coding";
-            }
-            $oldtype->{$ftr->{id}} = $ftr->{type};
-            #
-            #   Count the input feature types
-            #
-            if (exists $types{"Non-coding ".$ftr->{type}}) {
-                $types{"Non-coding ".$ftr->{type}} += 1;
-            } else {
-                $types{"Non-coding ".$ftr->{type}} = 1;
-            }
-        }
-    } else {
-        $inputgenome->{non_coding_features} = [];
-    }
-
-    my ($contigref, $contigobj, $contigID_hash);
-    if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-        if (defined($inputgenome->{contigset_ref})) {
-            $contigref = $inputgenome->{contigset_ref};
-        } elsif (defined($inputgenome->{assembly_ref})) {
-            $contigref = $inputgenome->{assembly_ref};
-        }
-        ($contigobj, $contigID_hash) = $self->_get_contigs($contigref);
-    }
-    return ($inputgenome, $contigobj, $contigID_hash, $oldfunchash, $oldtype, %types);
-}
-
-
 sub _get_oldfunchash_oldtype_types {
     my ($self, $in_genome) = @_;
 
@@ -915,8 +384,7 @@ sub _create_inputgenome_from_genome {
 }
 
 
-# When the input object_ref is referencing to an assembly/contigset object
-# call prodigal to call the initial set of genes and gff file
+# When the input_obj_ref is referencing to an assembly/contigset object
 sub _create_inputgenome_from_assembly {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
@@ -925,8 +393,47 @@ sub _create_inputgenome_from_assembly {
     return ($inputgenome, $contigobj, $contigID_hash);
 }
 
+sub _util_version {
+	my ($self) = @_;
+	my $VERSION = '0.1.6';
+    return $VERSION;
+}
 
+## Checking on non_coding_features for ones that have undefined type field
+sub _check_NC_features {
+    my ($self, $genome) = @_;
+
+    my $ncoding_features = $genome->{non_coding_features};
+    my $cnt = 0;
+    for my $ncoding_ftr (@{$ncoding_features}) {
+        if(exists($ncoding_ftr->{type})) {
+            $cnt++;
+            #print "Non-conding feature type value= $ncoding_ftr->{type}\n";
+        }
+    }
+    if ($cnt == scalar @{$ncoding_features}) {
+        print "***INFO***: All $cnt non-coding features have defined type**********\n";
+    }
+}
+
+
+## Mapping the contigIDs back to their original (long) names
+sub _remap_contigIDs {
+    my ($self, $contigID_hash, $genome) = @_;
+
+    my $contigs = $genome->{contigs};
+    foreach my $ctg_obj (@{$contigs}) {
+        my $cid = $ctg_obj->{id};
+        $ctg_obj->{id} = $contigID_hash->{$cid};
+        $ctg_obj->{name} = $contigID_hash->{$cid};
+    }
+    return $genome;
+}
 ## end helper subs
+#
+
+## begin building the sequence of functions refactored from annotate_process in the RASTImpl
+#
 
 #
 ## According to inputs in $parameters and a pre-created default genome object, $inputgenome
@@ -1605,45 +1112,9 @@ sub _pre_rast_call {
 
     return (\%rast_details, $inputgenome);
 }
-
 #
-#----------------------------------------------------------------------
-## Runs rast annotation for pre-set workflow on an input protein/genome
-#----------------------------------------------------------------------
+## end building the sequence of functions refactored from annotate_process in the RASTImpl
 #
-sub _run_rast_annotation {
-    my ($self, $in_genome) = @_;
-    my $count = scalar @{$in_genome->{features}};
-    return $in_genome unless $count > 0;
-
-    print "******INFO: Run RAST annotation on $in_genome->{id} with $count features.******\n";
-    if ($count > 0) {
-        print "******INFO: For example, first 3 features: \n".Dumper(@{$in_genome->{features}}[0..2]);
-    }
-
-    my $rasted_gn = $in_genome;
-    eval {
-        #my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
-        my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-        $rasted_gn = $rast_client->run_pipeline($in_genome,
-            {stages => [{name => "annotate_proteins_kmer_v2",
-                         kmer_v2_parameters => {min_hits => "5",
-                                    dataset_name => "V2Data",
-                                                annotate_hypothetical_only => 0}},
-                        {name => "annotate_proteins_kmer_v1",
-                         kmer_v1_parameters => {dataset_name => "Release70",
-                                                annotate_hypothetical_only => 0}}]}
-        );
-    };
-    if ($@) {
-        print "********ERROR calling rast run_pipeline for annotation only on $in_genome->{id}:\n$@\n";
-    }
-    else {
-        print "********SUCCEEDED: calling rast run_pipeline for annotation only on $in_genome->{id}";
-    }
-    return $rasted_gn;
-};
-
 #
 #--------------------------------------------------------------------------
 ## Runs RAST with input workflow for gene calls and/or annotation on genome
@@ -2140,43 +1611,6 @@ sub _summarize_annotation {
 }
 
 
-sub _util_version {
-	my ($self) = @_;
-	my $VERSION = '0.1.6';
-    return $VERSION;
-}
-
-## Checking on non_coding_features for ones that have undefined type field
-sub _check_NC_features {
-    my ($self, $genome) = @_;
-
-    my $ncoding_features = $genome->{non_coding_features};
-    my $cnt = 0;
-    for my $ncoding_ftr (@{$ncoding_features}) {
-        if(exists($ncoding_ftr->{type})) {
-            $cnt++;
-            #print "Non-conding feature type value= $ncoding_ftr->{type}\n";
-        }
-    }
-    if ($cnt == scalar @{$ncoding_features}) {
-        print "***INFO***: All $cnt non-coding features have defined type**********\n";
-    }
-}
-
-
-## Mapping the contigIDs back to their original (long) names
-sub _remap_contigIDs {
-    my ($self, $contigID_hash, $genome) = @_;
-
-    my $contigs = $genome->{contigs};
-    foreach my $ctg_obj (@{$contigs}) {
-        my $cid = $ctg_obj->{id};
-        $ctg_obj->{id} = $contigID_hash->{$cid};
-        $ctg_obj->{name} = $contigID_hash->{$cid};
-    }
-    return $genome;
-}
-
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
@@ -2390,78 +1824,6 @@ sub _write_gff_from_genome {
     return $gff_result->{file_path};
 }
 
-
-sub _save_one_genome {
-    my ($self, $in_genome, $ws, $gn_name) = @_;
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $gaout = $gfu->save_one_genome({
-		workspace => $ws,
-        name => $gn_name,
-        data => $in_genome,
-	});
-    return $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4];
-}
-
-sub _save_genome_from_gff {
-    my ($self, $ws, $out_gn_name, $obj_ref, $gff_file) = @_;
-
-    my $req_params = "Missing required parameters for saving genome.\n";
-    my $req1 = "Both 'output_workspace' and 'output_genome_name' are required.\n";
-    my $req2 = "Both 'obj_ref' and 'gff_file' are required.\n";
-    unless (defined($ws) && defined($obj_ref) &&
-            defined($out_gn_name) && defined($gff_file)) {
-        croak $req_params;
-    }
-
-    print "Parameters for saving annotated genome-----------------\n";
-    print "Workspace name: $_[1]\n";
-    print "Annotated genome name: $_[2]\n";
-    print "Object ref: $_[3]\n";
-    print "GFF file: $_[4]\n";
-
-    unless (defined($out_gn_name) && defined($ws)) {
-        croak "**In _save_genome_from_gff: $req1";
-    }
-    unless (defined($obj_ref) && defined($gff_file)) {
-        croak "**In _save_genome_from_gff: $req2";
-    }
-    unless (-e $gff_file) {
-        croak "**In _save_genome_from_gff: GFF file not found.\n";
-    }
-    unless (-s $gff_file) {
-        croak "**In _save_genome_from_gff: GFF file is empty.\n";
-    }
-
-    eval {
-        $self->_fetch_object_info($obj_ref);
-    };
-    if ($@) {
-        croak("**In _save_genome_from_gff ERROR trying to access the input object:\n"
-                .$@."\n");
-    }
-
-    #print "*********First 20 lines of GFF file for rasted $obj_ref before call to GFU.ws_obj_gff_to_genome***********\n";
-    #$self->_print_fasta_gff(0, 20, $gff_file);
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
-    my $annotated_genome = {};
-    eval {
-        $annotated_genome = $gfu->ws_obj_gff_to_genome ({
-            "ws_ref" => $obj_ref,
-            "gff_file" => {'path' => $gff_file},
-            "genome_name" => $out_gn_name,
-            "workspace_name" => $ws,
-            "generate_missing_genes" => 1});
-    };
-    if ($@) {
-        croak("**In _save_genome_from_gff ERROR calling GenomeFileUtil.ws_obj_gff_to_genome:\n"
-                .$@."\n");
-    }
-    else {
-        return $annotated_genome;
-    }
-}
 
 sub _validate_KB_objref {
     my ($self, $obj_ref) = @_;
@@ -3253,21 +2615,6 @@ sub _extract_cds_sequences_from_fasta {
     #print "Gene sequence hash example:\n".Dumper(\%gene_seqs);
     return \%gene_seqs;
 }
-
-sub _translate_gene_to_protein_sequences {
-    my $self = shift;
-    my $gene_seqs = shift;
-    my $codon_table  = Bio::Tools::CodonTable -> new ( -id => 'protein' );
-
-    my %protein_seqs = ();
-    foreach my $gene (sort keys %$gene_seqs){
-        my $gene_seq = $gene_seqs->{$gene};
-        my $protein_seq  = $codon_table->translate($gene_seq);
-        $protein_seqs{$gene}=$protein_seq;
-    }
-    return \%protein_seqs;
-}
-
 
 ##----main function----##
 sub rast_genome {

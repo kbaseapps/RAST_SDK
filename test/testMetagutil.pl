@@ -30,8 +30,6 @@ my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
 
-my $tmp_write_dir = 'data/write_tmp';  ## For saving temporary test files
-
 my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
 my $out_name = 'annotated_metag';
@@ -53,18 +51,6 @@ my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
 my $rast_metag_dir = $mgutil->_create_rast_subdir($scratch, "metag_annotation_dir_");
 
 
-sub genome_to_fasta {
-    my($gn_ref) = @_;
-
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-
-    my $fasta_result = $gfu->genome_proteins_to_fasta({"genome_ref" => $gn_ref});
-    print "First 10 lines of the FASTA file from gfu->genome_proteins_to_fasta:\n";
-    $mgutil->_print_fasta_gff(0, 10, $fasta_result->{file_path});
-    return $fasta_result->{file_path};
-}
-
-
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
     my $fasta_path = catfile($rast_metag_dir, $fasta_scrt);
@@ -84,7 +70,6 @@ sub generate_metagenome {
     return $mg;
 }
 
-=begin
 ## global objects/variables for multiple subtests
 my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
 print Dumper($ret_metag);
@@ -107,7 +92,6 @@ print "**********Gene sequences************\n" . Dumper($gene_seqs);
 
 my $protein_seqs = $mgutil->_translate_gene_to_protein_sequences($gene_seqs);
 print "**********Protein sequences************\n" . Dumper($protein_seqs);
-=cut
 
 ##-----------------Test Blocks--------------------##
 
@@ -117,10 +101,6 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
-my $obj_Echinacea = "55141/242/1";  #prod genome
-my $obj_Echinacea_ann = "55141/247/1";  #prod genome
-my $obj_Ecoli = "55141/212/1";  # prod genome
-my $obj_Ecoli_ann = "55141/252/1";  # prod genome
 my $obj_asmb = "55141/243/1";  # prod assembly
 my $obj_asmb_ann = "55141/244/1";  # prod assembly
 my $obj_asmb_refseq = "55141/266/3";  # prod assembly
@@ -176,189 +156,6 @@ my $test_ftrs = [{
  ]
  ],
  }];
-
-=begin
-subtest '_check_annotation_params' => sub {
-    my $obj = '1234/56/7';
-
-    my $missing_params = "Missing required parameters for annotating genome.\n";
-    my $req1 = "'output_workspace' is required for running rast_genome.\n";
-    my $req2 = "'object_ref' is required for running rast_genome.\n";
-
-    throws_ok {
-        $mgutil->_check_annotation_params()
-    } qr/$missing_params/,
-        '_check_annotation_params dies without params';
-
-    throws_ok {
-        $mgutil->_check_annotation_params( {} )
-    } qr/$missing_params/,
-        '_check_annotation_params dies with an empty hashref';
-
-    throws_ok {
-        my $p = {output_workspace => $ws,
-                 output_genome_name => $outgn_name};
-        print "input parameter=\n". Dumper($p);
-        $mgutil->_check_annotation_params($p)
-    } qr/$req2/,
-        '_check_annotation_params dies with no object_ref';
-
-    throws_ok {
-        my $p = {output_workspace => $ws,
-                 output_genome_name => $outgn_name,
-                 object_ref => ''};
-        print "input parameter=\n". Dumper($p);
-        $mgutil->_check_annotation_params($p)
-    } qr/$req2/,
-        '_check_annotation_params dies with blank object_ref';
-
-    throws_ok {
-        $mgutil->_check_annotation_params(
-            {object_ref => $obj,
-             output_genome_name => $outgn_name})
-    } qr/$req1/,
-        '_check_annotation_params_metag dies with no outpout_workspace';
-
-    throws_ok {
-        $mgutil->_check_annotation_params(
-            {workspace => $ws,
-             output_genome_name => $outgn_name,
-             obect_ref => $obj})
-    } qr/$req1/,
-        '_check_annotation_params dies with wrong workspace key';
-
-    throws_ok {
-        $mgutil->_check_annotation_params(
-            {output_workspace => '',
-             output_genome_name => $outgn_name,
-             obect_ref => $obj})
-    } qr/$req1/,
-        '_check_annotation_params dies with blank workspace name';
-
-    lives_ok {
-        $mgutil->_check_annotation_params(
-            {output_workspace => $ws,
-             output_genome_name => $outgn_name,
-             object_ref => 'abc/1/2'});
-    } '_check_annotation_params object_ref check ok';
-
-    lives_ok {
-        $mgutil->_check_annotation_params(
-            {output_workspace => 'ab:c',
-             output_genome_name => $outgn_name,
-             object_ref => '456/1/2'});
-    } '_check_annotation_params workspace name check ok';
-
-    # _check_annotation_params passed
-    my $expected = {
-             output_workspace => $ws,
-             output_genome_name => $outgn_name,
-             object_ref => '456/1/2'};
-    my $set_default_ok = '_check_annotation_params sets the default value for output_genome_name.';
-
-    my $ret = $mgutil->_check_annotation_params(
-            {output_workspace => $ws,
-             output_genome_name => undef,
-             object_ref => '456/1/2'});
-    ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
-        'When undefined, '.$set_default_ok);
-
-    $ret = $mgutil->_check_annotation_params(
-            {output_workspace => $ws,
-             output_genome_name => '',
-             object_ref => '456/1/2'});
-    ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
-        'When blank, '.$set_default_ok);
-};
-
-
-subtest '_check_bulk_annotation_params' => sub {
-    my $error_message = qr/ERROR:Missing required inputs/;
-    my $error_mand = qr/Mandatory arguments missing/;
-
-    my $params = {
-        "output_GenomeSet_name" => "out_genomeSet"
-    };
-    throws_ok {
-        my $ret_parms1 = $mgutil->_check_bulk_annotation_params($params);
-    } qr/'output_workspace' is required/,
-      'Missing required parameter output_workspace die correctly'
-      or diag explain $params;
-
-    $params = {
-        "output_workspace" => get_ws_name()
-    };
-    my $expected = {
-       'input_assemblies' => [],
-       'input_genomes' => [],
-       'input_text' => '',
-       'output_GenomeSet_name' => 'rasted_GenomeSet_name'
-    };
-
-    my $set_default_ok = '_check_annotation_params sets the default value for output_GenomeSet_name.';
-    $params->{input_text} = '';
-    my $ret_parms2 = $mgutil->_check_bulk_annotation_params($params);
-    ok ($ret_parms2->{output_GenomeSet_name} eq $expected->{output_GenomeSet_name},
-        "When undefined, ".$set_default_ok);
-    ok ($ret_parms2->{output_workspace} eq $params->{output_workspace},
-        "output_workspace is defined");
-    ok (!@{$ret_parms2->{input_genomes}} && !@{$ret_parms2->{input_assemblies}},
-        "No input genome or assembly was specified as input.");
-    print Dumper($ret_parms2);
-
-    $params->{input_genomes} = [];
-    $params->{input_assemblies} = [];
-    $params->{input_text} = '';
-    my $ret_parms3 = $mgutil->_check_bulk_annotation_params($params);
-    ok (!@{$ret_parms3->{input_genomes}} && !@{$ret_parms3->{input_assemblies}},
-        "No input genome or assembly was specified as input.");
-
-    $params->{input_genomes} = ["48109/9/1"]; # array of a prod object
-    $params->{input_text} = '';
-    my $ret_parms4 = $mgutil->_check_bulk_annotation_params($params);
-    ok ($ret_parms4->{input_genomes} eq $params->{input_genomes},
-        "Input genome array is not empty.");
-
-    $params->{input_genomes} = []; # array of a prod object
-    $params->{input_text} = '48109/9/1;123/4/5';
-    my $ret_parms5 = $mgutil->_check_bulk_annotation_params($params);
-    ok ($ret_parms5->{input_text} eq $params->{input_text},
-        "Input text is not empty.");
-    ok (!@{$ret_parms5->{input_genomes}} && !@{$ret_parms5->{input_assemblies}},
-        "No input genome or assembly was specified as input.");
-
-    $params->{input_genomes} = "48109/9/1"; # non-array
-    $params->{input_text} = '';
-    my $ret_parms6 = $mgutil->_check_bulk_annotation_params($params);
-    ok ($ret_parms6->{input_genomes}->[0] eq "48109/9/1",
-        "Non array input genome converted into array");
-
-    $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
-    $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
-    $params->{input_text} = '';
-    my $ret_parms7 = $mgutil->_check_bulk_annotation_params($params);
-    ok (@{$ret_parms7->{input_genomes}} && @{$ret_parms7->{input_assemblies}},
-        "Both input_genomes and input_assemblies arrays are not empty.");
-
-    $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-    $params->{input_assemblies} = [];
-    $params->{input_text} = '';
-    my $ret_parms8 = $mgutil->_check_bulk_annotation_params($params);
-    ok (@{$ret_parms8->{input_genomes}}==2 && @{$ret_parms8->{input_assemblies}}==0,
-        "The input_genomes array has 2 elements while input_assemblies is empty.");
-
-    $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
-    $params->{input_genomes} = [];
-    $params->{input_text} = '';
-    my $ret_parms9 = $mgutil->_check_bulk_annotation_params($params);
-    ok (@{$ret_parms9->{input_genomes}}==0 && @{$ret_parms9->{input_assemblies}}==2,
-        "The input_assemblies array has 2 elements while input_genomes is empty.");
-
-    $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
-    my $ret_parms10 = $mgutil->_check_bulk_annotation_params($params);
-    ok (@{$ret_parms10->{input_genomes}}==2 && @{$ret_parms10->{input_assemblies}}==2,
-        "Both input_genomes and input_assemblies arrays have 2 elements.");
-};
 
 
 subtest '_check_annotation_params_metag' => sub {
@@ -432,7 +229,6 @@ subtest '_check_annotation_params_metag' => sub {
              object_ref => '456/1/2'});
     } '_check_annotation_params_metag workspace name check ok';
 
-    # _check_annotation_params_metag passed
     my $expected = {
              output_workspace => $ws,
              output_metagenome_name => 'rast_annotated_metagenome',
@@ -730,58 +526,6 @@ subtest '_prodigal_gene_call' => sub {
     $mgutil->_print_fasta_gff(0, 10, $out_file);
 };
 
-# test _glimmer3_gene_call
-subtest '_glimmer3_gene_call' => sub {
-    my $glimmer3_ok = "Glimmer3 gene call runs ok.";
-    my $glimmer3_notOk = "ERROR";
-
-    my $glimmer3_ret;
-    throws_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta1);
-    } qr/$glimmer3_notOk/,
-        '_glimmer3_gene_call errors with contigs too short';
-
-    lives_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
-    } $glimmer3_ok;
-
-    lives_ok {
-        $glimmer3_ret = $mgutil->_glimmer3_gene_call($fasta4);
-    } $glimmer3_ok;
-    ok( @{$glimmer3_ret} > 0, "_glimmer3_gene_call on $fasta4 returns gene call result.\n");
-    print "Glimmer3 gene call results:\n". Dumper(@{$glimmer3_ret}[0..10]);
-};
-
-subtest '_prodigal_then_glimmer3' => sub {
-    my $fa_input = $fasta4;
-    my $md = 'meta';
-    my $out_type = 'gff';
-    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
-    my $trans = catfile($rast_metag_dir, 'protein_translation');
-    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
-    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
-
-    my ($pNg_gene_results, $pNg_gff_file);
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run 1.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $fa_input returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-
-    ## Check if the GFF file from Prodigal is tab delimited
-    # print "***********First 10 lines of prodigalNglimmer3 gff file for $fa_input:\n";
-    # $mgutil->_print_fasta_gff(0, 10, $pNg_gff_file);
-
-    $fa_input = $asmb_fasta;
-    lives_ok {
-        ($pNg_gff_file, $pNg_gene_results) = $mgutil->_prodigal_then_glimmer3(
-                               $fa_input, $trans, $nuc, $out_file, $out_type, $md);
-    } "_prodigal_then_glimmer3 finished run 2.";
-    ok( @{$pNg_gene_results} > 0, "_prodigal_then_glimmer3 on $asmb_fasta returns result.");
-    print "_prodigal_then_glimmer3 on $fa_input results:\n".Dumper(@{$pNg_gene_results}[0..10]);
-};
-
 
 subtest '_write_fasta_from_ama' => sub {
     my $fa_test1 = $mgutil->_write_fasta_from_ama($input_obj_ref);
@@ -790,11 +534,12 @@ subtest '_write_fasta_from_ama' => sub {
     # ok(compare($fa_test1, $fasta1) ==dd 0, 'fasta file written correctly');
 };
 
+
 subtest '_write_gff_from_ama' => sub {
     # test by using prod obj of type KBaseGenomeAnnotations.Assembly-5.0
     my $obj_wrong_type = "55141/119/1";
     throws_ok {
-       $gff_test2 = $mgutil->_write_gff_from_ama($obj_wrong_type);
+       my $gff_test2 = $mgutil->_write_gff_from_ama($obj_wrong_type);
     } qr/ValueError/,
         '_write_gff_from_ama dies due to wrong object type.';
 
@@ -847,7 +592,7 @@ subtest '_save_metagenome' => sub {
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
                        $ws, $out_name, $input_obj_ref, $gff_path)
-    } '_save_metagenome run without errors on short_one.\n';
+    } "_save_metagenome run without errors on $input_obj_ref.\n";
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
@@ -870,38 +615,6 @@ subtest 'annotate_metagenome_prod' => sub {
 
 };
 
-subtest '_run_rast_genecalls' => sub {
-    my $input_obj = $obj_Ecoli;
-    my $inparams = {
-        "object_ref" => $input_obj,
-        "output_genome_name" => "ann_gn",
-        "output_workspace" => $ws,
-        "create_report" => 0
-    };
-    throws_ok {
-        my $rast_ret = $mgutil->_run_rast_genecalls($inparams);
-    } qr/ERROR calling rast run_pipeline/,
-      '_run_rast_genecalls threw ERROR when local testing.';
-};
-
-=cut
-
-=begin
-## a CI object
-my $ci_obj_id = '47032/4/8';
-
-subtest 'mgutil_write_fasta_from_genome' => sub {
-    # testing get the fasta from a genome using obj ids from prod ONLY
-    my $fasta_fpath;
-    lives_ok {
-        $fasta_fpath = $mgutil->_write_fasta_from_genome($ci_obj_id);
-    } 'Writing fasta from a genome runs ok';
-
-    ok ((-s $fasta_fpath), "fasta file written for $ci_obj_id.\n");
-    print "First 10 lines of the FASTA file:\n";
-    $mgutil->_print_fasta_gff(0, 10, $fasta_fpath);
-};
-
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
@@ -912,7 +625,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 
     # $obj8
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj8);
-    print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
+    #print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj8);
@@ -923,7 +636,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 
     # $obj9
     %ret_stats = $mgutil->_generate_stats_from_aa($obj9);
-    print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
+    #print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj9);
@@ -934,18 +647,18 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 
     # $obj10
     %ret_stats = $mgutil->_generate_stats_from_aa($obj10);
-    print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
+    #print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj10);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
+    #print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
 };
 
-# testing generate_metag_report using obj ids from prod ONLY
-subtest 'generate_metag_report' => sub {
+# testing _generate_metag_report using obj ids from prod ONLY
+subtest '_generate_metag_report' => sub {
     my $stats_ok = 'stats generation runs ok.\n';
 
     my $gff_path1 = $mgutil->_write_gff_from_ama($obj6);
@@ -974,7 +687,7 @@ subtest 'generate_metag_report' => sub {
 
     my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
     #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
-    my $ret_rpt = $mgutil->generate_metag_report($obj6, $obj7, $gff_contents1,
+    my $ret_rpt = $mgutil->_generate_metag_report($obj6, $obj7, $gff_contents1,
                                             $gff_contents2, \%ftr_tab);
     print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
@@ -983,7 +696,8 @@ subtest 'generate_metag_report' => sub {
 };
 
 
-# testing rast_metagenome using obj ids from appdev ONLY
+=begin
+# testing rast_metagenome and annotate_genome using obj ids from appdev ONLY
 subtest 'rast_metagenome_appdev' => sub {
     # an appdev assembly
     my $parms = {
@@ -996,25 +710,25 @@ subtest 'rast_metagenome_appdev' => sub {
     ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
 
     # an appdev genome
-    my $parms = {
+    $parms = {
         "object_ref" => "37798/15/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
         "output_workspace" => $ws
     };
-    my $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    $rast_mg_ref = $mgutil->rast_metagenome($parms);
     print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
     ok (($rast_mg_ref !~ m/[^\\w\\|._-]/), 'rast_metagenome returns an INVALID ref');
+
     $parms = {
-        object_ref => $ret_metag->{metagenome_ref},
+        object_ref => $input_obj_ref,
         output_metagenome_name => 'rasted_metagenome',
         output_workspace => $ws
     };
 
     throws_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/**rast_metagenome ERROR/,
+    } qr/rast_metagenome ERROR/,
         'calling rast_metagenome dies file not found';
-
     throws_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
         print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
@@ -1023,6 +737,41 @@ subtest 'rast_metagenome_appdev' => sub {
         }
     } qr/Invalid metagenome object reference/,
         'calling rast_metagenome fails to generate a valid metagenome';
+};
+
+subtest 'annotate_metagenome_appdev' => sub {
+    my $parms = {
+        "object_ref" => "37798/7/1",
+        "output_metagenome_name" => "rasted_shortOne_appdev",
+        "output_workspace" => $ws
+    };
+    my $rast_ann = $rast_impl->annotate_metagenome($parms);
+    print Dumper($rast_ann);
+};
+
+
+# metagenome saved successfully by using appdev obj ids
+subtest '_save_metagenome_appdev' => sub {
+    my $mymetag = {};
+    lives_ok {
+        $mymetag = $mgutil->_save_metagenome(
+                       $ws, $out_name, $obj1, $gff1);
+    } "_save_metagenome run without errors on $obj1.\n";
+    ok (exists $mymetag->{metagenome_ref},
+        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
+    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
+    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
+    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
+    
+    lives_ok {
+        $mymetag = $mgutil->_save_metagenome(
+                       $ws, $out_name, $obj2, $gff2);
+    } "_save_metagenome runs without errors on $obj2.\n";
+    ok (exists $mymetag->{metagenome_ref},
+        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
+    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
+    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
+    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
 };
 =cut
 
@@ -1054,7 +803,6 @@ subtest 'rast_metagenome_prod' => sub {
         'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
 };
 
-=begin
 subtest '_prepare_genome_4annotation' => sub {
     # a prod assembly
     my ($gff, $gn, $fa_file, $gff_file);
@@ -1077,18 +825,35 @@ subtest '_prepare_genome_4annotation' => sub {
         "_prepare_genome_4annotation returns genome with ". scalar @{$gn->{features}}." features.");
 };
 
-# testing generate_metag_report using obj ids from prod ONLY
+#
+## Tesing only the annotation part of RAST
+#
+subtest '_run_rast_annotation' => sub {
+    my $inputgenome = {
+        features => []
+    };
+    foreach my $gene (sort keys %$protein_seqs){
+        push(@{$inputgenome->{features}},{
+            id => $gene,
+            protein_translation => $protein_seqs->{$gene}
+        });
+    }
+
+    throws_ok {
+        my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
+    } qr/ERROR calling rast run_pipeline/,
+      'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+};
+
+# testing generate_stats_from_aa using obj ids from prod ONLY
 subtest '_generate_stats_from_aa' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj4);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj4 returns result.");
 
     %ret_stats = $mgutil->_generate_stats_from_aa($obj5);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj5 returns result.");
 
     %ret_stats = $mgutil->_generate_stats_from_aa($obj7);
-    #print "AMA stats return: \n".Dumper(\%ret_stats);
     ok(keys %ret_stats, "Statistics generation from AMA $obj7 returns result.");
 };
 
@@ -1102,43 +867,6 @@ subtest '_generate_stats_from_gffContents' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
     ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
 };
-
-# test by using appdev obj id
-subtest 'annotate_metagenome' => sub {
-    my $parms = {
-        "object_ref" => "37798/7/1",
-        "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
-    };
-    my $rast_ann = $rast_impl->annotate_metagenome($parms);
-    print Dumper($rast_ann);
-
-};
-
-# metagenome saved successfully by using appdev obj ids
-subtest '_save_metagenome' => sub {
-    my $mymetag = {};
-    lives_ok {
-        $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj1, $gff1);
-    } '__save_metagenome run without errors on short_one.\n';
-    ok (exists $mymetag->{metagenome_ref},
-        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
-    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
-    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
-    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
-    
-    lives_ok {
-        $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj2, $gff2);
-    } '_save_metagenome runs without errors on 59111.assembled.\n';
-    ok (exists $mymetag->{metagenome_ref},
-        "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
-    ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
-    is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
-    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
-};
-=cut
 
 done_testing();
 
@@ -1160,3 +888,4 @@ if (defined($err)) {
         die $err;
     }
 }
+

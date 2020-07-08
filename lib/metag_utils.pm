@@ -40,7 +40,6 @@ use installed_clients::kb_SetUtilitiesClient;
 
 
 require 'gjoseqlib.pm';
-require 'Glimmer.pm';
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
@@ -283,7 +282,7 @@ sub _parse_sco {
 
 ##----end for prodigal parsing----##
 
-##----begin gene call subs ----##
+##----begin gene call sub----##
 #
 # prodigal gene call--by calling the above subs
 # return: an array of arrays of the structure:
@@ -339,222 +338,7 @@ sub _prodigal_gene_call {
     return ($out_file, \@prodigal_out);
 }
 
-#
-# Glimmer::call_genes_with_glimmer (glimmer3 gene call)
-# return: an array of arrays of the structure:
-# [feature_id, # e.g.,'prot.1'
-#  contig_id, # e.g.,'Chr01'
-#  /* push(@output, [$fid, $contig_id, $beg, $end, $dna]);
-#  start, # e.g., '931'
-#  end, # e.g., '230'
-#  dna_sequence # e.g.,'gtgtcggatataattttagatggaagatgggcattccctcctgggcactc...'
-# ]
-#
-sub _glimmer3_gene_call {
-    my ($self, $input_fasta, $min_len) = @_;
-    $min_len = 2000 unless defined($min_len);
-
-    my $glimmer_out;
-    eval {
-        $glimmer_out = &Glimmer::call_genes_with_glimmer(
-		           $input_fasta,
-			   { verbose => 0, min_training_len => $min_len});
-    };
-    if ($@) {
-        croak "ERROR calling Glimmer::call_genes_with_glimmer: ".$@."\n";
-    }
-    else {
-        my $count = scalar @{$glimmer_out};
-        print "Glimmer returned $count entries.\n";
-        return $glimmer_out;
-    }
-}
-
-
-# Expect to return the final GFF file and $gene_call_result of the following data structure:
-# An array of [$contig_id, $fid, $ftr_type, $start, $end, $strand, $seq, $source]
-#
-sub _prodigal_then_glimmer3 {
-    my ($self, $input_fasta, $trans, $nuc, $out_file, $out_type, $mode) = @_;
-    $mode = 'meta' unless defined($mode);
-
-    my ($out_gff_file, $prd_gff_contents, $gene_call_result, $prodigal_out, $attr_dlmtr);
-    eval {
-        ($out_gff_file, $prodigal_out) = $self->_prodigal_gene_call(
-                                                      $input_fasta,
-                                                      $trans,
-                                                      $nuc,
-                                                      $out_file,
-                                                      $out_type,
-                                                      $mode);
-        $gene_call_result = $prodigal_out;
-        ($prd_gff_contents, $attr_dlmtr) = $self->_parse_gff($out_gff_file, "=");
-    };
-    if ($@) {
-        print "Prodigal gene calling failed with ERROR:\n".$@."\n";
-    }
-
-    my $glimmer_out; # an array of [$fid, $contig_id, $beg, $end, $dna]
-    eval {
-        $glimmer_out = $self->_glimmer3_gene_call($input_fasta, 2000);
-    };
-    if ($@) {
-        print "Glimmer3 gene calling failed with ERROR:\n".$@."\n";
-    }
-    else {
-        # find gene features that are found by glimmer and not by prodigal
-        my %glm_gene_seqs = ();
-        my %glm_ftrs = ();
-        my $prd_match_cnt = 0;  # count of genes in glimmer results that are in prodigal results
-        my $prd_approxmatch_cnt = 0;  # count in glimmer results that are in prodigal with a 12 margin
-        my ($fid, $ctg_id, $beg, $end, $dna_seq);
-        foreach my $glm_entry (@{$glimmer_out}) {
-            ($fid, $ctg_id, $beg, $end, $dna_seq) = @$glm_entry;
-            next if !defined($fid) || !defined($ctg_id);
-
-            my @glm_prim = ($ctg_id, $beg, $end);
-
-	    my $found_in_prd = 0;
-	    my @prd_prim = ();
-            foreach my $prd_entry (@{$prodigal_out}) {
-                my ($pctg_id, $pfid, $p_type, $pbeg, $pend, $pstrand, $p_seq, $psrc) = @$prd_entry;
-                @prd_prim = ($pctg_id, $pbeg, $pend);
-
-	        # check if arrays contain same members
-                if (!array_diff(@glm_prim, @prd_prim)) {
-                    # print "Found $fid match in prodigal.\n";
-                    $found_in_prd = 1;
-                    $prd_match_cnt += 1;
-                    last;
-                }
-	        if (length $pctg_id && $glm_prim[0] eq $pctg_id &&
-		    ((abs($glm_prim[1] - $prd_prim[1]) <= 12 && $glm_prim[2] == $prd_prim[2]) ||
-	             (abs($glm_prim[1] - $prd_prim[2]) <= 12 && $glm_prim[2] == $prd_prim[1]) ||
-	             (abs($glm_prim[2] - $prd_prim[2]) <= 12 && $glm_prim[1] == $prd_prim[1]))) {
-                    # print "Found $fid +/-12 check match in prodigal.\n";
-                    $found_in_prd = 1;
-		    $prd_approxmatch_cnt += 1;
-                    last;
-                }
-	        next;
-            }
-
-            # Not found in Prodigal genes
-            # prepare the new feature for seq translation
-            if (defined($fid) && $found_in_prd == 0) {
-	        $glm_gene_seqs{$fid} = $dna_seq;
-	        $glm_ftrs{$fid} = \@glm_prim;
-                # $prd_gff_contents is an array of
-                # [$contig_id, $source_id, $feature_type, $start, $end,
-                # $score, $strand, $phase, \%ftr_attributes]
-	        my $strd = ($beg < $end) ? '+': '-';
-		if ($strd eq '+') {
-		    push @{$prd_gff_contents}, [
-                         $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-	        }
-		else {
-		    # if $strd eq '-', only pick the ones whose length is within the contig range
-		    # reject cases when either $begin or $end is outside of the contig
-                    my $len = abs($end - $beg) + 1;
-		    if ($len <= length $dna_seq) {
-			print Dumper($glm_entry);
-		        push @{$prd_gff_contents}, [
-                            $ctg_id, 'Glimmer3.02', 'CDS', $beg, $end, '.', $strd, '0', {id=>$fid}];
-                    }
-                }
-	    }
-        }
-        print "Found a total of $prd_match_cnt Glimmer genes in Prodigal results.\n";
-        print "Found a total of $prd_approxmatch_cnt Glimmer genes within 12 margin in Prodigal results.\n";
-
-        my $glm_gene_size = keys %glm_ftrs;
-        print "*********A total of $glm_gene_size glimmer genes will be added to the Prodigal genes:\n";
-
-        # translate the additional glimmer gene sequences into protein sequences
-        my $glm_protein_seqs = $self->_translate_gene_to_protein_sequences(\%glm_gene_seqs);
-        print "Additional $glm_gene_size Glimmer gene sequences translated into protein sequences.\n";
-
-        # add the additional glimmer genes to the prodigal result array
-        foreach my $ftr (sort keys %{$glm_protein_seqs}) {
-	    my $beg1 = $glm_ftrs{$ftr}[1];
-	    my $end1 = $glm_ftrs{$ftr}[2];
-	    my $strand = ($beg1 < $end1) ? '+': '-';
-	    my $len1 = abs($end1 - $beg1) + 1;
-            if ($strand eq '+' || ($strand eq '-' && $len1 <= length $dna_seq)) {
-                push(@{$gene_call_result}, [
-                    $glm_ftrs{$ftr}[0], $ftr, 'CDS',  # 'GLMR_type',
-                    $beg1, $end1, $strand,
-                    $glm_protein_seqs->{$ftr}, 'Glimmer3.02']);
-            }
-        }
-    }
-    # updating the GFF file by writing the $prd_gff_contents back to $out_gff_file
-    $self->_print_fasta_gff(0, 20, $out_gff_file);
-    $self->_write_gff($prd_gff_contents, $out_gff_file, $attr_dlmtr);
-    $self->_print_fasta_gff(0, 20, $out_gff_file);
-    return ($out_gff_file, $gene_call_result);
-}
-
-##----end gene call subs ----##
-
-## get the genome data
-sub _get_genome {
-    my ($self, $gn_ref) = @_;
-    my $ga_client = new installed_clients::GenomeAnnotationAPIClient($self->{call_back_url});
-    my $output = $ga_client->get_genome_v1({
-                genomes => [{
-                    "ref" => $gn_ref
-                }],
-                ignore_errors => 1,
-                no_data => 0,
-                no_metadata => 0,
-                downgrade => 0
-    });
-    my $genome = $output->{genomes}->[0];
-    $genome->{data}->{'_reference'} = $genome->{info}->[6]."/".$genome->{info}->[0]."/".$genome->{info}->[4];
-    print("Genome $genome->{data}->{'_reference'} downloaded\n");
-    return $genome->{data};
-}
-
-#
-# Forming the gene calling workflow in the following order:
-# Call prodigal
-# Call glimmer3
-# Call rRNAs
-# Call tRNA trnascan
-# Call selenoproteins
-# Call pyrrolysoproteins
-# Call SEED repeat region
-# Call strep suis repeats
-# Call strep pneumo repeats
-# Call crisprs
-#
-# return a reference to the list of workflow stages
-#
-sub _rast_genecall_workflow {
-    my $self = shift;
-    my @stages = (
-      { name => 'renumber_features'},
-      { name => 'call_features_CDS_prodigal' },
-      { name => 'call_features_CDS_glimmer3', failure_is_not_fatal => 1,
-        glimmer3_parameters => { min_training_len => '2000'} },
-      { name => 'call_features_rRNA_SEED' },
-      { name => 'call_features_tRNA_trnascan' },
-      { name => 'call_selenoproteins', failure_is_not_fatal => 1 },
-      { name => 'call_pyrrolysoproteins', failure_is_not_fatal => 1 },
-      { name => 'call_features_repeat_region_SEED',
-	    repeat_region_SEED_parameters => {} },
-      { name => 'call_features_strep_suis_repeat',
-	    condition => '$genome->{scientific_name} =~ /^Streptococcus\s/' },
-      { name => 'call_features_strep_pneumo_repeat',
-	    condition => '$genome->{scientific_name} =~ /^Streptococcus\s/' },
-      { name => 'call_features_crispr', failure_is_not_fatal => 1 }
-    );
-    return { stages => \@stages };
-}
-
-
-##----end gene call subs----##
+##----end gene call sub----##
 
 
 sub _get_fasta_from_assembly {
@@ -1255,7 +1039,21 @@ sub _parse_gff {
         # This is where the feature id is from
         my %ftr_attributes=();
         my @attr_order=();
-        foreach my $attribute (split(";",$attributes)) {
+        # One special case that'll break the ';' delimiter rule:
+        # id=4409_3;product=Transcribed sequence with weak similarity to protein ref:NP_079373.1 (H.sapiens) hypothetical protein FLJ21106 [Homo sapiens] [Source:UniGene;Acc:Ame.4051]
+        # The solution is to check if there is '=' or ' ' in the last array element.
+        # If either '=' or ' ' is found, then the last element is joined by ';' with
+        # the second to last element of the array and pop the last element.
+        #
+        my @attrb_arr = split(";", $attributes);
+        my $len = scalar @attrb_arr;
+        my $last_attrb = $attrb_arr[$len - 1];
+        if ($last_attrb !~ /=/ && $last_attrb !~ /\s/) {
+            $attrb_arr[$len - 2] = $attrb_arr[$len - 2].';'.$last_attrb;
+            pop(@attrb_arr);
+        }
+
+        foreach my $attribute (@attrb_arr) {
             chomp $attribute;
 
             # Sometimes empty string
@@ -1273,23 +1071,27 @@ sub _parse_gff {
             }
 
             if(!defined($key)) {
-                print "Warning: $attribute not parsed right\n";
+                print "Warning: $attribute not parsed right.\n";
             }
+            else {
+                #Force to lowercase in case changes in lookup
+                #Added the trim/chomp function to avoid cases like extra space or newline:
+                # ' parent' => 'mRNA_2',
+                # ' product' => 'malate/citrate symporter
+                #'
+                # 'id' => 'EPWB_RS00005
+                #'
+                #
+                trim $key;
+                trim $value;
+                if ($value) {
+                    chomp $value;
+                }
 
-            #Force to lowercase in case changes in lookup
-            #Added the trim/chomp function to avoid cases like extra space or newline:
-            # ' parent' => 'mRNA_2',
-            # ' product' => 'malate/citrate symporter
-            #'
-            # 'id' => 'EPWB_RS00005
-            #'
-            #
-            trim $key;
-            trim $value;
-            chomp $value;
-
-            $ftr_attributes{lc($key)}=$value;
-            push(@attr_order,lc($key));
+                next unless $key;
+                $ftr_attributes{lc($key)}=$value;
+                push(@attr_order,lc($key));
+            }
         }
 
         my $gff_line_contents = [$contig_id, $source_id, $feature_type, $start, $end,
