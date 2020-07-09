@@ -1,0 +1,55 @@
+#
+# Define basic display information
+#
+name     : Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk - v1.073
+
+tooltip  : |
+    Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk (Rapid Annotations using Subsystems Technology toolkit).
+
+screenshots :
+    []
+
+icon: rast-red.png
+
+#
+# Define the set of other narrative methods that should be suggested to the user.
+#
+suggestions :
+    apps:
+        related :
+            []
+        next :
+            [build_fba_model, build_species_tree]
+    methods:
+        related :
+            []
+        next :
+            [annotate_domains_in_genome_generic]
+
+
+#
+# Configure the display and description of the parameters
+#
+parameters :
+    object_ref :
+        ui-name : |
+            Assembly or Annotated Metagenome Assembly
+        short-hint : |
+            A metagenome (set of DNA contigs) or Annotated Metagenome Assembly object (set of features with Ontology and Function to reannotate)
+
+    output_metagenome_name :
+        ui-name : |
+            Output Metagenome Name
+        short-hint : |
+            Name of the resulting Annotated Metagenome Assembly to be saved in the Narrative
+
+description : |
+    <p>Description content to be filled...</p>
+
+publications :
+    -
+        display-text: |
+            [1] standard citation format
+        link: url of the publication
+    -
+

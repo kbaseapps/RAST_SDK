@@ -1,5 +1,29 @@
 [ {
-  "module_name" : "kb_SetUtilities",
+  "module_name" : "AssemblyUtil",
+  "type" : "sdk",
+  "version_tag" : "dev"
+}, {
+  "module_name" : "GenomeAnnotation",
+  "type" : "core",
+  "file_path" : "https://raw.githubusercontent.com/kbase/genome_annotation/master/GenomeAnnotation.spec"
+}, {
+  "module_name" : "GenomeAnnotationAPI",
   "type" : "sdk",
   "version_tag" : "release"
+}, {
+  "module_name" : "GenomeFileUtil",
+  "type" : "sdk",
+  "version_tag" : "dev"
+}, {
+  "module_name" : "kb_SetUtilities",
+  "type" : "core",
+  "file_path" : "https://raw.githubusercontent.com/kbaseapps/kb_SetUtilities/master/kb_SetUtilities.spec"
+}, {
+  "module_name" : "KBaseReport",
+  "type" : "sdk",
+  "version_tag" : "release"
+}, {
+  "module_name" : "Workspace",
+  "type" : "core",
+  "file_path" : "https://raw.githubusercontent.com/kbase/workspace_deluxe/master/workspace.spec"
 } ]

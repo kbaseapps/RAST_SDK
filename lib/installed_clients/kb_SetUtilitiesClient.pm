@@ -6,7 +6,6 @@ use strict;
 use Data::Dumper;
 use URI;
 use Bio::KBase::Exceptions;
-use Time::HiRes;
 my $get_time = sub { time, 0 };
 eval {
     require Time::HiRes;
@@ -46,24 +45,6 @@ sub new
 	url => $url,
 	headers => [],
     };
-    my %arg_hash = @args;
-    $self->{async_job_check_time} = 0.1;
-    if (exists $arg_hash{"async_job_check_time_ms"}) {
-        $self->{async_job_check_time} = $arg_hash{"async_job_check_time_ms"} / 1000.0;
-    }
-    $self->{async_job_check_time_scale_percent} = 150;
-    if (exists $arg_hash{"async_job_check_time_scale_percent"}) {
-        $self->{async_job_check_time_scale_percent} = $arg_hash{"async_job_check_time_scale_percent"};
-    }
-    $self->{async_job_check_max_time} = 300;  # 5 minutes
-    if (exists $arg_hash{"async_job_check_max_time_ms"}) {
-        $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
-    }
-    my $service_version = 'release';
-    if (exists $arg_hash{"service_version"}) {
-        $service_version = $arg_hash{"service_version"};
-    }
-    $self->{service_version} = $service_version;
 
     chomp($self->{hostname} = `hostname`);
     $self->{hostname} ||= 'unknown-host';
@@ -128,43 +109,6 @@ sub new
     return $self;
 }
 
-sub _check_job {
-    my($self, @args) = @_;
-# Authentication: ${method.authentication}
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _check_job (received $n, expecting 1)");
-    }
-    {
-        my($job_id) = @args;
-        my @_bad_arguments;
-        (!ref($job_id)) or push(@_bad_arguments, "Invalid type for argument 0 \"job_id\" (it should be a string)");
-        if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _check_job:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_check_job');
-        }
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._check_job",
-        params => \@args});
-    if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_check_job',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-                          );
-        } else {
-            return $result->result->[0];
-        }
-    } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _check_job",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_check_job');
-    }
-}
-
 
 
 
@@ -222,68 +166,51 @@ KButil_Localize_GenomeSet_Output is a reference to a hash where the following ke
 
 =cut
 
-sub KButil_Localize_GenomeSet
+ sub KButil_Localize_GenomeSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Localize_GenomeSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Localize_GenomeSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Localize_GenomeSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Localize_GenomeSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Localize_GenomeSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Localize_GenomeSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Localize_GenomeSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Localize_GenomeSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Localize_GenomeSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Localize_GenomeSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Localize_GenomeSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Localize_GenomeSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Localize_GenomeSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Localize_GenomeSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Localize_GenomeSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Localize_GenomeSet',
+				       );
     }
 }
-
  
 
 
@@ -341,68 +268,51 @@ KButil_Localize_FeatureSet_Output is a reference to a hash where the following k
 
 =cut
 
-sub KButil_Localize_FeatureSet
+ sub KButil_Localize_FeatureSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Localize_FeatureSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Localize_FeatureSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Localize_FeatureSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Localize_FeatureSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Localize_FeatureSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Localize_FeatureSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Localize_FeatureSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Localize_FeatureSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Localize_FeatureSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Localize_FeatureSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Localize_FeatureSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Localize_FeatureSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Localize_FeatureSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Localize_FeatureSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Localize_FeatureSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Localize_FeatureSet',
+				       );
     }
 }
-
  
 
 
@@ -462,68 +372,51 @@ KButil_Merge_FeatureSet_Collection_Output is a reference to a hash where the fol
 
 =cut
 
-sub KButil_Merge_FeatureSet_Collection
+ sub KButil_Merge_FeatureSet_Collection
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Merge_FeatureSet_Collection_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Merge_FeatureSet_Collection_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Merge_FeatureSet_Collection_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Merge_FeatureSet_Collection (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Merge_FeatureSet_Collection_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Merge_FeatureSet_Collection_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Merge_FeatureSet_Collection:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Merge_FeatureSet_Collection');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Merge_FeatureSet_Collection_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Merge_FeatureSet_Collection",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Merge_FeatureSet_Collection_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Merge_FeatureSet_Collection',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Merge_FeatureSet_Collection_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Merge_FeatureSet_Collection_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Merge_FeatureSet_Collection",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Merge_FeatureSet_Collection',
+				       );
     }
 }
-
  
 
 
@@ -585,68 +478,51 @@ KButil_Slice_FeatureSets_by_Genomes_Output is a reference to a hash where the fo
 
 =cut
 
-sub KButil_Slice_FeatureSets_by_Genomes
+ sub KButil_Slice_FeatureSets_by_Genomes
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Slice_FeatureSets_by_Genomes_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Slice_FeatureSets_by_Genomes_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Slice_FeatureSets_by_Genomes_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Slice_FeatureSets_by_Genomes (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Slice_FeatureSets_by_Genomes_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Slice_FeatureSets_by_Genomes_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Slice_FeatureSets_by_Genomes:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Slice_FeatureSets_by_Genomes');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Slice_FeatureSets_by_Genomes_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Slice_FeatureSets_by_Genomes",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Slice_FeatureSets_by_Genomes_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Slice_FeatureSets_by_Genomes',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Slice_FeatureSets_by_Genomes_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Slice_FeatureSets_by_Genomes_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Slice_FeatureSets_by_Genomes",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Slice_FeatureSets_by_Genomes',
+				       );
     }
 }
-
  
 
 
@@ -710,68 +586,51 @@ KButil_Logical_Slice_Two_FeatureSets_Output is a reference to a hash where the f
 
 =cut
 
-sub KButil_Logical_Slice_Two_FeatureSets
+ sub KButil_Logical_Slice_Two_FeatureSets
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Logical_Slice_Two_FeatureSets_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Logical_Slice_Two_FeatureSets_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Logical_Slice_Two_FeatureSets_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Logical_Slice_Two_FeatureSets (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Logical_Slice_Two_FeatureSets_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Logical_Slice_Two_FeatureSets_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Logical_Slice_Two_FeatureSets:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Logical_Slice_Two_FeatureSets');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Logical_Slice_Two_FeatureSets_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Logical_Slice_Two_FeatureSets",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Logical_Slice_Two_FeatureSets_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Logical_Slice_Two_FeatureSets',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Logical_Slice_Two_FeatureSets_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Logical_Slice_Two_FeatureSets_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Logical_Slice_Two_FeatureSets",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Logical_Slice_Two_FeatureSets',
+				       );
     }
 }
-
  
 
 
@@ -831,68 +690,51 @@ KButil_Merge_GenomeSets_Output is a reference to a hash where the following keys
 
 =cut
 
-sub KButil_Merge_GenomeSets
+ sub KButil_Merge_GenomeSets
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Merge_GenomeSets_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Merge_GenomeSets_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Merge_GenomeSets_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Merge_GenomeSets (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Merge_GenomeSets_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Merge_GenomeSets_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Merge_GenomeSets:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Merge_GenomeSets');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Merge_GenomeSets_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Merge_GenomeSets",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Merge_GenomeSets_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Merge_GenomeSets',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Merge_GenomeSets_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Merge_GenomeSets_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Merge_GenomeSets",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Merge_GenomeSets',
+				       );
     }
 }
-
  
 
 
@@ -952,68 +794,51 @@ KButil_Build_GenomeSet_Output is a reference to a hash where the following keys 
 
 =cut
 
-sub KButil_Build_GenomeSet
+ sub KButil_Build_GenomeSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Build_GenomeSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Build_GenomeSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Build_GenomeSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Build_GenomeSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Build_GenomeSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Build_GenomeSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Build_GenomeSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Build_GenomeSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Build_GenomeSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Build_GenomeSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Build_GenomeSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Build_GenomeSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Build_GenomeSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Build_GenomeSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Build_GenomeSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Build_GenomeSet',
+				       );
     }
 }
-
  
 
 
@@ -1073,68 +898,51 @@ KButil_Build_GenomeSet_from_FeatureSet_Output is a reference to a hash where the
 
 =cut
 
-sub KButil_Build_GenomeSet_from_FeatureSet
+ sub KButil_Build_GenomeSet_from_FeatureSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Build_GenomeSet_from_FeatureSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Build_GenomeSet_from_FeatureSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Build_GenomeSet_from_FeatureSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Build_GenomeSet_from_FeatureSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Build_GenomeSet_from_FeatureSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Build_GenomeSet_from_FeatureSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Build_GenomeSet_from_FeatureSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Build_GenomeSet_from_FeatureSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Build_GenomeSet_from_FeatureSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Build_GenomeSet_from_FeatureSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Build_GenomeSet_from_FeatureSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Build_GenomeSet_from_FeatureSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Build_GenomeSet_from_FeatureSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Build_GenomeSet_from_FeatureSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Build_GenomeSet_from_FeatureSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Build_GenomeSet_from_FeatureSet',
+				       );
     }
 }
-
  
 
 
@@ -1153,7 +961,7 @@ $params is a kb_SetUtilities.KButil_Add_Genomes_to_GenomeSet_Params
 $return is a kb_SetUtilities.KButil_Add_Genomes_to_GenomeSet_Output
 KButil_Add_Genomes_to_GenomeSet_Params is a reference to a hash where the following keys are defined:
 	workspace_name has a value which is a kb_SetUtilities.workspace_name
-	input_genome_refs has a value which is a kb_SetUtilities.data_obj_ref
+	input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
 	input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
 	output_name has a value which is a kb_SetUtilities.data_obj_name
 	desc has a value which is a string
@@ -1174,7 +982,7 @@ $params is a kb_SetUtilities.KButil_Add_Genomes_to_GenomeSet_Params
 $return is a kb_SetUtilities.KButil_Add_Genomes_to_GenomeSet_Output
 KButil_Add_Genomes_to_GenomeSet_Params is a reference to a hash where the following keys are defined:
 	workspace_name has a value which is a kb_SetUtilities.workspace_name
-	input_genome_refs has a value which is a kb_SetUtilities.data_obj_ref
+	input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
 	input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
 	output_name has a value which is a kb_SetUtilities.data_obj_name
 	desc has a value which is a string
@@ -1196,68 +1004,159 @@ KButil_Add_Genomes_to_GenomeSet_Output is a reference to a hash where the follow
 
 =cut
 
-sub KButil_Add_Genomes_to_GenomeSet
+ sub KButil_Add_Genomes_to_GenomeSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Add_Genomes_to_GenomeSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Add_Genomes_to_GenomeSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Add_Genomes_to_GenomeSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Add_Genomes_to_GenomeSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Add_Genomes_to_GenomeSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Add_Genomes_to_GenomeSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Add_Genomes_to_GenomeSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Add_Genomes_to_GenomeSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Add_Genomes_to_GenomeSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Add_Genomes_to_GenomeSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Add_Genomes_to_GenomeSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Add_Genomes_to_GenomeSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Add_Genomes_to_GenomeSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Add_Genomes_to_GenomeSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Add_Genomes_to_GenomeSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Add_Genomes_to_GenomeSet',
+				       );
     }
 }
+ 
 
+
+=head2 KButil_Remove_Genomes_from_GenomeSet
+
+  $return = $obj->KButil_Remove_Genomes_from_GenomeSet($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a kb_SetUtilities.KButil_Remove_Genomes_from_GenomeSet_Params
+$return is a kb_SetUtilities.KButil_Remove_Genomes_from_GenomeSet_Output
+KButil_Remove_Genomes_from_GenomeSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
+	nonlocal_genome_names has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_name
+	input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_ref is a string
+data_obj_name is a string
+KButil_Remove_Genomes_from_GenomeSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a kb_SetUtilities.KButil_Remove_Genomes_from_GenomeSet_Params
+$return is a kb_SetUtilities.KButil_Remove_Genomes_from_GenomeSet_Output
+KButil_Remove_Genomes_from_GenomeSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
+	nonlocal_genome_names has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_name
+	input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_ref is a string
+data_obj_name is a string
+KButil_Remove_Genomes_from_GenomeSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+ sub KButil_Remove_Genomes_from_GenomeSet
+{
+    my($self, @args) = @_;
+
+# Authentication: required
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Remove_Genomes_from_GenomeSet (received $n, expecting 1)");
+    }
+    {
+	my($params) = @args;
+
+	my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to KButil_Remove_Genomes_from_GenomeSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Remove_Genomes_from_GenomeSet');
+	}
+    }
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Remove_Genomes_from_GenomeSet",
+	    params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Remove_Genomes_from_GenomeSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Remove_Genomes_from_GenomeSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Remove_Genomes_from_GenomeSet',
+				       );
+    }
+}
  
 
 
@@ -1317,68 +1216,51 @@ KButil_Build_ReadsSet_Output is a reference to a hash where the following keys a
 
 =cut
 
-sub KButil_Build_ReadsSet
+ sub KButil_Build_ReadsSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Build_ReadsSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Build_ReadsSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Build_ReadsSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Build_ReadsSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Build_ReadsSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Build_ReadsSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Build_ReadsSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Build_ReadsSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Build_ReadsSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Build_ReadsSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Build_ReadsSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Build_ReadsSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Build_ReadsSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Build_ReadsSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Build_ReadsSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Build_ReadsSet',
+				       );
     }
 }
-
  
 
 
@@ -1438,68 +1320,51 @@ KButil_Merge_MultipleReadsSets_to_OneReadsSet_Output is a reference to a hash wh
 
 =cut
 
-sub KButil_Merge_MultipleReadsSets_to_OneReadsSet
+ sub KButil_Merge_MultipleReadsSets_to_OneReadsSet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Merge_MultipleReadsSets_to_OneReadsSet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Merge_MultipleReadsSets_to_OneReadsSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Merge_MultipleReadsSets_to_OneReadsSet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Merge_MultipleReadsSets_to_OneReadsSet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Merge_MultipleReadsSets_to_OneReadsSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Merge_MultipleReadsSets_to_OneReadsSet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Merge_MultipleReadsSets_to_OneReadsSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Merge_MultipleReadsSets_to_OneReadsSet',
+				       );
     }
 }
-
  
 
 
@@ -1559,114 +1424,392 @@ KButil_Build_AssemblySet_Output is a reference to a hash where the following key
 
 =cut
 
-sub KButil_Build_AssemblySet
+ sub KButil_Build_AssemblySet
 {
     my($self, @args) = @_;
-    my $job_id = $self->_KButil_Build_AssemblySet_submit(@args);
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
-    }
-}
 
-sub _KButil_Build_AssemblySet_submit {
-    my($self, @args) = @_;
 # Authentication: required
-    if ((my $n = @args) != 1) {
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
-                                   "Invalid argument count for function _KButil_Build_AssemblySet_submit (received $n, expecting 1)");
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Build_AssemblySet (received $n, expecting 1)");
     }
     {
-        my($params) = @args;
-        my @_bad_arguments;
+	my($params) = @args;
+
+	my @_bad_arguments;
         (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
         if (@_bad_arguments) {
-            my $msg = "Invalid arguments passed to _KButil_Build_AssemblySet_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                   method_name => '_KButil_Build_AssemblySet_submit');
-        }
+	    my $msg = "Invalid arguments passed to KButil_Build_AssemblySet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Build_AssemblySet');
+	}
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._KButil_Build_AssemblySet_submit",
-        params => \@args, context => $context});
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Build_AssemblySet",
+	    params => \@args,
+    });
     if ($result) {
-        if ($result->is_error) {
-            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
-                           code => $result->content->{error}->{code},
-                           method_name => '_KButil_Build_AssemblySet_submit',
-                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
-        } else {
-            return $result->result->[0];  # job_id
-        }
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Build_AssemblySet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _KButil_Build_AssemblySet_submit",
-                        status_line => $self->{client}->status_line,
-                        method_name => '_KButil_Build_AssemblySet_submit');
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Build_AssemblySet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Build_AssemblySet',
+				       );
     }
 }
+ 
 
+
+=head2 KButil_Batch_Create_ReadsSet
+
+  $return = $obj->KButil_Batch_Create_ReadsSet($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a kb_SetUtilities.KButil_Batch_Create_ReadsSet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_ReadsSet_Output
+KButil_Batch_Create_ReadsSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_ReadsSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a kb_SetUtilities.KButil_Batch_Create_ReadsSet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_ReadsSet_Output
+KButil_Batch_Create_ReadsSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_ReadsSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+ sub KButil_Batch_Create_ReadsSet
+{
+    my($self, @args) = @_;
+
+# Authentication: required
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Batch_Create_ReadsSet (received $n, expecting 1)");
+    }
+    {
+	my($params) = @args;
+
+	my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to KButil_Batch_Create_ReadsSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Batch_Create_ReadsSet');
+	}
+    }
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Batch_Create_ReadsSet",
+	    params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Batch_Create_ReadsSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Batch_Create_ReadsSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Batch_Create_ReadsSet',
+				       );
+    }
+}
  
+
+
+=head2 KButil_Batch_Create_AssemblySet
+
+  $return = $obj->KButil_Batch_Create_AssemblySet($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a kb_SetUtilities.KButil_Batch_Create_AssemblySet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_AssemblySet_Output
+KButil_Batch_Create_AssemblySet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_AssemblySet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a kb_SetUtilities.KButil_Batch_Create_AssemblySet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_AssemblySet_Output
+KButil_Batch_Create_AssemblySet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_AssemblySet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+ sub KButil_Batch_Create_AssemblySet
+{
+    my($self, @args) = @_;
+
+# Authentication: required
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Batch_Create_AssemblySet (received $n, expecting 1)");
+    }
+    {
+	my($params) = @args;
+
+	my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to KButil_Batch_Create_AssemblySet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Batch_Create_AssemblySet');
+	}
+    }
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Batch_Create_AssemblySet",
+	    params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Batch_Create_AssemblySet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Batch_Create_AssemblySet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Batch_Create_AssemblySet',
+				       );
+    }
+}
  
+
+
+=head2 KButil_Batch_Create_GenomeSet
+
+  $return = $obj->KButil_Batch_Create_GenomeSet($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a kb_SetUtilities.KButil_Batch_Create_GenomeSet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_GenomeSet_Output
+KButil_Batch_Create_GenomeSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_GenomeSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a kb_SetUtilities.KButil_Batch_Create_GenomeSet_Params
+$return is a kb_SetUtilities.KButil_Batch_Create_GenomeSet_Output
+KButil_Batch_Create_GenomeSet_Params is a reference to a hash where the following keys are defined:
+	workspace_name has a value which is a kb_SetUtilities.workspace_name
+	name_pattern has a value which is a string
+	output_name has a value which is a kb_SetUtilities.data_obj_name
+	desc has a value which is a string
+workspace_name is a string
+data_obj_name is a string
+KButil_Batch_Create_GenomeSet_Output is a reference to a hash where the following keys are defined:
+	report_name has a value which is a kb_SetUtilities.data_obj_name
+	report_ref has a value which is a kb_SetUtilities.data_obj_ref
+data_obj_ref is a string
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+ sub KButil_Batch_Create_GenomeSet
+{
+    my($self, @args) = @_;
+
+# Authentication: required
+
+    if ((my $n = @args) != 1)
+    {
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+							       "Invalid argument count for function KButil_Batch_Create_GenomeSet (received $n, expecting 1)");
+    }
+    {
+	my($params) = @args;
+
+	my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+	    my $msg = "Invalid arguments passed to KButil_Batch_Create_GenomeSet:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	    Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+								   method_name => 'KButil_Batch_Create_GenomeSet');
+	}
+    }
+
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+	    method => "kb_SetUtilities.KButil_Batch_Create_GenomeSet",
+	    params => \@args,
+    });
+    if ($result) {
+	if ($result->is_error) {
+	    Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+					       code => $result->content->{error}->{code},
+					       method_name => 'KButil_Batch_Create_GenomeSet',
+					       data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+					      );
+	} else {
+	    return wantarray ? @{$result->result} : $result->result->[0];
+	}
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method KButil_Batch_Create_GenomeSet",
+					    status_line => $self->{client}->status_line,
+					    method_name => 'KButil_Batch_Create_GenomeSet',
+				       );
+    }
+}
+ 
+  
 sub status
 {
     my($self, @args) = @_;
-    my $job_id = undef;
     if ((my $n = @args) != 0) {
         Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
                                    "Invalid argument count for function status (received $n, expecting 0)");
     }
-    my $context = undef;
-    if ($self->{service_version}) {
-        $context = {'service_ver' => $self->{service_version}};
-    }
-    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
-        method => "kb_SetUtilities._status_submit",
-        params => \@args, context => $context});
+    my $url = $self->{url};
+    my $result = $self->{client}->call($url, $self->{headers}, {
+        method => "kb_SetUtilities.status",
+        params => \@args,
+    });
     if ($result) {
         if ($result->is_error) {
             Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
                            code => $result->content->{error}->{code},
-                           method_name => '_status_submit',
+                           method_name => 'status',
                            data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
-            );
+                          );
         } else {
-            $job_id = $result->result->[0];
+            return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
-        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _status_submit",
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method status",
                         status_line => $self->{client}->status_line,
-                        method_name => '_status_submit');
-    }
-    my $async_job_check_time = $self->{async_job_check_time};
-    while (1) {
-        Time::HiRes::sleep($async_job_check_time);
-        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
-        if ($async_job_check_time > $self->{async_job_check_max_time}) {
-            $async_job_check_time = $self->{async_job_check_max_time};
-        }
-        my $job_state_ref = $self->_check_job($job_id);
-        if ($job_state_ref->{"finished"} != 0) {
-            if (!exists $job_state_ref->{"result"}) {
-                $job_state_ref->{"result"} = [];
-            }
-            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
-        }
+                        method_name => 'status',
+                       );
     }
 }
    
@@ -1682,16 +1825,16 @@ sub version {
             Bio::KBase::Exceptions::JSONRPC->throw(
                 error => $result->error_message,
                 code => $result->content->{code},
-                method_name => 'KButil_Build_AssemblySet',
+                method_name => 'KButil_Batch_Create_GenomeSet',
             );
         } else {
             return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
         Bio::KBase::Exceptions::HTTP->throw(
-            error => "Error invoking method KButil_Build_AssemblySet",
+            error => "Error invoking method KButil_Batch_Create_GenomeSet",
             status_line => $self->{client}->status_line,
-            method_name => 'KButil_Build_AssemblySet',
+            method_name => 'KButil_Batch_Create_GenomeSet',
         );
     }
 }
@@ -2491,7 +2634,7 @@ KButil_Add_Genomes_to_GenomeSet()
 <pre>
 a reference to a hash where the following keys are defined:
 workspace_name has a value which is a kb_SetUtilities.workspace_name
-input_genome_refs has a value which is a kb_SetUtilities.data_obj_ref
+input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
 input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
 output_name has a value which is a kb_SetUtilities.data_obj_name
 desc has a value which is a string
@@ -2504,7 +2647,7 @@ desc has a value which is a string
 
 a reference to a hash where the following keys are defined:
 workspace_name has a value which is a kb_SetUtilities.workspace_name
-input_genome_refs has a value which is a kb_SetUtilities.data_obj_ref
+input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
 input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
 output_name has a value which is a kb_SetUtilities.data_obj_name
 desc has a value which is a string
@@ -2517,6 +2660,85 @@ desc has a value which is a string
 
 
 =head2 KButil_Add_Genomes_to_GenomeSet_Output
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Remove_Genomes_from_GenomeSet_Params
+
+=over 4
+
+
+
+=item Description
+
+KButil_Remove_Genomes_from_GenomeSet()
+**
+**  Method for removing Genomes from a GenomeSet
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
+nonlocal_genome_names has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_name
+input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+input_genome_refs has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_ref
+nonlocal_genome_names has a value which is a reference to a list where each element is a kb_SetUtilities.data_obj_name
+input_genomeset_ref has a value which is a kb_SetUtilities.data_obj_ref
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Remove_Genomes_from_GenomeSet_Output
 
 =over 4
 
@@ -2742,6 +2964,231 @@ desc has a value which is a string
 
 
 =head2 KButil_Build_AssemblySet_Output
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_ReadsSet_Params
+
+=over 4
+
+
+
+=item Description
+
+KButil_Batch_Create_ReadsSet()
+**
+**  Method for creating a ReadsSet without specifying individual objects
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_ReadsSet_Output
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_AssemblySet_Params
+
+=over 4
+
+
+
+=item Description
+
+KButil_Batch_Create_AssemblySet()
+**
+**  Method for creating an AssemblySet without specifying individual objects
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_AssemblySet_Output
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+report_name has a value which is a kb_SetUtilities.data_obj_name
+report_ref has a value which is a kb_SetUtilities.data_obj_ref
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_GenomeSet_Params
+
+=over 4
+
+
+
+=item Description
+
+KButil_Batch_Create_GenomeSet()
+**
+**  Method for creating a GenomeSet without specifying individual objects
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_name has a value which is a kb_SetUtilities.workspace_name
+name_pattern has a value which is a string
+output_name has a value which is a kb_SetUtilities.data_obj_name
+desc has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 KButil_Batch_Create_GenomeSet_Output
 
 =over 4
 

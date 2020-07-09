@@ -4,11 +4,10 @@ use Test::More;
 use Test::Exception;
 use Config::Simple;
 use Time::HiRes qw(time);
-use Workspace::WorkspaceClient;
+use installed_clients::WorkspaceClient;
 use JSON;
 use File::Copy;
-use AssemblyUtil::AssemblyUtilClient;
-use GenomeAnnotationAPI::GenomeAnnotationAPIClient;
+use installed_clients::GenomeAnnotationAPIClient;
 use Storable qw(dclone);
 use File::Slurp;
 
@@ -25,9 +24,9 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
+my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gaa = new GenomeAnnotationAPI::GenomeAnnotationAPIClient($call_back_url);
+my $gaa = new installed_clients::GenomeAnnotationAPIClient($call_back_url);
 
 my $assembly_obj_name = "GCA_000350285.1_OR1_genomic.fna";
 my $assembly_ref = prepare_assembly($assembly_obj_name);

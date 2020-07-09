@@ -5,13 +5,18 @@ MAINTAINER KBase Developer
 # Insert apt-get instructions here to install
 # any required dependencies for your module.
 
-# RUN apt-get update
+RUN apt-get update && \
+    apt-get install bioperl && \
+    apt-get install uuid-runtime
+
 RUN cpanm -i Config::IniFiles && \
     cpanm -i UUID::Random && \
     cpanm -i HTML::SimpleLinkExtor && \
     cpanm -i WWW::Mechanize --force && \
     cpanm -i MIME::Base64 && \
-    apt-get -y install nano
+    cpanm -i Text::Trim && \
+    cpanm -i URI::Encode && \
+    cpanm -i Test::Most
 
 ADD ./bootstrap bootstrap
 
@@ -30,7 +35,6 @@ RUN \
     R CMD INSTALL ./randomForest_4.6-12.tar.gz && \
     rm randomForest_4.6-12.tar.gz
 
-
 # Build kb_seed
 RUN cd /kb/dev_container/modules && \
     rm -rf idserver kb_seed strep_repeats kmer_annotation_figfam genome_annotation && \
@@ -48,9 +52,8 @@ RUN cd /kb/dev_container/modules && \
     sed -i 's/print .*keeping.*/#ignore/'  /kb/deployment/lib/GenomeTypeObject.pm
 
 
-#RUN sed -i 's/capture_stderr/tee_stderr/' /kb/deployment/lib/Bio/KBase/GenomeAnnotation/GenomeAnnotationImpl.pm
-
 RUN \
+    cpanm Array::Utils && \
     cpanm install Set::IntervalTree && \
     cd /kb/deployment/services/kmer_annotation_figfam/ && \
     sed 's|$KB_TOP/deployment.cfg|/kb/module/deploy.cfg|' -i ./start_service  && \
@@ -60,8 +63,6 @@ RUN \
 RUN mkdir /data && \
     mkdir /data/Data.may1 && \
     mkdir /data/kmer
-
-#RUN sed -i 's/->port/->port, Passive=>1/' /kb/deployment/plbin/kmer-figfam-update-data.pl
                                                            
 # -----------------------------------------
 

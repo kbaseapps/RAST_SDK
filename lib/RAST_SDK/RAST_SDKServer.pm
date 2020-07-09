@@ -31,6 +31,10 @@ our %return_counts = (
         'annotate_genome' => 1,
         'annotate_genomes' => 1,
         'annotate_proteins' => 1,
+        'annotate_metagenome' => 1,
+        'annotate_metagenomes' => 1,
+        'rast_genome_assembly' => 1,
+        'rast_genomes_assemblies' => 1,
         'status' => 1,
 );
 
@@ -38,6 +42,10 @@ our %method_authentication = (
         'annotate_genome' => 'required',
         'annotate_genomes' => 'required',
         'annotate_proteins' => 'none',
+        'annotate_metagenome' => 'required',
+        'annotate_metagenomes' => 'required',
+        'rast_genome_assembly' => 'required',
+        'rast_genomes_assemblies' => 'required',
 );
 
 sub _build_valid_methods
@@ -47,6 +55,10 @@ sub _build_valid_methods
         'annotate_genome' => 1,
         'annotate_genomes' => 1,
         'annotate_proteins' => 1,
+        'annotate_metagenome' => 1,
+        'annotate_metagenomes' => 1,
+        'rast_genome_assembly' => 1,
+        'rast_genomes_assemblies' => 1,
         'status' => 1,
     };
     return $methods;

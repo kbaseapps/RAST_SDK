@@ -4,11 +4,11 @@ use Test::More;
 use Test::Exception;
 use Config::Simple;
 use Time::HiRes qw(time);
-use Workspace::WorkspaceClient;
 use JSON;
 use File::Copy;
-use AssemblyUtil::AssemblyUtilClient;
-use GenomeFileUtil::GenomeFileUtilClient;
+use installed_clients::WorkspaceClient;
+use installed_clients::AssemblyUtilClient;
+use installed_clients::GenomeFileUtilClient;
 use installed_clients::kb_SetUtilitiesClient;
 use Storable qw(dclone);
 use Bio::KBase::kbaseenv;
@@ -33,10 +33,10 @@ my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
 my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
+my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = new AssemblyUtil::AssemblyUtilClient($call_back_url);
-my $gfu = new GenomeFileUtil::GenomeFileUtilClient($call_back_url);
+my $au = new installed_clients::AssemblyUtilClient($call_back_url);
+my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
 my $su = new installed_clients::kb_SetUtilitiesClient($call_back_url);
 
 my $DEBUG = 'N';
@@ -141,7 +141,7 @@ lives_ok {
 
 		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes == 3, "Input: GenomeSet plus one. Output: $number_genomes in output GenomeSet");
+                ok($number_genomes == 2, "Input: GenomeSet plus one. Output: $number_genomes in output GenomeSet");
 	} else {
 		1;
 	}

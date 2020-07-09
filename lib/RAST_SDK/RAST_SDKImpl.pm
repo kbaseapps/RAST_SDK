@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '0.1.3';
-our $GIT_URL = 'ssh://git@github.com/kbaseapps/RAST_SDK';
-our $GIT_COMMIT_HASH = '913026e502396704cc3240a1b45658b53e3af57d';
+our $VERSION = '0.1.6';
+our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
+our $GIT_COMMIT_HASH = 'a5381330fb86bfe20a1ff78face6a09fce435727';
 
 =head1 NAME
 
@@ -26,10 +26,16 @@ use Config::IniFiles;
 use warnings;
 use JSON::XS;
 use Digest::MD5;
-use Data::Dumper;
+use Data::Dumper qw(Dumper);
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
+use LWP::UserAgent;
+use HTTP::Request;
+
+use lib '../lib';
+use metag_utils;
+use anno_utils;
 
 
 #Initialization function for call
@@ -79,165 +85,172 @@ sub max_contigs {
 }
 
 sub util_get_contigs {
-	my ($self,$workspace,$objid) = @_;
-	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
-	my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
-	my $obj;
-	if ($info->[0]->[2] =~ /Assembly/) {
-		my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
-			"ref" => $ref
-		});
-		my $fasta = "";
-		open(my $fh, "<", $output->{path}) || die "Could not find file:".$output->{path};
-		while (my $line = <$fh>) {
-			$fasta .= $line;
-		}
-		close($fh);
-		$obj = {
-			_reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
-			id => $objid,
-			name => $objid,
-			source_id => $objid,
-			source => "KBase",
-			type => "SingleGenome",
-			contigs => []
-		};
-		$fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
-		$fasta =~ s/\n//g;
-		my $array = [split(/\>/,$fasta)];
-		my $max_contigs = max_contigs();
-		for (my $i=0; $i < @{$array}; $i++) {
-			if (@{$obj->{contigs}} > $max_contigs){
-				Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs', 
-										method_name => 'util_get_contigs');
-			}
-			if (length($array->[$i]) > 0) {
-				my $subarray = [split(/\|\|\|/,$array->[$i])];
-				if (@{$subarray} == 2) {
-				    my $description = "unknown";
-				    my $id = $subarray->[0];
-				    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
-				    	$id = $1;
-				    	$description = $2;
-				    }
-				    my $contigobject = {
-						id => $id,
-						name => $id,
-						"length" => length($subarray->[1]),
-						md5 => Digest::MD5::md5_hex($subarray->[1]),
-						sequence => $subarray->[1],
-						description => $description
-					};
-					$contigobject->{name} = $id;
-					$contigobject->{description} = $description;
-					push(@{$obj->{contigs}},$contigobject);
-	 			}
-			}
-		}
-		my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
-		my $str = "";
-		for (my $i=0; $i < @{$sortedarray}; $i++) {
-			if (length($str) > 0) {
-				$str .= ";";
-			}
-			$str .= $sortedarray->[$i]->{sequence};
-		}
-		print("Assembly $obj->{_reference} Downloaded\n");
-		$obj->{md5} = Digest::MD5::md5_hex($str);
-		$obj->{_kbasetype} = "Assembly";
-	} else {
-		$obj = Bio::KBase::kbaseenv::get_objects([{
-			ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
-		}]);
-		$obj = $obj->[0]->{data};
-		$obj->{_kbasetype} = "ContigSet";
-		$obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
-		print("Contigset $obj->{_reference}  Downloaded\n");
-	}
-	my $totallength = 0;
-	my $gclength = 0;
-	for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
-		my $newseq = $obj->{contigs}->[$i]->{sequence};
-		$totallength += length($newseq);
-		$newseq =~ s/[atAT]//g;
-		$gclength += length($newseq);	
-	}
-	$obj->{_gc} = int(1000*$gclength/$totallength+0.5);
-	$obj->{_gc} = $obj->{_gc}/1000;
-	return $obj;
+    my ($self,$workspace,$objid) = @_;
+    my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
+    my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+    my $obj;
+    my $contigID_hash = {};
+    if ($info->[0]->[2] =~ /Assembly/) {
+        my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
+            "ref" => $ref
+        });
+        my $fasta = "";
+        open(my $fh, "<", $output->{path}) || die "Could not find file:".$output->{path};
+        while (my $line = <$fh>) {
+            $fasta .= $line;
+        }
+        close($fh);
+        $obj = {
+            _reference => $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4],
+            id => $objid,
+            name => $objid,
+            source_id => $objid,
+            source => "KBase",
+            type => "SingleGenome",
+            contigs => []
+        };
+        $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
+        $fasta =~ s/\n//g;
+        my $array = [split(/\>/,$fasta)];
+        my $max_contigs = max_contigs();
+        for (my $i=0; $i < @{$array}; $i++) {
+            if (@{$obj->{contigs}} > $max_contigs){
+                Bio::KBase::Exceptions::ArgumentValidationError->throw(error => 'too many contigs',
+                                        method_name => 'util_get_contigs');
+            }
+            if (length($array->[$i]) > 0) {
+                my $subarray = [split(/\|\|\|/,$array->[$i])];
+                if (@{$subarray} == 2) {
+                    my $description = "unknown";
+                    my $id = $subarray->[0];
+                    if( $subarray->[0] =~ /^([^\s]+)\s(.+)$/) {
+                        $id = $1;
+                        $description = $2;
+                    }
+                    my $tmp_contigID = 'contigID_'.$i;
+                    $contigID_hash->{$tmp_contigID} = $id;
+                    my $contigobject = {
+                        id => $tmp_contigID,
+                        name => $tmp_contigID,
+                        "length" => length($subarray->[1]),
+                        md5 => Digest::MD5::md5_hex($subarray->[1]),
+                        sequence => $subarray->[1],
+                        description => $description
+                    };
+                    push(@{$obj->{contigs}},$contigobject);
+                }
+            }
+        }
+        my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
+        my $str = "";
+        for (my $i=0; $i < @{$sortedarray}; $i++) {
+            if (length($str) > 0) {
+                $str .= ";";
+            }
+            $str .= $sortedarray->[$i]->{sequence};
+        }
+        print("Assembly $obj->{_reference} Downloaded\n");
+        $obj->{md5} = Digest::MD5::md5_hex($str);
+        $obj->{_kbasetype} = "Assembly";
+    } else {
+        $obj = Bio::KBase::kbaseenv::get_objects([{
+            ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
+        }]);
+        $obj = $obj->[0]->{data};
+        $obj->{_kbasetype} = "ContigSet";
+        $obj->{_reference} = $info->[0]->[6]."/".$info->[0]->[0]."/".$info->[0]->[4];
+        print("Contigset $obj->{_reference}  Downloaded\n");
+    }
+    my $totallength = 0;
+    my $gclength = 0;
+    for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
+        my $newseq = $obj->{contigs}->[$i]->{sequence};
+        $totallength += length($newseq);
+        $newseq =~ s/[atAT]//g;
+        $gclength += length($newseq);
+    }
+    $obj->{_gc} = int(1000*$gclength/$totallength+0.5);
+    $obj->{_gc} = $obj->{_gc}/1000;
+    return ($obj, $contigID_hash);
 }
 
 sub annotate_process {
-	my ($self,$parameters) = @_;	
-	my $oldfunchash = {};
-	my $oldtype     = {};
-	#Creating default genome object
-	my $inputgenome = {
-  		id => $parameters->{output_genome},
-  		genetic_code => $parameters->{genetic_code},
-  		scientific_name => $parameters->{scientific_name},
-  		domain => $parameters->{domain},
-  		contigs => [],
-  		features => []
-  	};
-  	my $contigobj;
-  	my $message = "";
-	my %types = ();
+    my ($self,$parameters, $config, $ctx) = @_;
+    my $ann_util = new anno_utils($config, $ctx);
 
-	if (defined($parameters->{input_genome})) {
-		$inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
-		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			my $ftr = $inputgenome->{features}->[$i];
-			if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
-				if (defined($ftr->{protein_translation})) {
-					$ftr->{type} = 'gene';
-				} else {
-					$ftr->{type} = 'other'; 
-				}
-			}
+    my $oldfunchash = {};
+    my $contigID_hash = {};
+    my $oldtype     = {};
+    #Creating default genome object
+    my $inputgenome = {
+        id => $parameters->{output_genome},
+        genetic_code => $parameters->{genetic_code},
+        scientific_name => $parameters->{scientific_name},
+        domain => $parameters->{domain},
+        contigs => [],
+        features => []
+    };
+    if ($parameters->{ncbi_taxon_id}) {
+        $inputgenome->{taxon_assignments} = {'ncbi' => '' . $parameters->{ncbi_taxon_id}};
+    }
+    my $contigobj;
+    my $message = "";
+    my %types = ();
 
-			# Reset functions in protein features to "hypothetical protein" to make them available
-			# for re-annotation in RAST service (otherwise these features will be skipped).
-			if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
-					($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
-				if (defined($ftr->{functions})){
-					$ftr->{function} = join("; ", @{$ftr->{functions}});
-				}
-				$oldfunchash->{$ftr->{id}} = $ftr->{function};
-				$ftr->{function} = "hypothetical protein";
-			}
-			elsif ($ftr->{type} eq "gene") {
-				$ftr->{type} = 'Non-coding '.$ftr->{type};
-			}
-			$oldtype->{$ftr->{id}} = $ftr->{type};
-			#
-			#	Count the input feature types
-			#
-			if (exists $types{$ftr->{type}}) {
-				$types{$ftr->{type}} += 1;
-			} else {
-				$types{$ftr->{type}} = 1;
-			}
-		}
-		if (exists $inputgenome->{non_coding_features}) {
-			for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
-				my $ftr = $inputgenome->{non_coding_features}->[$i];
-				if (!defined($ftr->{type})) {
-					$ftr->{type} = "Non-coding";
-				} 
-				$oldtype->{$ftr->{id}} = $ftr->{type};
-				#
-				#	Count the input feature types
-				#
-				if (exists $types{"Non-coding ".$ftr->{type}}) {
-					$types{"Non-coding ".$ftr->{type}} += 1;
-				} else {
-					$types{"Non-coding ".$ftr->{type}} = 1;
-				}
-			}
-		} else {
-			$inputgenome->{non_coding_features} = [];
-		}
+    if (defined($parameters->{input_genome})) {
+        $inputgenome = $self->util_get_genome($parameters->{workspace},$parameters->{input_genome});
+        for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+            my $ftr = $inputgenome->{features}->[$i];
+            if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
+                if (defined($ftr->{protein_translation})) {
+                    $ftr->{type} = 'gene';
+                } else {
+                    $ftr->{type} = 'other';
+                }
+            }
+
+            # Reset functions in protein features to "hypothetical protein" to make them available
+            # for re-annotation in RAST service (otherwise these features will be skipped).
+            if (lc($ftr->{type}) eq "cds" || lc($ftr->{type}) eq "peg" ||
+                    ($ftr->{type} eq "gene" and defined($ftr->{protein_translation}))) {
+                if (defined($ftr->{functions})){
+                    $ftr->{function} = join("; ", @{$ftr->{functions}});
+                }
+                $oldfunchash->{$ftr->{id}} = $ftr->{function};
+                $ftr->{function} = "hypothetical protein";
+            }
+            elsif ($ftr->{type} eq "gene") {
+                $ftr->{type} = 'Non-coding '.$ftr->{type};
+            }
+            $oldtype->{$ftr->{id}} = $ftr->{type};
+            #
+            #	Count the input feature types
+            #
+            if (exists $types{$ftr->{type}}) {
+                $types{$ftr->{type}} += 1;
+            } else {
+                $types{$ftr->{type}} = 1;
+            }
+        }
+        if (exists $inputgenome->{non_coding_features}) {
+            for (my $i=0; $i < @{$inputgenome->{non_coding_features}}; $i++) {
+                my $ftr = $inputgenome->{non_coding_features}->[$i];
+                if (!defined($ftr->{type})) {
+                    $ftr->{type} = "Non-coding";
+                }
+                $oldtype->{$ftr->{id}} = $ftr->{type};
+                #
+                #	Count the input feature types
+                #
+                if (exists $types{"Non-coding ".$ftr->{type}}) {
+                    $types{"Non-coding ".$ftr->{type}} += 1;
+                } else {
+                    $types{"Non-coding ".$ftr->{type}} = 1;
+                }
+            }
+        } else {
+            $inputgenome->{non_coding_features} = [];
+        }
 		
 		my $contigref;
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
@@ -246,7 +259,8 @@ sub annotate_process {
 		    } elsif (defined($inputgenome->{assembly_ref})) {
 			$contigref = $inputgenome->{assembly_ref};
 		    }
-			$contigobj = $self->util_get_contigs(undef,$inputgenome->{_reference}.";".$contigref)
+			($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
+                                                $inputgenome->{_reference}.";".$contigref)
 		}
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
@@ -255,7 +269,9 @@ sub annotate_process {
 		$parameters->{genetic_code} = $inputgenome->{genetic_code};
 		$parameters->{domain} = $inputgenome->{domain};
 		$parameters->{scientific_name} = $inputgenome->{scientific_name};
-		$contigobj = $self->util_get_contigs($parameters->{workspace},$parameters->{input_contigset});	
+		($contigobj, $contigID_hash) = $self->util_get_contigs(
+                                           $parameters->{workspace},
+                                           $parameters->{input_contigset});
 	} else {
 		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
 	}
@@ -628,51 +644,54 @@ sub annotate_process {
 	#----------------------
 	# Runs, the annotation, comment out if you dont have the reference files
 	#---------------------
-	$genome = $gaserv->run_pipeline($inputgenome, $workflow);
+    $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
-	delete $genome->{contigs};
-	delete $genome->{feature_creation_event};
-	delete $genome->{analysis_events};
-	$genome->{genetic_code} = $genome->{genetic_code}+0;
-	$genome->{id} = $parameters->{output_genome};
-	if (!defined($genome->{source})) {
-		$genome->{source} = "KBase";
-		$genome->{source_id} = $parameters->{output_genome};
-	}
-	if (defined($inputgenome->{gc_content})) {
-		$genome->{gc_content} = $inputgenome->{gc_content};
-	}
-	if (defined($genome->{gc})) {
-		$genome->{gc_content} = $genome->{gc}+0;
-		delete $genome->{gc};
-	}
-	if (!defined($genome->{gc_content})) {
-		$genome->{gc_content} = 0.5;
-	}
-	if (not defined($genome->{non_coding_features})) {
-		$genome->{non_coding_features} = [];
-	}
-	my @splice_list = ();
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
-				if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-				# Found some pseudogenes that have wrong structure for aliases
-					my $tmp = [];
-					foreach my $key (@{$ftr->{aliases}})  {
-						my @ary = ('alias',$key);
-						push(@{$tmp},\@ary); 
-					}
-					$ftr->{aliases} = $tmp;
-				}
-			 }
-			if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
-				push(@splice_list,$i);
+    delete $genome->{contigs};
+    delete $genome->{feature_creation_event};
+    delete $genome->{analysis_events};
+    $genome->{genetic_code} = $genome->{genetic_code}+0;
+    $genome->{id} = $parameters->{output_genome};
+    if (!defined($genome->{source})) {
+        $genome->{source} = "KBase";
+        $genome->{source_id} = $parameters->{output_genome};
+    }
+    if (defined($inputgenome->{gc_content})) {
+        $genome->{gc_content} = $inputgenome->{gc_content};
+    }
+    if (defined($genome->{gc})) {
+        $genome->{gc_content} = $genome->{gc}+0;
+        delete $genome->{gc};
+    }
+    if (!defined($genome->{gc_content})) {
+        $genome->{gc_content} = 0.5;
+    }
+    if (not defined($genome->{non_coding_features})) {
+        $genome->{non_coding_features} = [];
+    }
+    ## re-mapping the contig ids back to their original names/ids
+    $genome = $ann_util->_remap_contigIDs($contigID_hash, $genome);
+
+    my @splice_list = ();
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
+                if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
+                # Found some pseudogenes that have wrong structure for aliases
+                    my $tmp = [];
+                    foreach my $key (@{$ftr->{aliases}})  {
+                        my @ary = ('alias',$key);
+                        push(@{$tmp},\@ary);
+                    }
+                    $ftr->{aliases} = $tmp;
+                }
             }
-		}
-	}
-	my $count = 0;
+            if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
+                push(@splice_list,$i);
+            }
+        }
+    }
+    my $count = 0;
 
 #	
 #	Move non-coding features from features to non_coding_features
@@ -1050,6 +1069,39 @@ sub annotate_process {
 	});
 	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
+
+# Get the scientific name for a NCBI taxon.
+#   Takes two arguments:
+#      The taxon ID
+#      The timestamp to send to the RE in milliseconds since the epoch. This will determine which
+#        version of the NCBI tree is queried.
+sub get_scientific_name_for_NCBI_taxon {
+    my ($self, $tax_id, $timestamp) = @_;
+    my $url = $self->{_re_url} . "/api/v1/query_results?stored_query=ncbi_fetch_taxon";
+    my $content = encode_json({
+        'ts' => $timestamp,
+        'id'=> $tax_id . '' # make sure tax id is a string
+        });
+    my $req = HTTP::Request->new(POST => $url);
+    $req->header('content-type', 'application/json');
+    $req->content($content);
+    my $ua = LWP::UserAgent->new();
+    
+    my $ret = $ua->request($req);
+    if (!$ret->is_success()) {
+        print("Error body from Relation Engine on NCBI taxa query:\n" .
+            $ret->decoded_content({'raise_error' => 1}));
+        # might want to try to parse content to json and extract error, try this for now
+        die "Error contacting Relation Engine: " . $ret->status_line();
+    }
+    my $retjsonref = $ret->decoded_content({'raise_error' => 1, 'ref' => 1});
+    my $retjson = decode_json($retjsonref);
+
+    if (!$retjson->{count}) {
+        die "No result from Relation Engine for NCBI taxonomy ID " . $tax_id;
+    }
+    return $retjson->{'results'}[0]{'scientific_name'};
+}
 #END_HEADER
 
 sub new
@@ -1061,8 +1113,12 @@ sub new
     #BEGIN_CONSTRUCTOR
 	Bio::KBase::utilities::read_config({
 		service => "RAST_SDK",
-		mandatory => ['workspace-url']
+		mandatory => ['workspace-url', 'relation-engine-url']
 	});
+	$self->{_re_url} = Bio::KBase::utilities::conf(
+		$ENV{KB_SERVICE_NAME} or "RAST_SDK", "relation-engine-url");
+	# TODO check url is ok by querying RE root
+
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
@@ -1095,6 +1151,8 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1139,6 +1197,8 @@ AnnotateGenomeParams is a reference to a hash where the following keys are defin
 	input_contigset has a value which is a RAST_SDK.contigset_id
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	output_genome has a value which is a string
 	call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1224,26 +1284,34 @@ sub annotate_genome
 	    call_features_prophage_phispy => 1,
 	    retain_old_anno_for_hypotheticals => 1
 	});
-    my $output = $self->annotate_process($params);
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+
+    my $output = $self->annotate_process($params, $config, $ctx);
     my $reportout = Bio::KBase::kbaseenv::create_report({
-    	workspace_name => $params->{workspace},
-    	report_object_name => $params->{output_genome}.".report",
+        workspace_name => $params->{workspace},
+        report_object_name => $params->{output_genome}.".report",
     });
-	$return = {
-    	workspace => $params->{workspace},
-    	id => $params->{output_genome},
-    	report_ref => $reportout->{"ref"},
-    	report_name => $params->{output_genome}.".report",
-    	ws_report_id => $params->{output_genome}.".report"
+    $return = {
+        workspace => $params->{workspace},
+        id => $params->{output_genome},
+        report_ref => $reportout->{"ref"},
+        report_name => $params->{output_genome}.".report",
+        ws_report_id => $params->{output_genome}.".report"
     };
     Bio::KBase::utilities::close_debug();
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
     if (@_bad_returns) {
-	my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
-	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-							       method_name => 'annotate_genome');
+        my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                       method_name => 'annotate_genome');
     }
     return($return);
 }
@@ -1269,6 +1337,8 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	genome_text has a value which is a string
 	output_genome has a value which is a string
@@ -1319,6 +1389,8 @@ AnnotateGenomesParams is a reference to a hash where the following keys are defi
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 	genetic_code has a value which is an int
 	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
 	scientific_name has a value which is a string
 	genome_text has a value which is a string
 	output_genome has a value which is a string
@@ -1387,7 +1459,6 @@ sub annotate_genomes
     my($return);
     #BEGIN annotate_genomes
     $self->util_initialize_call($params,$ctx);
-    #$params = Bio::KBase::utilities::args($params,["workspace"],{
     $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
     	input_genomes => [],
     	genome_text => undef,
@@ -1410,11 +1481,27 @@ sub annotate_genomes
 	    retain_old_anno_for_hypotheticals => 1
 	});
 
+	if ($params->{ncbi_taxon_id}) {
+		$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+			$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+	}
 	my $htmlmessage = "";
 	my $warn        = "";
 	my $genomes = $params->{input_genomes};
 
 	my $obj_type;
+
+        #
+        # Throw an error IF $genomes is NOT an non-empty ARRAY AND, in the same time,
+        # the input to genome_text is NOT a non-blank string.
+        #
+	my $empty_input_msg = ("ERROR:Missing required inputs--must specify at least one genome \n".
+	                       "and/or a string of genome names separated by ';', '\n' or '|' (without quotes).\n");
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(
+            error        => $empty_input_msg,
+            method_name  => 'annotate_genomes'
+        ) unless ref $genomes eq 'ARRAY' && @$genomes || $params->{ genome_text };
+
 	#
 	# If $genomes is an ARRAY, then multiple genomes or assemblies or sets were submitted
 	#
@@ -1426,7 +1513,7 @@ sub annotate_genomes
 	#	4. Use perl grep to see if the ref is already in the list
 	#	5. Issue a warning when a duplicate is found so user knows what happened. 
 	#
-	if (ref $genomes eq 'ARRAY') {
+	if ( ref $genomes eq 'ARRAY' && @$genomes ) {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
 	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
@@ -1499,6 +1586,8 @@ sub annotate_genomes
 		my $list = [qw(
 			workspace
 			scientific_name
+			ncbi_taxon_id
+			relation_engine_timestamp_ms
 			genetic_code
 			domain
 			call_features_rRNA_SEED
@@ -1528,17 +1617,20 @@ sub annotate_genomes
 			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
 			
-		eval {
-			my ($output,$message) = $self->annotate_process($currentparams);
-			push(@$output_genomes,$output->{ref});
-			$htmlmessage .= $message;
-		};
-		if ($@) {
-			$htmlmessage .= $input." failed!\n\n";
-		} else {
-			$htmlmessage .= $input." succeeded!\n\n";
-		}
-	}
+        eval {
+            my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+            my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+            my ($output, $message) = $self->annotate_process($currentparams,
+                                                             $config, $ctx);
+            push(@$output_genomes,$output->{ref});
+            $htmlmessage .= $message;
+        };
+        if ($@) {
+            $htmlmessage .= $input." failed!\n\n";
+        } else {
+            $htmlmessage .= $input." succeeded!\n\n";
+        }
+    }
 		
     my $output_genomeset;
     if (defined $params->{output_genome} && $params->{output_genome} gt ' ') {
@@ -1556,26 +1648,26 @@ sub annotate_genomes
         });
     }
 
-	my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
-	open (FH,">$path") || warn("Did not create the output file\n");
-	print FH $warn.$htmlmessage;
-	close FH;
-	$htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
+    my $path = "/kb/module/work/tmp/annotation_report.$params->{output_genome}";
+    open (FH,">$path") || warn("Did not create the output file\n");
+    print FH $warn.$htmlmessage;
+    close FH;
+    $htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
     my $reportfile = Bio::KBase::utilities::add_report_file({
     	workspace_name => $params->{workspace},
     	name =>  "annotation_report.$params->{output_genome}",
-		path => $path,
-		description => 'Microbial Annotation Report'
+        path => $path,
+        description => 'Microbial Annotation Report'
     });
 
-	Bio::KBase::utilities::print_report_message({
-		message => $htmlmessage,html=>0,append => 0
-	});
+    Bio::KBase::utilities::print_report_message({
+        message => $htmlmessage,html=>0,append => 0
+    });
     my $reportout = Bio::KBase::kbaseenv::create_report({
     	workspace_name => $params->{workspace},
     	report_object_name => Bio::KBase::utilities::processid().".report",
     });
-	$return = {
+    $return = {
     	workspace => $params->{workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
@@ -1668,6 +1760,8 @@ sub annotate_proteins
     			protein_translation => $params->{proteins}->[$i]
     		});
     }
+
+    my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     my $genome = $gaserv->run_pipeline($inputgenome,[
 		{ name => 'annotate_proteins_kmer_v2', kmer_v2_parameters => {} },
 		#{ name => 'annotate_proteins_kmer_v1', kmer_v1_parameters => { annotate_hypothetical_only => 1 } },
@@ -1690,6 +1784,467 @@ sub annotate_proteins
 							       method_name => 'annotate_proteins');
     }
     return($return);
+}
+
+
+
+
+=head2 annotate_metagenome
+
+  $output = $obj->annotate_metagenome($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.MetagenomeAnnotateParams
+$output is a RAST_SDK.MetagenomeAnnotateOutput
+MetagenomeAnnotateParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_metagenome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+metagenome_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.MetagenomeAnnotateParams
+$output is a RAST_SDK.MetagenomeAnnotateOutput
+MetagenomeAnnotateParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	output_metagenome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+MetagenomeAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+metagenome_ref is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub annotate_metagenome
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to annotate_metagenome:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenome');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN annotate_metagenome
+    $self->util_initialize_call($params, $ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["object_ref", "output_workspace", "output_metagenome_name"],
+                  {create_report => 0});
+
+    print "annotate_metagenome input parameter=\n". Dumper($params). "\n";
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+
+    my $mg_util = new metag_utils($config, $ctx);
+    my $rast_out = $mg_util->rast_metagenome($params);
+    $output = {
+        output_metagenome_ref => $rast_out->{output_genome_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    #END annotate_metagenome
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to annotate_metagenome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenome');
+    }
+    return($output);
+}
+
+
+
+
+=head2 annotate_metagenomes
+
+  $output = $obj->annotate_metagenomes($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.BulkAnnotateMetagenomesParams
+$output is a RAST_SDK.BulkMetagenomesAnnotateOutput
+BulkAnnotateMetagenomesParams is a reference to a hash where the following keys are defined:
+	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	output_workspace has a value which is a string
+	output_AMASet_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+BulkMetagenomesAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.BulkAnnotateMetagenomesParams
+$output is a RAST_SDK.BulkMetagenomesAnnotateOutput
+BulkAnnotateMetagenomesParams is a reference to a hash where the following keys are defined:
+	input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	output_workspace has a value which is a string
+	output_AMASet_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+BulkMetagenomesAnnotateOutput is a reference to a hash where the following keys are defined:
+	output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub annotate_metagenomes
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to annotate_metagenomes:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenomes');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN annotate_metagenomes
+    $self->util_initialize_call($params, $ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["output_workspace", "output_AMASet"], {});
+
+    print "annotate_metagenomes input parameters=\n". Dumper($params). "\n";
+
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+
+    my $mg_util = new metag_utils($config, $ctx);
+    my $rast_out = $mg_util->bulk_rast_metagenomes($params);
+    $output = {
+        output_AMASet_ref => $rast_out->{output_AMASet_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    #END annotate_metagenomes
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to annotate_metagenomes:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_metagenomes');
+    }
+    return($output);
+}
+
+
+
+
+=head2 rast_genome_assembly
+
+  $output = $obj->rast_genome_assembly($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.RastGenomeAssemblyParams
+$output is a RAST_SDK.RastGenomeAssemblyOutput
+RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
+	output_genome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+RastGenomeAssemblyOutput is a reference to a hash where the following keys are defined:
+	output_genome_ref has a value which is a RAST_SDK.genome_id
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genome_id is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.RastGenomeAssemblyParams
+$output is a RAST_SDK.RastGenomeAssemblyOutput
+RastGenomeAssemblyParams is a reference to a hash where the following keys are defined:
+	object_ref has a value which is a RAST_SDK.data_obj_ref
+	output_workspace has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	scientific_name has a value which is a string
+	output_genome_name has a value which is a string
+	create_report has a value which is a RAST_SDK.bool
+data_obj_ref is a string
+bool is an int
+RastGenomeAssemblyOutput is a reference to a hash where the following keys are defined:
+	output_genome_ref has a value which is a RAST_SDK.genome_id
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genome_id is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub rast_genome_assembly
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to rast_genome_assembly:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genome_assembly');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN rast_genome_assembly
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["object_ref", "output_workspace", "output_genome_name"],
+                  {create_report => 0});
+    print "rast_genome_assembly input parameters=\n". Dumper($params). "\n";
+
+    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
+	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $ann_util = new anno_utils($config, $ctx);
+    my $rast_out = $ann_util->rast_genome($params);
+    $output = {
+        output_genome_ref => $rast_out->{output_genome_ref},
+        report_ref => $rast_out->{report_ref},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    Bio::KBase::utilities::close_debug();
+    #END rast_genome_assembly
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to rast_genome_assembly:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genome_assembly');
+    }
+    return($output);
+}
+
+
+
+
+=head2 rast_genomes_assemblies
+
+  $output = $obj->rast_genomes_assemblies($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a RAST_SDK.BulkRastGenomesAssembliesParams
+$output is a RAST_SDK.BulkRastGenomesAssembliesOutput
+BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	scientific_name has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	output_workspace has a value which is a string
+	output_GenomeSet_name has a value which is a string
+data_obj_ref is a string
+BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
+	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genomeSet_ref is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a RAST_SDK.BulkRastGenomesAssembliesParams
+$output is a RAST_SDK.BulkRastGenomesAssembliesOutput
+BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
+	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_text has a value which is a string
+	scientific_name has a value which is a string
+	genetic_code has a value which is an int
+	domain has a value which is a string
+	ncbi_taxon_id has a value which is an int
+	relation_engine_timestamp_ms has a value which is an int
+	output_workspace has a value which is a string
+	output_GenomeSet_name has a value which is a string
+data_obj_ref is a string
+BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
+	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+	output_workspace has a value which is a string
+	report_name has a value which is a string
+	report_ref has a value which is a string
+genomeSet_ref is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub rast_genomes_assemblies
+{
+    my $self = shift;
+    my($params) = @_;
+
+    my @_bad_arguments;
+    (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument \"params\" (value was \"$params\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to rast_genomes_assemblies:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genomes_assemblies');
+    }
+
+    my $ctx = $RAST_SDK::RAST_SDKServer::CallContext;
+    my($output);
+    #BEGIN rast_genomes_assemblies
+    $self->util_initialize_call($params,$ctx);
+    $params = Bio::KBase::utilities::args($params,
+                  ["output_workspace"], {create_report => 0});
+
+    if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
+	$params->{scientific_name} = $self->get_scientific_name_for_NCBI_taxon(
+		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
+    }
+    my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
+    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $ann_util = new anno_utils($config, $ctx);
+    my $rast_out = $ann_util->bulk_rast_genomes($params);
+    $output = {
+        output_genome_ref => $rast_out->{output_genomeSet_ref},
+        report_ref => $rast_out->{"report_ref"},
+        report_name => $rast_out->{report_name},
+        output_workspace => $params->{output_workspace}
+    };
+    Bio::KBase::utilities::close_debug();
+    #END rast_genomes_assemblies
+    my @_bad_returns;
+    (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to rast_genomes_assemblies:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'rast_genomes_assemblies');
+    }
+    return($output);
 }
 
 
@@ -1868,6 +2423,19 @@ a string
 
 
 
+=item Description
+
+Parameters for the annotate_genome method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+                TODO: document remainder of parameters.
+
+
 =item Definition
 
 =begin html
@@ -1879,6 +2447,8 @@ input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -1912,6 +2482,8 @@ input_genome has a value which is a RAST_SDK.genome_id
 input_contigset has a value which is a RAST_SDK.contigset_id
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 output_genome has a value which is a string
 call_features_rRNA_SEED has a value which is a RAST_SDK.bool
@@ -2022,6 +2594,19 @@ scientific_name has a value which is a string
 
 
 
+=item Description
+
+Parameters for the annotate_genomes method.
+
+                ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                        is included scientific_name is ignored.
+                relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+                        up taxon information in milliseconds since the epoch.
+                scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+                
+                TODO: document remainder of parameters.
+
+
 =item Definition
 
 =begin html
@@ -2032,6 +2617,8 @@ workspace has a value which is a string
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 genome_text has a value which is a string
 output_genome has a value which is a string
@@ -2065,6 +2652,8 @@ workspace has a value which is a string
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.GenomeParams
 genetic_code has a value which is an int
 domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
 scientific_name has a value which is a string
 genome_text has a value which is a string
 output_genome has a value which is a string
@@ -2180,6 +2769,441 @@ functions has a value which is a reference to a list where each element is a ref
 
 a reference to a hash where the following keys are defined:
 functions has a value which is a reference to a list where each element is a reference to a list where each element is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 data_obj_ref
+
+=over 4
+
+
+
+=item Description
+
+For RAST annotating metagenomes (borrowed and simplied from ProkkaAnnotation moduel)
+
+Reference to an Assembly or Genome object in the workspace
+@id ws KBaseGenomeAnnotations.Assembly
+@id ws KBaseGenomes.Genome
+@id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 metagenome_ref
+
+=over 4
+
+
+
+=item Description
+
+Reference to a Annotated Metagenome Assembly object in the workspace
+@id ws KBaseMetagenomes.AnnotatedMetagenomeAssembly
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 MetagenomeAnnotateParams
+
+=over 4
+
+
+
+=item Description
+
+Required parameters:
+    object_ref - reference to Assembly or Genome object,
+    output_workspace - output workspace name,
+    output_metagenome_name - output object name,
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_metagenome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+output_metagenome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 MetagenomeAnnotateOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_metagenome_ref has a value which is a RAST_SDK.metagenome_ref
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 BulkAnnotateMetagenomesParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+output_workspace has a value which is a string
+output_AMASet_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+input_AMAs has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+output_workspace has a value which is a string
+output_AMASet_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 BulkMetagenomesAnnotateOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_AMASet_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 RastGenomeAssemblyParams
+
+=over 4
+
+
+
+=item Description
+
+Required parameters for rast_genome_assembly:
+    object_ref - reference to a Genome or Assembly object,
+    output_workspace - output workspace name,
+    output_genome_name - output object name
+
+Optional parameters for rast_genome_assembly:
+    ncbi_taxon_id - the numeric ID of the NCBI taxon to which this genome belongs. If this
+                    is included scientific_name is ignored.
+    relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
+            up taxon information in milliseconds since the epoch.
+    scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
+output_genome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+object_ref has a value which is a RAST_SDK.data_obj_ref
+output_workspace has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+scientific_name has a value which is a string
+output_genome_name has a value which is a string
+create_report has a value which is a RAST_SDK.bool
+
+
+=end text
+
+=back
+
+
+
+=head2 RastGenomeAssemblyOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_genome_ref has a value which is a RAST_SDK.genome_id
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_genome_ref has a value which is a RAST_SDK.genome_id
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 genomeSet_ref
+
+=over 4
+
+
+
+=item Description
+
+For RAST annotating genomes/assemblies
+ 
+Reference to a set of annotated Genome and/or Assembly objects in the workspace
+@id ws KBaseSearch.GenomeSet
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
+
+
+
+=head2 BulkRastGenomesAssembliesParams
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+scientific_name has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+output_workspace has a value which is a string
+output_GenomeSet_name has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_text has a value which is a string
+scientific_name has a value which is a string
+genetic_code has a value which is an int
+domain has a value which is a string
+ncbi_taxon_id has a value which is an int
+relation_engine_timestamp_ms has a value which is an int
+output_workspace has a value which is a string
+output_GenomeSet_name has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 BulkRastGenomesAssembliesOutput
+
+=over 4
+
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
+output_workspace has a value which is a string
+report_name has a value which is a string
+report_ref has a value which is a string
 
 
 =end text
