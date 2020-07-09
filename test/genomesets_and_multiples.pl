@@ -141,7 +141,7 @@ lives_ok {
 
 		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes == 3, "Input: GenomeSet plus one. Output: $number_genomes in output GenomeSet");
+                ok($number_genomes == 2, "Input: GenomeSet plus one. Output: $number_genomes in output GenomeSet");
 	} else {
 		1;
 	}

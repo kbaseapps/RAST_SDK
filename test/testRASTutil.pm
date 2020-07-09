@@ -266,7 +266,7 @@ sub submit_set_annotation {
 	my $ret = &make_impl_call("RAST_SDK.annotate_genomes", $params);
 	my $report_ref = $ret->{report_ref};
 	my $report_obj = $ws_client->get_objects([{ref=>$report_ref}])->[0]->{data};
-	my $report_text = $report_obj->{direct_html};
+	my $report_text = $report_obj->{direct_html} || '';
 	print "\nReport: " . $report_text . "\n\n";
 
 	my $ref = get_ws_name() . "/" . $genome_set_name ;

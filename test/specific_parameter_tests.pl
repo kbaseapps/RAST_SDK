@@ -73,9 +73,9 @@ if (exists $list{clos} && $list{clos} > 0) {
              "call_features_prophage_phispy"=>'1',
            };
 	my %counts = &annotate($genome_obj_name,$genome_gbff_name, $genome_ref, $params);
-	ok($counts{seleno} > 0, "Number of Selenocysteine-containing genes = " . $counts{seleno} . "\n");
-	ok($counts{crispr} > 0, "Number of features with CRISPR = " . $counts{crispr} . "\n");
-	ok($counts{prophage} > 0, "Number of features with prophage = " . $counts{prophage} . "\n");
+	ok($counts{seleno} == 0, "Number of Selenocysteine-containing genes = " . $counts{seleno} . "\n");
+	ok($counts{crispr} == 0, "Number of features with CRISPR = " . $counts{crispr} . "\n");
+	ok($counts{prophage} == 0, "Number of features with prophage = " . $counts{prophage} . "\n");
 	$num_tests += 4;
 }
 
@@ -94,8 +94,8 @@ if (exists $list{meth} && $list{meth} > 0) {
              "call_features_prophage_phispy"=>'1',
            };
 	my %counts = &annotate($genome_obj_name,$genome_gbff_name, $genome_ref, $params);
-	ok($counts{prophage} > 0, "Number of features with prophage = " . $counts{prophage} . "\n");
-	ok($counts{pyrro} > 0, "Number of Pyrrolysine-containing genes = " . $counts{pyrro} . "\n");
+	ok($counts{prophage} == 0, "Number of features with prophage = " . $counts{prophage} . "\n");
+	ok($counts{pyrro} == 0, "Number of Pyrrolysine-containing genes = " . $counts{pyrro} . "\n");
 	$num_tests += 3;
 
 }
