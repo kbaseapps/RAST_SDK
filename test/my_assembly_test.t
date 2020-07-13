@@ -12,8 +12,7 @@ use installed_clients::GenomeAnnotationAPIClient;
 use Storable qw(dclone);
 use File::Slurp;
 
-use lib "/kb/module/test";
-use testRASTutil;
+use RASTTestUtils;
 
 print "PURPOSE:\n";
 print "    1.  Test annotation of one small assembly. \n";
@@ -25,12 +24,14 @@ print "\n";
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gaa = new installed_clients::GenomeAnnotationAPIClient($call_back_url);
+my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
+my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
+my $su = installed_clients::kb_SetUtilitiesClient->new($call_back_url);
 
 my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
 my $assembly_ref = prepare_assembly($assembly_obj_name);
@@ -51,7 +52,7 @@ lives_ok {
 	my $ret = &make_impl_call("RAST_SDK.annotate_genome", $params);
 	my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
 	my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
-    
+
 	print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
 	print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
 
@@ -79,7 +80,7 @@ lives_ok {
 	my $ret = &make_impl_call("RAST_SDK.annotate_genome", $params_copy);
 	my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
 	my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
-    
+
 	print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
 	print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
 
@@ -109,7 +110,7 @@ lives_ok {
 	my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 	my $number_genomes = scalar @{ $data};
     ok($number_genomes == 1, "Input: One Assembly. Output: $number_genomes in output GenomeSet");
-    
+
     my $genome_obj = $ws_client->get_objects([{ref=>$data->[0]}])->[0]->{data};
     ok($genome_obj->{scientific_name} eq "unknown taxon", "Sci name is correct");
     ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
@@ -145,7 +146,7 @@ lives_ok {
 	my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 	my $number_genomes = scalar @{ $data};
     ok($number_genomes == 1, "Input: One Assembly. Output: $number_genomes in output GenomeSet");
-    
+
     my $genome_obj = $ws_client->get_objects([{ref=>$data->[0]}])->[0]->{data};
     ok($genome_obj->{scientific_name} eq "Metarhizium sp. MJH 2018c", "Sci name is correct");
     cmp_deeply($genome_obj->{taxon_assignments}, {'ncbi' => '2448083'},
@@ -167,7 +168,7 @@ lives_ok {
 lives_ok {
     print("######## Running RAST annotation fail with bad RE input ########\n");
     my $params_copy = { %$params };
-    $params_copy->{ncbi_taxon_id} = 32; 
+    $params_copy->{ncbi_taxon_id} = 32;
     $params_copy->{relation_engine_timestamp_ms} = 'Sept 19 2020';  # oops
     eval {
         &make_impl_call("RAST_SDK.annotate_genome", $params_copy);

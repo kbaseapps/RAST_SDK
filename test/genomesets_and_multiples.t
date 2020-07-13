@@ -11,10 +11,9 @@ use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::kb_SetUtilitiesClient;
 use Storable qw(dclone);
-use Bio::KBase::kbaseenv;
+use Bio::KBase::KBaseEnv;
 
-use lib "/kb/module/test";
-use testRASTutil;
+use RASTTestUtils;
 
 print "Running $0\n";
 print "PURPOSE:\n";
@@ -30,14 +29,14 @@ print "         For this reason, the test isn't for a specific number of changes
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = new installed_clients::AssemblyUtilClient($call_back_url);
-my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-my $su = new installed_clients::kb_SetUtilitiesClient($call_back_url);
+my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
+my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
+my $su = installed_clients::kb_SetUtilitiesClient->new($call_back_url);
 
 my $DEBUG = 'N';
 my $genome_obj_name1 = "Dactylopius_coccus";
@@ -62,7 +61,7 @@ if ($DEBUG ne 'Y') {
 	($tmp_obj, $genome_ref2) = prepare_gbff($genome_gbff_name2,$genome_obj_name2);
 	my $genome_gbff_name3 = "GCF_000287295.1_ASM28729v1_genomic.gbff";
 	($tmp_obj, $genome_ref3) = prepare_gbff($genome_gbff_name3,$genome_obj_name3);
-	
+
 }
 
 my $params={"input_genomes"=>[$genome_ref1,$genome_ref2],

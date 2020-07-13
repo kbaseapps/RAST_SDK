@@ -11,10 +11,9 @@ use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use installed_clients::kb_SetUtilitiesClient;
 use Storable qw(dclone);
-use Bio::KBase::kbaseenv;
+use Bio::KBase::KBaseEnv;
 
-use lib "/kb/module/test";
-use testRASTutil;
+use RASTTestUtils;
 
 print "PURPOSE:\n";
 print "    1.  Test annotate Multiple Assemblies. \n";
@@ -27,14 +26,14 @@ print "         For this reason, the tests aren't for a specific number of chang
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = new installed_clients::AssemblyUtilClient($call_back_url);
-my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
-my $su = new installed_clients::kb_SetUtilitiesClient($call_back_url);
+my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
+my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
+my $su = installed_clients::kb_SetUtilitiesClient->new($call_back_url);
 
 
 my $DEBUG = 'N';
@@ -52,10 +51,10 @@ my $genome_set_name = "New_GenomeSet";
 if ($DEBUG ne 'Y') {
 	$assembly_obj_name1 = "bogus.fna";
 	$assembly_ref1 = prepare_assembly($assembly_obj_name1);
-		
+
 	$assembly_obj_name2 = "bogus2.fna";
 	$assembly_ref2 = prepare_assembly($assembly_obj_name2);
-	
+
 	$assembly_obj_name3 = "bogus2.fna";
 	$assembly_ref3 = prepare_assembly($assembly_obj_name2);
 }
@@ -144,7 +143,7 @@ lives_ok {
 		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
 		my $number_genomes = scalar @{ $data};
     	ok($number_genomes = 1, "Input: Two redundant. Output: $number_genomes in output GenomeSet");
-		
+
 	} else {
 		1;
 	}

@@ -7,24 +7,23 @@ use File::Compare;
 use Config::Simple;
 use Bio::KBase::AuthToken;
 
+use RASTTestUtils;
+
 use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
 
-use strict;
-use_ok "anno_utils";
-use testRASTutil;
-
+use_ok "RAST_SDK::AnnotationUtils";
 
 ## global variables
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $auth_token = Bio::KBase::AuthToken->new(
         token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
 my $ws_url = $config->{"workspace-url"};
 my $ws = get_ws_name();
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
@@ -46,12 +45,12 @@ my $gff2 = 'data/metag_test/59111.assembled.gff';
 my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 
-my $rast_impl = new RAST_SDK::RAST_SDKImpl();
-my $annoutil = new anno_utils($config, $ctx);
+my $rast_impl = RAST_SDK::RAST_SDKImpl->new();
+my $annoutil  = RAST_SDK::AnnotationUtils->new( $config, $ctx );
 
-my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
-my $rast_genome_dir = $annoutil->_create_rast_subdir($scratch, "genome_annotation_dir_");
-
+my $scratch = $config->{ 'scratch' };    #'/kb/module/work/tmp';
+my $rast_genome_dir
+    = $annoutil->_create_rast_subdir( $scratch, "genome_annotation_dir_" );
 
 ##-----------------Test Blocks--------------------##
 
@@ -161,7 +160,7 @@ subtest '_get_genome' => sub {
 
     my $obj_ref = $parameters->{object_ref};
     my $ret_gn;
-    lives_ok { 
+    lives_ok {
         $ret_gn = $annoutil->_get_genome($obj_ref);
         # print "genome object returned on $obj_ref:\n".Dumper(keys %$ret_gn);
     } '_get_genome runs successfully';
@@ -178,13 +177,13 @@ subtest '_get_contigs' => sub {
 
     my $obj_ref = $parameters->{object_ref};
     my $obj = $annoutil->_fetch_object_data($obj_ref);
-    
-    lives_ok { 
+
+    lives_ok {
         my $contig_obj1 = $annoutil->_get_contigs($obj->{assembly_ref});
         print "anno_tuils _get_contigs returns:\n".Dumper(keys %$contig_obj1);
     } '_get_contigs runs successfully on genome';
 
-    lives_ok { 
+    lives_ok {
         my $contig_obj2 = $annoutil->_get_contigs($obj_asmb);
         print "anno_tuils _get_contigs returns:\n".Dumper(keys %$contig_obj2);
     } '_get_contigs runs successfully on assembly';
@@ -195,31 +194,31 @@ subtest '_get_contigs' => sub {
 ## Testing the feature_function_lookup related functions
 subtest '_get_feature_function_lookup' => sub {
     my %ffunc_lookup = ();
-    lives_ok { 
+    lives_ok {
         %ffunc_lookup = $annoutil->_get_feature_function_lookup($test_ftrs);
     } '_get_feature_function_lookup runs successfully on assembly';
-    ok (exists($ffunc_lookup{'10000_2'}), 'found one key'); 
-    ok (exists($ffunc_lookup{'10000_madeup'}), 'found another key'); 
-    ok (exists($ffunc_lookup{'10000_2'}->{functions}), 'found functions in one'); 
-    ok (exists($ffunc_lookup{'10000_madeup'}->{functions}), 'found functions in another'); 
-    ok (exists($ffunc_lookup{'10000_2'}->{annotation_src}), 'found annotation_src in one'); 
+    ok (exists($ffunc_lookup{'10000_2'}), 'found one key');
+    ok (exists($ffunc_lookup{'10000_madeup'}), 'found another key');
+    ok (exists($ffunc_lookup{'10000_2'}->{functions}), 'found functions in one');
+    ok (exists($ffunc_lookup{'10000_madeup'}->{functions}), 'found functions in another');
+    ok (exists($ffunc_lookup{'10000_2'}->{annotation_src}), 'found annotation_src in one');
     ok (exists($ffunc_lookup{'10000_madeup'}->{annotation_src}),
                                 'found annotation_src in another');
 
     my $func_role = 'completely fake function';
     my $exp_src1 = 'annotate_madeup_source';
     my $ann_src1 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
-    is ($ann_src1, $exp_src1, "Found function $func_role with annotation source of: $ann_src1"); 
+    is ($ann_src1, $exp_src1, "Found function $func_role with annotation source of: $ann_src1");
 
     $func_role = 'L-carnitine dehydratase/bile acid-inducible protein';
     my $exp_src2 = 'annotate_proteins_kmer_v1';
     my $ann_src2 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
-    is ($ann_src2, $exp_src2, "Found function $func_role with annotation source of: $ann_src2"); 
+    is ($ann_src2, $exp_src2, "Found function $func_role with annotation source of: $ann_src2");
 
     $func_role = 'non-existent function';
     my $exp_src3 = 'N/A';
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
-    is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3"); 
+    is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
 
 

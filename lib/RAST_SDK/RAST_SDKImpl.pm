@@ -2,7 +2,7 @@ package RAST_SDK::RAST_SDKImpl;
 use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
-# http://semver.org 
+# http://semver.org
 our $VERSION = '0.1.6';
 our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
 our $GIT_COMMIT_HASH = 'a5381330fb86bfe20a1ff78face6a09fce435727';
@@ -20,33 +20,32 @@ This wraps genome_annotation which is based off of the SEED annotations.
 
 #BEGIN_HEADER
 use Bio::KBase::AuthToken;
-use Bio::KBase::utilities;
-use Bio::KBase::kbaseenv;
+use Bio::KBase::Utilities;
+use Bio::KBase::KBaseEnv;
 use Config::IniFiles;
 use warnings;
 use JSON::XS;
 use Digest::MD5;
-use Data::Dumper qw(Dumper);
+use Data::Dumper;
 use Getopt::Long;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use Bio::KBase::GenomeAnnotation::Service;
 use LWP::UserAgent;
 use HTTP::Request;
 
-use lib '../lib';
-use metag_utils;
-use anno_utils;
+use RAST_SDK::AnnotationUtils;
+use RAST_SDK::MetagenomeUtils;
 
 
 #Initialization function for call
 sub util_initialize_call {
 	my ($self,$params,$ctx) = @_;
-	Bio::KBase::kbaseenv::initialize_call($ctx);
+	Bio::KBase::KBaseEnv::initialize_call($ctx);
 	$Bio::KBase::GenomeAnnotation::Service::CallContext = $ctx;
-	Bio::KBase::kbaseenv::ac_client({refresh => 1});
-	Bio::KBase::kbaseenv::ga_client({refresh => 1});
-	Bio::KBase::kbaseenv::gfu_client({refresh => 1});
-	Bio::KBase::kbaseenv::su_client({refresh => 1});
+	Bio::KBase::KBaseEnv::ac_client({refresh => 1});
+	Bio::KBase::KBaseEnv::ga_client({refresh => 1});
+	Bio::KBase::KBaseEnv::gfu_client({refresh => 1});
+	Bio::KBase::KBaseEnv::su_client({refresh => 1});
 	return $params;
 }
 
@@ -62,8 +61,8 @@ sub util_log {
 
 sub util_get_genome {
 	my ($self,$workspace,$genomeid) = @_;
-	my $ref = Bio::KBase::kbaseenv::buildref($workspace,$genomeid);
-	my $output = Bio::KBase::kbaseenv::ga_client()->get_genome_v1({
+	my $ref = Bio::KBase::KBaseEnv::buildref($workspace,$genomeid);
+	my $output = Bio::KBase::KBaseEnv::ga_client()->get_genome_v1({
 		genomes => [{
 			"ref" => $ref
 		}],
@@ -86,12 +85,12 @@ sub max_contigs {
 
 sub util_get_contigs {
     my ($self,$workspace,$objid) = @_;
-    my $ref = Bio::KBase::kbaseenv::buildref($workspace,$objid);
-    my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+    my $ref = Bio::KBase::KBaseEnv::buildref($workspace,$objid);
+    my $info = Bio::KBase::KBaseEnv::get_object_info([{ref=>$ref}],0);
     my $obj;
     my $contigID_hash = {};
     if ($info->[0]->[2] =~ /Assembly/) {
-        my $output = Bio::KBase::kbaseenv::ac_client()->get_assembly_as_fasta({
+        my $output = Bio::KBase::KBaseEnv::ac_client()->get_assembly_as_fasta({
             "ref" => $ref
         });
         my $fasta = "";
@@ -153,8 +152,8 @@ sub util_get_contigs {
         $obj->{md5} = Digest::MD5::md5_hex($str);
         $obj->{_kbasetype} = "Assembly";
     } else {
-        $obj = Bio::KBase::kbaseenv::get_objects([{
-            ref=>Bio::KBase::kbaseenv::buildref($workspace,$objid)
+        $obj = Bio::KBase::KBaseEnv::get_objects([{
+            ref=>Bio::KBase::KBaseEnv::buildref($workspace,$objid)
         }]);
         $obj = $obj->[0]->{data};
         $obj->{_kbasetype} = "ContigSet";
@@ -176,7 +175,7 @@ sub util_get_contigs {
 
 sub annotate_process {
     my ($self,$parameters, $config, $ctx) = @_;
-    my $ann_util = new anno_utils($config, $ctx);
+    my $ann_util = RAST_SDK::AnnotationUtils->new($config, $ctx);
 
     my $oldfunchash = {};
     my $contigID_hash = {};
@@ -251,7 +250,7 @@ sub annotate_process {
         } else {
             $inputgenome->{non_coding_features} = [];
         }
-		
+
 		my $contigref;
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
 		    if (defined($inputgenome->{contigset_ref})) {
@@ -273,7 +272,7 @@ sub annotate_process {
                                            $parameters->{workspace},
                                            $parameters->{input_contigset});
 	} else {
-		Bio::KBase::utilities::error("Neither contigs nor genome specified!");
+		Bio::KBase::Utilities::error("Neither contigs nor genome specified!");
 	}
 
 	my $tax_domain =  (exists $inputgenome->{domain} && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
@@ -293,7 +292,7 @@ sub annotate_process {
 				delete $inputgenome->{contigs}->[$i]->{sequence};
 			}
 		}
-	
+
 		if ($contigobj->{_kbasetype} eq "ContigSet") {
 			$inputgenome->{contigset_ref} = $contigobj->{_reference};
 		} else {
@@ -304,7 +303,7 @@ sub annotate_process {
 		} else {
 			$message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
 			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
-		}		
+		}
 	} else {
 		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
 		    $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
@@ -319,7 +318,7 @@ sub annotate_process {
 			$message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
 		}
 	}
-	
+
   	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
   	my $workflow = {stages => []};
 	my $extragenecalls = "";
@@ -332,7 +331,7 @@ sub annotate_process {
 		$extragenecalls .= "rRNA";
 		push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
@@ -344,7 +343,7 @@ sub annotate_process {
 		$extragenecalls .= "tRNA";
 		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
@@ -357,7 +356,7 @@ sub annotate_process {
 			$extragenecalls .= "selenoproteins";
 			push(@{$workflow->{stages}},{name => "call_selenoproteins"});
 			if (!defined($contigobj)) {
-				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 			}
 		} else {
 			$message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
@@ -373,10 +372,10 @@ sub annotate_process {
 			$extragenecalls .= "pyrrolysoproteins";
 			push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
 			if (!defined($contigobj)) {
-				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
-			} 
+				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+			}
 		} else {
-			$message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";	
+			$message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";
 		}
 	}
 	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
@@ -394,7 +393,7 @@ sub annotate_process {
 					 }
 		});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
@@ -406,7 +405,7 @@ sub annotate_process {
 		$extragenecalls .= "strep suis repeats";
 		push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
@@ -418,7 +417,7 @@ sub annotate_process {
 		$extragenecalls .= "strep pneumonia repeats";
 		push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 		}
 	}
 	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
@@ -431,10 +430,10 @@ sub annotate_process {
 			$extragenecalls .= "crispr";
 			push(@{$workflow->{stages}},{name => "call_features_crispr"});
 			if (!defined($contigobj)) {
-				Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 			}
 		} else {
-			$message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";	
+			$message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";
 		}
 	}
 	$extragenecalls .= ".\n" if (length($extragenecalls) > 0);
@@ -458,7 +457,7 @@ sub annotate_process {
 					 }
 		});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
+			Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
 		}
 	}
 	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
@@ -474,7 +473,7 @@ sub annotate_process {
 		$genecalls .= "prodigal";
 		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
 		if (!defined($contigobj)) {
-			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!\n");
+			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
 		}
 	}
 	$genecalls .= ".\n" if (length($genecalls) > 0);
@@ -492,7 +491,7 @@ sub annotate_process {
 #		$genecalls .= "genemark";
 #		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
 #		if (!defined($contigobj)) {
-#			Bio::KBase::utilities::error("Cannot call genes on genome with no contigs!");
+#			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 #		}
 #	}
 	my $v1flag = 0;
@@ -553,7 +552,7 @@ sub annotate_process {
 		if ($tax_domain ne 'U' ) {
 			push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
 		} else {
-			$message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";	
+			$message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";
 		}
 	}
 	$annomessage .= ".\n" if (length($annomessage) > 0);
@@ -567,7 +566,7 @@ sub annotate_process {
 				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
 					#push(@{$replace}, @{$inputgenome->{features}}->[$i]);
 					push(@{$replace}, $ftr);
-				} 
+				}
 			}
 			$inputgenome->{features} = $replace;
 		}
@@ -633,10 +632,10 @@ sub annotate_process {
 		if (defined($inputgenome->{ontology_events})){
 			my $ont_event = {
 				 "id" => "SSO",
-				  "method" => Bio::KBase::utilities::method(),
+				  "method" => Bio::KBase::Utilities::method(),
 				  "method_version" => $self->util_version(),
 				  "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
-				  "timestamp" => Bio::KBase::utilities::timestamp()
+				  "timestamp" => Bio::KBase::Utilities::timestamp()
 			};
 			push(@{$inputgenome->{ontology_events}}, $ont_event);
 		}
@@ -693,7 +692,7 @@ sub annotate_process {
     }
     my $count = 0;
 
-#	
+#
 #	Move non-coding features from features to non_coding_features
 #	They can have more than one location and they need md5 and dna_sequence_length
 #
@@ -723,14 +722,14 @@ sub annotate_process {
 		}
 
 	}
-	
+
 	if (defined($contigobj) && defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
 		$genome->{num_contigs} = @{$contigobj->{contigs}};
 		$genome->{md5} = $contigobj->{md5};
 	}
 	#Getting the seed ontology dictionary
 	#Sam: I need to build the PlantSEED ontology and use it here
-	my $output = Bio::KBase::kbaseenv::get_objects([{
+	my $output = Bio::KBase::KBaseEnv::get_objects([{
 		workspace => "KBaseOntology",
 		name => "seed_subsystem_ontology"
 	}]);
@@ -858,8 +857,8 @@ sub annotate_process {
 							push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
 						} else {
 							for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-								if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::utilities::method()) {
-									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::utilities::timestamp();
+								if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::Utilities::method()) {
+									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::Utilities::timestamp();
 									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
 									$found = 1;
 									last;
@@ -869,9 +868,9 @@ sub annotate_process {
 								push(
 									@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
 									{
-										method         => Bio::KBase::utilities::method(),
+										method         => Bio::KBase::Utilities::method(),
 										method_version => $self->util_version(),
-										timestamp      => Bio::KBase::utilities::timestamp()
+										timestamp      => Bio::KBase::Utilities::timestamp()
 									});
 							}
 						}
@@ -884,7 +883,7 @@ sub annotate_process {
 									$advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
 								}
 							}
-						}	
+						}
 					}
 				}
 			}
@@ -897,7 +896,7 @@ sub annotate_process {
 				$ftr->{type} = "gene"
 			}
 			if (exists $oldtype->{$ftr->{id}} && $oldtype->{$ftr->{id}} =~ /gene/) {
-				$ftr->{type} = $oldtype->{$ftr->{id}};					
+				$ftr->{type} = $oldtype->{$ftr->{id}};
 			}
 			if (defined($ftr->{location})) {
 				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
@@ -991,7 +990,7 @@ sub annotate_process {
 				}
 
 			} else {
-				$num_non_coding++; 
+				$num_non_coding++;
 			}
 			my $type = '';
 			if ( defined$ftr->{type} && $ftr->{type} =~ /coding/) {
@@ -1041,7 +1040,7 @@ sub annotate_process {
 #	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
 #	print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
-	my $gaout = Bio::KBase::kbaseenv::gfu_client()->save_one_genome({
+	my $gaout = Bio::KBase::KBaseEnv::gfu_client()->save_one_genome({
 		workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
@@ -1049,7 +1048,7 @@ sub annotate_process {
 			"time" => DateTime->now()->datetime()."+0000",
 			service_ver => $self->util_version(),
 			service => "RAST_SDK",
-			method => Bio::KBase::utilities::method(),
+			method => Bio::KBase::Utilities::method(),
 			method_params => [$parameters],
 			input_ws_objects => [],
 			resolved_ws_objects => [],
@@ -1058,11 +1057,11 @@ sub annotate_process {
 		}],
         hidden => 0
 	});
-	Bio::KBase::kbaseenv::add_object_created({
+	Bio::KBase::KBaseEnv::add_object_created({
 		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
 		"description" => "Annotated genome"
 	});
-	Bio::KBase::utilities::print_report_message({
+	Bio::KBase::Utilities::print_report_message({
 		message => "<pre>".$message."</pre>",
 		append => 0,
 		html => 0
@@ -1086,7 +1085,7 @@ sub get_scientific_name_for_NCBI_taxon {
     $req->header('content-type', 'application/json');
     $req->content($content);
     my $ua = LWP::UserAgent->new();
-    
+
     my $ret = $ua->request($req);
     if (!$ret->is_success()) {
         print("Error body from Relation Engine on NCBI taxa query:\n" .
@@ -1111,11 +1110,11 @@ sub new
     };
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
-	Bio::KBase::utilities::read_config({
+	Bio::KBase::Utilities::read_config({
 		service => "RAST_SDK",
 		mandatory => ['workspace-url', 'relation-engine-url']
 	});
-	$self->{_re_url} = Bio::KBase::utilities::conf(
+	$self->{_re_url} = Bio::KBase::Utilities::conf(
 		$ENV{KB_SERVICE_NAME} or "RAST_SDK", "relation-engine-url");
 	# TODO check url is ok by querying RE root
 
@@ -1260,7 +1259,7 @@ sub annotate_genome
     my($return);
     #BEGIN annotate_genome
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
+    $params = Bio::KBase::Utilities::args($params,["workspace","output_genome"],{
 	    input_genome => undef,
 	    input_contigset => undef,
 	    genetic_code => 11,
@@ -1290,10 +1289,10 @@ sub annotate_genome
 	}
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 
     my $output = $self->annotate_process($params, $config, $ctx);
-    my $reportout = Bio::KBase::kbaseenv::create_report({
+    my $reportout = Bio::KBase::KBaseEnv::create_report({
         workspace_name => $params->{workspace},
         report_object_name => $params->{output_genome}.".report",
     });
@@ -1304,7 +1303,7 @@ sub annotate_genome
         report_name => $params->{output_genome}.".report",
         ws_report_id => $params->{output_genome}.".report"
     };
-    Bio::KBase::utilities::close_debug();
+    Bio::KBase::Utilities::close_debug();
     #END annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
@@ -1459,7 +1458,7 @@ sub annotate_genomes
     my($return);
     #BEGIN annotate_genomes
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["workspace","output_genome"],{
+    $params = Bio::KBase::Utilities::args($params,["workspace","output_genome"],{
     	input_genomes => [],
     	genome_text => undef,
 	    call_features_rRNA_SEED => 1,
@@ -1509,18 +1508,18 @@ sub annotate_genomes
 	# Create a non-redundant replacement list:
 	#	1. Individual genomes and assemblies are added
 	#	2. Iterate over a Set to add to the replacement list
-	#	3. GenomeSets use a HASH and AssemblySets use an ARRAY  
+	#	3. GenomeSets use a HASH and AssemblySets use an ARRAY
 	#	4. Use perl grep to see if the ref is already in the list
-	#	5. Issue a warning when a duplicate is found so user knows what happened. 
+	#	5. Issue a warning when a duplicate is found so user knows what happened.
 	#
 	if ( ref $genomes eq 'ARRAY' && @$genomes ) {
 		my $replace_genomes = [];
 		foreach my $ref (@$genomes) {
-	 		my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$ref}],0);
+	 		my $info = Bio::KBase::KBaseEnv::get_object_info([{ref=>$ref}],0);
 			$obj_type = $info->[0]->[2];
 			if ($obj_type =~ /KBaseSearch\.GenomeSet/ || $obj_type =~ /KBaseSets\.AssemblySet/) {
-				my $obj = Bio::KBase::kbaseenv::get_objects([{
-					ref=>Bio::KBase::kbaseenv::buildref($params->{workspace},$ref)}])->[0]->{'refs'};
+				my $obj = Bio::KBase::KBaseEnv::get_objects([{
+					ref=>Bio::KBase::KBaseEnv::buildref($params->{workspace},$ref)}])->[0]->{'refs'};
 
 				if (ref($obj) eq 'HASH') {
 					foreach my $key (keys %$obj) {
@@ -1538,7 +1537,7 @@ sub annotate_genomes
 							push(@$replace_genomes,$key);
 						}
 					}
-					
+
 				}
 			} else {
 				if ( grep( /^$ref$/, @$replace_genomes ) ) {
@@ -1551,7 +1550,7 @@ sub annotate_genomes
 		print STDERR "WARNiNG $warn\n";
 		$genomes = $replace_genomes;
 	}
-	
+
 	if (defined($params->{genome_text})) {
 		my $new_genome_list = [split(/[\n;\|]+/,$params->{genome_text})];
 		for (my $i=0; $i < @{$new_genome_list}; $i++) {
@@ -1565,17 +1564,17 @@ sub annotate_genomes
 		my $input = $genomes->[$i];
 		if ($input =~ m/\//) {
 			my $array = [split(/\//,$input)];
-			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>
-				Bio::KBase::kbaseenv::buildref($array->[0],$array->[1],$array->[2])}
+			my $info = Bio::KBase::KBaseEnv::get_object_info([{ref=>
+				Bio::KBase::KBaseEnv::buildref($array->[0],$array->[1],$array->[2])}
 			],0);
 			$input = $info->[0]->[1];
 			$obj_type =  $info->[0]->[2];
 		} else {
-			my $info = Bio::KBase::kbaseenv::get_object_info([{ref=>$input}]);
+			my $info = Bio::KBase::KBaseEnv::get_object_info([{ref=>$input}]);
 			$obj_type =  $info->[0]->[2];
 		}
 
-		my $currentparams = Bio::KBase::utilities::args({},[],{
+		my $currentparams = Bio::KBase::Utilities::args({},[],{
 			output_genome => $input.".RAST",
 			input_genome => $genomes->[$i],
 		    input_contigset => undef,
@@ -1616,10 +1615,10 @@ sub annotate_genomes
 			$currentparams->{'input_contigset'} = delete $currentparams->{'input_genome'};
 			delete $currentparams->{'retain_old_anno_for_hypotheticals'};
 		}
-			
+
         eval {
             my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-            my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+            my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
             my ($output, $message) = $self->annotate_process($currentparams,
                                                              $config, $ctx);
             push(@$output_genomes,$output->{ref});
@@ -1631,18 +1630,18 @@ sub annotate_genomes
             $htmlmessage .= $input." succeeded!\n\n";
         }
     }
-		
+
     my $output_genomeset;
     if (defined $params->{output_genome} && $params->{output_genome} gt ' ') {
         my $output_genomeset = $params->{output_genome};
-        my $report_reference = Bio::KBase::kbaseenv::su_client()->KButil_Build_GenomeSet({
+        my $report_reference = Bio::KBase::KBaseEnv::su_client()->KButil_Build_GenomeSet({
             workspace_name => $params->{workspace},
             input_refs => $output_genomes,
             output_name => $output_genomeset,
             desc => 'GenomeSet Description'
         });
 
-        Bio::KBase::kbaseenv::add_object_created({
+        Bio::KBase::KBaseEnv::add_object_created({
             "ref" => $params->{workspace}."/".$output_genomeset,
             "description" => "Genome Set"
         });
@@ -1653,28 +1652,28 @@ sub annotate_genomes
     print FH $warn.$htmlmessage;
     close FH;
     $htmlmessage = "<pre>$warn$htmlmessage</pre>\n\n";
-    my $reportfile = Bio::KBase::utilities::add_report_file({
+    my $reportfile = Bio::KBase::Utilities::add_report_file({
     	workspace_name => $params->{workspace},
     	name =>  "annotation_report.$params->{output_genome}",
         path => $path,
         description => 'Microbial Annotation Report'
     });
 
-    Bio::KBase::utilities::print_report_message({
+    Bio::KBase::Utilities::print_report_message({
         message => $htmlmessage,html=>0,append => 0
     });
-    my $reportout = Bio::KBase::kbaseenv::create_report({
+    my $reportout = Bio::KBase::KBaseEnv::create_report({
     	workspace_name => $params->{workspace},
-    	report_object_name => Bio::KBase::utilities::processid().".report",
+    	report_object_name => Bio::KBase::Utilities::processid().".report",
     });
     $return = {
     	workspace => $params->{workspace},
     	id => $params->{output_genome},
     	report_ref => $reportout->{"ref"},
-    	report_name =>  Bio::KBase::utilities::processid().".report",
-    	ws_report_id => Bio::KBase::utilities::processid().".report"
+    	report_name =>  Bio::KBase::Utilities::processid().".report",
+    	ws_report_id => Bio::KBase::Utilities::processid().".report"
     };
-    Bio::KBase::utilities::close_debug();
+    Bio::KBase::Utilities::close_debug();
     #END annotate_genomes
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
@@ -1750,7 +1749,7 @@ sub annotate_proteins
     my($return);
     #BEGIN annotate_proteins
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,["proteins"],{});
+    $params = Bio::KBase::Utilities::args($params,["proteins"],{});
     my $inputgenome = {
     		features => []
     };
@@ -1868,16 +1867,16 @@ sub annotate_metagenome
     my($output);
     #BEGIN annotate_metagenome
     $self->util_initialize_call($params, $ctx);
-    $params = Bio::KBase::utilities::args($params,
+    $params = Bio::KBase::Utilities::args($params,
                   ["object_ref", "output_workspace", "output_metagenome_name"],
                   {create_report => 0});
 
     print "annotate_metagenome input parameter=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 
-    my $mg_util = new metag_utils($config, $ctx);
+    my $mg_util = RAST_SDK::MetagenomeUtils->new($config, $ctx);
     my $rast_out = $mg_util->rast_metagenome($params);
     $output = {
         output_metagenome_ref => $rast_out->{output_genome_ref},
@@ -1976,15 +1975,15 @@ sub annotate_metagenomes
     my($output);
     #BEGIN annotate_metagenomes
     $self->util_initialize_call($params, $ctx);
-    $params = Bio::KBase::utilities::args($params,
+    $params = Bio::KBase::Utilities::args($params,
                   ["output_workspace", "output_AMASet"], {});
 
     print "annotate_metagenomes input parameters=\n". Dumper($params). "\n";
 
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+    my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 
-    my $mg_util = new metag_utils($config, $ctx);
+    my $mg_util = RAST_SDK::MetagenomeUtils->new($config, $ctx);
     my $rast_out = $mg_util->bulk_rast_metagenomes($params);
     $output = {
         output_AMASet_ref => $rast_out->{output_AMASet_ref},
@@ -2095,7 +2094,7 @@ sub rast_genome_assembly
     my($output);
     #BEGIN rast_genome_assembly
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,
+    $params = Bio::KBase::Utilities::args($params,
                   ["object_ref", "output_workspace", "output_genome_name"],
                   {create_report => 0});
     print "rast_genome_assembly input parameters=\n". Dumper($params). "\n";
@@ -2105,8 +2104,8 @@ sub rast_genome_assembly
 		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
     }
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-    my $ann_util = new anno_utils($config, $ctx);
+    my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
+    my $ann_util = RAST_SDK::AnnotationUtils->new($config, $ctx);
     my $rast_out = $ann_util->rast_genome($params);
     $output = {
         output_genome_ref => $rast_out->{output_genome_ref},
@@ -2114,7 +2113,7 @@ sub rast_genome_assembly
         report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
     };
-    Bio::KBase::utilities::close_debug();
+    Bio::KBase::Utilities::close_debug();
     #END rast_genome_assembly
     my @_bad_returns;
     (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
@@ -2218,7 +2217,7 @@ sub rast_genomes_assemblies
     my($output);
     #BEGIN rast_genomes_assemblies
     $self->util_initialize_call($params,$ctx);
-    $params = Bio::KBase::utilities::args($params,
+    $params = Bio::KBase::Utilities::args($params,
                   ["output_workspace"], {create_report => 0});
 
     if ($params->{ncbi_taxon_id} && $params->{relation_engine_timestamp_ms}) {
@@ -2226,8 +2225,8 @@ sub rast_genomes_assemblies
 		$params->{ncbi_taxon_id}, $params->{relation_engine_timestamp_ms});
     }
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
-    my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-    my $ann_util = new anno_utils($config, $ctx);
+    my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
+    my $ann_util = RAST_SDK::AnnotationUtils->new($config, $ctx);
     my $rast_out = $ann_util->bulk_rast_genomes($params);
     $output = {
         output_genome_ref => $rast_out->{output_genomeSet_ref},
@@ -2235,7 +2234,7 @@ sub rast_genomes_assemblies
         report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
     };
-    Bio::KBase::utilities::close_debug();
+    Bio::KBase::Utilities::close_debug();
     #END rast_genomes_assemblies
     my @_bad_returns;
     (ref($output) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"output\" (value was \"$output\")");
@@ -2250,7 +2249,7 @@ sub rast_genomes_assemblies
 
 
 
-=head2 status 
+=head2 status
 
   $return = $obj->status()
 
@@ -2603,7 +2602,7 @@ Parameters for the annotate_genomes method.
                 relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
                         up taxon information in milliseconds since the epoch.
                 scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
-                
+
                 TODO: document remainder of parameters.
 
 
@@ -3103,7 +3102,7 @@ report_ref has a value which is a string
 =item Description
 
 For RAST annotating genomes/assemblies
- 
+
 Reference to a set of annotated Genome and/or Assembly objects in the workspace
 @id ws KBaseSearch.GenomeSet
 

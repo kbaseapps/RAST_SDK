@@ -1,7 +1,14 @@
-package Bio::KBase::kbaseenv;
+package Bio::KBase::KBaseEnv;
 use strict;
 use warnings;
-use Bio::KBase::utilities;
+use Bio::KBase::Utilities;
+
+use installed_clients::AssemblyUtilClient;
+use installed_clients::KBaseReportClient;
+use installed_clients::WorkspaceClient;
+use installed_clients::GenomeAnnotationAPIClient;
+use installed_clients::GenomeFileUtilClient;
+use installed_clients::kb_SetUtilitiesClient;
 
 our $ws_client = undef;
 our $ga_client = undef;
@@ -14,7 +21,7 @@ our $objects_created = [];
 sub log {
 	my ($msg,$tag) = @_;
 	if (defined($tag) && $tag eq "debugging") {
-		if (defined(Bio::KBase::utilities::utilconf("debugging")) && Bio::KBase::utilities::utilconf("debugging") == 1) {
+		if (defined(Bio::KBase::Utilities::utilconf("debugging")) && Bio::KBase::Utilities::utilconf("debugging") == 1) {
 			print $msg."\n";
 		}
 	} else {
@@ -22,22 +29,10 @@ sub log {
 	}
 }
 
-sub data_file_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($data_file_client)) {
-		require "DataFileUtil/DataFileUtilClient.pm";
-		$data_file_client = new DataFileUtil::DataFileUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	}
-	return $data_file_client;
-}
-
 #create_report: creates a report object using the KBaseReport service
 sub create_report {
 	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,["workspace_name","report_object_name"],{
+	$parameters = Bio::KBase::Utilities::args($parameters,["workspace_name","report_object_name"],{
 		warnings => [],
 		html_links => [],
 		file_links => [],
@@ -46,41 +41,44 @@ sub create_report {
 		message => ""
 	});
 	my $kr;
-	require "KBaseReport/KBaseReportClient.pm";
-	$kr = new KBaseReport::KBaseReportClient(Bio::KBase::utilities::utilconf("call_back_url"),token => Bio::KBase::utilities::token());
-	if (defined(Bio::KBase::utilities::utilconf("debugging")) && Bio::KBase::utilities::utilconf("debugging") == 1) {
-		Bio::KBase::utilities::add_report_file({
-			path => Bio::KBase::utilities::utilconf("debugfile"),
-			name => "Debug.txt",
-			description => "Debug file"
-		});
-	};
-	return $kr->create_extended_report({
-		message => Bio::KBase::utilities::report_message(),
+    $kr = installed_clients::KBaseReportClient->new(
+        Bio::KBase::Utilities::utilconf( "call_back_url" ),
+        token => Bio::KBase::Utilities::token()
+    );
+    if ( defined( Bio::KBase::Utilities::utilconf( "debugging" ) )
+        && Bio::KBase::Utilities::utilconf( "debugging" ) == 1 ) {
+        Bio::KBase::Utilities::add_report_file( {
+            path        => Bio::KBase::Utilities::utilconf( "debugfile" ),
+            name        => "Debug.txt",
+            description => "Debug file"
+        } );
+    }
+    return $kr->create_extended_report( {
+        message => Bio::KBase::Utilities::report_message(),
         objects_created => $objects_created,
         warnings => $parameters->{warnings},
-        html_links => Bio::KBase::utilities::report_html_files(),
-        direct_html => Bio::KBase::utilities::report_html(),
+        html_links => Bio::KBase::Utilities::report_html_files(),
+        direct_html => Bio::KBase::Utilities::report_html(),
         direct_html_link_index => $parameters->{direct_html_link_index},
-        file_links => Bio::KBase::utilities::report_files(),
+        file_links => Bio::KBase::Utilities::report_files(),
         report_object_name => $parameters->{report_object_name},
         workspace_name => $parameters->{workspace_name}
-	});
+    } );
 }
 
 sub create_context_from_client_config {
 	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
+	$parameters = Bio::KBase::Utilities::args($parameters,[],{
 		filename => $ENV{ KB_CLIENT_CONFIG },
 		setcontext => 1,
 		method => "unknown",
 		provenance => []
 	});
-	my $config = Bio::KBase::utilities::read_config({
+	my $config = Bio::KBase::Utilities::read_config({
 		filename => $parameters->{filename},
 		service => "authentication"
 	});
-	return Bio::KBase::utilities::create_context({
+	return Bio::KBase::Utilities::create_context({
 		setcontext => $parameters->{setcontext},
 		token => $config->{authentication}->{token},
 		user => $config->{authentication}->{user_id},
@@ -90,71 +88,92 @@ sub create_context_from_client_config {
 }
 
 sub ws_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($ws_client)) {
-		require "Workspace/WorkspaceClient.pm";
-		$ws_client = new Workspace::WorkspaceClient(Bio::KBase::utilities::utilconf("workspace-url"),
-					token => Bio::KBase::utilities::token());
-#					auth_svc => Bio::KBase::utilities::utilconf("auth-service-url")
-#				);
-	}
-	return $ws_client;
+    my ( $parameters ) = @_;
+    $parameters = Bio::KBase::Utilities::args(
+        $parameters,
+        [],
+        {
+            refresh => 0
+        }
+    );
+    if ( $parameters->{ refresh } == 1 || !defined( $ws_client ) ) {
+        $ws_client = installed_clients::WorkspaceClient->new(
+            Bio::KBase::Utilities::utilconf( "workspace-url" ),
+            token => Bio::KBase::Utilities::token() );
+
+        #					auth_svc => Bio::KBase::Utilities::utilconf("auth-service-url")
+        #				);
+    }
+    return $ws_client;
 }
 
 sub ga_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($ga_client)) {
-		require "GenomeAnnotationAPI/GenomeAnnotationAPIClient.pm";
-		$ga_client = new GenomeAnnotationAPI::GenomeAnnotationAPIClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	}
-	return $ga_client;
+    my ( $parameters ) = @_;
+    $parameters = Bio::KBase::Utilities::args(
+        $parameters,
+        [],
+        {
+            refresh => 0
+        } );
+    if ( $parameters->{ refresh } == 1 || !defined( $ga_client ) ) {
+        $ga_client = installed_clients::GenomeAnnotationAPIClient->new(
+            Bio::KBase::Utilities::utilconf( "call_back_url" )
+        );
+    }
+    return $ga_client;
 }
 
 sub gfu_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($gfu_client)) {
-		require "GenomeFileUtil/GenomeFileUtilClient.pm";
-		$gfu_client = new GenomeFileUtil::GenomeFileUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	}
-	return $gfu_client;
+    my ( $parameters ) = @_;
+    $parameters = Bio::KBase::Utilities::args(
+        $parameters,
+        [],
+        {
+            refresh => 0
+        } );
+    if ( $parameters->{ refresh } == 1 || !defined( $gfu_client ) ) {
+        $gfu_client = installed_clients::GenomeFileUtilClient->new(
+            Bio::KBase::Utilities::utilconf( "call_back_url" )
+        );
+    }
+    return $gfu_client;
 }
 
 sub ac_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($ac_client)) {
-		require "AssemblyUtil/AssemblyUtilClient.pm";
-		$ac_client = new AssemblyUtil::AssemblyUtilClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	}
-	return $ac_client;
+    my ( $parameters ) = @_;
+    $parameters = Bio::KBase::Utilities::args(
+        $parameters,
+        [],
+        {
+            refresh => 0
+        } );
+    if ( $parameters->{ refresh } == 1 || !defined( $ac_client ) ) {
+        $ac_client = installed_clients::AssemblyUtilClient->new(
+            Bio::KBase::Utilities::utilconf( "call_back_url" )
+        );
+    }
+    return $ac_client;
 }
 
 sub su_client {
-	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,[],{
-		refresh => 0
-	});
-	if ($parameters->{refresh} == 1 || !defined($su_client)) {
-		require "installed_clients/kb_SetUtilitiesClient.pm";
-		$su_client = new installed_clients::kb_SetUtilitiesClient(Bio::KBase::utilities::utilconf("call_back_url"));
-	}
-	return $su_client;
+    my ( $parameters ) = @_;
+    $parameters = Bio::KBase::Utilities::args(
+        $parameters,
+        [],
+        {
+            refresh => 0
+        } );
+    if ( $parameters->{ refresh } == 1 || !defined( $su_client ) ) {
+        $su_client = installed_clients::kb_SetUtilitiesClient->new(
+            Bio::KBase::Utilities::utilconf( "call_back_url" )
+        );
+    }
+    return $su_client;
 }
 
 sub get_object {
 	my ($ws,$id) = @_;
-	my $output = Bio::KBase::kbaseenv::ws_client()->get_objects([Bio::KBase::kbaseenv::configure_ws_id($ws,$id)]);
+	my $output = Bio::KBase::KBaseEnv::ws_client()->get_objects([Bio::KBase::KBaseEnv::configure_ws_id($ws,$id)]);
 	return $output->[0]->{data};
 }
 
@@ -163,13 +182,13 @@ sub get_objects {
 	my $input = {
 		objects => $args,
 	};
-	my $output = Bio::KBase::kbaseenv::ws_client()->get_objects2($input);
+	my $output = Bio::KBase::KBaseEnv::ws_client()->get_objects2($input);
 	return $output->{data};
 }
 
 sub list_objects {
 	my ($args) = @_;
-	return Bio::KBase::kbaseenv::ws_client()->list_objects($args);
+	return Bio::KBase::KBaseEnv::ws_client()->list_objects($args);
 }
 
 sub get_object_info {
@@ -179,12 +198,12 @@ sub get_object_info {
 		includeMetadata => $argtwo,
 		ignoreErrors => $argthree
 	};
-	return Bio::KBase::kbaseenv::ws_client()->get_object_info3($params)->{infos};
+	return Bio::KBase::KBaseEnv::ws_client()->get_object_info3($params)->{infos};
 }
 
 sub administer {
 	my ($args) = @_;
-	return Bio::KBase::kbaseenv::ws_client()->administer($args);
+	return Bio::KBase::KBaseEnv::ws_client()->administer($args);
 }
 
 sub reset_objects_created {
@@ -193,7 +212,7 @@ sub reset_objects_created {
 
 sub add_object_created {
 	my ($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,["ref","description"],{});
+	$parameters = Bio::KBase::Utilities::args($parameters,["ref","description"],{});
 	push(@{$objects_created},$parameters);
 }
 
@@ -204,7 +223,7 @@ sub save_objects {
 	my $output;
 	while ($retryCount > 0) {
 		eval {
-			$output = Bio::KBase::kbaseenv::ws_client()->save_objects($args);
+			$output = Bio::KBase::KBaseEnv::ws_client()->save_objects($args);
 			for (my $i=0; $i < @{$output}; $i++) {
 				my $array = [split(/\./,$output->[$i]->[2])];
 				my $description = $array->[1]." ".$output->[$i]->[1];
@@ -217,7 +236,7 @@ sub save_objects {
 				});
 			}
 		};
-		# If there is a network glitch, wait a second and try again. 
+		# If there is a network glitch, wait a second and try again.
 		if ($@) {
 			$error = $@;
 		} else {
@@ -225,7 +244,7 @@ sub save_objects {
 		}
 	}
 	if ($retryCount == 0) {
-		Bio::KBase::utilities::error($error);
+		Bio::KBase::Utilities::error($error);
 	}
 	return $output;
 }
@@ -250,11 +269,11 @@ sub buildref {
 
 sub initialize_call {
 	my ($ctx) = @_;
-	Bio::KBase::kbaseenv::reset_objects_created();
-	Bio::KBase::utilities::timestamp(1);
-	Bio::KBase::utilities::set_context($ctx);
-	Bio::KBase::kbaseenv::ws_client({refresh => 1});
-	print("Starting ".Bio::KBase::utilities::method()." method.\n");
+	Bio::KBase::KBaseEnv::reset_objects_created();
+	Bio::KBase::Utilities::timestamp(1);
+	Bio::KBase::Utilities::set_context($ctx);
+	Bio::KBase::KBaseEnv::ws_client({refresh => 1});
+	print("Starting ".Bio::KBase::Utilities::method()." method.\n");
 }
 
 1;

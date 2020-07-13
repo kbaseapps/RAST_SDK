@@ -11,8 +11,7 @@ use installed_clients::GenomeAnnotationAPIClient;
 use Storable qw(dclone);
 use File::Slurp;
 
-use lib "/kb/module/test";
-use testRASTutil;
+use RASTTestUtils;
 
 print "PURPOSE:\n";
 print "    1.  Test annotation of genetic code 25 for Mircea Podar. \n";
@@ -21,12 +20,12 @@ print "    2.  Test the Prodigal is using the -meta when the domain is 'Unknown'
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new ($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gaa = new installed_clients::GenomeAnnotationAPIClient($call_back_url);
+my $gaa = installed_clients::GenomeAnnotationAPIClient->new($call_back_url);
 
 my $assembly_obj_name = "GCA_000350285.1_OR1_genomic.fna";
 my $assembly_ref = prepare_assembly($assembly_obj_name);
@@ -47,7 +46,7 @@ lives_ok {
 	my $ret = &make_impl_call("RAST_SDK.annotate_genome", $params);
 	my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
 	my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
-    
+
 	print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
 	print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
 	print "OUTPUT SCIENTIFIC NAME = $genome_obj->{scientific_name}\n";

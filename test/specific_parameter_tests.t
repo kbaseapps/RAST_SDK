@@ -10,20 +10,21 @@ use File::Copy;
 use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
 use Storable qw(dclone);
-use Bio::KBase::kbaseenv;
+use Bio::KBase::KBaseEnv;
 
-use lib "/kb/module/test";
-use testRASTutil;
+use RASTTestUtils;
+
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new Workspace::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = new installed_clients::AssemblyUtilClient($call_back_url);
-my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
+my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
+my $su = installed_clients::kb_SetUtilitiesClient->new($call_back_url);
 
 print "    In debug mode, use a genome reference in CI/prod.\n";
 print "    Otherwise, load a genome in data dir. This takes more time but every user has access.\n";
@@ -45,7 +46,7 @@ if (exists $list{carson} && $list{carson} > 0) {
 	my $genome_obj_name = "Carsonella";
 
 	my $params={
-			"input_genome"=>$genome_ref, 
+			"input_genome"=>$genome_ref,
              "call_features_rRNA_SEED"=>'1',
              "call_features_tRNA_trnascan"=>'1',
              "annotate_proteins_similarity"=>'1',
@@ -127,7 +128,7 @@ if (exists $list{strepp} && $list{strepp} > 0) {
 	print "PURPOSE:\n";
 	print "    1.  Streptococcus pneumoniae is a test for the strep-pneumoniae specific repeat\n";
 	print "    2.  Streptococcus pneumoniae should also have SEED repeats\n";
-   
+
 	my $genome_obj_name = "Streptococcus_pneumoniae_D39";
 	my $genome_gbff_name = "Streptococcus_pneumoniae_D39.gbff";
 	my $genome_ref = "15792/103507/1";
@@ -154,7 +155,7 @@ if (exists $list{streps} && $list{streps} > 0) {
 	my $genome_obj_name = "Streptococcus_suis";
 	my $genome_gbff_name = "Streptococcus_suis.gbff";
 	my $genome_ref = '15792/60950/1';
-	
+
 	my $params={
 	     "input_genome"=>$genome_ref,
 	     "call_features_strep_suis_repeat"=>'1',
@@ -166,7 +167,7 @@ if (exists $list{streps} && $list{streps} > 0) {
 
 sub annotate {
 	my ($genome_obj_name,$genome_gbff_name, $genome_ref, $params) = @_;
-	
+
 	unless ($DEBUG eq 'Y')
 	{
 		my $tmp_genome_obj;
@@ -176,7 +177,7 @@ sub annotate {
 
 	my $num_func_in  = 0;
 	my $num_func_out = 0;
-	my %counts = ('num_new' => 0, 'num_diff' => 0, 
+	my %counts = ('num_new' => 0, 'num_diff' => 0,
 		'seleno' => 0, 'crispr' => 0, 'prophage' => 0, 'pyrro' => 0,'repeat' => 0);
 
 	lives_ok {
@@ -193,7 +194,7 @@ sub annotate {
 		print "number of returned features = ".scalar  @{$genome_obj->{features}}."\n";
 		print "number of returned non-coding features = ".scalar  @{$genome_obj->{non_coding_features}}."\n";
 		$num_func_out = scalar  @{$genome_obj->{features}} + @{$genome_obj->{non_coding_features}};
-	
+
 		for (my $i=0; $i < @{$genome_obj->{features}}; $i++) {
 			my $ftr = $genome_obj->{features}->[$i];
 			my $func      = defined($ftr->{function}) ? $ftr->{function} : "";
@@ -204,7 +205,7 @@ sub annotate {
 
 			if ($ftr->{ontology_terms}) {
 				#print Dumper $ftr->{ontology_terms}->{SSO};
-				my @roles = keys(%{$ftr->{ontology_terms}->{SSO}}); 
+				my @roles = keys(%{$ftr->{ontology_terms}->{SSO}});
 				foreach (@roles) {
 					$counts{seleno}++ if ($_ =~ /SSO:000009304/);
 					$counts{pyrro}++  if ($_ =~ /SSO:000009291/);
@@ -228,7 +229,7 @@ sub annotate {
 				$counts{repeat}++;
 			}
 		}
-	
+
 		print "**** Number of features post-annotation = $num_func_out\n";
 		$counts{num_new} = $num_func_out - $num_func_in;
 	} "Annotate $genome_obj_name";

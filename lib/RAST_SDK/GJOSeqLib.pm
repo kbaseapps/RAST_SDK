@@ -1,4 +1,4 @@
-package gjoseqlib;
+package RAST_SDK::GJOSeqLib;
 
 # This is a SAS component.
 
@@ -189,6 +189,7 @@ package gjoseqlib;
 #===============================================================================
 
 use strict;
+use warnings;
 use Carp;
 use Data::Dumper;
 
@@ -196,7 +197,7 @@ use Data::Dumper;
 
 our @aa_1_letter_order;  # Alpha by 1 letter
 our @aa_3_letter_order;  # PAM matrix order
-our @aa_n_codon_order;  
+our @aa_n_codon_order;
 our %genetic_code;
 our %genetic_code_with_U;
 our %amino_acid_codons_DNA;
@@ -631,15 +632,15 @@ sub nr_def_as_id_def_org
 {
     defined($_[0]) ? split_id_def_org( split /\001/, $_[0] ) : ();
 }
- 
+
 
 #
 #  @id_def_org = split_id_def_org( @id_def_org_lines );
 #
 sub split_id_def_org
 {
-    map { ! defined( $_ )                           ? ()              
-        : ! /^\s*\S/                                ? ()              
+    map { ! defined( $_ )                           ? ()
+        : ! /^\s*\S/                                ? ()
         : /^\s*(\S+)\s+(.*\S)\s+\[([^\[\]]+)\]\s*$/ ? [ $1, $2, $3 ]  # id def org
         : /^\s*(\S+)\s+\[([^\[\]]+)\]\s*$/          ? [ $1, '', $2 ]  # id     org
         : /^\s*(\S+)\s+(.*[^\]\s])\s*$/             ? [ $1, $2, '' ]  # id def
@@ -1144,7 +1145,7 @@ sub pack_alignment_by_mask
         or return ();
     $mask =~ tr/-/\000/;      # Allow '-' as a column to be removed
     $mask =~ tr/\000/\377/c;  # Make sure that everything not null is 0xFF
- 
+
     $_[0] && ( ref( $_[0] ) eq 'ARRAY' ) && @{$_[0]} && defined( $_[0]->[0] )
         or return ();
     my @seqs = ( ref( $_[0]->[0] ) eq 'ARRAY' ) ? @{$_[0] } : @_;
@@ -1174,7 +1175,7 @@ sub weight_alignment_by_mask
     my $mask = shift;
     defined $mask && ! ref( $mask ) && length( $mask )
         or return ();
- 
+
     $_[0] && ( ref( $_[0] ) eq 'ARRAY' ) && @{$_[0]} && defined( $_[0]->[0] )
         or return ();
     my @seqs = ( ref( $_[0]->[0] ) eq 'ARRAY' ) ? @{$_[0] } : @_;
@@ -1236,7 +1237,7 @@ sub gap_mask
 #
 #      $expanded = expand_sequence_by_mask( $seq, $mask )
 #
-#  The columns to be added can be marked by '-' or "\000" in the mask. 
+#  The columns to be added can be marked by '-' or "\000" in the mask.
 #
 #  Code note:
 #
@@ -1566,7 +1567,7 @@ sub to8bit {
 
 @aa_1_letter_order = qw( A C D E F G H I K L M N P Q R S T V W Y );  # Alpha by 1 letter
 @aa_3_letter_order = qw( A R N D C Q E G H I L K M F P S T W Y V );  # PAM matrix order
-@aa_n_codon_order  = qw( L R S A G P T V I C D E F H K N Q Y M W );  
+@aa_n_codon_order  = qw( L R S A G P T V I C D E F H K N Q Y M W );
 
 %genetic_code = (
 
@@ -2630,7 +2631,7 @@ sub oligomer_similarity
     map { my $n = $_;
           my $ttl = 0;
           for ( grep { $_ >= $n } keys %cnt ) { $ttl += $cnt{$_} * ( $_ - ($n-1) ) }
-          my $nmax = length( $xor ) - ($n-1); 
+          my $nmax = length( $xor ) - ($n-1);
           $nmax > 0 ? $ttl / $nmax : undef;
         } ( $min .. $max );
 }

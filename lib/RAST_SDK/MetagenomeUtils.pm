@@ -1,6 +1,4 @@
-# -*- perl -*-
-
-package metag_utils;
+package RAST_SDK::MetagenomeUtils;
 
 ################################################################################
 # This module is built to handle the annotation of Assembly
@@ -12,9 +10,9 @@ package metag_utils;
 use strict;
 use warnings;
 
-use Bio::KBase::kbaseenv;
+use Bio::KBase::KBaseEnv;
 use Config::Simple;
-use Data::Dumper qw(Dumper);
+use Data::Dumper;
 use File::Spec::Functions qw(catfile splitpath);
 use File::Path qw(make_path);
 use File::Copy;
@@ -38,8 +36,7 @@ use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
 use installed_clients::kb_SetUtilitiesClient;
 
-
-require 'gjoseqlib.pm';
+use RAST_SDK::GJOSeqLib;
 
 #-------------------------Reference from prodigal command line-------------------
 #Usage:  prodigal [-a trans_file] [-c] [-d nuc_file] [-f output_type]
@@ -204,11 +201,11 @@ sub _parse_translation {
     my ($fh_trans, $trans_id, $comment, $seq);
     $fh_trans = $self->_openRead($trans_file);
 
-    while (($trans_id, $comment, $seq) = &gjoseqlib::read_next_fasta_seq($fh_trans)) {
+    while (($trans_id, $comment, $seq) = RAST_SDK::GJOSeqLib::read_next_fasta_seq($fh_trans)) {
         my ($contig_id) = ($trans_id =~ m/^(\S+)_\d+$/o);
-        my ($left, $right, $strand, $left_trunc, $right_trunc) 
+        my ($left, $right, $strand, $left_trunc, $right_trunc)
             = ($comment =~ m/^\#\s+(\d+)\s+\#\s+(\d+)\s+\#\s+(-?1)\s+\#.*partial=([01])([01])/o);
-	
+
         if ($contig_id && $left && $right && $strand && defined($left_trunc) && defined($right_trunc)) {
             $seq =~ s/\*$//o;
             $strand = ($strand == 1) ? q(+) : q(-);
@@ -243,7 +240,7 @@ sub _parse_sco {
             $contig_id = $words[0];
             next;
         }
-        
+
         if ($line =~ m/^\# Model Data/o) {
             next;
         }
@@ -305,7 +302,7 @@ sub _prodigal_gene_call {
                                                   $out_file,
                                                   $out_type,
                                                   $mode);
- 
+
     my @prodigal_out;
     if ($self->_run_prodigal(@prodigal_cmd) == 0) {
         print "Prodigal finished run, files are written into:\n$out_file\n$trans\n$nuc\n";
@@ -344,7 +341,7 @@ sub _prodigal_gene_call {
 sub _get_fasta_from_assembly {
     my ($self, $assembly_ref) = @_;
 
-    my $au = new installed_clients::AssemblyUtilClient($self->{call_back_url});
+    my $au = installed_clients::AssemblyUtilClient->new($self->{call_back_url});
     my $output = {};
     eval {
         $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
@@ -388,7 +385,7 @@ sub _write_gff_from_ama {
     }
 
     my $gff_filename = '';
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+    my $gfu = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     eval {
         my $gff_result = $gfu->metagenome_to_gff({"metagenome_ref" => $genome_ref});
 
@@ -443,7 +440,7 @@ sub _save_metagenome {
     print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($self->{call_back_url});
+    my $gfu = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my $annotated_metag = {};
     eval {
         $annotated_metag = $gfu->ws_obj_gff_to_metagenome ({
@@ -573,7 +570,7 @@ sub _run_rast_annotation {
 
     my $rasted_gn = {};
     eval {
-	#my $rast_client = new installed_clients::GenomeAnnotationClient($self->{call_back_url});
+	#my $rast_client = installed_clients::GenomeAnnotationClient->new($self->{call_back_url});
 	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
             {stages => [{name => "annotate_proteins_kmer_v2",
@@ -896,7 +893,7 @@ sub _generate_metag_report {
                                                    \%subsys_info,
                                                    $func_tab);
 
-    my $kbr = new installed_clients::KBaseReportClient($self->{call_back_url});
+    my $kbr = installed_clients::KBaseReportClient->new($self->{call_back_url});
     my $report_info = $kbr->create_extended_report(
         {"message"=>$report_message,
          "objects_created"=>[{"ref"=>$ama_ref, "description"=>"RAST re-annotated metagenome"}],
@@ -1267,7 +1264,7 @@ sub _extract_cds_sequences_from_fasta {
 sub _translate_gene_to_protein_sequences {
     my $self = shift;
     my $gene_seqs = shift;
-    my $codon_table  = Bio::Tools::CodonTable -> new ( -id => 'protein' );
+    my $codon_table  = Bio::Tools::CodonTable->new( -id => 'protein' );
 
     my %protein_seqs = ();
     foreach my $gene (sort keys %$gene_seqs){
@@ -1329,7 +1326,7 @@ sub rast_metagenome {
     my($inparams) = @_;
 
     print "rast_metagenome input parameter=\n". Dumper($inparams). "\n";
-    
+
     my $params = $self->_check_annotation_params_metag($inparams);
     my $input_obj_ref = $params->{object_ref};
 
@@ -1536,8 +1533,8 @@ sub bulk_rast_metagenomes {
 
     # TODO: Using whatever AMASet function(s) generate and save the AMASet object,
     #       and then return that object's ref
-    # my $amaset_ref = Bio::KBase::kbaseenv::su_client()->KButil_Build_AMASet({
-    my $kbutil = new installed_clients::kb_SetUtilitiesClient($self->{call_back_url});
+    # my $amaset_ref = Bio::KBase::KBaseEnv::su_client()->KButil_Build_AMASet({
+    my $kbutil = installed_clients::kb_SetUtilitiesClient->new($self->{call_back_url});
     my $kbutil_output = $kbutil->KButil_Build_AMASet({
         workspace_name => $ws,
         input_refs => $amas,
@@ -1572,7 +1569,7 @@ sub doInitialization {
 
     die "no workspace-url defined" unless $self->{ws_url};
 
-    $self->{ws_client} = new installed_clients::WorkspaceClient(
+    $self->{ws_client} = installed_clients::WorkspaceClient->new(
                              $self->{ws_url}, token => $self->{_token});
 
     return 1;

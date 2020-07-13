@@ -10,12 +10,12 @@ use installed_clients::GenomeFileUtilClient;
 local $| = 1;
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $ws_url = $config->{"workspace-url"};
 my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
 
 sub get_ws_name {
     if (!defined($ws_name)) {
@@ -75,7 +75,7 @@ sub prepare_assembly {
     my $fasta_temp_path = "/kb/module/work/tmp/$assembly_obj_name";
     copy $fasta_data_path, $fasta_temp_path;
     my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-    my $au = new installed_clients::AssemblyUtilClient($call_back_url);
+    my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
     my $ret = $au->save_assembly_from_fasta({
         file => {path => $fasta_temp_path},
         workspace_name => get_ws_name(),
@@ -95,7 +95,7 @@ sub prepare_gbff {
 	my $temp_path = "/kb/module/work/tmp/$genome_gbff_name";
 	copy $genome_gbff_path, $temp_path;
 
-	print "***** Loading and Saving the Genome Object *****\n";  
+	print "***** Loading and Saving the Genome Object *****\n";
 	my $genome_obj = $gfu->genbank_to_genome({
 		workspace_name => get_ws_name(),
 		genome_name => $genome_obj_name,
@@ -110,7 +110,7 @@ sub prepare_gbff {
 	my $genome_ref = $genome_obj->{'genome_ref'};
 	return ($genome_obj, $genome_ref);
 }
- 
+
 sub get_genome {
 	my $genome_ref = shift;
 	my $orig_genome = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};

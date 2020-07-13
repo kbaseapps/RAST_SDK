@@ -11,24 +11,22 @@ use installed_clients::WorkspaceClient;
 use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
 
-use strict;
-use_ok "metag_utils";
-use testRASTutil;
+use RASTTestUtils;
 
+use_ok "RAST_SDK::MetagenomeUtils";
 
 ## global variables
 my $token = $ENV{'KB_AUTH_TOKEN'};
 my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
+my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 my $auth_token = Bio::KBase::AuthToken->new(
         token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
 my $ws_url = $config->{"workspace-url"};
 my $ws = get_ws_name();
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $ctx = LocalCallContext->new($token, $auth_token->user_id);
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
-
 
 my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
@@ -44,12 +42,11 @@ my $fasta_scrt = 'fasta_file.fa';
 my $gff_scrt = 'gff_file.gff';
 my $prodigal_cmd = '/kb/runtime/bin/prodigal';
 
-my $rast_impl = new RAST_SDK::RAST_SDKImpl();
-my $mgutil = new metag_utils($config, $ctx);
+my $rast_impl = RAST_SDK::RAST_SDKImpl->new();
+my $mgutil    = RAST_SDK::MetagenomeUtils->new( $config, $ctx );
 
-my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
-my $rast_metag_dir = $mgutil->_create_rast_subdir($scratch, "metag_annotation_dir_");
-
+my $scratch      = $config->{ 'scratch' };    #'/kb/module/work/tmp';
+my $rast_metag_dir = $mgutil->_create_rast_subdir( $scratch, "metag_annotation_dir_" );
 
 sub generate_metagenome {
     my($ws, $metag_name, $fasta, $gff) = @_;
@@ -59,7 +56,7 @@ sub generate_metagenome {
     copy($fasta, $fasta_path) || croak "Copy file failed: $!\n";
     copy($gff, $gff_path) || croak "Copy file failed: $!\n";
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+    my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
     my $mg = $gfu->fasta_gff_to_metagenome({
         "gff_file" => {'path' => $gff_path},
         "fasta_file" => {'path' => $fasta_path},
@@ -762,7 +759,7 @@ subtest '_save_metagenome_appdev' => sub {
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
-    
+
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
                        $ws, $out_name, $obj2, $gff2);
