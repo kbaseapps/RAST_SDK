@@ -4,6 +4,7 @@ use warnings;
 use Carp qw(cluck);
 use Config::Simple;
 use DateTime;
+use Data::UUID;
 
 our $config = undef;
 our $ctx = undef;

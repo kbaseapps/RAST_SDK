@@ -16,18 +16,21 @@ use RAST_SDK::RAST_SDKImpl;
 use_ok "RAST_SDK::AnnotationUtils";
 
 ## global variables
-my $token = $ENV{'KB_AUTH_TOKEN'};
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
-my $auth_token = Bio::KBase::AuthToken->new(
-        token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
-my $ws_url = $config->{"workspace-url"};
-my $ws = get_ws_name();
-my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
-my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $ctx = LocalCallContext->new($token, $auth_token->user_id);
-$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
+my $token       = $ENV{ 'KB_AUTH_TOKEN' };
+my $config_file = $ENV{ 'KB_DEPLOYMENT_CONFIG' };
+my $config      = Config::Simple->new( $config_file )->get_block( 'RAST_SDK' );
+my $auth_token  = Bio::KBase::AuthToken->new(
+    token         => $token,
+    ignore_authrc => 1,
+    auth_svc      => $config->{ 'auth-service-url' }
+);
 
+my $ws_client     = RASTTestUtils::get_ws_client();
+my $ws_name       = RASTTestUtils::get_ws_name();
+
+my $call_back_url = $ENV{ SDK_CALLBACK_URL };
+my $ctx           = LocalCallContext->new( $token, $auth_token->user_id );
+$RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
 my $tmp_write_dir = 'data/write_tmp';  ## For saving temporary test files
 
@@ -60,8 +63,8 @@ my $trans_file = 'data/metag_test/translationfile';
 my %trans_tab;
 my $sco_tab = [];
 
-my $obj_Echinacea = "55141/242/1";  #prod genome
-my $obj_Echinacea_ann = "55141/247/1";  #prod genome
+my $obj_Echinacea = "55141/242/1";  # prod genome
+my $obj_Echinacea_ann = "55141/247/1";  # prod genome
 my $obj_Ecoli = "55141/212/1";  # prod genome
 my $obj_Ecoli_ann = "55141/252/1";  # prod genome
 my $obj_asmb = "55141/243/1";  # prod assembly
@@ -73,7 +76,18 @@ my $obj3 = "55141/77/1";  # prod KBaseGenomeAnnotations.Assembly
 my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1
 my $obj_65386_2 = '65386/12/1';
 
-my $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
+my $asmb_fasta;
+
+lives_ok {
+    $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
+} 'Got FASTA from saved assembly file';
+
+unless ( $asmb_fasta ) {
+    fail 'Could not set up test data; skipping all tests';
+    RASTTestUtils::clean_up();
+    done_testing;
+    exit 1;
+}
 
 #####RAST_SDK Module test objects #####
 my $obj2_1 = "63171/315/1";
@@ -154,7 +168,7 @@ subtest '_get_contigs_from_fastafile' => sub {
 subtest '_get_genome' => sub {
     my $parameters = {
          output_genome_name => 'test_out_gn_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_Ecoli
     };
 
@@ -171,7 +185,7 @@ subtest '_get_genome' => sub {
 subtest '_get_contigs' => sub {
     my $parameters = {
          output_genome_name => 'test_out_gn_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_Ecoli
     };
 
@@ -235,7 +249,7 @@ subtest '_set_parameters_by_input' => sub {
     $parameters01 = {
          output_genome_name => 'test_out_gn_name01',
          scientific_name => 'Clostridium botulinum',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_65386_1
     };
     # 01. creating default genome object
@@ -255,7 +269,7 @@ subtest '_set_parameters_by_input' => sub {
     my $expected_params01 = {
           scientific_name => $parameters01->{scientific_name},
           output_genome_name => $parameters01->{output_genome_name},
-          output_workspace => $ws,
+          output_workspace => $ws_name,
           object_ref => $parameters01->{object_ref},
           genetic_code => 11,
           domain => 'Bacteria'
@@ -295,7 +309,7 @@ subtest '_set_parameters_by_input' => sub {
     $parameters02 = {
          output_genome_name => 'test_out_gn_name02',
          scientific_name => 'Methanosarcina acetivorans C2A',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_65386_2
     };
 
@@ -316,7 +330,7 @@ subtest '_set_parameters_by_input' => sub {
     my $expected_params02 = {
           scientific_name => $parameters02->{scientific_name},
           output_genome_name => $parameters02->{output_genome_name},
-          output_workspace => $ws,
+          output_workspace => $ws_name,
           object_ref => $parameters02->{object_ref},
           genetic_code => 11,
           domain => 'Archaea'
@@ -348,7 +362,7 @@ subtest '_set_parameters_by_input' => sub {
     # a genome object
     $parameters1 = {
          output_genome_name => 'test_out_gn_name1',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_Ecoli
     };
     # 1. creating default genome object
@@ -368,7 +382,7 @@ subtest '_set_parameters_by_input' => sub {
     my $expected_params1 = {
           'scientific_name' => 'Escherichia coli str. K-12 substr. MG1655',
           'output_genome_name' => $parameters1->{output_genome_name},
-          'output_workspace' => $ws,
+          'output_workspace' => $ws_name,
           'object_ref' => $parameters1->{object_ref},
           'genetic_code' => 11,
           'domain' => 'Bacteria'
@@ -403,7 +417,7 @@ subtest '_set_parameters_by_input' => sub {
     # an assembly object
     $parameters2 = {
          output_genome_name => 'test_out_gn_name2',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_asmb
     };
     # 2 creating default genome object
@@ -427,7 +441,7 @@ subtest '_set_parameters_by_input' => sub {
           'output_genome_name' => $parameters2->{output_genome_name},
           'domain' => undef,
           'scientific_name' => undef,
-          'output_workspace' => $ws
+          'output_workspace' => $ws_name
     };
     lives_ok {
         ($rast_ref, $inputgenome2) = $annoutil->_set_parameters_by_input(
@@ -1087,7 +1101,7 @@ subtest '_build_workflows' => sub {
     # a genome object from https://narrative.kbase.us/narrative/ws.65386.obj.104
     my $params0 = {
          output_genome_name => 'build_gcwf_name0',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_65386_1
     };
     lives_ok {
@@ -1102,7 +1116,7 @@ subtest '_build_workflows' => sub {
 
     my $params1 = {
          output_genome_name => 'build_gcwf_gn_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_Ecoli
     };
 
@@ -1119,7 +1133,7 @@ subtest '_build_workflows' => sub {
 
     my $params2 = {
          output_genome_name => 'build_gcwf_asmb_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_asmb
     };
     lives_ok {
@@ -1169,7 +1183,7 @@ subtest '_run_rast_genecalls' => sub {
     # a genome object from https://narrative.kbase.us/narrative/ws.65386.obj.104
     my $params0 = {
          output_genome_name => 'build_gcwf_name0',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_65386_1
     };
     my ($rast_ref0, $gc_gn0);
@@ -1182,7 +1196,7 @@ subtest '_run_rast_genecalls' => sub {
     # a genome object
     my $params1 = {
          output_genome_name => 'build_gcwf_gn_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_Ecoli
     };
     my ($rast_ref1, $gc_gn1);
@@ -1195,7 +1209,7 @@ subtest '_run_rast_genecalls' => sub {
     # an assembly object
     my $params2 = {
          output_genome_name => 'build_gcwf_asmb_name',
-         output_workspace => $ws,
+         output_workspace => $ws_name,
          object_ref => $obj_asmb
     };
     my ($rast_ref2, $gc_gn2);
@@ -1215,7 +1229,7 @@ subtest 'Impl_annotate_genome' => sub {
 
     my $parms={
         "input_contigset" => $assembly_obj_name,
-        "workspace" => $ws,
+        "workspace" => $ws_name,
         "output_genome" => 'Acidilobus_sp_7',
         "scientific_name" => 'Acidilobus sp 7',
         "domain" => 'A',
@@ -1295,7 +1309,7 @@ subtest '_check_annotation_params' => sub {
         '_check_annotation_params dies with an empty hashref';
 
     throws_ok {
-        my $p = {output_workspace => $ws,
+        my $p = {output_workspace => $ws_name,
                  output_genome_name => $outgn_name};
         print "input parameter=\n". Dumper($p);
         $annoutil->_check_annotation_params($p)
@@ -1303,7 +1317,7 @@ subtest '_check_annotation_params' => sub {
         '_check_annotation_params dies with no object_ref';
 
     throws_ok {
-        my $p = {output_workspace => $ws,
+        my $p = {output_workspace => $ws_name,
                  output_genome_name => $outgn_name,
                  object_ref => ''};
         print "input parameter=\n". Dumper($p);
@@ -1320,7 +1334,7 @@ subtest '_check_annotation_params' => sub {
 
     throws_ok {
         $annoutil->_check_annotation_params(
-            {workspace => $ws,
+            {workspace => $ws_name,
              output_genome_name => $outgn_name,
              obect_ref => $obj})
     } qr/$req1/,
@@ -1336,7 +1350,7 @@ subtest '_check_annotation_params' => sub {
 
     lives_ok {
         $annoutil->_check_annotation_params(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_genome_name => $outgn_name,
              object_ref => 'abc/1/2'});
     } '_check_annotation_params object_ref check ok';
@@ -1350,20 +1364,20 @@ subtest '_check_annotation_params' => sub {
 
     # _check_annotation_params passed
     my $expected = {
-             output_workspace => $ws,
+             output_workspace => $ws_name,
              output_genome_name => $outgn_name,
              object_ref => '456/1/2'};
     my $set_default_ok = '_check_annotation_params sets the default value for output_genome_name.';
 
     my $ret = $annoutil->_check_annotation_params(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_genome_name => undef,
              object_ref => '456/1/2'});
     ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
         'When undefined, '.$set_default_ok);
 
     $ret = $annoutil->_check_annotation_params(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_genome_name => '',
              object_ref => '456/1/2'});
     ok ($ret->{output_genome_name} eq $expected->{output_genome_name},
@@ -1546,7 +1560,7 @@ subtest 'anno_utils_rast_genome' => sub {
     $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
 
     throws_ok {
@@ -1556,7 +1570,7 @@ subtest 'anno_utils_rast_genome' => sub {
     $parms = {
         "object_ref" => $obj_Echinacea,
         "output_genome_name" => "rasted_Echinace_prod",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
 
     throws_ok {
@@ -1566,7 +1580,7 @@ subtest 'anno_utils_rast_genome' => sub {
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
 
     lives_ok {
@@ -1583,7 +1597,7 @@ subtest 'Impl_rast_genome_assembly' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_genome",
-        "output_workspace" => $ws,
+        "output_workspace" => $ws_name,
         "create_report" => 1
     };
     my $rast_ret;
@@ -1596,7 +1610,7 @@ subtest 'Impl_rast_genome_assembly' => sub {
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
@@ -1878,23 +1892,6 @@ subtest 'annoutil_uniq_functions' => sub {
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
 
+RASTTestUtils::clean_up();
+
 done_testing();
-
-
-my $err = undef;
-if ($@) {
-    $err = $@;
-}
-eval {
-    if (defined($ws)) {
-        $ws_client->delete_workspace({workspace => $ws});
-        print("Test workspace was deleted\n");
-    }
-};
-if (defined($err)) {
-    if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
-        die("Error while running tests: " . $err->trace->as_string);
-    } else {
-        die $err;
-    }
-}

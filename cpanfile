@@ -9,5 +9,5 @@ requires 'Test::Most', '>= 0.35';
 requires 'Test::Compile', '>= 2.3.1';
 requires 'Text::Trim', '>= 1.03';
 requires 'URI::Encode', '>= 1.1.1';
-requires 'UUID::Random', '>= 0.04';
+requires 'Data::UUID', '>= 1.226';
 requires 'WWW::Mechanize', '>= 1.96';

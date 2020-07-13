@@ -26,6 +26,7 @@ use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
 use Data::Structure::Util qw( unbless );
+use Data::UUID;
 
 use GenomeTypeObject;
 
@@ -34,7 +35,6 @@ use Bio::KBase::Utilities;
 use Bio::KBase::Exceptions;
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 
-use lib qw( installed_clients );
 use installed_clients::GenomeAnnotationAPIClient;
 use installed_clients::GenomeAnnotationClient;
 use installed_clients::AssemblyUtilClient;
@@ -2310,14 +2310,9 @@ sub _fetch_object_info {
     }
 }
 
-# create a 12 char string unique enough here
+# create a unique ID
 sub _create_uuid {
-    my $self = shift;
-
-    my $str_uuid = qx(uuidgen);
-    chomp $str_uuid;
-    $str_uuid = substr($str_uuid, -12);
-    return $str_uuid;
+    return Data::UUID->new()->create_str();
 }
 
 ##----FILE IO ----##

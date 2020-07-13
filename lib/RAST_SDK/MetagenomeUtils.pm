@@ -25,6 +25,7 @@ use Encode qw(encode decode);
 use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
+use Data::UUID;
 
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
@@ -938,14 +939,9 @@ sub _fetch_object_info {
     return $obj_info;
 }
 
-# create a 12 char string unique enough here
+# create a unique ID
 sub _create_uuid {
-    my $self = shift;
-
-    my $str_uuid = qx(uuidgen);
-    chomp $str_uuid;
-    $str_uuid = substr($str_uuid, -12);
-    return $str_uuid;
+    return Data::UUID->new()->create_str();
 }
 
 ##----FILE IO ----##

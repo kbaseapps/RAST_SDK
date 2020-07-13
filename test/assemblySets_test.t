@@ -1,172 +1,131 @@
-use strict;
-use Data::Dumper;
-use Test::More;
-use Test::Exception;
-use Config::Simple;
-use Time::HiRes qw(time);
-use JSON;
-use File::Copy;
-use installed_clients::WorkspaceClient;
-use installed_clients::AssemblyUtilClient;
-use installed_clients::GenomeFileUtilClient;
-use installed_clients::kb_SetUtilitiesClient;
-use Storable qw(dclone);
-use Bio::KBase::KBaseEnv;
-
+use Test::Most;
 use RASTTestUtils;
-
-print "PURPOSE:\n";
-print "    1.  Test annotate Multiple Assemblies. \n";
-print "        Test two assemblies, an assemblySet, an asseblySet plus singleton, and redundant assemblies\n";
-print "    2.  Minimum test for tRNA\n";
-print "    3.  In debug mode, using a genome reference in CI/prod.\n";
-print "         Otherwise, load an assembly in data dir. This takes more time but every user has access.\n";
-print "         For this reason, the tests aren't for a specific number of changes or names.\n\n";
-
-local $| = 1;
-my $token = $ENV{'KB_AUTH_TOKEN'};
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
-my $ws_url = $config->{"workspace-url"};
-my $ws_name = undef;
-my $ws_client = installed_clients::WorkspaceClient->new($ws_url,token => $token);
-my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $au = installed_clients::AssemblyUtilClient->new($call_back_url);
-my $gfu = installed_clients::GenomeFileUtilClient->new($call_back_url);
-my $su = installed_clients::kb_SetUtilitiesClient->new($call_back_url);
-
+use Data::Dumper::Concise;
+use feature qw( say );
 
 my $DEBUG = 'N';
-my $assembly_obj_name1 = "Dactylopius coccus";
-my $assembly_ref1 = "40046/5/1";
-   $assembly_ref1 = "40619/11/1";
-my $assembly_obj_name2 = "Drosophila melanogaster";
-my $assembly_ref2 = "40046/6/1";
-   $assembly_ref2 = "40619/39/1";
-my $assembly_obj_name3 = "Nomada ferruginata";
-my $assembly_ref3 = "40046/7/1";
-my $genome_set_name = "New_GenomeSet";
 
+unless ( $DEBUG eq 'N' ) {
 
-if ($DEBUG ne 'Y') {
-	$assembly_obj_name1 = "bogus.fna";
-	$assembly_ref1 = prepare_assembly($assembly_obj_name1);
-
-	$assembly_obj_name2 = "bogus2.fna";
-	$assembly_ref2 = prepare_assembly($assembly_obj_name2);
-
-	$assembly_obj_name3 = "bogus2.fna";
-	$assembly_ref3 = prepare_assembly($assembly_obj_name2);
+    # skip all the tests
+    ok 'skipping tests in assemblySet.t';
+    done_testing;
+    exit 0;
 }
-my $params={"input_genomes"=>'',
-             "call_features_tRNA_trnascan"=>'1',
-			"output_genome"=>$genome_set_name
-           };
+
+say join "\n", (
+    "PURPOSE:",
+    "  1.  Test annotate Multiple Assemblies.",
+    "      Test two assemblies, an assemblySet, an asseblySet plus singleton, and redundant assemblies",
+    "  2.  Minimum test for tRNA",
+    "  3.  In debug mode, using a genome reference in CI/prod.",
+    "      Otherwise, load an assembly in data dir. This takes more time but every user has access.",
+    "      For this reason, the tests aren't for a specific number of changes or names.",
+);
+
+my $ws_client     = RASTTestUtils::get_ws_client();
+my $ws_name       = RASTTestUtils::get_ws_name();
+my $su            = RASTTestUtils::get_setutils_client();
+
+my $assembly_obj_name1 = "Dactylopius coccus";
+my $assembly_ref1      = "40046/5/1";
+$assembly_ref1 = "40619/11/1";
+my $assembly_obj_name2 = "Drosophila melanogaster";
+my $assembly_ref2      = "40046/6/1";
+$assembly_ref2 = "40619/39/1";
+my $assembly_obj_name3 = "Nomada ferruginata";
+my $assembly_ref3      = "40046/7/1";
+my $genome_set_name    = "New_GenomeSet";
+
+if ( $DEBUG ne 'Y' ) {
+    $assembly_obj_name1 = "bogus.fna";
+    $assembly_ref1      = RASTTestUtils::prepare_assembly( $assembly_obj_name1 );
+
+    $assembly_obj_name2 = "bogus2.fna";
+    $assembly_ref2      = RASTTestUtils::prepare_assembly( $assembly_obj_name2 );
+
+    $assembly_obj_name3 = "bogus2.fna";
+    $assembly_ref3      = RASTTestUtils::prepare_assembly( $assembly_obj_name2 );
+}
+
+my $params = {
+    "input_genomes"               => '',
+    "call_features_tRNA_trnascan" => '1',
+    "output_genome"               => $genome_set_name
+};
 
 #
-#	Set up the needed AssemblySet
+#   Set up the needed AssemblySet
 #
 my $assembly_set_name = 'new_assembly_set';
-my $assembly_set = $su->KButil_Build_AssemblySet({
-     	workspace_name => get_ws_name(),
-      	input_refs => [$assembly_ref1,$assembly_ref2],
-      	output_name => $assembly_set_name,
-      	desc => 'Test AssemblySet Description'
-  	});
+my $assembly_set      = $su->KButil_Build_AssemblySet( {
+    workspace_name => $ws_name,
+    input_refs     => [ $assembly_ref1, $assembly_ref2 ],
+    output_name    => $assembly_set_name,
+    desc           => 'Test AssemblySet Description'
+} );
 
 #
-#	TEST TWO ASSEMBLIES -
+#   TEST TWO ASSEMBLIES -
 #
-print "ASSEMBLYREF1 = $assembly_ref1 and ASSEMBLYREF2 = $assembly_ref2\n";
-lives_ok {
-	if ($DEBUG ne 'Y') {
-		my $genome_refs  = [$assembly_ref1,$assembly_ref2];
-		$params->{input_genomes} = $genome_refs;
-		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $genome_refs, $params);
+say "ASSEMBLYREF1 = $assembly_ref1 and ASSEMBLYREF2 = $assembly_ref2";
 
-		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
-		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes == 2, "Input: Two Assemblies. Output: $number_genomes in output GenomeSet");
-	} else {
-		1;
-	}
-} "Two Assemblies";
+subtest 'Two assemblies' => sub {
 
-#
-#	BUILD AND TEST A ASSEMBLY SET
-#
+    my $genome_refs = [ $assembly_ref1, $assembly_ref2 ];
+    $params->{ input_genomes } = $genome_refs;
+    my ( $genome_set_obj ) = RASTTestUtils::submit_set_annotation(
+        $genome_set_name, $genome_refs, $params
+    );
 
-lives_ok {
-	if ($DEBUG ne 'Y') {
-		my $gs = get_ws_name() . "/" . $assembly_set_name ;
-		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-		$params->{input_genomes} = [$newref];
-
-		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
-		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
-		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes == 2, "Input: AssemblySet with two. Output: $number_genomes in output GenomeSet");
-	} else {
-		1;
-	}
-} "AssemblySet with two Assemblies";
-
-#
-#	BUILD AND TEST AN ASSEMBLY SET PLUS ANOTHER ASSEMBLY
-#
-
-lives_ok {
-	if ($DEBUG ne 'Y') {
-		my $gs = get_ws_name() . "/" . $assembly_set_name ;
-		my $info = $ws_client->get_objects([{ref=>$gs}])->[0]->{info};
-		my $newref = $info->[6]."/".$info->[0]."/".$info->[4];
-		$params->{input_genomes} = [$newref,$assembly_ref3];
-
-		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
-		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
-		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes == 3, "Input: AssemblySet plus one. Output: $number_genomes in output GenomeSet");
-
-	} else {
-		1;
-	}
-} "AssemblySet plus single assembly";
-
-#
-#	TEST REDUNDANT ASSEMBLIES -
-#
-lives_ok {
-	if ($DEBUG ne 'Y') {
-		$params->{input_genomes} = [$assembly_ref1,$assembly_ref1];
-		my ($genome_set_obj) = &submit_set_annotation($genome_set_name, $params->{input_genomes}, $params);
-		my $data = $ws_client->get_objects([{ref=>$genome_set_obj}])->[0]->{refs};
-		my $number_genomes = scalar @{ $data};
-    	ok($number_genomes = 1, "Input: Two redundant. Output: $number_genomes in output GenomeSet");
-
-	} else {
-		1;
-	}
-} "Redundant Assemblies";
-
-done_testing(8);
-
-my $err = undef;
-if ($@) {
-    $err = $@;
-}
-eval {
-    if (defined($ws_name)) {
-        $ws_client->delete_workspace({workspace => $ws_name});
-        print("Test workspace was deleted\n");
-    }
+    my $data = $ws_client->get_objects( [ { ref => $genome_set_obj } ] )->[ 0 ]{ refs };
+    ok @$data == 2, "Correct number of genomes in output set"
+        or diag explain $data;
 };
-if (defined($err)) {
-    if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
-        die("Error while running tests: " . $err->trace->as_string);
-    } else {
-        die $err;
-    }
-}
+
+subtest 'AssemblySet with two Assemblies' => sub {
+
+    my $gs     = $ws_name . "/" . $assembly_set_name;
+    my $info   = $ws_client->get_objects( [ { ref => $gs } ] )->[ 0 ]{ info };
+    my $newref = $info->[ 6 ] . "/" . $info->[ 0 ] . "/" . $info->[ 4 ];
+    $params->{ input_genomes } = [ $newref ];
+
+    my ( $genome_set_obj ) = RASTTestUtils::submit_set_annotation( $genome_set_name,
+        $params->{ input_genomes }, $params );
+    my $data = $ws_client->get_objects( [ { ref => $genome_set_obj } ] )->[ 0 ]{ refs };
+    ok @$data == 2, "Correct number of genomes in output set"
+        or diag explain $data;
+};
+
+subtest "AssemblySet plus single assembly" => sub {
+
+    my $gs     = $ws_name . "/" . $assembly_set_name;
+    my $info   = $ws_client->get_objects( [ { ref => $gs } ] )->[ 0 ]{ info };
+    my $newref = $info->[ 6 ] . "/" . $info->[ 0 ] . "/" . $info->[ 4 ];
+    $params->{ input_genomes } = [ $newref, $assembly_ref3 ];
+
+    my ( $genome_set_obj ) = RASTTestUtils::submit_set_annotation(
+        $genome_set_name, $params->{ input_genomes }, $params
+    );
+    my $data = $ws_client->get_objects( [ { ref => $genome_set_obj } ] )->[ 0 ]{ refs };
+    ok @$data == 3,"Correct number of genomes in output set"
+        or diag explain $data;
+
+};
+
+subtest 'Redundant assemblies' => sub {
+
+    $params->{ input_genomes } = [ $assembly_ref1, $assembly_ref1 ];
+    my ( $genome_set_obj )     = RASTTestUtils::submit_set_annotation(
+        $genome_set_name, $params->{ input_genomes }, $params
+    );
+    my $data = $ws_client->get_objects( [ { ref => $genome_set_obj } ] )->[ 0 ]{ refs };
+    ok @$data == 1, "Correct number of genomes in output set"
+        or diag explain $data;
+};
+
+RASTTestUtils::clean_up();
+
+done_testing;
 
 
