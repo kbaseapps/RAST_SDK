@@ -6,72 +6,81 @@ use Carp qw(croak);
 use File::Compare;
 use Config::Simple;
 use Bio::KBase::AuthToken;
-
-use installed_clients::WorkspaceClient;
-use installed_clients::GenomeFileUtilClient;
 use RAST_SDK::RAST_SDKImpl;
+use Try::Tiny;
+use RASTTestUtils;
 
-use strict;
-use_ok "metag_utils";
-use testRASTutil;
-
+use_ok "RAST_SDK::MetagenomeUtils";
 
 ## global variables
-my $token = $ENV{'KB_AUTH_TOKEN'};
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-my $auth_token = Bio::KBase::AuthToken->new(
-        token => $token, ignore_authrc => 1, auth_svc=>$config->{'auth-service-url'});
-my $ws_url = $config->{"workspace-url"};
-my $ws = get_ws_name();
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $token       = $ENV{ 'KB_AUTH_TOKEN' };
+my $config_file = $ENV{ 'KB_DEPLOYMENT_CONFIG' };
+my $config      = Config::Simple->new( $config_file )->get_block( 'RAST_SDK' );
+my $auth_token  = Bio::KBase::AuthToken->new(
+    token         => $token,
+    ignore_authrc => 1,
+    auth_svc      => $config->{ 'auth-service-url' } );
+
+my $ws_client     = RASTTestUtils::get_ws_client();
+my $ws_name       = RASTTestUtils::get_ws_name();
+
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $ctx = LocalCallContext->new($token, $auth_token->user_id);
+my $ctx           = LocalCallContext->new( $token, $auth_token->user_id );
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
+my $gbff_file     = 'data/Clostridium_botulinum.gbff';
 
-my $gbff_file = 'data/Clostridium_botulinum.gbff';
+my $out_name      = 'annotated_metag';
+my $outgn_name    = 'rast_annotated_genome';
+my $fasta1        = 'data/short_one.fa';
+my $fasta3        = 'data/GCA_000350285.1_OR1_genomic.fna';
+my $fasta4        = 'data/metag_test/Test_v1.0.fa';
+my $gff1          = 'data/short_one.gff';
+my $fasta2        = 'data/metag_test/59111.assembled.fna';
+my $gff2          = 'data/metag_test/59111.assembled.gff';
+my $fasta_scrt    = 'fasta_file.fa';
+my $gff_scrt      = 'gff_file.gff';
+my $prodigal_cmd  = '/kb/runtime/bin/prodigal';
 
-my $out_name = 'annotated_metag';
-my $outgn_name = 'rast_annotated_genome';
-my $fasta1 = 'data/short_one.fa';
-my $fasta3 = 'data/GCA_000350285.1_OR1_genomic.fna';
-my $fasta4 = 'data/metag_test/Test_v1.0.fa';
-my $gff1 = 'data/short_one.gff';
-my $fasta2 = 'data/metag_test/59111.assembled.fna';
-my $gff2 = 'data/metag_test/59111.assembled.gff';
-my $fasta_scrt = 'fasta_file.fa';
-my $gff_scrt = 'gff_file.gff';
-my $prodigal_cmd = '/kb/runtime/bin/prodigal';
+my $rast_impl = RAST_SDK::RAST_SDKImpl->new();
+my $mgutil    = RAST_SDK::MetagenomeUtils->new( $config, $ctx );
 
-my $rast_impl = new RAST_SDK::RAST_SDKImpl();
-my $mgutil = new metag_utils($config, $ctx);
-
-my $scratch = $config->{'scratch'}; #'/kb/module/work/tmp';
-my $rast_metag_dir = $mgutil->_create_rast_subdir($scratch, "metag_annotation_dir_");
-
+my $scratch      = $config->{ 'scratch' };    #'/kb/module/work/tmp';
+my $rast_metag_dir = $mgutil->_create_rast_subdir( $scratch, "metag_annotation_dir_" );
 
 sub generate_metagenome {
-    my($ws, $metag_name, $fasta, $gff) = @_;
+    my($ws_name, $metag_name, $fasta, $gff) = @_;
     my $fasta_path = catfile($rast_metag_dir, $fasta_scrt);
     my $gff_path = catfile($rast_metag_dir, $gff_scrt);
 
-    copy($fasta, $fasta_path) || croak "Copy file failed: $!\n";
-    copy($gff, $gff_path) || croak "Copy file failed: $!\n";
+    copy($fasta, $fasta_path) || croak "Copy file $fasta to $fasta_path failed: $!";
+    copy($gff, $gff_path) || croak "Copy file $gff to $gff_path failed: $!";
 
-    my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+    my $gfu = RASTTestUtils::get_genome_file_util_client();
     my $mg = $gfu->fasta_gff_to_metagenome({
         "gff_file" => {'path' => $gff_path},
         "fasta_file" => {'path' => $fasta_path},
         "genome_name" => $metag_name,
-        "workspace_name" => $ws,
+        "workspace_name" => $ws_name,
         "generate_missing_genes" => 1
     });
     return $mg;
 }
 
-## global objects/variables for multiple subtests
-my $ret_metag = generate_metagenome($ws, $out_name, $fasta1, $gff1);
+my $ret_metag;
+
+lives_ok {
+    ## global objects/variables for multiple subtests
+    $ret_metag = generate_metagenome($ws_name, $out_name, $fasta1, $gff1);
+} 'successful test set up';
+
+unless ( $ret_metag ) {
+    fail 'Could not set up test data; skipping all tests';
+    RASTTestUtils::clean_up();
+    done_testing;
+    exit 1;
+}
+
 print Dumper($ret_metag);
 my $input_obj_ref = $ret_metag->{metagenome_ref};
 
@@ -176,7 +185,7 @@ subtest '_check_annotation_params_metag' => sub {
         '_check_annotation_params_metag dies with an empty hashref';
 
     throws_ok {
-        my $p = {output_workspace => $ws,
+        my $p = {output_workspace => $ws_name,
                  output_metagenome_name => $out_name};
         print "input parameter=\n". Dumper($p);
         $mgutil->_check_annotation_params_metag($p)
@@ -184,7 +193,7 @@ subtest '_check_annotation_params_metag' => sub {
         '_check_annotation_params_metag dies with no object_ref';
 
     throws_ok {
-        my $p = {output_workspace => $ws,
+        my $p = {output_workspace => $ws_name,
                  output_metagenome_name => $out_name,
                  object_ref => ''};
         print "input parameter=\n". Dumper($p);
@@ -201,7 +210,7 @@ subtest '_check_annotation_params_metag' => sub {
 
     throws_ok {
         $mgutil->_check_annotation_params_metag(
-            {workspace => $ws,
+            {workspace => $ws_name,
              output_metagenome_name => $out_name,
              obect_ref => $obj})
     } qr/$req1/,
@@ -217,7 +226,7 @@ subtest '_check_annotation_params_metag' => sub {
 
     lives_ok {
         $mgutil->_check_annotation_params_metag(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_metagenome_name => $out_name,
              object_ref => 'abc/1/2'});
     } '_check_annotation_params_metag object_ref check ok';
@@ -230,20 +239,20 @@ subtest '_check_annotation_params_metag' => sub {
     } '_check_annotation_params_metag workspace name check ok';
 
     my $expected = {
-             output_workspace => $ws,
+             output_workspace => $ws_name,
              output_metagenome_name => 'rast_annotated_metagenome',
              object_ref => '456/1/2'};
     my $set_default_ok = '_check_annotation_params_metag sets the default value for output_metagenome_name.';
 
     my $ret = $mgutil->_check_annotation_params_metag(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_metagenome_name => undef,
              object_ref => '456/1/2'});
     ok ($ret->{output_metagenome_name} eq $expected->{output_metagenome_name},
         'When undefined, '.$set_default_ok);
 
     $ret = $mgutil->_check_annotation_params_metag(
-            {output_workspace => $ws,
+            {output_workspace => $ws_name,
              output_metagenome_name => '',
              object_ref => '456/1/2'});
     ok ($ret->{output_metagenome_name} eq $expected->{output_metagenome_name},
@@ -561,27 +570,27 @@ subtest '_save_metagenome' => sub {
         '_save_metagenome dies without params';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, undef, 'abc')
+        $mgutil->_save_metagenome($ws_name, $out_name, undef, 'abc')
     } qr/$req_params/,
         '_save_metagenome dies with no fasta file';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, undef)
+        $mgutil->_save_metagenome($ws_name, $out_name, undef)
     } qr/$req_params/,
         '_save_metagenome dies with no gff file';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, 'a/b/c', 'def')
+        $mgutil->_save_metagenome($ws_name, $out_name, 'a/b/c', 'def')
     } qr/$not_found/,
         '_save_metagenome dies because input file not found.';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, 'not_readable/4/5', $gff2)
+        $mgutil->_save_metagenome($ws_name, $out_name, 'not_readable/4/5', $gff2)
     } qr/cannot be accessed/,
       '_save_metagenome dies because given workspace "not_readable" cannot be read';
 
     throws_ok {
-        $mgutil->_save_metagenome($ws, $out_name, $fasta2,
+        $mgutil->_save_metagenome($ws_name, $out_name, $fasta2,
                                   'data/nosuchfile.gff')
     } qr/$not_found/,
       '_save_metagenome dies because GFF file not found';
@@ -591,13 +600,13 @@ subtest '_save_metagenome' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $input_obj_ref, $gff_path)
+                       $ws_name, $out_name, $input_obj_ref, $gff_path)
     } "_save_metagenome run without errors on $input_obj_ref.\n";
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
-    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
+    is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
 };
 
 # test by using prod/appdev obj id
@@ -606,7 +615,7 @@ subtest 'annotate_metagenome_prod' => sub {
         #"object_ref" => $obj1, # appdev obj
         "object_ref" => $obj10, # prod obj
         "output_metagenome_name" => "rasted_AMA",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     throws_ok {
         my $rast_ann = $rast_impl->annotate_metagenome($parms);
@@ -703,7 +712,7 @@ subtest 'rast_metagenome_appdev' => sub {
     my $parms = {
         "object_ref" => "37798/14/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     my $rast_mg_ref = $mgutil->rast_metagenome($parms);
     print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
@@ -713,7 +722,7 @@ subtest 'rast_metagenome_appdev' => sub {
     $parms = {
         "object_ref" => "37798/15/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     $rast_mg_ref = $mgutil->rast_metagenome($parms);
     print "rast_metagenome returns: $rast_mg_ref" if defined($rast_mg_ref);
@@ -722,7 +731,7 @@ subtest 'rast_metagenome_appdev' => sub {
     $parms = {
         object_ref => $input_obj_ref,
         output_metagenome_name => 'rasted_metagenome',
-        output_workspace => $ws
+        output_workspace => $ws_name
     };
 
     throws_ok {
@@ -743,7 +752,7 @@ subtest 'annotate_metagenome_appdev' => sub {
     my $parms = {
         "object_ref" => "37798/7/1",
         "output_metagenome_name" => "rasted_shortOne_appdev",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     my $rast_ann = $rast_impl->annotate_metagenome($parms);
     print Dumper($rast_ann);
@@ -755,23 +764,23 @@ subtest '_save_metagenome_appdev' => sub {
     my $mymetag = {};
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj1, $gff1);
+                       $ws_name, $out_name, $obj1, $gff1);
     } "_save_metagenome run without errors on $obj1.\n";
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
-    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
-    
+    is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
+
     lives_ok {
         $mymetag = $mgutil->_save_metagenome(
-                       $ws, $out_name, $obj2, $gff2);
+                       $ws_name, $out_name, $obj2, $gff2);
     } "_save_metagenome runs without errors on $obj2.\n";
     ok (exists $mymetag->{metagenome_ref},
         "metagenome saved with metagenome_ref='$mymetag->{metagenome_ref}'");
     ok (exists $mymetag->{metagenome_info}, 'metagenome saved with metagenome_info');
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
-    is ($mymetag->{metagenome_info}[7], $ws, 'saved metagenome to the correct workspace');
+    is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
 };
 =cut
 
@@ -782,7 +791,7 @@ subtest 'rast_metagenome_prod' => sub {
     my $parms = {
         "object_ref" => $obj2_1,
         "output_metagenome_name" => "rasted_ama",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
 
     my $rast_mg_ref;
@@ -795,7 +804,7 @@ subtest 'rast_metagenome_prod' => sub {
     $parms = {
         "object_ref" => $obj4,
         "output_metagenome_name" => "rasted_obj4_prod",
-        "output_workspace" => $ws
+        "output_workspace" => $ws_name
     };
     throws_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
@@ -868,24 +877,6 @@ subtest '_generate_stats_from_gffContents' => sub {
     ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
 };
 
+RASTTestUtils::clean_up();
+
 done_testing();
-
-
-my $err = undef;
-if ($@) {
-    $err = $@;
-}
-eval {
-    if (defined($ws)) {
-        $ws_client->delete_workspace({workspace => $ws});
-        print("Test workspace was deleted\n");
-    }
-};
-if (defined($err)) {
-    if(ref($err) eq "Bio::KBase::Exceptions::KBaseException") {
-        die("Error while running tests: " . $err->trace->as_string);
-    } else {
-        die $err;
-    }
-}
-
