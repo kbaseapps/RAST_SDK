@@ -1,9 +1,10 @@
-package Bio::KBase::utilities;
+package Bio::KBase::Utilities;
 use strict;
 use warnings;
 use Carp qw(cluck);
 use Config::Simple;
 use DateTime;
+use Data::UUID;
 
 our $config = undef;
 our $ctx = undef;
@@ -67,11 +68,11 @@ sub start_time {
 }
 
 sub start_time_stamp {
-	return DateTime->from_epoch( epoch => Bio::KBase::utilities::start_time() )->datetime();
+	return DateTime->from_epoch( epoch => Bio::KBase::Utilities::start_time() )->datetime();
 }
 
 sub elapsedtime {
-	return time()-Bio::KBase::utilities::start_time();
+	return time()-Bio::KBase::Utilities::start_time();
 }
 
 sub set_handler {
@@ -92,12 +93,12 @@ sub processid {
 
 sub log {
 	my ($msg,$tag) = @_;
-	$loghandler->util_log($msg,$tag,Bio::KBase::utilities::processid());
+	$loghandler->util_log($msg,$tag,Bio::KBase::Utilities::processid());
 }
 
 sub gapfilling_html_table {
 	my ($args) = @_;
-	$args = Bio::KBase::utilities::args($args,[],{
+	$args = Bio::KBase::Utilities::args($args,[],{
 		message => undef,
 		append => 1,
 	});
@@ -112,7 +113,7 @@ sub gapfilling_html_table {
 
 sub print_report_message {
 	my ($args) = @_;
-	$args = Bio::KBase::utilities::args($args,["message"],{
+	$args = Bio::KBase::Utilities::args($args,["message"],{
 		append => 1,
 		html => 0
 	});
@@ -147,7 +148,7 @@ sub report_html {
 
 sub add_report_file {
 	my ($args) = @_;
-	$args = Bio::KBase::utilities::args($args,["path","name","description"],{
+	$args = Bio::KBase::Utilities::args($args,["path","name","description"],{
 		html => 0
 	});
 	if ($args->{html} == 1) {
@@ -180,20 +181,20 @@ sub config_hash {
 #read_config: an all purpose general method for reading in service configurations and setting mandatory/optional values
 sub read_config {
 	my ($args) = @_;
-	$args = Bio::KBase::utilities::args($args,[],{
+	$args = Bio::KBase::Utilities::args($args,[],{
 		filename => $ENV{KB_DEPLOYMENT_CONFIG},
 		service => $ENV{KB_SERVICE_NAME},
 		mandatory => [],
 		optional => {}
 	});
 	if (!defined($args->{service})) {
-		Bio::KBase::utilities::error("No service specified!");
+		Bio::KBase::Utilities::error("No service specified!");
 	}
 	if (!defined($args->{filename})) {
-		Bio::KBase::utilities::error("No config file specified!");
+		Bio::KBase::Utilities::error("No config file specified!");
 	}
 	if (!-e $args->{filename}) {
-		Bio::KBase::utilities::error("Specified config file ".$args->{filename}." doesn't exist!");
+		Bio::KBase::Utilities::error("Specified config file ".$args->{filename}." doesn't exist!");
 	}
 	my $c = Config::Simple->new();
 	$c->read($args->{filename});
@@ -202,8 +203,8 @@ sub read_config {
 		my $array = [split(/\./,$key)];
 		$config->{$array->[0]}->{$array->[1]} = $hash->{$key};
 	}
-	$config->{$args->{service}} = Bio::KBase::utilities::args($config->{$args->{service}},$args->{mandatory},$args->{optional});
-	$config->{UtilConfig} = Bio::KBase::utilities::args($config->{UtilConfig},[],{
+	$config->{$args->{service}} = Bio::KBase::Utilities::args($config->{$args->{service}},$args->{mandatory},$args->{optional});
+	$config->{UtilConfig} = Bio::KBase::Utilities::args($config->{UtilConfig},[],{
 		fulltrace => 0,
 		call_back_url =>  $ENV{ SDK_CALLBACK_URL },
 		token => undef
@@ -287,7 +288,7 @@ sub args {
 	    $args = {};
 	}
 	if (ref($args) ne "HASH") {
-		Bio::KBase::utilities::error("Arguments not hash");	
+		Bio::KBase::Utilities::error("Arguments not hash");
 	}
 	if (defined($substitutions) && ref($substitutions) eq "HASH") {
 		foreach my $original (keys(%{$substitutions})) {
@@ -302,7 +303,7 @@ sub args {
 			}
 		}
 		if (defined($mandatorylist)) {
-			Bio::KBase::utilities::error("Mandatory arguments missing ".join("; ",@{$mandatorylist}));
+			Bio::KBase::Utilities::error("Mandatory arguments missing ".join("; ",@{$mandatorylist}));
 		}
 	}
 	if (defined($optionalArguments)) {
@@ -310,7 +311,7 @@ sub args {
 			if (!defined($args->{$argument})) {
 				$args->{$argument} = $optionalArguments->{$argument};
 			}
-		}	
+		}
 	}
 	return $args;
 }
@@ -318,14 +319,14 @@ sub args {
 #utilconf: returns values for configurations specifically relating to these utility functions
 sub utilconf {
 	my ($var) = @_;
-	return Bio::KBase::utilities::conf("UtilConfig",$var);
+	return Bio::KBase::Utilities::conf("UtilConfig",$var);
 }
 
 #setconf: sets the value of a specific config parameter
 sub setconf {
 	my ($serv,$var,$value) = @_;
 	if (!defined($config)) {
-		Bio::KBase::utilities::read_config();
+		Bio::KBase::Utilities::read_config();
 	}
 	$config->{$serv}->{$var} = $value;
 }
@@ -334,15 +335,15 @@ sub setconf {
 sub conf {
 	my ($serv,$var) = @_;
 	if (!defined($config)) {
-		Bio::KBase::utilities::read_config();
+		Bio::KBase::Utilities::read_config();
 	}
 	return $config->{$serv}->{$var};
 }
 
 #error: prints an error message
-sub error {	
+sub error {
 	my ($message) = @_;
-    if (defined($config) && Bio::KBase::utilities::utilconf("fulltrace") == 1) {
+    if (defined($config) && Bio::KBase::Utilities::utilconf("fulltrace") == 1) {
 		Carp::confess($message);
     } else {
     	die $message;
@@ -352,7 +353,7 @@ sub error {
 sub debug {
 	my ($message) = @_;
 	if (!defined($debugfile)) {
-		open ( $debugfile, ">", Bio::KBase::utilities::utilconf("debugfile"));
+		open ( $debugfile, ">", Bio::KBase::Utilities::utilconf("debugfile"));
 	}
 	print $debugfile $message;
 }
@@ -364,16 +365,16 @@ sub close_debug {
 	}
 }
 
-sub create_context {	
+sub create_context {
 	my($parameters) = @_;
-	$parameters = Bio::KBase::utilities::args($parameters,["token","user"],{
+	$parameters = Bio::KBase::Utilities::args($parameters,["token","user"],{
 		method => "unknown",
 		provenance => [],
 		setcontext => 1
 	});
 	my $context = LocalCallContext->new($parameters->{token}, $parameters->{user},$parameters->{provenance},$parameters->{method});
 	if ($parameters->{setcontext} == 1) {
-		Bio::KBase::utilities::set_context($context);
+		Bio::KBase::Utilities::set_context($context);
 	}
 	return $context;
 }
@@ -408,7 +409,7 @@ sub timestamp {
 	if (defined($reset) && $reset == 1) {
 		$timestamp = DateTime->now()->datetime();
 	}
-	return $timestamp;	
+	return $timestamp;
 }
 
 {

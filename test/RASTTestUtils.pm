@@ -1,29 +1,61 @@
+package RASTTestUtils;
+
+use Test::Most;
 use strict;
 use warnings;
+use feature qw( say );
+use Data::Dumper::Concise;
+use Data::UUID;
+
 use JSON;
 use File::Copy;
 
 use installed_clients::WorkspaceClient;
 use installed_clients::AssemblyUtilClient;
 use installed_clients::GenomeFileUtilClient;
+use installed_clients::kb_SetUtilitiesClient;
 
 local $| = 1;
-my $token = $ENV{'KB_AUTH_TOKEN'};
-my $config_file = $ENV{'KB_DEPLOYMENT_CONFIG'};
-my $config = new Config::Simple($config_file)->get_block('RAST_SDK');
-my $ws_url = $config->{"workspace-url"};
-my $ws_name = undef;
-my $ws_client = new installed_clients::WorkspaceClient($ws_url,token => $token);
+my $token        = $ENV{ 'KB_AUTH_TOKEN' };
+my $config_file  = $ENV{ 'KB_DEPLOYMENT_CONFIG' };
+my $callback_url = $ENV{ 'SDK_CALLBACK_URL' };
+
+my $config       = Config::Simple->new( $config_file )->get_block( 'RAST_SDK' );
+my $ws_url       = $config->{ "workspace-url" };
+my ( $ws_name, $ws_client, $ws_id );
+
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-my $gfu = new installed_clients::GenomeFileUtilClient($call_back_url);
+my ( $au, $gfu, $su );
+
+sub get_ws_client {
+    $ws_client //= installed_clients::WorkspaceClient->new( $ws_url, token => $token );
+    return $ws_client;
+}
+
+sub get_ws_id {
+    unless ( $ws_id ) {
+        get_ws_name();
+    }
+    return $ws_id;
+}
 
 sub get_ws_name {
-    if (!defined($ws_name)) {
-        my $suffix = int(time * 1000);
+    unless ( $ws_name ) {
+        $ws_client = get_ws_client();
+        my $suffix = Data::UUID->new()->create_str();
         $ws_name = 'test_RAST_SDK_' . $suffix;
-        $ws_client->create_workspace({workspace => $ws_name});
+        my $resp = $ws_client->create_workspace( { workspace => $ws_name } );
+        $ws_id = $resp->[ 0 ];
     }
     return $ws_name;
+}
+
+sub get_setutils_client {
+    $su //= installed_clients::kb_SetUtilitiesClient->new( $callback_url );
+}
+
+sub get_genome_file_util_client {
+    $gfu //= installed_clients::GenomeFileUtilClient->new( $call_back_url );
 }
 
 #--------------------------------------------
@@ -74,13 +106,12 @@ sub prepare_assembly {
     my $fasta_data_path = "/kb/module/test/data/$assembly_obj_name";
     my $fasta_temp_path = "/kb/module/work/tmp/$assembly_obj_name";
     copy $fasta_data_path, $fasta_temp_path;
-    my $call_back_url = $ENV{ SDK_CALLBACK_URL };
-    my $au = new installed_clients::AssemblyUtilClient($call_back_url);
-    my $ret = $au->save_assembly_from_fasta({
-        file => {path => $fasta_temp_path},
+    $au                 //= installed_clients::AssemblyUtilClient->new( $call_back_url );
+    my $ret             = $au->save_assembly_from_fasta( {
+        file            => { path => $fasta_temp_path },
         workspace_name => get_ws_name(),
         assembly_name => $assembly_obj_name
-    });
+    } );
     unlink($fasta_temp_path);
     return $ret;
 }
@@ -90,13 +121,14 @@ sub prepare_assembly {
 #	use GFU to create the genome object and genome reference
 #--------------------------------------------
 sub prepare_gbff {
-	my($genome_gbff_name,$genome_obj_name) = @_;
+    my ( $genome_gbff_name, $genome_obj_name ) = @_;
+    $gfu                 //= installed_clients::GenomeFileUtilClient->new( $call_back_url );
 	my $genome_gbff_path = "/kb/module/test/data/$genome_gbff_name";
 	my $temp_path = "/kb/module/work/tmp/$genome_gbff_name";
 	copy $genome_gbff_path, $temp_path;
 
-	print "***** Loading and Saving the Genome Object *****\n";  
-	my $genome_obj = $gfu->genbank_to_genome({
+    say "***** Loading and Saving the Genome Object *****";
+    my $genome_obj = $gfu->genbank_to_genome( {
 		workspace_name => get_ws_name(),
 		genome_name => $genome_obj_name,
 		file => {"path" => $temp_path},
@@ -110,7 +142,7 @@ sub prepare_gbff {
 	my $genome_ref = $genome_obj->{'genome_ref'};
 	return ($genome_obj, $genome_ref);
 }
- 
+
 sub get_genome {
 	my $genome_ref = shift;
 	my $orig_genome = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
@@ -201,11 +233,8 @@ sub count_types {
 }
 
 sub report_types {
-	my %types = @_;
-	print "Summary of Input type\n";
-	foreach my $key (keys %types) 	{
-		print "\t$key = $types{$key}\n";
-	}
+    my %types = @_;
+    say 'Summary of input type: ' . Dumper \%types;
 }
 
 sub set_params {
@@ -278,5 +307,12 @@ sub submit_set_annotation {
 	return ($ref);
 }
 
+sub clean_up {
+    if ( $ws_name ) {
+        lives_ok {
+            $ws_client->delete_workspace({workspace => $ws_name});
+        }, 'Test workspace successfully deleted';
+    }
+}
 
 1;
