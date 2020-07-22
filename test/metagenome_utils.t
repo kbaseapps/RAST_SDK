@@ -32,12 +32,11 @@ my $gbff_file     = 'data/Clostridium_botulinum.gbff';
 
 my $out_name      = 'annotated_metag';
 my $outgn_name    = 'rast_annotated_genome';
-my $fasta1        = 'data/short_one.fa';
-my $fasta3        = 'data/GCA_000350285.1_OR1_genomic.fna';
-my $fasta4        = 'data/metag_test/Test_v1.0.fa';
-my $gff1          = 'data/short_one.gff';
-my $fasta2        = 'data/metag_test/59111.assembled.fna';
-my $gff2          = 'data/metag_test/59111.assembled.gff';
+my $fasta1        = catfile('/kb/module/test', 'data/short_one.fa');
+my $fasta4        = catfile('/kb/module/test', 'data/metag_test/Test_v1.0.fa');
+my $gff1          = catfile('/kb/module/test', 'data/short_one.gff');
+my $fasta2        = catfile('/kb/module/test', 'data/metag_test/59111.assembled.fna');
+my $gff2          = catfile('/kb/module/test', 'data/metag_test/59111.assembled.gff');
 my $fasta_scrt    = 'fasta_file.fa';
 my $gff_scrt      = 'gff_file.gff';
 my $prodigal_cmd  = '/kb/runtime/bin/prodigal';
@@ -104,9 +103,9 @@ print "**********Protein sequences************\n" . Dumper($protein_seqs);
 
 ##-----------------Test Blocks--------------------##
 
-my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
-my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
-my $trans_file = 'data/metag_test/translationfile';
+my $ecoli_gff = catfile('/kb/module/test', 'data/metag_test/ecoli_out.gff');
+my $ecoli_sco = catfile('/kb/module/test', 'data/metag_test/ecoli_out.sco');
+my $trans_file = catfile('/kb/module/test', 'data/metag_test/translationfile');
 my %trans_tab;
 my $sco_tab = [];
 

@@ -38,15 +38,7 @@ my $gbff_file = 'data/Clostridium_botulinum.gbff';
 
 my $out_name = 'annotated_metag';
 my $outgn_name = 'rast_annotated_genome';
-my $fasta1 = 'data/short_one.fa';
-my $fasta3 = 'data/GCA_000350285.1_OR1_genomic.fna';
-my $fasta4 = 'data/metag_test/Test_v1.0.fa';
-my $gff1 = 'data/short_one.gff';
-my $fasta2 = 'data/metag_test/59111.assembled.fna';
-my $fa_LOng = 'data/LOng_contig_names.fa';
-my $gff2 = 'data/metag_test/59111.assembled.gff';
-my $fasta_scrt = 'fasta_file.fa';
-my $gff_scrt = 'gff_file.gff';
+my $fa_LOng = catfile('/kb/module/test', 'data/LOng_contig_names.fa');
 
 my $rast_impl = RAST_SDK::RAST_SDKImpl->new();
 my $annoutil  = RAST_SDK::AnnotationUtils->new( $config, $ctx );
@@ -56,12 +48,6 @@ my $rast_genome_dir
     = $annoutil->_create_rast_subdir( $scratch, "genome_annotation_dir_" );
 
 ##-----------------Test Blocks--------------------##
-
-my $ecoli_gff = 'data/metag_test/ecoli_out.gff';
-my $ecoli_sco = 'data/metag_test/ecoli_out.sco';
-my $trans_file = 'data/metag_test/translationfile';
-my %trans_tab;
-my $sco_tab = [];
 
 my $obj_Echinacea = "55141/242/1";  # prod genome
 my $obj_Echinacea_ann = "55141/247/1";  # prod genome
@@ -1224,7 +1210,7 @@ subtest '_run_rast_genecalls' => sub {
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
-    my $assembly_ref = prepare_assembly($assembly_obj_name);
+    my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
     my $genome_obj_name = 'Acidilobus_sp_CIS';
 
     my $parms={
