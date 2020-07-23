@@ -1873,4 +1873,4 @@ subtest 'annoutil_uniq_functions' => sub {
 
 RASTTestUtils::clean_up();
 
-done_testing(38);
+done_testing();

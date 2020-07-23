@@ -3,7 +3,7 @@ This module wraps the RAST annotation pipeline for KBase.
 
 ### Version 0.1.8
 __Changes__
-Merged all development starting from AMA in annotate_metaG_rebased branch into master.
+Merged all development starting from AMA in annotate_metaG_rebased branch into master; then merged changes by AJ on test file/module renaming and cpanfile addition.
 Upped the version number for potential release.
 
 ### Version 0.1.7
