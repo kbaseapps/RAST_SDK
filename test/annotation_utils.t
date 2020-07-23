@@ -32,13 +32,12 @@ my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my $ctx           = LocalCallContext->new( $token, $auth_token->user_id );
 $RAST_SDK::RAST_SDKServer::CallContext = $ctx;
 
-my $tmp_write_dir = 'data/write_tmp';  ## For saving temporary test files
-
-my $gbff_file = 'data/Clostridium_botulinum.gbff';
+my $gbff_file = catfile('/kb/module/test', 'data/Clostridium_botulinum.gbff');
+my $fa_LOng = catfile('/kb/module/test', 'data/LOng_contig_names.fa');
+my $Echinacea_gff_file = catfile('/kb/module/test', 'data/Echinacea_purpurea_1762.gff');
 
 my $out_name = 'annotated_metag';
 my $outgn_name = 'rast_annotated_genome';
-my $fa_LOng = catfile('/kb/module/test', 'data/LOng_contig_names.fa');
 
 my $rast_impl = RAST_SDK::RAST_SDKImpl->new();
 my $annoutil  = RAST_SDK::AnnotationUtils->new( $config, $ctx );
@@ -1225,7 +1224,7 @@ subtest 'Impl_annotate_genome' => sub {
     my $rast_ann;
     throws_ok {
         $rast_ann = $rast_impl->annotate_genome($parms);
-        my $genome_ref = get_ws_name() . "/" . $genome_obj_name;
+        my $genome_ref = $ws_name . "/" . $genome_obj_name;
         my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
         print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
         print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
@@ -1385,7 +1384,7 @@ subtest '_check_bulk_annotation_params' => sub {
       or diag explain $params;
 
     $params = {
-        "output_workspace" => get_ws_name()
+        "output_workspace" => $ws_name
     };
     my $expected = {
        'input_assemblies' => [],
@@ -1474,7 +1473,7 @@ subtest '_parseNwrite_gff' => sub {
     print "First 20 lines of the GFF file written from genome $obj_Echinacea:\n";
     $annoutil->_print_fasta_gff(0, 20, $gff_fpath);
 
-    my $temp_gff_file = catfile($tmp_write_dir, 'test_gff_file.gff');
+    my $temp_gff_file = catfile($scratch, 'temp_gff_file.gff');
     copy $gff_fpath, $temp_gff_file;
     print "First 20 lines of the GFF file copied from genome $gff_fpath:\n";
     $annoutil->_print_fasta_gff(0, 20, $temp_gff_file);
@@ -1493,7 +1492,6 @@ subtest '_parseNwrite_gff' => sub {
 
     is_deeply($gff_contents1, $gff_contents2, 'GFF data structures should be the same!');
 
-    my $Echinacea_gff_file = "data/Echinacea_purpurea_1762.gff";
     my $gff_contents3;
     lives_ok {
         ($gff_contents3, $attr_delimiter) = $annoutil->_parse_gff($Echinacea_gff_file, '=');
@@ -1532,37 +1530,32 @@ subtest '_write_gff_from_genome' => sub {
     ok((-e $gff_fpath), "GFF file created for $obj_Echinacea.\n");
     ok ((-s $gff_fpath), "GFF file written for $obj_Echinacea.\n");
 
-    print "ALL lines of the GFF file:\n";
-    $annoutil->_print_fasta_gff(0, 2000, $gff_fpath);
+    print "First 20 lines of the GFF file:\n";
+    $annoutil->_print_fasta_gff(0, 20, $gff_fpath);
 };
 
 
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
-    my @regexes = ( qr/ERROR calling rast run_pipeline/,
-                    qr/Can\'t call method/);
-    my $allre= "(".join("|",@regexes).")";
     my ($parms, $rast_ret, $genome_obj);
     $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
         "output_workspace" => $ws_name
     };
-
-    throws_ok {
+    lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } qr/$allre/,
-        '$annoutil->rast_genome returns ERROR due to kmer data absence or other causes.';
+    } "annoutil->rast_genome call returns normally on genome $obj_Ecoli.";
+
     $parms = {
         "object_ref" => $obj_Echinacea,
         "output_genome_name" => "rasted_Echinace_prod",
         "output_workspace" => $ws_name
     };
-
-    throws_ok {
+    lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } qr/$allre/,
-        '$annoutil->rast_genome returns ERROR due to kmer data absence or other causes.';
+    } "annoutil->rast_genome call returns normally on genome $obj_Echinacea.";
+
     $parms = {
         "object_ref" => $obj_asmb,
         "output_genome_name" => "rasted_assembly",
@@ -1571,7 +1564,7 @@ subtest 'anno_utils_rast_genome' => sub {
 
     lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } '$annoutil->rast_genome returns the original input because of empty features.';
+    } "annoutil->rast_genome call returns normally on assembly $obj_asmb.";
     if(defined($rast_ret) && defined($rast_ret->{output_genome_ref})) {
         ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
     }
@@ -1660,7 +1653,7 @@ subtest 'rast_genomes_assemblies' => sub {
     };
 
     lives_ok {
-        $params->{output_workspace} = get_ws_name();
+        $params->{output_workspace} = $ws_name;
         $params->{input_genomes} = [$obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [$obj_asmb]; # array of prod objects
         $params->{input_text} = '';
@@ -1668,7 +1661,7 @@ subtest 'rast_genomes_assemblies' => sub {
     } "rast_impl rast_genomes_assemblies call on 1N1 returns normally.";
 
     lives_ok {
-        $params->{output_workspace} = get_ws_name();
+        $params->{output_workspace} = $ws_name;
         #$params->{input_genomes} = ["31020/5/1"]; # array of an appdev object
         $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [];
@@ -1677,7 +1670,7 @@ subtest 'rast_genomes_assemblies' => sub {
     } "rast_impl rast_genomes_assemblies call on array of 2 genomes returns normally.";
 
     lives_ok {
-        $params->{output_workspace} = get_ws_name();
+        $params->{output_workspace} = $ws_name;
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
         $params->{input_genomes} = [];
         $params->{input_text} = '';
@@ -1685,7 +1678,7 @@ subtest 'rast_genomes_assemblies' => sub {
     } "rast_impl rast_genomes_assemblies call on array of 2 assemblies returns normally.";
 
     lives_ok {
-        $params->{output_workspace} = get_ws_name();
+        $params->{output_workspace} = $ws_name;
         $params->{input_genomes} = [$obj_Echinacea, $obj_Ecoli]; # array of prod objects
         $params->{input_assemblies} = [$obj_asmb_refseq, $obj_asmb]; # array of prod objects
         #$params->{input_text} = '55141/266/3;55141/212/1;63171/394/1';
@@ -1701,7 +1694,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
 
     my $params = {
         "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
+        "workspace" => $ws_name
     };
     throws_ok {
         $params->{genome_text} = '';
@@ -1712,7 +1705,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
 
     $params = {
         "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
+        "workspace" => $ws_name
     };
     throws_ok {
         $params->{input_genomes} = [];
@@ -1723,7 +1716,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
 
     $params = {
         "output_genome" => "out_genome_name",
-        "workspace" => get_ws_name()
+        "workspace" => $ws_name
     };
     throws_ok {
         $params->{input_genomes} = [];
@@ -1880,4 +1873,4 @@ subtest 'annoutil_uniq_functions' => sub {
 
 RASTTestUtils::clean_up();
 
-done_testing();
+done_testing(38);

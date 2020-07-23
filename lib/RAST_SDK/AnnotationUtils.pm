@@ -1146,7 +1146,7 @@ sub _run_rast_workflow {
 }
 
 #
-## process the rast genecall result
+## process the rast genecall & annotation result
 #
 sub _post_rast_ann_call {
     my ($self, $genome, $inputgenome, $parameters, $contigobj) = @_;
