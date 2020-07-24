@@ -1,6 +1,11 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.8
+__Changes__
+Merged all development starting from AMA in annotate_metaG_rebased branch into master; then merged changes by AJ on test file/module renaming and cpanfile addition.
+Upped the version number for potential release.
+
 ### Version 0.1.7
 __Changes__
 Found the cause and fixed it for the issue 'RAST annotation of MG assembly (meaning make fresh gene call) fails.'

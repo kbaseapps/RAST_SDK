@@ -80,7 +80,7 @@ subtest 'Running RAST annotation with Taxon ID' => sub {
     ok( scalar @{ $genome_obj->{ cdss } } gt 0,     "Number of CDSs" );
     ok( defined( $genome_obj->{ mrnas } ),          "mRNAs array is present" );
     ok( scalar @{ $genome_obj->{ mrnas } } gt 0,    "Number of mRNAs" );
-    is $genome_obj->{ scientific_name }, "Metarhizium sp. MJH 2018c",
+    is $genome_obj->{ scientific_name }, "Nectria sp. MJH 2018c",
         "Sci name is correct";
     cmp_deeply $genome_obj->{ taxon_assignments },
         { 'ncbi' => '2448083' },
@@ -152,9 +152,8 @@ subtest 'Running RAST annotation into GenomeSet with Taxon ID' => sub {
 
     my $genome_obj
         = $ws_client->get_objects( [ { ref => $data->[ 0 ] } ] )->[ 0 ]{ data };
-
     is $genome_obj->{ scientific_name },
-        "Metarhizium sp. MJH 2018c",
+        "Nectria sp. MJH 2018c",
         "Sci name is correct";
     cmp_deeply(
         $genome_obj->{ taxon_assignments },
