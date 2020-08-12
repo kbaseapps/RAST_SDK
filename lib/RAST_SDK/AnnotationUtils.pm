@@ -1738,18 +1738,14 @@ sub _build_workflows {
     return ($rast_ref, $inputgenome);
 }
 #
-# Making gene calls on the input genomes with the input workflow stages:
-# return the following data structure:
+# Makes gene calls on the input genome with the gene call stages defined in $wf_gcs.
+# returns a genes called new genome.
 #
 sub _run_rast_genecalls {
-    my ($self, $inparams) = @_;
+    my ($self, $in_genome, $wf_gcs) = @_;
 
-    my ($rast_ref, $in_genome) = $self->_build_workflows($inparams);
-
-    my %rast_details = %{ $rast_ref };
-    my $wf_genecall = $rast_details{genecall_workflow};
-    my $gced_gn = $self->_run_rast_workflow($in_genome, $wf_genecall);
-    return ($gced_gn, $in_genome, \%rast_details);
+    my $gced_gn = $self->_run_rast_workflow($in_genome, $wf_gcs);
+    return $gced_gn;
 }
 
 ##----end gene call subs----##
@@ -2611,6 +2607,12 @@ sub _extract_cds_sequences_from_fasta {
 }
 
 ##----main function----##
+#
+# Runs through the workflows on the input genome with genecall and annotation workflow
+# stages defined in $rast_ref.
+# returns a RAST-ed new genome, the original input genome together with the updated
+# rast-ing details.
+#
 sub rast_genome {
     my $self = shift;
     my($inparams) = @_;
@@ -2624,42 +2626,48 @@ sub rast_genome {
 
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
+    my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
 
-    ## 1. call rast to call genes first, then parse for gff_contents
-    my ($gc_genome, $inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
-    my %gc_rast = %{ $rast_ref };
+    my %rast_details = %{ $rast_ref };
+
+    ## 1. call genes first
+    #my ($gc_genome, $inputgenome, $rast_ref) = $self->_run_rast_genecalls($params);
+    my $wf_genecalls = $rast_details{genecall_workflow};
+    my $gc_genome = $self->_run_rast_genecalls($inputgenome, $wf_genecalls);
     my $gc_ftrs = $gc_genome->{features};
     my $gc_ftr_count = scalar @{$gc_ftrs};
     unless ($gc_ftr_count >= 1) {
-        print "Empty input genome features, skip rasting, return an empty object.\n";
+        print( "Empty input genome features after gene calls, skip rasting, "
+               ."return an empty object.\n" );
         return {};
     }
     print "\n***********Gene calling resulted in ".$gc_ftr_count." features.\n";
 
-    ## 2. run rast annotation and extra workflows after genecall
-    my $annotate_workflow = $gc_rast{annotate_workflow};
-    my $annotated_genome = $self->_run_rast_workflow($gc_genome, $annotate_workflow);
+    ## 2. run rast annotation (and extra workflows) after genecall
+    my $annotated_genome = $self->_run_rast_workflow($gc_genome,
+                                                     $rast_details{annotate_workflow});
 
     ## could be skipped: running the renumber_features workflow
     #my $extra_workflow = $gc_rast{extra_workflow};
     #my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
 
-    ## 3. post-rasting processing
+    ## 3. post-rasting process
     my $genome_final = $self->_post_rast_ann_call($annotated_genome,
                                                   $inputgenome,
-                                                  $gc_rast{parameters},
-                                                  $gc_rast{contigobj});
+                                                  $rast_details{parameters},
+                                                  $rast_details{contigobj});
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
-    print "\n***********Post rast processing resulted in $cd_ftr_count coding features and $nc_ftr_count non_coding features.\n";
+    print( "\n***********Post rast processing resulted in $cd_ftr_count coding features "
+           ."and $nc_ftr_count non_coding features.\n");
 
-    ## build seed ontology
+    ## 4. build seed ontology
     ($genome_final, $rast_ref) = $self->_build_seed_ontology(
-                                        \%gc_rast, $genome_final, $inputgenome);
+                                         $rast_ref, $genome_final, $inputgenome);
 
-    ## refactor 10 -- summarize annotation
+    ## 5. summarize annotation
     ($genome_final, $rast_ref) = $self->_summarize_annotation(
-                                        $rast_ref, $genome_final, $inputgenome);
+                                         $rast_ref, $genome_final, $inputgenome);
 
     my $ftrs = $genome_final->{features};
     my $rasted_ftr_count = scalar @{$ftrs};

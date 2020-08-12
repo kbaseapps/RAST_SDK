@@ -1076,7 +1076,7 @@ subtest '_save_annotation_results' => sub {
 
 #
 ## variables for testing _build_workflows, _run_rast_workflow
-## and _pre_rast_call
+## _run_rast_genecalls and _pre_rast_call
 my ($gc_wf_ret0, $gc_inputgenome0, $gc_wf0, %gc_details0,
     $gc_wf_ret1, $gc_inputgenome1, $gc_wf1, %gc_details1,
     $gc_wf_ret2, $gc_inputgenome2, $gc_wf2, %gc_details2);
@@ -1133,7 +1133,6 @@ subtest '_build_workflows' => sub {
 };
 
 
-
 # Test _run_rast_workflow with genome/assembly object refs in prod
 subtest '_run_rast_workflow' => sub {
     # a genome object from workspace #65386
@@ -1166,40 +1165,25 @@ subtest '_run_rast_workflow' => sub {
 # Test _run_rast_genecalls with genome/assembly object refs in prod
 subtest '_run_rast_genecalls' => sub {
     # a genome object from https://narrative.kbase.us/narrative/ws.65386.obj.104
-    my $params0 = {
-         output_genome_name => 'build_gcwf_name0',
-         output_workspace => $ws_name,
-         object_ref => $obj_65386_1
-    };
-    my ($rast_ref0, $gc_gn0);
+    my $gc_gn0;
     lives_ok {
-        ($gc_gn0, $rast_ref0) = $annoutil->_run_rast_genecalls($params0);
+        $gc_gn0 = $annoutil->_run_rast_genecalls($gc_inputgenome0, $gc_wf0);
     } '_run_rast_genecalls returns ERROR due to kmer data absence or other causes.';
     ok (@{$gc_gn0->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($gc_gn0, $gc_inputgenome0, 'rast workflow will not run locally');
 
     # a genome object
-    my $params1 = {
-         output_genome_name => 'build_gcwf_gn_name',
-         output_workspace => $ws_name,
-         object_ref => $obj_Ecoli
-    };
-    my ($rast_ref1, $gc_gn1);
+    my $gc_gn1;
     lives_ok {
-        ($gc_gn1, $rast_ref1) = $annoutil->_run_rast_genecalls($params1);
+        $gc_gn1 = $annoutil->_run_rast_genecalls($gc_inputgenome1, $gc_wf1);
     } '_run_rast_genecalls returns ERROR due to kmer data absence or other causes.';
     ok (@{$gc_gn1->{features}} > 0, "Returned genome has features.");
     cmp_deeply($gc_gn1, $gc_inputgenome1, 'rast workflow will not run locally');
 
     # an assembly object
-    my $params2 = {
-         output_genome_name => 'build_gcwf_asmb_name',
-         output_workspace => $ws_name,
-         object_ref => $obj_asmb
-    };
-    my ($rast_ref2, $gc_gn2);
+    my $gc_gn2;
     lives_ok {
-        ($gc_gn2, $rast_ref2) = $annoutil->_run_rast_genecalls($params2);
+        $gc_gn2 = $annoutil->_run_rast_genecalls($gc_inputgenome2, $gc_wf2);
     } '_run_rast_genecalls returns ERROR due to kmer data absence or other causes.';
     ok (@{$gc_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
