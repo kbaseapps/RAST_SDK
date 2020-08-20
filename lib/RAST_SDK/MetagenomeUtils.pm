@@ -26,7 +26,7 @@ use File::Basename;
 use Array::Utils qw(:all);
 use Text::Trim qw(trim);
 use Data::UUID;
-
+use Try::Tiny;
 
 use Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl;
 use installed_clients::GenomeAnnotationAPIClient;
@@ -113,12 +113,11 @@ sub _build_prodigal_cmd {
 sub _run_prodigal {
     my ($self, @cmd) = @_;
     my $ret = 0;
-    eval {
+    try {
         $ret = system(@cmd);
-    };
-    if ($@) {
+    } catch {
         print Dumper(\@cmd);
-        croak "ERROR Prodigal run failed: ".$@."\n";
+        croak "ERROR Prodigal run failed:$_\n";
     }
     print "Prodigal returns: $ret\n";
     return $ret;
@@ -344,14 +343,11 @@ sub _get_fasta_from_assembly {
 
     my $au = installed_clients::AssemblyUtilClient->new($self->{call_back_url});
     my $output = {};
-    eval {
+    try {
         $output = $au->get_assembly_as_fasta({"ref" => $assembly_ref});
-    };
-    if ($@) {
-        croak "ERROR calling AssemblyUtil.get_assembly_as_fasta: ".$@."\n";
-    }
-    else {
         return $output->{path};
+    } catch {
+        croak "ERROR calling AssemblyUtil.get_assembly_as_fasta: $_\n";
     }
 }
 
@@ -359,18 +355,17 @@ sub _write_fasta_from_ama {
     my ($self, $input_obj_ref) = @_;
 
     my $fasta_filename = '';
-    eval {
+    try {
         my $genome_obj = $self->_fetch_object_data($input_obj_ref);
 
         $fasta_filename = $self->_get_fasta_from_assembly(
                           $input_obj_ref.";".$genome_obj->{assembly_ref});
 
         unless (-e $fasta_filename && -s $fasta_filename) {print "Fasta file is empty.";}
-    };
-    if ($@) {
-        croak "**_write_fasta_from_ama ERROR: ".$@."\n";
+        return $fasta_filename;
+    } catch {
+        croak "**_write_fasta_from_ama ERROR: $_\n";
     }
-    return $fasta_filename;
 }
 
 
@@ -387,17 +382,16 @@ sub _write_gff_from_ama {
 
     my $gff_filename = '';
     my $gfu = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
-    eval {
+    try {
         my $gff_result = $gfu->metagenome_to_gff({"metagenome_ref" => $genome_ref});
 
         $gff_filename = $gff_result->{file_path};
 
         unless (-s $gff_filename) {print "GFF is empty ";}
-    };
-    if ($@) {
-        croak "**_write_gff_from_ama ERROR: ".$@."\n";
+        return $gff_filename;
+    } catch {
+        croak "**_write_gff_from_ama ERROR: $_\n";
     }
-    return $gff_filename;
 }
 
 sub _save_metagenome {
@@ -430,12 +424,10 @@ sub _save_metagenome {
         croak "**In _save_metagenome: GFF file is empty.\n";
     }
 
-    eval {
+    try {
         $self->_fetch_object_info($obj_ref);
-    };
-    if ($@) {
-        croak("**In _save_metagenome ERROR trying to access the input object:\n"
-               .$@."\n");
+    } catch {
+        croak("**In _save_metagenome ERROR trying to access the input object:\n$_\n");
     }
 
     print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
@@ -443,20 +435,16 @@ sub _save_metagenome {
 
     my $gfu = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my $annotated_metag = {};
-    eval {
+    try {
         $annotated_metag = $gfu->ws_obj_gff_to_metagenome ({
             "ws_ref" => $obj_ref,
             "gff_file" => {'path' => $gff_file},
             "genome_name" => $out_metag_name,
             "workspace_name" => $ws,
             "generate_missing_genes" => 1});
-    };
-    if ($@) {
-        croak("**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome:\n"
-               .$@."\n");
-    }
-    else {
         return $annotated_metag;
+    } catch {
+        croak("**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome:\n$_\n");
     }
 }
 
@@ -570,21 +558,20 @@ sub _run_rast_annotation {
     print "For example, first 3 features: \n".Dumper(@{$inputgenome->{features}}[0..2]);
 
     my $rasted_gn = {};
-    eval {
-	#my $rast_client = installed_clients::GenomeAnnotationClient->new($self->{call_back_url});
-	my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+    try {
+	    #my $rast_client = installed_clients::GenomeAnnotationClient->new($self->{call_back_url});
+	    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($inputgenome,
-            {stages => [{name => "annotate_proteins_kmer_v2",
-                         kmer_v2_parameters => {min_hits => "5",
+                        {stages => [{name => "annotate_proteins_kmer_v2",
+                             kmer_v2_parameters => {min_hits => "5",
 			                        dataset_name => "V2Data",
                                                 annotate_hypothetical_only => 0}},
-                        {name => "annotate_proteins_kmer_v1",
-                         kmer_v1_parameters => {dataset_name => "Release70",
+                            {name => "annotate_proteins_kmer_v1",
+                             kmer_v1_parameters => {dataset_name => "Release70",
                                                 annotate_hypothetical_only => 0}}]}
-        );
-    };
-    if ($@) {
-        croak "ERROR calling rast run_pipeline: ".$@."\n";
+            );
+    } catch {
+        croak "ERROR calling rast run_pipeline: \n$_\n";
     }
     return $rasted_gn;
 };
@@ -913,13 +900,12 @@ sub _generate_metag_report {
 sub _fetch_object_data {
     my ($self, $obj_ref) = @_;
     my $ret_obj_data = {};
-    eval {
+    try {
         $ret_obj_data = $self->{ws_client}->get_objects2(
                             {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
-    };
-    if ($@) {
-        croak "ERROR Workspace.get_objects2 failed: ".$@."\n";
+    } catch {
+        croak "ERROR Workspace.get_objects2 failed:\n$_\n";
     }
     return $ret_obj_data;
 }
@@ -927,13 +913,12 @@ sub _fetch_object_data {
 sub _fetch_object_info {
     my ($self, $obj_ref) = @_;
     my $obj_info = {};
-    eval {
+    try {
         $obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>[{ref=>$obj_ref}]}
                         )->{infos}->[0];
-    };
-    if ($@) {
-        croak "ERROR Workspace.get_object_info3 failed: ".$@."\n";
+    } catch {
+        croak "ERROR Workspace.get_object_info3 failed:\n$_\n";
     }
     # print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
     return $obj_info;
