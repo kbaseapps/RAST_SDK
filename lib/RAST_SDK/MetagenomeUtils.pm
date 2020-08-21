@@ -115,12 +115,12 @@ sub _run_prodigal {
     my $ret = 0;
     try {
         $ret = system(@cmd);
+        print "Prodigal returns: $ret\n";
+        return $ret;
     } catch {
         print Dumper(\@cmd);
         croak "ERROR Prodigal run failed:$_\n";
-    }
-    print "Prodigal returns: $ret\n";
-    return $ret;
+    };
 }
 
 #--From https://github.com/hyattpd/prodigal/wiki/understanding-the-prodigal-output---
@@ -330,7 +330,7 @@ sub _prodigal_gene_call {
             }
         }
     }
-    else {# Prodigal throws an error
+    else {# Prodigal has died with an error
     }
     return ($out_file, \@prodigal_out);
 }
@@ -348,7 +348,7 @@ sub _get_fasta_from_assembly {
         return $output->{path};
     } catch {
         croak "ERROR calling AssemblyUtil.get_assembly_as_fasta: $_\n";
-    }
+    };
 }
 
 sub _write_fasta_from_ama {
@@ -365,7 +365,7 @@ sub _write_fasta_from_ama {
         return $fasta_filename;
     } catch {
         croak "**_write_fasta_from_ama ERROR: $_\n";
-    }
+    };
 }
 
 
@@ -391,7 +391,7 @@ sub _write_gff_from_ama {
         return $gff_filename;
     } catch {
         croak "**_write_gff_from_ama ERROR: $_\n";
-    }
+    };
 }
 
 sub _save_metagenome {
@@ -428,7 +428,7 @@ sub _save_metagenome {
         $self->_fetch_object_info($obj_ref);
     } catch {
         croak("**In _save_metagenome ERROR trying to access the input object:\n$_\n");
-    }
+    };
 
     print "First few 10 lines of the GFF file before call to GFU.ws_obj_gff_to_metagenome-----------\n";
     $self->_print_fasta_gff(0, 10, $gff_file);
@@ -442,10 +442,11 @@ sub _save_metagenome {
             "genome_name" => $out_metag_name,
             "workspace_name" => $ws,
             "generate_missing_genes" => 1});
-        return $annotated_metag;
     } catch {
-        croak("**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome:\n$_\n");
-    }
+        warn ("**In _save_metagenome ERROR calling GenomeFileUtil.ws_obj_gff_to_metagenome:\n$_\n");
+    } finally {
+        return $annotated_metag;
+    };
 }
 
 
@@ -557,11 +558,10 @@ sub _run_rast_annotation {
     print "******Run RAST pipeline on genome with $count features.******\n";
     print "For example, first 3 features: \n".Dumper(@{$inputgenome->{features}}[0..2]);
 
-    my $rasted_gn = {};
     try {
-	    #my $rast_client = installed_clients::GenomeAnnotationClient->new($self->{call_back_url});
-	    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-        $rasted_gn = $rast_client->run_pipeline($inputgenome,
+        #my $rast_client = installed_clients::GenomeAnnotationClient->new($self->{call_back_url});
+        my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+        my $rasted_gn = $rast_client->run_pipeline($inputgenome,
                         {stages => [{name => "annotate_proteins_kmer_v2",
                              kmer_v2_parameters => {min_hits => "5",
 			                        dataset_name => "V2Data",
@@ -570,10 +570,11 @@ sub _run_rast_annotation {
                              kmer_v1_parameters => {dataset_name => "Release70",
                                                 annotate_hypothetical_only => 0}}]}
             );
+        return $rasted_gn;
     } catch {
-        croak "ERROR calling rast run_pipeline: \n$_\n";
-    }
-    return $rasted_gn;
+        warn "ERROR calling rast run_pipeline: \n$_\n";
+        return {};
+    };
 };
 
 
@@ -904,24 +905,31 @@ sub _fetch_object_data {
         $ret_obj_data = $self->{ws_client}->get_objects2(
                             {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
+        return $ret_obj_data;
     } catch {
         croak "ERROR Workspace.get_objects2 failed:\n$_\n";
-    }
-    return $ret_obj_data;
+    };
 }
 
+#
+## Check the given ref string to make sure it conforms to the expected
+## object reference format and actually exists in KBase.
+## Return the object info if it passes, undef otherwise.
+#
 sub _fetch_object_info {
     my ($self, $obj_ref) = @_;
-    my $obj_info = {};
+
+    my $ret_obj_info = undef;
     try {
-        $obj_info = $self->{ws_client}->get_object_info3(
+        $ret_obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>[{ref=>$obj_ref}]}
                         )->{infos}->[0];
+        print "INFO: object info for $obj_ref------\n".Dumper($ret_obj_info);
+        return $ret_obj_info;
     } catch {
-        croak "ERROR Workspace.get_object_info3 failed:\n$_\n";
-    }
-    # print "INFO: object info for $obj_ref------\n".Dumper($obj_info);
-    return $obj_info;
+        croak( "INFO: Workspace.get_object_info3 failed to access $obj_ref.\n".
+               "ERROR message:$_\n");
+    };
 }
 
 # create a unique ID
@@ -1408,6 +1416,16 @@ sub rast_metagenome {
     }
 
     my $rasted_genome = $self->_run_rast_annotation($inputgenome);
+    unless (keys %{ $rasted_genome }) {
+        print "Rasting errored, return original genome object.\n";
+        return {
+            output_metagenome_ref => $input_obj_ref,
+            output_workspace => $params->{output_workspace},
+            report_name => undef,
+            report_ref => undef
+        };
+    }
+
     my $ftrs = $rasted_genome->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "RAST resulted ".$rasted_ftr_count." features.\n";
@@ -1431,6 +1449,16 @@ sub rast_metagenome {
     my $out_metag = $self->_save_metagenome($params->{output_workspace},
                                             $params->{output_metagenome_name},
                                             $input_obj_ref, $new_gff_file);
+    unless (keys %{ $out_metag }) {
+        print "Saving failed, return original genome object.\n";
+        return {
+            output_metagenome_ref => $input_obj_ref,
+            output_workspace => $params->{output_workspace},
+            report_name => undef,
+            report_ref => undef
+        };
+    }
+
     my $ama_ref = $out_metag->{metagenome_ref};
 
     my $rast_ret = {

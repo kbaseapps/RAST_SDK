@@ -616,10 +616,9 @@ subtest 'annotate_metagenome_prod' => sub {
         "output_metagenome_name" => "rasted_AMA",
         "output_workspace" => $ws_name
     };
-    throws_ok {
+    lives_ok {
         my $rast_ann = $rast_impl->annotate_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST annotate_metagenome call returns ERROR due to kmer data absence or other causes.';
+    } "RAST annotate_metagenome call returns normally even with the un-rasted input genome.";
 
 };
 
@@ -794,10 +793,9 @@ subtest 'rast_metagenome_prod' => sub {
     };
 
     my $rast_mg_ref;
-    throws_ok {
+    lives_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+    } "mgutil rast_metagenome call returns normally even with the un-rasted input genome.";
 
     # a prod metagenome assembly
     $parms = {
@@ -805,10 +803,9 @@ subtest 'rast_metagenome_prod' => sub {
         "output_metagenome_name" => "rasted_obj4_prod",
         "output_workspace" => $ws_name
     };
-    throws_ok {
+    lives_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+    } "mgutil rast_metagenome call returns normally even with the un-rasted input genome.";
 };
 
 subtest '_prepare_genome_4annotation' => sub {
@@ -847,10 +844,9 @@ subtest '_run_rast_annotation' => sub {
         });
     }
 
-    throws_ok {
+    lives_ok {
         my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-      'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+    } "RAST run_pipeline call returns normally even with the original input genome.";
 };
 
 # testing generate_stats_from_aa using obj ids from prod ONLY

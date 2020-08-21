@@ -1775,11 +1775,11 @@ sub _write_fasta_from_genome {
             unless (-e $fa_file && -s $fa_file) {print "Fasta file is empty!!!!";}
         }
         else {
-            croak ("**_write_fasta_from_genome ERROR:\n".
+            warn ("**_write_fasta_from_genome ERROR:\n".
             "No assembly can be found for genome $input_obj_ref\n");
         }
     } catch {
-        croak "**_write_fasta_from_genome ERROR: ".$_."\n";
+        warn "**_write_fasta_from_genome ERROR: ".$_."\n";
     } finally {
         return $fa_file;
     };
@@ -2265,9 +2265,10 @@ sub _fetch_object_data {
         $ret_obj_data = $self->{ws_client}->get_objects2(
                             {'objects'=>[{ref=>$obj_ref}]}
                         )->{data}->[0]->{data};
-        return $ret_obj_data;
     } catch {
-        croak "ERROR Workspace.get_objects2 failed to access $obj_ref:\n$_\n";
+        warn "ERROR Workspace.get_objects2 failed to access $obj_ref:\n$_\n";
+    } finally {
+        return $ret_obj_data;
     };
 }
 
