@@ -420,7 +420,7 @@ sub _remap_contigIDs {
     my ($self, $contigID_hash, $genome) = @_;
 
     my $contigs = $genome->{contigs};
-    foreach my $ctg_obj (@{$contigs}) {
+    for my $ctg_obj (@{$contigs}) {
         my $cid = $ctg_obj->{id};
         $ctg_obj->{id} = $contigID_hash->{$cid};
         $ctg_obj->{name} = $contigID_hash->{$cid};
@@ -1187,7 +1187,7 @@ sub _move_non_coding_features {
                 if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
                 # Found some pseudogenes that have wrong structure for aliases
                     my $tmp = [];
-                    foreach my $key (@{$ftr->{aliases}})  {
+                    for my $key (@{$ftr->{aliases}})  {
                         my @ary = ('alias', $key);
                         push(@{$tmp}, \@ary);
                     }
@@ -1207,7 +1207,7 @@ sub _move_non_coding_features {
     #
     #   print "Array size =".scalar @{$genome->{features}}."\n";
     #   print "Number to splice out = ".scalar @splice_list."\n";
-    foreach my $key (reverse @splice_list) {
+    for my $key (reverse @splice_list) {
         if ($key =~ /\D/ ) {
             print "INVALID:size=".scalar @{$genome->{features}}."\n";
             # print Dumper $key;
@@ -1266,7 +1266,7 @@ sub _build_seed_ontology {
     #Building a hash of standardized seed function strings
     my $num_coding = 0;
     my $funchash = {};
-    foreach my $term (keys(%{$output->{term_hash}})) {
+    for my $term (keys(%{$output->{term_hash}})) {
         my $rolename = lc($output->{term_hash}->{$term}->{name});
         $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
         $rolename =~ s/\s//g;
@@ -1406,7 +1406,7 @@ sub _build_seed_ontology {
                             }
                         }
                         if (exists ($ftr->{ontology_terms}->{SSO})) {
-                            foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
+                            for my $sso (keys($ftr->{ontology_terms}->{SSO})) {
                                 if ($sso =~ /SSO:000009304/) {
                                     $advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
                                 }
@@ -1669,8 +1669,7 @@ sub _save_annotation_results {
         return ({"ref" => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
-        #warn $err_msg;
-        return (undef, $err_msg);
+        return ({}, $err_msg);
     };
 }
 
@@ -1995,7 +1994,7 @@ sub _generate_stats_from_gffContents {
     print "INFO: Gathering stats from $gff_count GFFs------\n";
 
     my %gff_stats = ();
-    foreach my $gff_line (@$gff_contents) {
+    for my $gff_line (@$gff_contents) {
         if(scalar(@$gff_line) < 9){
             #No attributes column
             next;
@@ -2009,7 +2008,7 @@ sub _generate_stats_from_gffContents {
 
             # Populating with attribute key-value pair
             # This is where the feature id is from
-            foreach my $attr (split(";",$ftr_attrs)) {
+            for my $attr (split(";",$ftr_attrs)) {
                 chomp $attr;
 
                 # Sometimes empty string
@@ -2098,7 +2097,7 @@ sub _find_function_source {
     my $func = shift;
 
     my $func_src = 'N/A';
-    foreach my $ftr_id (sort keys %$func_tab_ref) {
+    for my $ftr_id (sort keys %$func_tab_ref) {
         if (exists($func_tab_ref->{$ftr_id}->{'functions'})) {
             my $funcs = $func_tab_ref->{$ftr_id}->{'functions'};
             if ($funcs =~ /\Q$func\E/) {
@@ -2148,7 +2147,7 @@ sub _write_html_from_stats {
 
     my $roles = $gff_stats{function_roles};
     my $genes = $gff_stats{gene_role_map};
-    foreach my $role_k (sort keys %$roles) {
+    for my $role_k (sort keys %$roles) {
         # add escape to preserve double quote (")
         (my $new_role_k = $role_k) =~ s/"/\\"/g;
         $new_role_k = uri_decode($new_role_k);
@@ -2161,7 +2160,7 @@ sub _write_html_from_stats {
         # search for $role_k in all the $subsys_info items's role_names arrays
         my $subsys_str = '';
         my $class_str = '';
-        foreach my $subsys_k (sort keys %subsys_info) {
+        for my $subsys_k (sort keys %subsys_info) {
             my $subsys_roles = $subsys_info{$subsys_k}{role_names};
             if ( grep {$_ eq $role_k} @$subsys_roles ) {
                 #print "Found $role_k in subsystem $subsys_k\n";
@@ -2370,7 +2369,7 @@ sub _parse_gff {
     print "Read in ".scalar @{$gff_lines}." lines from GFF file $gff_filename\n";
 
     my @gff_contents=();
-    foreach my $current_line (@{$gff_lines}){
+    for my $current_line (@{$gff_lines}){
         chomp $current_line;
         next if (!$current_line || $current_line =~ m/^#.*$/);
         next if $current_line =~ m/^##gff-version\s*\d$/;
@@ -2388,7 +2387,7 @@ sub _parse_gff {
         # This is where the feature id is from
         my %ftr_attributes=();
         my @attr_order=();
-        foreach my $attribute (split(";",$attributes)) {
+        for my $attribute (split(";",$attributes)) {
             chomp $attribute;
 
             # Sometimes empty string
@@ -2448,7 +2447,7 @@ sub _get_feature_function_lookup {
 
     #Feature Lookup Hash
     my %function_lookup = ();
-    foreach my $ftr (@$features){
+    for my $ftr (@$features){
         next if (!exists($ftr->{'functions'}) && !exists($ftr->{'function'}));
 
         if (exists($ftr->{'functions'})) {
@@ -2540,15 +2539,16 @@ sub rast_genome {
         my $prnt_lines = ($rasted_ftr_count > $prnt_num) ? $prnt_num : $rasted_ftr_count;
         for my $ftr (@{$ftrs}[0, $prnt_lines - 1]) {
             my $f_id = $ftr->{id};
-            my $f_func = defined($ftr->{function}) ? $ftr->{function} : '';
-            my $f_protein = defined($ftr->{protein_translation}) ? $ftr->{protein_translation} : '';
+            # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
+            my $f_func = $ftr->{ function } // '';
+            my $f_protein = $ftr->{protein_translation} // '';
             print "$f_id\t$f_func\t$f_protein\n";
         }
     }
 
     ## save the annotated genome--if saving failed, return {} so that downstream can skip it
     my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final, $rast_ref);
-    unless (defined($aa_out)) {
+    unless ( %$aa_out ) {
         print( $out_msg."No annotation is saved on $input_obj_ref\n" );
         return {};
     }
@@ -2672,7 +2672,7 @@ sub bulk_rast_genomes {
     ) unless ref $bulk_inparams eq 'ARRAY' && @{$bulk_inparams};
 
     my $anngns = [];
-    foreach my $parm (@{$bulk_inparams}) {
+    for my $parm (@{$bulk_inparams}) {
         my $rast_out = $self->rast_genome($parm);
         if (keys %{ $rast_out }) {
             push @$anngns, $rast_out->{output_genome_ref};

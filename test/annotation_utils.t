@@ -74,7 +74,6 @@ unless ( $asmb_fasta ) {
     exit 1;
 }
 
-#=begin
 #####RAST_SDK Module test objects #####
 my $obj2_1 = "63171/315/1";
 
@@ -116,6 +115,7 @@ my $test_ftrs = [{
  }];
 
 
+#=begin
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
     my $contigID_hash = {
@@ -869,7 +869,6 @@ subtest '_run_rast_workflow_ann' => sub {
 subtest '_post_rast_ann_call' => sub {
     # a genome object in workspace #65386
     my $cnt = 0;
-    print "annotated genome:\n".Dumper($ann_genome01->{non_coding_features});
     my $ncoding_features01 = $ann_genome01->{non_coding_features};
     for my $ncoding_ftr (@{$ncoding_features01}) {
         if(exists($ncoding_ftr->{type})) {
@@ -1047,8 +1046,7 @@ subtest '_save_annotation_results' => sub {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
               $final_genome01, $rast_details01{parameters});
     } "_save_annotation_results failed on genome $obj_65386_1 and returned {}";
-    ok ( !(keys %{ $save_ret }),
-	 "_save_annotation_results returns an empty hash, {}." );
+    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
 
     $nc_ftr_count = @{$final_genome01->{non_coding_features}};
     print "\n********For case $obj_65386_1*********\nAFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
@@ -1058,24 +1056,21 @@ subtest '_save_annotation_results' => sub {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
               $final_genome02, $rast_details02{parameters});
     } "_save_annotation_results failed on genome $obj_65386_2 and returned {}";
-    ok ( !(keys %{ $save_ret }),
-	 "_save_annotation_results returns an empty hash, {}." );
+    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
 
     # a genome object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
               $final_genome1, $rast_details1{parameters});
     } "_save_annotation_results failed on genome $obj_Ecoli and returned {}";
-    ok ( !(keys %{ $save_ret }),
-	 "_save_annotation_results returns an empty hash, {}." );
+    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
 
     # an assembly object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
               \%rast_details2, $final_genome2, $inputgenome2);
     } "_save_annotation_results failed on assembly $obj_asmb and returned {}";
-    ok ( !(keys %{ $save_ret }),
-	 "_save_annotation_results returns an empty hash, {}." );
+    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
 };
 
 #
@@ -1192,7 +1187,6 @@ subtest '_run_rast_genecalls' => sub {
     ok (@{$gc_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
-
 
 subtest 'Impl_annotate_genome' => sub {
     my $obj_asmb1 = '1234/56/7';
@@ -1515,7 +1509,6 @@ subtest '_write_gff_from_genome' => sub {
     $annoutil->_print_fasta_gff(0, 20, $gff_fpath);
 };
 
-
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my ($parms, $rast_ret, $genome_obj);
@@ -1562,10 +1555,13 @@ subtest 'Impl_rast_genome_assembly' => sub {
     my $rast_ret = {};
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } "Impl rast_genome call returns normally on genome $obj_Ecoli";
-    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    } "Impl rast_genome_assembly call returns normally on genome $obj_Ecoli";
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns");
     ok ($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/,
         "rast_genome_assembly returns a valid ref");
+    is ($rast_ret->{output_workspace}, $parms->{output_workspace}, "workspace is correct.");
+    ok (exists($rast_ret->{report_ref}), "report created with report_ref");
+    ok (exists($rast_ret->{report_name}), "report created with report_name");
 
     $parms = {
         "object_ref" => $obj_asmb,
@@ -1574,7 +1570,7 @@ subtest 'Impl_rast_genome_assembly' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } 'Impl rast_genome call returns without annotation due to assembly with no feaature.';
+    } 'Impl rast_genome_assembly call returns.';
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to local annotation on assembly with empty features, no rast was run.");
 };
@@ -1855,10 +1851,6 @@ subtest 'annoutil_uniq_functions' => sub {
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
 ## so an empty hash is returned.
 #
-## If put if...else block for checking if the return is an empty hash because
-## the same block sometimes returns empty and sometimes non-empty hash for exactly
-## the same input parameters.
-#
 subtest 'bulk_rast_genomes' => sub {
     my $params = {
         "input_assemblies" => [],
@@ -1874,30 +1866,20 @@ subtest 'bulk_rast_genomes' => sub {
         $params->{input_text} = '';
         $rfsq_ann1 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
-    if ( keys %{ $rfsq_ann1 } ) {
-        print("INFO:bulk_rast_genomes returns a hash on [$refseq_gn1, $refseq_gn2].");
-	is ($rfsq_ann1->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
-            "The genomeSet ref is set correctly");
-    } else {
-        print("INFO:bulk_rast_genomes returns an empty hash on [$refseq_gn1, $refseq_gn2].");
-	ok (!exists($rfsq_ann1->{output_genomeSet_ref}),
-            "An empty hash was returned due to failures.");
-    }
+    ok ( %$rfsq_ann1,
+         "INFO:bulk_rast_genomes returns a hash on [$refseq_gn1, $refseq_gn2].");
+    is ($rfsq_ann1->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
+        "The genomeSet ref is set correctly");
 
     lives_ok {
         $params->{input_genomes} = [];
         $params->{input_text} = "19217/172902/1;19217/330276/1";
         $rfsq_ann2 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on string of 2 genomes returns normally.";
-    if ( keys %{ $rfsq_ann2 } ) {
-        print("INFO:bulk_rast_genomes returns a hash on [$refseq_gn1, $refseq_gn2].");
-	is ($rfsq_ann1->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
-            "The genomeSet ref is set correctly");
-    } else {
-        print("INFO:bulk_rast_genomes returns an empty hash on [$refseq_gn1, $refseq_gn2].");
-	ok (!exists($rfsq_ann2->{output_genomeSet_ref}),
-            "An empty hash was returned due to failures.");
-    }
+    ok ( %$rfsq_ann2,
+         "INFO:bulk_rast_genomes returns a hash on input text '$refseq_gn1; $refseq_gn2'.");
+	is ($rfsq_ann2->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
+        "The genomeSet ref is set correctly");
 };
 
 RASTTestUtils::clean_up();
