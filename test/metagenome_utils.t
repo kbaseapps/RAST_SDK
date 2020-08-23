@@ -694,10 +694,10 @@ subtest '_generate_metag_report' => sub {
                                             $gff_contents2, \%ftr_tab);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
-    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
+    ok( exists($ret_rpt->{output_metagenome_ref}), 'Report generation returns output_gemome_ref.');
 };
 
-
+=begin
 # testing rast_metagenome and annotate_genome using obj ids from appdev ONLY
 subtest 'rast_metagenome_appdev' => sub {
     # an appdev assembly
@@ -740,6 +740,7 @@ subtest 'rast_metagenome_appdev' => sub {
         'calling rast_metagenome fails to generate a valid metagenome';
 };
 
+
 subtest 'annotate_metagenome_appdev' => sub {
     my $parms = {
         "object_ref" => "37798/7/1",
@@ -774,7 +775,7 @@ subtest '_save_metagenome_appdev' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
 };
-
+=cut
 
 # testing rast_metagenome using obj ids from prod ONLY
 subtest 'rast_metagenome_prod' => sub {
