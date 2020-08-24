@@ -3,7 +3,6 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org
-our $VERSION = '0.1.8';
 our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK.git';
 our $GIT_COMMIT_HASH = '805abca81a1515cd2766b0b74381cdb0de15d09d';
 
@@ -1879,7 +1878,7 @@ sub annotate_metagenome
     my $mg_util = RAST_SDK::MetagenomeUtils->new($config, $ctx);
     my $rast_out = $mg_util->rast_metagenome($params);
     $output = {
-        output_metagenome_ref => $rast_out->{output_genome_ref},
+        output_metagenome_ref => $rast_out->{output_metagenome_ref},
         report_ref => $rast_out->{report_ref},
         report_name => $rast_out->{report_name},
         output_workspace => $params->{output_workspace}
@@ -2228,12 +2227,22 @@ sub rast_genomes_assemblies
     my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
     my $ann_util = RAST_SDK::AnnotationUtils->new($config, $ctx);
     my $rast_out = $ann_util->bulk_rast_genomes($params);
-    $output = {
-        output_genome_ref => $rast_out->{output_genomeSet_ref},
-        report_ref => $rast_out->{"report_ref"},
-        report_name => $rast_out->{report_name},
-        output_workspace => $params->{output_workspace}
-    };
+
+    if ( defined($rast_out->{output_genomeSet_ref}) ) {
+        $output = {
+            output_genome_ref => $rast_out->{output_genomeSet_ref},
+            report_ref => $rast_out->{"report_ref"},
+            report_name => $rast_out->{report_name},
+            output_workspace => $params->{output_workspace}
+        };
+    } else {
+        $output = {
+            output_genome_ref => undef,
+            report_ref => undef,
+            report_name => undef,
+            output_workspace => $params->{output_workspace}
+        };
+    }
     Bio::KBase::Utilities::close_debug();
     #END rast_genomes_assemblies
     my @_bad_returns;

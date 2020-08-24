@@ -450,12 +450,12 @@ subtest '_parse_translation' => sub {
     copy($trans_file, $trans_path) || croak "Copy file failed: $!\n";
 
     %trans_tab = $mgutil->_parse_translation($trans_path);
-    ok( keys %trans_tab , "Prodigal translation parsing returns result.");
+    ok( %trans_tab , "Prodigal translation parsing returns result.");
 };
 
 subtest '_parse_sco' => sub {
     $sco_tab = $mgutil->_parse_sco($ecoli_sco, %trans_tab);
-    ok( @{$sco_tab} >0, "Prodigal SCO parsing returns result.");
+    ok( @$sco_tab, "Prodigal SCO parsing returns result.");
 };
 
 
@@ -469,16 +469,16 @@ subtest '_parse_prodigal_results' => sub {
     copy($ecoli_gff, $prd_out_path) || croak "Copy file failed: $!\n";
     my ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
                           $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, "Prodigal GFF parsing returns result.");
-    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
+    ok( @$prd_results, "Prodigal GFF parsing returns result.");
+    ok( %trans_tab , "Prodigal GFF parsing returns translation table.");
 
     # Prodigal generate an SCO output file
     $out_type = 'sco';
     copy($ecoli_sco, $prd_out_path) || croak "Copy file failed: $!\n";
     ($prd_results, %trans_tab) = $mgutil->_parse_prodigal_results(
                           $trans_path, $prd_out_path, $out_type);
-    ok( @{$prd_results} >0, "Prodigal SCO parsing returns result.");
-    ok( keys %trans_tab , "Prodigal GFF parsing returns translation table.");
+    ok( @$prd_results, "Prodigal SCO parsing returns result.");
+    ok( %trans_tab , "Prodigal GFF parsing returns translation table.");
 };
 
 subtest '_prodigal_gene_call' => sub {
@@ -608,6 +608,7 @@ subtest '_save_metagenome' => sub {
     is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
 };
 
+
 # test by using prod/appdev obj id
 subtest 'annotate_metagenome_prod' => sub {
     my $parms = {
@@ -616,13 +617,16 @@ subtest 'annotate_metagenome_prod' => sub {
         "output_metagenome_name" => "rasted_AMA",
         "output_workspace" => $ws_name
     };
-    throws_ok {
-        my $rast_ann = $rast_impl->annotate_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'RAST annotate_metagenome call returns ERROR due to kmer data absence or other causes.';
 
+    my $rast_ann;
+    lives_ok {
+        $rast_ann = $rast_impl->annotate_metagenome($parms);
+    } "RAST annotate_metagenome call returns normally even with the un-rasted input genome.";
+    ok ( $rast_ann->{output_metagenome_ref} eq $parms->{object_ref},
+        "Skipped rasting and returned the input genome.");
+    ok ( $rast_ann->{output_workspace} eq $parms->{output_workspace},
+        "Output workspace set correctly.");
 };
-
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
@@ -633,36 +637,30 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
 
     # $obj8
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj8);
-    #print "Stats from AMA on $obj8:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj8.");
+    ok( %ret_stats, "Statistics generated from AMA $obj8.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj8);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    #print "Stats from GFF on $obj8: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj8.");
+    ok( %ret_stats, "Statistics generated from gffContents on $obj8.");
 
     # $obj9
     %ret_stats = $mgutil->_generate_stats_from_aa($obj9);
-    #print "Stats from AMA on $obj9:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj9.");
+    ok( %ret_stats, "Statistics generated from AMA $obj9.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj9);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    #print "Stats from GFF on $obj9: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj9.");
+    ok( %ret_stats, "Statistics generated from gffContents on $obj9.");
 
     # $obj10
     %ret_stats = $mgutil->_generate_stats_from_aa($obj10);
-    #print "Stats from ama on $obj10:\n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from AMA $obj10.");
+    ok( %ret_stats, "Statistics generated from AMA $obj10.");
 
     $gff_path = $mgutil->_write_gff_from_ama($obj10);
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
     %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    #print "Stats from GFF on $obj10: \n".Dumper(\%ret_stats);
-    ok(keys %ret_stats, "Statistics generated from gffContents on $obj10.");
+    ok( %ret_stats, "Statistics generated from gffContents on $obj10.");
 };
 
 # testing _generate_metag_report using obj ids from prod ONLY
@@ -678,31 +676,26 @@ subtest '_generate_metag_report' => sub {
     lives_ok {
         ($gff_contents1, $attr_delimiter) = $mgutil->_parse_gff($gff_path1, $attr_delimiter);
         %ret_stats1 = $mgutil->_generate_stats_from_gffContents($gff_contents1);
-        #print "Stats on $obj6: \n".Dumper(\%ret_stats1);
     } $stats_ok;
-    is(keys %ret_stats1, 0, "_generate_stats_from_gffContents on $obj6 should return empty.\n");
+    cmp_deeply \%ret_stats1, {}, "_generate_stats_from_gffContents on $obj6 should return empty.\n";
 
     my $gff_contents2 = [];
     my %ret_stats2;
     lives_ok {
         ($gff_contents2, $attr_delimiter) = $mgutil->_parse_gff($gff_path2, $attr_delimiter);
         %ret_stats2 = $mgutil->_generate_stats_from_gffContents($gff_contents2);
-        #print "Stats on $obj7: \n".Dumper(\%ret_stats2);
     } $stats_ok;
     is(keys %ret_stats2, 2, "_generate_stats_from_gffContents on $obj7 should return non-empty.\n");
     ok(exists($ret_stats2{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
     ok(exists($ret_stats2{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
 
     my %ftr_tab = $mgutil->_get_feature_function_lookup($test_ftrs);
-    #print "\nFeature lookup:\n".Dumper(\%ftr_tab);
     my $ret_rpt = $mgutil->_generate_metag_report($obj6, $obj7, $gff_contents1,
                                             $gff_contents2, \%ftr_tab);
-    print "Report return: \n".Dumper($ret_rpt);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
-    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
+    ok( exists($ret_rpt->{output_metagenome_ref}), 'Report generation returns output_gemome_ref.');
 };
-
 
 =begin
 # testing rast_metagenome and annotate_genome using obj ids from appdev ONLY
@@ -747,6 +740,7 @@ subtest 'rast_metagenome_appdev' => sub {
         'calling rast_metagenome fails to generate a valid metagenome';
 };
 
+
 subtest 'annotate_metagenome_appdev' => sub {
     my $parms = {
         "object_ref" => "37798/7/1",
@@ -783,7 +777,6 @@ subtest '_save_metagenome_appdev' => sub {
 };
 =cut
 
-
 # testing rast_metagenome using obj ids from prod ONLY
 subtest 'rast_metagenome_prod' => sub {
     # a prod assembly
@@ -794,10 +787,9 @@ subtest 'rast_metagenome_prod' => sub {
     };
 
     my $rast_mg_ref;
-    throws_ok {
+    lives_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+    } "mgutil rast_metagenome call returns normally even with the un-rasted input genome.";
 
     # a prod metagenome assembly
     $parms = {
@@ -805,10 +797,9 @@ subtest 'rast_metagenome_prod' => sub {
         "output_metagenome_name" => "rasted_obj4_prod",
         "output_workspace" => $ws_name
     };
-    throws_ok {
+    lives_ok {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
-    } qr/ERROR calling rast run_pipeline/,
-        'mgutil rast_metagenome call returns ERROR due to kmer data absence or other causes.';
+    } "mgutil rast_metagenome call returns normally even with the un-rasted input genome.";
 };
 
 subtest '_prepare_genome_4annotation' => sub {
@@ -847,22 +838,21 @@ subtest '_run_rast_annotation' => sub {
         });
     }
 
-    throws_ok {
+    lives_ok {
         my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
-    } qr/ERROR calling rast run_pipeline/,
-      'RAST run_pipeline call returns ERROR due to kmer data absence or other causes.';
+    } "RAST run_pipeline call returns normally even with the original input genome.";
 };
 
 # testing generate_stats_from_aa using obj ids from prod ONLY
 subtest '_generate_stats_from_aa' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_aa($obj4);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj4 returns result.");
+    ok( %ret_stats, "Statistics generation from AMA $obj4 returns result.");
 
     %ret_stats = $mgutil->_generate_stats_from_aa($obj5);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj5 returns result.");
+    ok( %ret_stats, "Statistics generation from AMA $obj5 returns result.");
 
     %ret_stats = $mgutil->_generate_stats_from_aa($obj7);
-    ok(keys %ret_stats, "Statistics generation from AMA $obj7 returns result.");
+    ok( %ret_stats, "Statistics generation from AMA $obj7 returns result.");
 };
 
 # testing _generate_stats_from_gffContents using obj ids from prod ONLY
@@ -873,8 +863,9 @@ subtest '_generate_stats_from_gffContents' => sub {
     ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff($gff_path, $attr_delimiter);
 
     my %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
-    ok(keys %ret_stats, 'Statistics generation from gff_contents returns result.');
+    ok( %ret_stats, 'Statistics generation from gff_contents returns result.');
 };
+
 
 RASTTestUtils::clean_up();
 
