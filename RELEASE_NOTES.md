@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 0.1.9
+__Changes__
+Made code improvements according to review comments on PR #81 by AJ.  Also added error handling for bulk rasting to catch exception from gfu.save_one_genome call. Included the two apps annotate_genome_assembly and bulk_annotate_genomes_assemblies.
+
 ### Version 0.1.8
 __Changes__
 Merged all development starting from AMA in annotate_metaG_rebased branch into master; then merged changes by AJ on test file/module renaming and cpanfile addition.
