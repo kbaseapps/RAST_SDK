@@ -44,7 +44,9 @@ parameters :
             Name of the resulting Annotated Metagenome Assembly to be saved in the Narrative
 
 description : |
-    <p>Description content to be filled...</p>
+    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/annotate_metagenome/release">Annotate Metagenome</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate an assembly or an annotated metagenome assembly.</p>
+    <p>The Annotate Metagenome App takes an assembly (of KBaseGenomeAnnotations.Assembly type), or an annotated metagenome assembly (of KBaseMetagenomes.AnnotatedMetagenomeAssembly type) as input and allows users to annotate or re-annotate it. If the input is of KBaseGenomeAnnotations.Assembly type, it will first call Prodigal for genes and then call RAST pipeline with predefined workflow to annotate the resulted features. For the KBaseMetagenomes.AnnotatedMetagenomeAssembly input, it will extract the gene sequences from its fasta data, further translates into protein sequences.  With the gene and protein sequence data, a pseudo genome is formed and sent to RAST pipeline with the same workflow to annotate.</p>
+    <p>The annotated results by RAST are finally saved as a KBaseMetagenomes.AnnotatedMetagenomeAssembly object in KBase.</>
 
 publications :
     -
