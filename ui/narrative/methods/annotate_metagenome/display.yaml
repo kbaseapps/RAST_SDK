@@ -44,14 +44,73 @@ parameters :
             Name of the resulting Annotated Metagenome Assembly to be saved in the Narrative
 
 description : |
-    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/annotate_metagenome/release">Annotate Metagenome</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate an assembly or an annotated metagenome assembly.</p>
-    <p>The Annotate Metagenome App takes an assembly (of KBaseGenomeAnnotations.Assembly type), or an annotated metagenome assembly (of KBaseMetagenomes.AnnotatedMetagenomeAssembly type) as input and allows users to annotate or re-annotate it. If the input is of KBaseGenomeAnnotations.Assembly type, it will first call Prodigal for genes and then call RAST pipeline with predefined workflow to annotate the resulted features. For the KBaseMetagenomes.AnnotatedMetagenomeAssembly input, it will extract the gene sequences from its fasta data, further translates into protein sequences.  With the gene and protein sequence data, a pseudo genome is formed and sent to RAST pipeline with the same workflow to annotate.</p>
-    <p>The annotated results by RAST are finally saved as a KBaseMetagenomes.AnnotatedMetagenomeAssembly object in KBase.</>
-
+    <p>This KBase App uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or metagenome assemblies.</p>
+    <p>The Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk App, takes assemblies and metagenome assemblies as input, adds annotation and creates an Annotated Metagenome Assembly as an output object. This will make the annotations consistent with KBase genomes and prepare the metagenome for further analysis by other KBase Apps, especially the Metabolic Modeling Apps. An assembly is a FastA file imported as an Assembly object or is the output of one of the assembly apps in KBase</p>
+    <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
+    <p>Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”http://kbase.us/contact-us/”>contact us</a>.</p>
+    <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
 publications :
     -
         display-text: |
-            [1] standard citation format
-        link: url of the publication
+            [1] Aziz RK, Bartels D, Best AA, DeJongh M, Disz T, Edwards RA, et al. The RAST Server: Rapid Annotations using Subsystems Technology. BMC Genomics. 2008;9: 75. doi:10.1186/1471-2164-9-75
+        link: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-9-75
+
     -
+        display-text: |
+            [2] Overbeek R, Olson R, Pusch GD, Olsen GJ, Davis JJ, Disz T, et al. The SEED and the Rapid Annotation of microbial genomes using Subsystems Technology (RAST). Nucleic Acids Res. 2014;42: D206–D214. doi:10.1093/nar/gkt1226
+        link: https://academic.oup.com/nar/article/42/D1/D206/1062536
+
+    -
+        display-text: |
+            [3] Brettin T, Davis JJ, Disz T, Edwards RA, Gerdes S, Olsen GJ, et al. RASTtk: A modular and extensible implementation of the RAST algorithm for building custom annotation pipelines and annotating batches of genomes. Sci Rep. 2015;5. doi:10.1038/srep08365
+        link: https://www.nature.com/articles/srep08365
+
+    -
+        display-text: |
+            [4] Kent WJ. BLAT—The BLAST-Like Alignment Tool. Genome Res. 2002;12: 656–664. doi:10.1101/gr.229202
+        link: https://genome.cshlp.org/content/12/4/656
+
+    -
+        display-text: |
+            [5] Altschul SF, Madden TL, Schaffer AA, Zhang J, Zhang Z, Miller W, Lipman DJ. Gapped BLAST and PSI-BLAST: a new generation of protein database search programs. Nucleic Acids Res. 1997;25: 3389-3402. doi:10.1093/nar/25.17.3389
+    -
+        display-text: |
+            [6] Lowe TM, Eddy SR. tRNAscan-SE: a program for improved detection of transfer RNA genes in genomic sequence. Nucleic Acids Res. 1997;25: 955–964.
+        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC146525/
+
+    -
+        display-text: |
+            [7] Cobucci-Ponzano B, Rossi M, Moracci M. Translational recoding in archaea. Extremophiles. 2012;16: 793–803. doi:10.1007/s00792-012-0482-8
+        link: https://www.ncbi.nlm.nih.gov/pubmed/23015064
+
+    -
+        display-text: |
+            [8] Meyer F, Overbeek R, Rodriguez A. FIGfams: yet another set of protein families.
+            Nucleic Acids Res. 2009;37 6643-54. doi:10.1093/nar/gkp698.
+        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2777423/
+
+    -
+        display-text: |
+            [9] van Belkum A, Sluijuter M, de Groot R, Verbrugh H, Hermans PW. Novel BOX repeat PCR assay for high-resolution typing of Streptococcus pneumoniae strains. J Clin Microbiol. 1996;34: 1176–1179.
+        link: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC228977/
+
+    -
+        display-text: |
+            [10] Croucher NJ, Vernikos GS, Parkhill J, Bentley SD. Identification, variation and transcription of pneumococcal repeat sequences. BMC Genomics. 2011;12: 120. doi:10.1186/1471-2164-12-120
+        link: https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-12-120
+
+    -
+        display-text: |
+            [11] Hyatt D, Chen G-L, Locascio PF, Land ML, Larimer FW, Hauser LJ. Prodigal: prokaryotic gene recognition and translation initiation site identification. BMC Bioinformatics. 2010;11: 119. doi:10.1186/1471-2105-11-119
+        link: https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-11-119
+
+    -
+        display-text: |
+            [12] Delcher AL, Bratke KA, Powers EC, Salzberg SL. Identifying bacterial genes and endosymbiont DNA with Glimmer. Bioinformatics. 2007;23: 673–679. doi:10.1093/bioinformatics/btm009
+        link: https://academic.oup.com/bioinformatics/article/23/6/673/419055
+
+    -
+        display-text: |
+            [13] Akhter S, Aziz RK, Edwards RA. PhiSpy: a novel algorithm for finding prophages in bacterial genomes that combines similarity- and composition-based strategies. Nucleic Acids Res. 2012;40: e126. doi:10.1093/nar/gks406
+        link: https://academic.oup.com/nar/article/40/16/e126/1027055
 
