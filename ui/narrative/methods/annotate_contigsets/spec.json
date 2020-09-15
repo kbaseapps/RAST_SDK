@@ -2,7 +2,7 @@
   "ver" : "1.0.0",
   "name" : "Annotate multiple microbial assemblies",
   "authors" : [ "landml"],
-  "contact" : "http://kbase.us/contact-us/",
+  "contact" : "https://www.kbase.us/support/",
   "visble" : true,
   "categories" : ["active","annotation"],
   "widgets" : {

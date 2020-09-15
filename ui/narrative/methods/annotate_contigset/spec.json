@@ -1,7 +1,7 @@
 {
   "ver" : "1.0.0",
   "authors" : [ "chenry", "olson" ],
-  "contact" : "http://kbase.us/contact-us/",
+  "contact" : "https://www.kbase.us/support/",
   "visble" : true,
   "categories" : ["active","annotation"],
   "widgets" : {
