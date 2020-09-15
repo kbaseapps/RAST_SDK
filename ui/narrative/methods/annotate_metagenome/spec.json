@@ -2,7 +2,7 @@
     "ver" : "0.0.1",
     "name" : "Annotate a metagenome",
     "authors" : [ "chenry", "qzhang" ],
-    "contact" : "help@kbase.us",
+    "contact" : "https://www.kbase.us/support/",
     "categories" : ["active","annotation"],
     "widgets" : {
         "input" : "kbaseNarrativeMethodInput",

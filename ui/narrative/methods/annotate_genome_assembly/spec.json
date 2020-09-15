@@ -2,7 +2,7 @@
     "ver" : "1.0.0",
     "name" : "Annotate a genome or an assembly",
     "authors" : [ "chenry", "olson", "qzhang"],
-    "contact" : "http://kbase.us/contact-us/",
+    "contact" : "https://www.kbase.us/support/",
     "visble" : true,
     "categories" : ["active","annotation"],
     "widgets" : {
