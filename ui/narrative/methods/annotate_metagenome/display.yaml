@@ -47,7 +47,7 @@ description : |
     <p>This KBase App uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or metagenome assemblies.</p>
     <p>The Annotate Metagenome Assembly and Re-annotate Metagenomes with RASTtk App, takes assemblies and metagenome assemblies as input, adds annotation and creates an Annotated Metagenome Assembly as an output object. This will make the annotations consistent with KBase genomes and prepare the metagenome for further analysis by other KBase Apps, especially the Metabolic Modeling Apps. An assembly is a FastA file imported as an Assembly object or is the output of one of the assembly apps in KBase</p>
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
-    <p>Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”http://kbase.us/contact-us/”>contact us</a>.</p>
+    <p>Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”https://www.kbase.us/support/”>contact us</a>.</p>
     <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
 
 publications :
