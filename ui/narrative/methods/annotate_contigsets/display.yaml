@@ -180,7 +180,14 @@ parameter-groups:
       Assemblies to annotate.
 
 description : |
-    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/annotate_contigsets/release">Annotate Multiple Microbial Assemblies</a> uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or to perform computations on a set of assemblies so that they are consistent. The newly generated genomes will have the same names as the input assemblies with “.RAST” appended.</p>
+    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigsets/release">Annotate Multiple Microbial Assemblies</a> uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or to perform computations on a set of assemblies so that they are consistent. The newly generated genomes will have the same names as the input assemblies with “.RAST” appended.</p>
+    <p>The release versions of the RASTtk component services used in this app are:
+    <ul>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+    </ul>
+    </p>
 
     <p>The required input is one or more Assembly objects (older Narratives used the term ContigSet object) and/or AssemblySet objects. An Assembly can be generated using any of the Assembly Apps, by importing a FASTA file, or by uploading an .faa file directly from NCBI via FTP (<a href="https://narrative.kbase.us/#catalog/apps/kb_uploadmethods/upload_web_file/release">Upload File to Staging from Web</a>) and then importing. AssemblySets are created with the App <a href="https://narrative.kbase.us/#catalog/apps/kb_SetUtilities/KButil_Build_AssemblySet/release">Build AssemblySet</a>.</p>
 

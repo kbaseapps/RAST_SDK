@@ -64,7 +64,14 @@ parameters :
             Name to assign to the annotated assembly/genome
 
 description : |
-    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_microbial_genome/">Annotate Microbial Genome</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate a prokaryotic genome or to update the annotations of a genome.</p>
+    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_genome_assembly/release">Annotate Genome/Assembly</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate a prokaryotic genome or to update the annotations of a genome.</p>
+    <p>The release versions of the RASTtk component services used in this app are:
+    <ul>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+    </ul>
+    </p>
 
     <p>The Annotate Microbial Genome App takes a KBase Assembly or Genome object as input and allows users to annotate or re-annotate the assembly/genome. This will make the annotations consistent with other KBase assemblies/genomes and prepare the them for further analysis by other KBase Apps, especially the Metabolic Modeling Apps.</p>
 
@@ -73,14 +80,16 @@ description : |
 
     <p><strong>The Results</strong>
     <ul>
-    <li>The <i>Objects</i> section has a table of all the data objects that were created by the App. Click on the name of the data object to open a data viewer cell (below the currently selected cell).</li>
-    <li>The <i>Summary</i> section give details about the coding and noncoding features that were created and the average protein length.</li>
+      <li>The <i>Objects</i> section has a table of all the RAST-annoated genome object that was created by this App. Click on the name of the data object to open a data viewer cell (below the currently selected cell).</li>
+      <li>The <i>Reports</i> section has a report on the annotated genome object with regard to functional roles, gene counts of the function and subsystem information if any.</li>
+      <li>The <i>Summary</i> section give details about the coding and noncoding features that were created and the average protein length.</li>
+      <li>The <i>Links</i> section gives a link to the report that is presented in the <i>Reports</i> section.</li>
     </ul>
     </p>
 
     <p><strong>GUI Output</strong><br>The GUI output currently consists of three tabs. The &quot;Overview&quot; tab provides basic information on the annotation job, the &quot;Browse Features&quot; tab allows the user to scroll through the features that were called,  and the &quot;Browse Contigs&quot; tab provides information on the contigs in the genome. Users can sort on the various types of features. Note that some features will overlap (e.g., &quot;prophage&quot; and &quot;CDS&quot;).</p>
 
-    <p><strong>Additional Information</strong><br>For more information on the steps of the default RAStk pipeline please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface, please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org</a>.</p>
+    <p><strong>Additional Information</strong><br>For more information on the steps of the default RASTtk pipeline please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface, please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org</a>.</p>
 
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
     Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”http://kbase.us/contact-us/”>contact us</a>.</p>

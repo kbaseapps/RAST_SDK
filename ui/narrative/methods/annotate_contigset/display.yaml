@@ -165,8 +165,14 @@ parameters :
 
 
 description : |
-    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#catalog/apps/RAST_SDK/annotate_contigset/release">Annotate Microbial Assembly</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate an assembled bacterial or archaeal genome.</p>
-
+    <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/release">Annotate Microbial Assembly</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate an assembled bacterial or archaeal genome.</p>
+    <p>The release versions of the RASTtk component services used in this app are:
+    <ul>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+    </ul>
+    </p>
     <p>The required input is an Assembly object (older Narratives used the term ContigSet object). An Assembly can be generated using any of the Assembly Apps, by importing a FASTA file, or by uploading an .faa file directly from NCBI via FTP (<a href="https://narrative.kbase.us/#catalog/apps/kb_uploadmethods/upload_web_file/release">Upload File to Staging from Web</a>) and then importing.</p>
 
     <p>Assemblies have three essential metadata fields that must be completed: <strong>scientific name</strong>, <strong>domain</strong>, and <strong>genetic code</strong>. The default genetic code for bacterial and archaeal genomes is genetic code 11. KBase annotation also supports genetic code 4 for Mycoplasma and genetic code 25. For more information on genetic codes, please refer to <a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi">this NCBI document</a>. All metadata fields are required because they affect conditional parameters in various programs that are being run. Use existing scientific names whenever possible.</p>
