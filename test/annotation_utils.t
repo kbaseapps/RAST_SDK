@@ -1223,38 +1223,58 @@ subtest 'Impl_annotate_genome' => sub {
       "test Impl annotate_genome on an assembly died.";
 };
 
-subtest '_validate_KB_objref' => sub {
-	my $object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome';
-	my $passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+subtest '_validate_KB_objref_name' => sub {
+	my $obj = 'qzhang:narrative_1581052755332/short_one_metagenome';
+	my $pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = 'qzhang:narrative_1581052755332/short_one_metagenome/1';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = 'qzhang:narrative_1581052755332/short_one_metagenome/1';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '52755332/short_one/1';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = '52755332/short_one/1';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '5332/345/3';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = '5332/345/3';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '5332/3wda9/123';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = '5332/3wda9/123';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '5332/39';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = '5332/39';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '5332/3wda9';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test, "$object_ref is a valid workspace object.\n");
+	$obj = '5332/3wda9';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
 
-	$object_ref = '5332/3wda9/a';
-	$passed_test = $annoutil->_validate_KB_objref($object_ref);
-	ok ($passed_test == 0, "$object_ref is an invalid workspace object.\n");
+	$obj = '5332/3wda9/a';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed} == 0 && $pass_test->{is_ref} == 0 &&
+            $pass_test->{is_name} == 0,
+            "$obj failed workspace object id test.\n");
+
+	$obj = 'abc/def12/f';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed} == 0 && $pass_test->{is_ref} == 0 &&
+            $pass_test->{is_name} == 0,
+            "$obj failed workspace object id test.\n");
+
+	$obj = 'Clostridium_old.RAST';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
+	ok ($pass_test->{is_name}, "$obj is a valid workspace object name.\n");
 };
 
 

@@ -197,7 +197,7 @@ sub _get_contigs {
 
     my ($contigs, $contigID_hash);
     my $obj = {
-        _reference => $info->[0],
+        _reference => $ref,
         id => $info->[0],
         name => $info->[1],
         source_id => $info->[0],
@@ -461,13 +461,13 @@ sub _set_parameters_by_input {
     my %rast_details = ();
 
     # 1. getting the fasta & gff files from $input_obj_ref according to its type
+    my $ws = $parameters->{output_workspace};
     my $input_obj_ref = $parameters->{object_ref};
     my $chk = $self->_validate_KB_objref_name($input_obj_ref);
     return ((), {}) unless $chk->{check_passed};
-    my $input_obj_info = $self->_fetch_object_info($input_obj_ref, $chk);
+    my $input_obj_info = $self->_fetch_object_info($input_obj_ref, $chk, $ws);
     return ((), {}) unless defined($input_obj_info);
 
-    my $ws = $parameters->{output_workspace};
     my $gn_name = $parameters->{output_genome_name};
     my $in_type = $input_obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
@@ -1827,29 +1827,29 @@ sub _validate_KB_objref_name {
 
     my @str_arr = split ('/', $obj_str);
     if( @str_arr == 1 ) {
-        // assuming it is a string as an object name
+        ## assuming it is a string as an object name
         if( $str_arr[0] =~ m/[^\\w\\|._-]/ ) {
-            $ret["is_name"] = 1;
+            $ret->{is_name} = 1;
             return $ret;
         }
     }
     unless( $str_arr[0] =~ m/[^\\w\\|._-]/ ) {
-        $ret["check_passed"] = 0;
+        $ret->{check_passed} = 0;
         return $ret;
     }
 
     unless( $str_arr[1] =~ m/[^\\w\\|._-]/ ) {
-        $ret["check_passed"] = 0;
+        $ret->{check_passed} = 0;
         return $ret;
     }
 
     if( exists($str_arr[2]) ) {
         unless( $str_arr[2] =~ m/^\d+$/ ) {
-            $ret["check_passed"] = 0;
+            $ret->{check_passed} = 0;
             return $ret;
         }
     }
-    $ret["is_ref"] = 1;
+    $ret->{is_ref} = 1;
     return $ret;
 }
 
@@ -2301,15 +2301,17 @@ sub _fetch_object_data {
 ## Return the object info if it passes, undef otherwise.
 #
 sub _fetch_object_info {
-    my ($self, $obj, $chk) = @_;
+    my ($self, $obj, $chk, $ws=undef) = @_;
 
     my $ret_obj_info = undef;
     my $objs = [];
     if( $chk->{is_ref} ) {
         $objs = [{ref=>$obj}];
     } elsif( $chk->{is_name} ) {
-        $objs = [{name=>$obj}];
+        my $ref = Bio::KBase::KBaseEnv::buildref($ws, $obj);
+        $objs = [{ref=>$ref}];
     }
+
     try {
         $ret_obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>$objs}
@@ -2319,7 +2321,7 @@ sub _fetch_object_info {
     } catch {
         warn "INFO: Workspace.get_object_info3 failed to access $obj.\n";
         warn "ERROR message:$_\n";
-	    return undef;
+        return undef;
     };
 }
 
@@ -2609,12 +2611,12 @@ sub rast_genome {
 sub _build_param_from_obj {
     my ($self, $obj, $chk, $ws, $out_genomeSet) = @_;
 
-    my $obj_info = $self->_fetch_object_info($obj, $chk);
+    my $obj_info = $self->_fetch_object_info($obj, $chk, $ws);
     return unless $obj_info;
 
     my $obj_name = $obj_info->[1];
     return {
-        object_ref => $obj_info->[0],
+        object_ref => $obj,
         output_workspace => $ws,
         output_genome_name => $out_genomeSet . '_' .$obj_name,
         create_report => 0
