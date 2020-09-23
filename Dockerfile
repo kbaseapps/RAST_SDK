@@ -28,9 +28,9 @@ RUN \
     cd kb_seed && git checkout 20190314 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
     cd strep_repeats && make && make TARGET=/kb/deployment deploy && cd .. && \
-    cd kmer_annotation_figfam && git checkout 20160225-prod && \
+    cd kmer_annotation_figfam && git checkout 20200922 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
-    cd genome_annotation && git checkout 20160225-prod && \
+    cd genome_annotation && git checkout 20200922 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
     cd idserver && make && make TARGET=/kb/deployment deploy && cd .. && \
     # local file edits \
