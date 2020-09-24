@@ -750,7 +750,7 @@ subtest '_renumber_features' => sub {
                         \%rast_details2, $inputgenome2);
     } "_renumber_features runs successfully on assembly $obj_asmb";
     %rast_details2 = %{$rast_ref}; # dereference
-    ok (exists($rast_details2{extra_workflow}), "extra_workflow is created");
+    ok (exists($rast_details2{renumber_workflow}), "renumber_workflow is created");
     ok (@{$inputgenome2->{features}} == 0,
         "_renumber_features: Assembly inputgenome has NO features.");
 };
@@ -1295,7 +1295,7 @@ subtest '_combine_workflows' => sub {
     my $wf = {};
     $wf->{genecall_workflow} = $wf1;
     $wf->{annotate_workflow} = $wf2;
-    $wf->{extra_workflow} = $wf5;
+    $wf->{renumber_workflow} = $wf5;
     my $exp_wf1 = {stages=>[]};
     push @{$exp_wf1->{stages}}, @{$wf1->{stages}};
     push @{$exp_wf1->{stages}}, @{$wf2->{stages}};
@@ -1305,7 +1305,7 @@ subtest '_combine_workflows' => sub {
 
     $wf->{genecall_workflow} = $wf3;
     $wf->{annotate_workflow} = $wf4;
-    $wf->{extra_workflow} = undef;
+    $wf->{renumber_workflow} = undef;
     my $exp_wf2 = {stages=>[]};
     push @{$exp_wf2->{stages}}, @{$wf3->{stages}};
     push @{$exp_wf2->{stages}}, @{$wf4->{stages}};
@@ -1314,7 +1314,7 @@ subtest '_combine_workflows' => sub {
 
     $wf->{genecall_workflow} = $wf1;
     $wf->{annotate_workflow} = $wf4;
-    $wf->{extra_workflow} = {stages=>[]};
+    $wf->{renumber_workflow} = {stages=>[]};
     my $exp_wf3 = {stages=>[]};
     push @{$exp_wf3->{stages}}, @{$wf1->{stages}};
     push @{$exp_wf3->{stages}}, @{$wf4->{stages}};
