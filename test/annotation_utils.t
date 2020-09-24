@@ -115,7 +115,6 @@ my $test_ftrs = [{
  }];
 
 
-#=begin
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
     my $contigID_hash = {
@@ -220,7 +219,6 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
-
 
 #
 ## Global variables for the annotation process steps to share ##
@@ -525,17 +523,10 @@ subtest '_set_messageNcontigs' => sub {
     ok ($tax2 eq 'U', "tax_domain for assembly input has value:$tax2");
 };
 
-
 # Test _set_genecall_workflow with genome/assembly object refs in prod
 subtest '_set_genecall_workflow' => sub {
     my $exp_gc_workflow = {
         'stages' => [
-            { 'name' => 'call_features_CDS_prodigal' },
-            { 'name' => 'call_features_CDS_glimmer3',
-              'glimmer3_parameters' => {
-                                         'min_training_len' => '2000'
-                                       }
-            },
             {
               'name' => 'call_features_rRNA_SEED'
             },
@@ -554,7 +545,13 @@ subtest '_set_genecall_workflow' => sub {
                                                    'min_identity' => '95'
                                                  }
             },
-            { 'name' => 'call_features_crispr' }
+            { 'name' => 'call_features_crispr' },
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                         'min_training_len' => '2000'
+                                       }
+            },
+            { 'name' => 'call_features_CDS_prodigal' }
         ]
     };
 
@@ -588,12 +585,6 @@ subtest '_set_genecall_workflow' => sub {
     # an assembly object
     my $exp_gc_workflow2 = {
         'stages' => [
-            { 'name' => 'call_features_CDS_prodigal'},
-            { 'name' => 'call_features_CDS_glimmer3',
-              'glimmer3_parameters' => {
-                                           'min_training_len' => '2000'
-                                       }
-            },
             { 'name' => 'call_features_rRNA_SEED' },
             { 'name' => 'call_features_tRNA_trnascan' },
             { 'name' => 'call_features_repeat_region_SEED',
@@ -601,7 +592,13 @@ subtest '_set_genecall_workflow' => sub {
                                                     'min_length' => '100',
                                                     'min_identity' => '95'
                                                  }
-            }
+            },
+            { 'name' => 'call_features_CDS_glimmer3',
+              'glimmer3_parameters' => {
+                                           'min_training_len' => '2000'
+                                       }
+            },
+            { 'name' => 'call_features_CDS_prodigal'}
         ]
     };
 
@@ -614,7 +611,6 @@ subtest '_set_genecall_workflow' => sub {
     my $genecall_workflow2 = $rast_details2{genecall_workflow};
     cmp_deeply($genecall_workflow2, $exp_gc_workflow2, 'gc_workflow built correctly');
 };
-
 
 # Test _set_annotation_workflow with genome/assembly object refs in prod
 subtest '_set_annotation_workflow' => sub {
@@ -1189,7 +1185,6 @@ subtest '_run_rast_genecalls' => sub {
 };
 
 subtest 'Impl_annotate_genome' => sub {
-    my $obj_asmb1 = '1234/56/7';
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
     my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
     my $genome_obj_name = 'Acidilobus_sp_CIS';
@@ -1275,6 +1270,88 @@ subtest '_validate_KB_objref_name' => sub {
 	$pass_test = $annoutil->_validate_KB_objref_name($obj);
 	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
 	ok ($pass_test->{is_name}, "$obj is a valid workspace object name.\n");
+};
+
+
+## Combine several workflows into one
+subtest '_combine_workflows' => sub {
+    my $wf1 = {stages=>[{name => "call_features_rRNA_SEED"},
+                        {name => "call_features_tRNA_trnascan"}]};
+    my $wf2 = {stages=>[{
+                         name => "call_features_repeat_region_SEED",
+                         "repeat_region_SEED_parameters" => {
+                                 "min_identity" => "95",
+                                 "min_length" => "100"}}]};
+    my $wf3 = {stages=>[{name => "call_features_CDS_glimmer3",
+                         "glimmer3_parameters" => {
+                                 "min_training_len" => "2000"}}]};
+    my $wf4 = {stages=>[{
+                         name => "annotate_proteins_kmer_v2",
+                         "kmer_v2_parameters" => {
+                                 "min_hits" => "5",
+                                 "annotate_hypothetical_only" => 1}}]};
+    my $wf5 = {stages=>[{name => "renumber_features"}]};
+
+    my $wf = {};
+    $wf->{genecall_workflow} = $wf1;
+    $wf->{annotate_workflow} = $wf2;
+    $wf->{extra_workflow} = $wf5;
+    my $exp_wf1 = {stages=>[]};
+    push @{$exp_wf1->{stages}}, @{$wf1->{stages}};
+    push @{$exp_wf1->{stages}}, @{$wf2->{stages}};
+    push @{$exp_wf1->{stages}}, @{$wf5->{stages}};
+    my $ret_wf = $annoutil->_combine_workflows($wf);
+    cmp_deeply($exp_wf1, $ret_wf, "workflow1 combined as expected.");
+
+    $wf->{genecall_workflow} = $wf3;
+    $wf->{annotate_workflow} = $wf4;
+    $wf->{extra_workflow} = undef;
+    my $exp_wf2 = {stages=>[]};
+    push @{$exp_wf2->{stages}}, @{$wf3->{stages}};
+    push @{$exp_wf2->{stages}}, @{$wf4->{stages}};
+    $ret_wf = $annoutil->_combine_workflows($wf);
+    cmp_deeply($exp_wf2, $ret_wf, "workflow2 combined as expected.");
+
+    $wf->{genecall_workflow} = $wf1;
+    $wf->{annotate_workflow} = $wf4;
+    $wf->{extra_workflow} = {stages=>[]};
+    my $exp_wf3 = {stages=>[]};
+    push @{$exp_wf3->{stages}}, @{$wf1->{stages}};
+    push @{$exp_wf3->{stages}}, @{$wf4->{stages}};
+    $ret_wf = $annoutil->_combine_workflows($wf);
+    cmp_deeply($exp_wf3, $ret_wf, "workflow3 combined as expected.");
+};
+
+
+## _fetch_object_info with additonal argument added
+subtest '_fetch_object_info' => sub {
+    my $obj = '63171/441/1';
+    my $pass_test = $annoutil->_validate_KB_objref_name($obj);
+    ok ($pass_test->{check_passed}, "$obj passed id format check.\n");
+    ok ($pass_test->{is_ref}, "$obj is a valid workspace object reference.\n");
+    my $ret = $annoutil->_fetch_object_info($obj, $pass_test);
+    is ( $ret->[0], 441, "correct object id found");
+    is ( $ret->[4], 1, "correct object version found");
+    is ( $ret->[6], 63171, "correct workspace id found");
+    is ( $ret->[7], 'qzhang:narrative_1590705141087', "correct workspace found");
+
+    my $ws = $ret->[7];
+    my $obj1 = 'Carsonella_assembly';
+    $pass_test = $annoutil->_validate_KB_objref_name($obj1);
+    ok ($pass_test->{check_passed}, "$obj1 passed id format check.\n");
+    ok ($pass_test->{is_name}, "$obj1 is a valid workspace object name.\n");
+    $ret = $annoutil->_fetch_object_info($obj1, $pass_test, $ws);
+    is ( $ret->[0], 243, "correct object id found");
+    is ( $ret->[4], 1, "correct object version found");
+    is ( $ret->[6], 63171, "correct workspace id found");
+    is ( $ret->[7], $ws, "correct workspace found");
+
+	my $obj2 = 'Clostridium_old.RAST';
+    $pass_test = $annoutil->_validate_KB_objref_name($obj1);
+    ok ($pass_test->{check_passed}, "$obj2 passed id format check.\n");
+    ok ($pass_test->{is_name}, "$obj2 is a valid workspace object name.\n");
+    $ret = $annoutil->_fetch_object_info($obj2, $pass_test, $ws);
+    is ( $ret, undef, "object not found in workspace $ws, so return undef");
 };
 
 
@@ -1864,7 +1941,7 @@ subtest 'annoutil_uniq_functions' => sub {
     my @sorted_ret = sort @{$uniq_ref};
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
-#=cut
+
 
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217

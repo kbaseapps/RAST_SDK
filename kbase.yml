@@ -3,9 +3,8 @@ module-name:
 
 module-description:
     SDK version of Genome Annotation which is based on SEED and RAST.
-    This uses Release70 of the Figfam database and the may1 release of the classification library.
-    These references can be found at ftp://ftp.theseed.org/KmerClassification.
-
+    This uses Release70 of the Figfam database and the may1 (2018-0531) release of the classification library.
+    These references can be found at https://bioseed.mcs.anl.gov/~qzhang/kmer_classification/.
 service-language:
     perl
 
@@ -13,7 +12,7 @@ module-version:
     0.1.9
 
 owners:
-    [chenry, scanon, olson, jjeffryes, umaganapathyswork, landml, gaprice, qzhang, ialarmedalien]
+    [chenry, scanon, olson, jjeffryes, umaganapathyswork, landml, gaprice, qzhang, ialarmedalien, dylan]
 
 data-version:
     0.5

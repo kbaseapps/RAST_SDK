@@ -250,232 +250,242 @@ sub annotate_process {
             $inputgenome->{non_coding_features} = [];
         }
 
-		my $contigref;
-		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-		    if (defined($inputgenome->{contigset_ref})) {
-			$contigref = $inputgenome->{contigset_ref};
-		    } elsif (defined($inputgenome->{assembly_ref})) {
-			$contigref = $inputgenome->{assembly_ref};
-		    }
-			($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
-                                                $inputgenome->{_reference}.";".$contigref)
-		}
-		$parameters->{genetic_code} = $inputgenome->{genetic_code};
-		$parameters->{domain} = $inputgenome->{domain};
-		$parameters->{scientific_name} = $inputgenome->{scientific_name};
-	} elsif (defined($parameters->{input_contigset})) {
-		$parameters->{genetic_code} = $inputgenome->{genetic_code};
-		$parameters->{domain} = $inputgenome->{domain};
-		$parameters->{scientific_name} = $inputgenome->{scientific_name};
-		($contigobj, $contigID_hash) = $self->util_get_contigs(
+        my $contigref;
+        if($inputgenome->{domain} !~ /Eukaryota|Plant/){
+            if (defined($inputgenome->{contigset_ref})) {
+                $contigref = $inputgenome->{contigset_ref};
+            } elsif (defined($inputgenome->{assembly_ref})) {
+                $contigref = $inputgenome->{assembly_ref};
+            }
+                ($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
+                                        $inputgenome->{_reference}.";".$contigref)
+        }
+        $parameters->{genetic_code} = $inputgenome->{genetic_code};
+        $parameters->{domain} = $inputgenome->{domain};
+        $parameters->{scientific_name} = $inputgenome->{scientific_name};
+    } elsif (defined($parameters->{input_contigset})) {
+        $parameters->{genetic_code} = $inputgenome->{genetic_code};
+        $parameters->{domain} = $inputgenome->{domain};
+        $parameters->{scientific_name} = $inputgenome->{scientific_name};
+        ($contigobj, $contigID_hash) = $self->util_get_contigs(
                                            $parameters->{workspace},
                                            $parameters->{input_contigset});
-	} else {
-		Bio::KBase::Utilities::error("Neither contigs nor genome specified!");
-	}
+    } else {
+        Bio::KBase::Utilities::error("Neither contigs nor genome specified!");
+    }
 
-	my $tax_domain =  (exists $inputgenome->{domain} && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
-	if ($tax_domain eq 'U' ) {
-		$message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
-	}
+    my $tax_domain = (exists $inputgenome->{domain} && $inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
+    if ($tax_domain eq 'U' ) {
+        $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+    }
 
-	if (defined($contigobj)) {
-		my $count = 0;
-		my $size = 0;
-		if (defined($contigobj->{contigs})) {
-			$inputgenome->{contigs} = $contigobj->{contigs};
-			for (my $i=0; $i < @{$inputgenome->{contigs}}; $i++) {
-				$count++;
-				$size += length($inputgenome->{contigs}->[$i]->{sequence});
-				$inputgenome->{contigs}->[$i]->{dna} = $inputgenome->{contigs}->[$i]->{sequence};
-				delete $inputgenome->{contigs}->[$i]->{sequence};
-			}
-		}
+    if (defined($contigobj)) {
+        my $count = 0;
+        my $size = 0;
+        if (defined($contigobj->{contigs})) {
+            $inputgenome->{contigs} = $contigobj->{contigs};
+            for (my $i=0; $i < @{$inputgenome->{contigs}}; $i++) {
+                $count++;
+                $size += length($inputgenome->{contigs}->[$i]->{sequence});
+                $inputgenome->{contigs}->[$i]->{dna} = $inputgenome->{contigs}->[$i]->{sequence};
+                delete $inputgenome->{contigs}->[$i]->{sequence};
+            }
+        }
 
-		if ($contigobj->{_kbasetype} eq "ContigSet") {
-			$inputgenome->{contigset_ref} = $contigobj->{_reference};
-		} else {
-			$inputgenome->{assembly_ref} = $contigobj->{_reference};
-		}
-		if (defined($parameters->{input_contigset})) {
-			$message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
-		} else {
-			$message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
-			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
-		}
-	} else {
-		if($inputgenome->{domain} !~ /Eukaryota|Plant/){
-		    $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
-		} else {
-		    $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
-			$message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
-		}
-	}
-	if  (%types) {
-		$message .= "Input genome has the following feature types:\n";
-		for my $key (sort keys(%types)) {
-			$message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
-		}
-	}
+        if ($contigobj->{_kbasetype} eq "ContigSet") {
+            $inputgenome->{contigset_ref} = $contigobj->{_reference};
+        } else {
+            $inputgenome->{assembly_ref} = $contigobj->{_reference};
+        }
+        if (defined($parameters->{input_contigset})) {
+            $message .= "The RAST algorithm was applied to annotating a genome sequence comprised of ".$count." contigs containing ".$size." nucleotides. \nNo initial gene calls were provided.\n";
+        } else {
+            $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nThe sequence for this genome is comprised of ".$count." contigs containing ".$size." nucleotides. \nThe input genome has ".@{$inputgenome->{features}}." existing coding features and ".@{$inputgenome->{non_coding_features}}." existing non-coding features.\n";
+            $message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
+        }
+    } else {
+        if ($inputgenome->{domain} !~ /Eukaryota|Plant/) {
+            $message .= "The RAST algorithm was applied to annotating an existing genome: ".$parameters->{scientific_name}.". \nNo DNA sequence was provided for this genome, therefore new genes cannot be called. \nWe can only functionally annotate the ".@{$inputgenome->{features}}." existing features.\n";
+        } else {
+            $message .= "The RAST algorithm was applied to functionally annotate ".@{$inputgenome->{features}}." coding features  and ".@{$inputgenome->{non_coding_features}}." existing non-coding features in an existing genome: ".$parameters->{scientific_name}.".\n";
+            $message .= "NOTE: Older input genomes did not properly separate coding and non-coding features.\n" if (@{$inputgenome->{non_coding_features}} == 0);
+        }
+    }
+    if (%types) {
+        $message .= "Input genome has the following feature types:\n";
+        for my $key (sort keys(%types)) {
+            $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
+        }
+    }
 
-  	my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-  	my $workflow = {stages => []};
-	my $extragenecalls = "";
-	if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "rRNA";
-		push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
-	if (defined($parameters->{call_features_tRNA_trnascan}) && $parameters->{call_features_tRNA_trnascan} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "tRNA";
-		push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
-	if (defined($parameters->{call_selenoproteins}) && $parameters->{call_selenoproteins} == 1)	{
-		if ($tax_domain ne 'U' ) {
-			if (length($extragenecalls) == 0) {
-				$extragenecalls = "A scan was conducted for the following additional feature types: ";
-			} else {
-				$extragenecalls .= "; ";
-			}
-			$extragenecalls .= "selenoproteins";
-			push(@{$workflow->{stages}},{name => "call_selenoproteins"});
-			if (!defined($contigobj)) {
-				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-			}
-		} else {
-			$message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
-		}
-	}
-	if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
-		if ($tax_domain ne 'U' ) {
-			if (length($extragenecalls) == 0) {
-				$extragenecalls = "A scan was conducted for the following additional feature types: ";
-			} else {
-			$extragenecalls .= "; ";
-			}
-			$extragenecalls .= "pyrrolysoproteins";
-			push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
-			if (!defined($contigobj)) {
-				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-			}
-		} else {
-			$message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";
-		}
-	}
-	if (defined($parameters->{call_features_repeat_region_SEED}) && $parameters->{call_features_repeat_region_SEED} == 1)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "repeat regions";
-		push(@{$workflow->{stages}},{
-			name => "call_features_repeat_region_SEED",
-			"repeat_region_SEED_parameters" => {
-							"min_identity" => "95",
-							"min_length" => "100"
-					 }
-		});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
-	if (defined($parameters->{call_features_strep_suis_repeat}) && $parameters->{call_features_strep_suis_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "strep suis repeats";
-		push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
-	if (defined($parameters->{call_features_strep_pneumo_repeat}) && $parameters->{call_features_strep_pneumo_repeat} == 1 && $parameters->{scientific_name} =~ /^Streptococcus\s/)	{
-		if (length($extragenecalls) == 0) {
-			$extragenecalls = "A scan was conducted for the following additional feature types: ";
-		} else {
-			$extragenecalls .= "; ";
-		}
-		$extragenecalls .= "strep pneumonia repeats";
-		push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-		}
-	}
-	if (defined($parameters->{call_features_crispr}) && $parameters->{call_features_crispr} == 1)	{
-		if ($tax_domain ne 'U' ) {
-			if (length($extragenecalls) == 0) {
-				$extragenecalls = "A scan was conducted for the following additional feature types: ";
-			} else {
-				$extragenecalls .= "; ";
-			}
-			$extragenecalls .= "crispr";
-			push(@{$workflow->{stages}},{name => "call_features_crispr"});
-			if (!defined($contigobj)) {
-				Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-			}
-		} else {
-			$message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";
-		}
-	}
-	$extragenecalls .= ".\n" if (length($extragenecalls) > 0);
+    my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
+    my $workflow = {stages => []};
+    my $extragenecalls = "";
+        if (defined($parameters->{call_features_rRNA_SEED}) && $parameters->{call_features_rRNA_SEED} == 1)	{
+        if (length($extragenecalls) == 0) {
+            $extragenecalls = "A scan was conducted for the following additional feature types: ";
+        } else {
+            $extragenecalls .= "; ";
+        }
+        $extragenecalls .= "rRNA";
+        push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+        }
+    }
+	if (defined($parameters->{call_features_tRNA_trnascan}) &&
+        $parameters->{call_features_tRNA_trnascan} == 1) {
+        if (length($extragenecalls) == 0) {
+            $extragenecalls = "A scan was conducted for the following additional feature types: ";
+        } else {
+            $extragenecalls .= "; ";
+        }
+        $extragenecalls .= "tRNA";
+        push(@{$workflow->{stages}},{name => "call_features_tRNA_trnascan"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+        }
+    }
+    if (defined($parameters->{call_selenoproteins}) &&
+        $parameters->{call_selenoproteins} == 1) {
+        if ($tax_domain ne 'U' ) {
+            if (length($extragenecalls) == 0) {
+                $extragenecalls = "A scan was conducted for the following additional feature types: ";
+            } else {
+                $extragenecalls .= "; ";
+            }
+            $extragenecalls .= "selenoproteins";
+            push(@{$workflow->{stages}},{name => "call_selenoproteins"});
+            if (!defined($contigobj)) {
+                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+            }
+        } else {
+            $message .= "Did not call selenoproteins because the domain is $parameters->{domain}\n\n";
+        }
+    }
+    if (defined($parameters->{call_pyrrolysoproteins}) && $parameters->{call_pyrrolysoproteins} == 1)	{
+        if ($tax_domain ne 'U' ) {
+            if (length($extragenecalls) == 0) {
+                $extragenecalls = "A scan was conducted for the following additional feature types: ";
+            } else {
+                $extragenecalls .= "; ";
+            }
+            $extragenecalls .= "pyrrolysoproteins";
+            push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
+            if (!defined($contigobj)) {
+                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+            }
+        } else {
+            $message .= "Did not call pyrrolysoproteins because the domain is $parameters->{domain}\n\n";
+        }
+    }
+    if (defined($parameters->{call_features_repeat_region_SEED}) &&
+        $parameters->{call_features_repeat_region_SEED} == 1) {
+        if (length($extragenecalls) == 0) {
+            $extragenecalls = "A scan was conducted for the following additional feature types: ";
+        } else {
+            $extragenecalls .= "; ";
+        }
+        $extragenecalls .= "repeat regions";
+        push(@{$workflow->{stages}},{
+            name => "call_features_repeat_region_SEED",
+            "repeat_region_SEED_parameters" => {
+                            "min_identity" => "95",
+                            "min_length" => "100"
+                     }
+        });
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+        }
+    }
+    if (defined($parameters->{call_features_strep_suis_repeat}) &&
+        $parameters->{call_features_strep_suis_repeat} == 1 &&
+        $parameters->{scientific_name} =~ /^Streptococcus\s/) {
+        if (length($extragenecalls) == 0) {
+            $extragenecalls = "A scan was conducted for the following additional feature types: ";
+        } else {
+            $extragenecalls .= "; ";
+        }
+        $extragenecalls .= "strep suis repeats";
+        push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+        }
+    }
+    if (defined($parameters->{call_features_strep_pneumo_repeat}) &&
+        $parameters->{call_features_strep_pneumo_repeat} == 1 &&
+        $parameters->{scientific_name} =~ /^Streptococcus\s/) {
+        if (length($extragenecalls) == 0) {
+            $extragenecalls = "A scan was conducted for the following additional feature types: ";
+        } else {
+            $extragenecalls .= "; ";
+        }
+        $extragenecalls .= "strep pneumonia repeats";
+        push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+        }
+    }
+    if (defined($parameters->{call_features_crispr}) &&
+        $parameters->{call_features_crispr} == 1) {
+        if ($tax_domain ne 'U' ) {
+            if (length($extragenecalls) == 0) {
+                $extragenecalls = "A scan was conducted for the following additional feature types: ";
+            } else {
+                $extragenecalls .= "; ";
+            }
+            $extragenecalls .= "crispr";
+            push(@{$workflow->{stages}},{name => "call_features_crispr"});
+            if (!defined($contigobj)) {
+                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+            }
+        } else {
+            $message .= "Did not call crisprs because the domain is $parameters->{domain}\n\n";
+        }
+    }
+    $extragenecalls .= ".\n" if (length($extragenecalls) > 0);
 
-	my $genecalls = "";
-	if (defined($parameters->{call_features_CDS_glimmer3}) && $parameters->{call_features_CDS_glimmer3} == 1)	{
-		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
-			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-		}
-		if (length($genecalls) == 0) {
-			$genecalls = "Standard features were called using: ";
-		} else {
-			$genecalls .= "; ";
-		}
-		$genecalls .= "glimmer3";
-		push(@{$workflow->{stages}},{
-			name => "call_features_CDS_glimmer3",
-			"glimmer3_parameters" => {
-							"min_training_len" => "2000"
-					 }
-		});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
-		}
-	}
-	if (defined($parameters->{call_features_CDS_prodigal}) && $parameters->{call_features_CDS_prodigal} == 1)	{
-		if (@{$inputgenome->{features}} > 0) {
-#			$inputgenome->{features} = [];
-			$message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-		}
-		if (length($genecalls) == 0) {
-			$genecalls = "Standard gene features were called using: ";
-		} else {
-			$genecalls .= "; ";
-		}
-		$genecalls .= "prodigal";
-		push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
-		if (!defined($contigobj)) {
-			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
-		}
-	}
-	$genecalls .= ".\n" if (length($genecalls) > 0);
+    my $genecalls = "";
+    if (defined($parameters->{call_features_CDS_glimmer3}) &&
+        $parameters->{call_features_CDS_glimmer3} == 1)	{
+        if (@{$inputgenome->{features}} > 0) {
+#           $inputgenome->{features} = [];
+            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+        }
+        if (length($genecalls) == 0) {
+            $genecalls = "Standard features were called using: ";
+        } else {
+            $genecalls .= "; ";
+        }
+        $genecalls .= "glimmer3";
+        push(@{$workflow->{stages}},{
+            name => "call_features_CDS_glimmer3",
+            "glimmer3_parameters" => {
+                            "min_training_len" => "2000"
+                     }
+        });
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
+        }
+    }
+    if (defined($parameters->{call_features_CDS_prodigal}) &&
+        $parameters->{call_features_CDS_prodigal} == 1)	{
+        if (@{$inputgenome->{features}} > 0) {
+#           $inputgenome->{features} = [];
+            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+        }
+        if (length($genecalls) == 0) {
+            $genecalls = "Standard gene features were called using: ";
+        } else {
+            $genecalls .= "; ";
+        }
+        $genecalls .= "prodigal";
+        push(@{$workflow->{stages}},{name => "call_features_CDS_prodigal"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
+        }
+    }
+    $genecalls .= ".\n" if (length($genecalls) > 0);
 
 #	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
 #		if (@{$inputgenome->{features}} > 0) {
@@ -493,155 +503,160 @@ sub annotate_process {
 #			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
 #		}
 #	}
-	my $v1flag = 0;
-	my $simflag = 0;
-	my $annomessage = "";
-	if (defined($parameters->{annotate_proteins_kmer_v2}) && $parameters->{annotate_proteins_kmer_v2} == 1)	{
-		if (length($annomessage) == 0) {
-			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
-		}
-		$annomessage .= "Kmers V2";
-		$v1flag = 1;
-		$simflag = 1;
-		push(@{$workflow->{stages}},{
-			name => "annotate_proteins_kmer_v2",
-			"kmer_v2_parameters" => {
-							"min_hits" => "5",
-							"annotate_hypothetical_only" => 1
-					 }
-		});
-	}
-	if (defined($parameters->{kmer_v1_parameters}) && $parameters->{kmer_v1_parameters} == 1)	{
-		$simflag = 1;
-		if (length($annomessage) == 0) {
-			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
-		} else {
-			$annomessage .= "; ";
-		}
-		$annomessage .= "Kmers V1";
-		push(@{$workflow->{stages}},{
-			name => "annotate_proteins_kmer_v1",
-			 "kmer_v1_parameters" => {
-							"dataset_name" => "Release70",
-							"annotate_hypothetical_only" => $v1flag
-					 }
-		});
-	}
-	if (defined($parameters->{annotate_proteins_similarity}) && $parameters->{annotate_proteins_similarity} == 1)	{
-		if (length($annomessage) == 0) {
-			$annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
-		} else {
-			$annomessage .= "; ";
-		}
-		$annomessage .= "protein similarity";
-		push(@{$workflow->{stages}},{
-			name => "annotate_proteins_similarity",
-			"similarity_parameters" => {
-							"annotate_hypothetical_only" => $simflag
-					 }
-		});
-	}
-	if (defined($parameters->{resolve_overlapping_features}) && $parameters->{resolve_overlapping_features} == 1)	{
-		push(@{$workflow->{stages}},{
-			name => "resolve_overlapping_features",
-			"resolve_overlapping_features_parameters" => {}
-		});
-	}
-	if (defined($parameters->{call_features_prophage_phispy}) && $parameters->{call_features_prophage_phispy} == 1)	{
-		if ($tax_domain ne 'U' ) {
-			push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
-		} else {
-			$message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";
-		}
-	}
-	$annomessage .= ".\n" if (length($annomessage) > 0);
+    my $v1flag = 0;
+    my $simflag = 0;
+    my $annomessage = "";
+    if (defined($parameters->{annotate_proteins_kmer_v2}) &&
+            $parameters->{annotate_proteins_kmer_v2} == 1) {
+        if (length($annomessage) == 0) {
+            $annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
+        }
+        $annomessage .= "Kmers V2";
+        $v1flag = 1;
+        $simflag = 1;
+        push(@{$workflow->{stages}},{
+            name => "annotate_proteins_kmer_v2",
+            "kmer_v2_parameters" => {
+                    "min_hits" => "5",
+                    "annotate_hypothetical_only" => 1
+            }
+        });
+    }
+    if (defined($parameters->{kmer_v1_parameters}) &&
+            $parameters->{kmer_v1_parameters} == 1) {
+        $simflag = 1;
+        if (length($annomessage) == 0) {
+            $annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
+        } else {
+            $annomessage .= "; ";
+        }
+        $annomessage .= "Kmers V1";
+        push(@{$workflow->{stages}},{
+            name => "annotate_proteins_kmer_v1",
+            "kmer_v1_parameters" => {
+                    "dataset_name" => "Release70",
+                    "annotate_hypothetical_only" => $v1flag
+             }
+        });
+    }
+    if (defined($parameters->{annotate_proteins_similarity}) &&
+        $parameters->{annotate_proteins_similarity} == 1)	{
+        if (length($annomessage) == 0) {
+            $annomessage = "The genome features were functionally annotated using the following algorithm(s): ";
+        } else {
+            $annomessage .= "; ";
+        }
+        $annomessage .= "protein similarity";
+        push(@{$workflow->{stages}},{
+            name => "annotate_proteins_similarity",
+            "similarity_parameters" => {
+                "annotate_hypothetical_only" => $simflag
+             }
+        });
+    }
+    if (defined($parameters->{resolve_overlapping_features}) &&
+        $parameters->{resolve_overlapping_features} == 1)	{
+        push(@{$workflow->{stages}},{
+            name => "resolve_overlapping_features",
+            "resolve_overlapping_features_parameters" => {}
+        });
+    }
+    if (defined($parameters->{call_features_prophage_phispy}) &&
+        $parameters->{call_features_prophage_phispy} == 1)	{
+        if ($tax_domain ne 'U' ) {
+            push(@{$workflow->{stages}},{name => "call_features_prophage_phispy"});
+        } else {
+            $message .= "Did not call call features prophage phispy because the domain is $parameters->{domain}\n\n";
+        }
+    }
+    $annomessage .= ".\n" if (length($annomessage) > 0);
 
-	if (length($genecalls) > 0) {
-		push(@{$workflow->{stages}},{name => "renumber_features"});
-		if (@{$inputgenome->{features}} > 0) {
-			my $replace = [];
-			for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
-				my $ftr = $inputgenome->{features}->[$i];
-				if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
-					#push(@{$replace}, @{$inputgenome->{features}}->[$i]);
-					push(@{$replace}, $ftr);
-				}
-			}
-			$inputgenome->{features} = $replace;
-		}
-		$message .= $genecalls;
-	}
-	if (length($extragenecalls) > 0) {
-		$message .= $extragenecalls;
-	}
-	if (length($annomessage) > 0) {
-		$message .= $annomessage;
-	}
+    if (length($genecalls) > 0) {
+        push(@{$workflow->{stages}},{name => "renumber_features"});
+        if (@{$inputgenome->{features}} > 0) {
+            my $replace = [];
+            for (my $i=0; $i< scalar @{$inputgenome->{features}}; $i++) {
+                my $ftr = $inputgenome->{features}->[$i];
+                if (!defined($ftr->{protein_translation}) || $ftr->{type} =~ /pseudo/) {
+                    #push(@{$replace}, @{$inputgenome->{features}}->[$i]);
+                    push(@{$replace}, $ftr);
+                }
+            }
+            $inputgenome->{features} = $replace;
+        }
+        $message .= $genecalls;
+    }
+    if (length($extragenecalls) > 0) {
+        $message .= $extragenecalls;
+    }
+    if (length($annomessage) > 0) {
+        $message .= $annomessage;
+    }
 
-	my $genome = $inputgenome;
-	my $genehash = {};
-	my $num_coding = 0;
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			# Caching feature functions for future comparison against new functions
-			# defined by RAST service in order to calculate number of updated features.
-			# If function is not set we treat it as empty string to avoid perl warning.
-			my $func = $genome->{features}->[$i]->{function};
-			if (not defined($func)) {
-				$func = "";
-			}
-			$genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
-		}
-	}
-	if (defined($genome->{non_coding_features})) {
-		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
-			$genehash->{$genome->{non_coding_features}->[$i]->{id}} = 1;
-		}
-	}
-	if (defined($inputgenome->{features})) {
-		## Checking if it's recent old genome containing both CDSs and genes in "features" array
-		if ((not defined($inputgenome->{cdss})) && (not defined($inputgenome->{mrnas}))) {
-			my $genes = [];
-			my $non_genes = [];
-			for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-				my $feature = $inputgenome->{features}->[$i];
-				if ($feature->{type} eq "gene" and not(defined($feature->{protein_translation}))) {
-					# gene without protein translation
-					push(@{$genes}, $feature);
-				} else {
-					push(@{$non_genes}, $feature);
-				}
-			}
-			if ((scalar @{$genes} > 0) && (scalar @{$non_genes} > 0)) {
-				# removing genes from features
-				$inputgenome->{features} = $non_genes;
-			}
-		}
-		## Temporary switching feature type from 'gene' to 'CDS':
-		for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
-			my $feature = $inputgenome->{features}->[$i];
-			if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
-				$feature->{type} = "CDS";
-			}
-		}
-		# When RAST annotates the genome it becomes incompatible with the new
-		# spec. Removing this attribute triggers an "upgrade" to the genome
-		# that fixes these problems when saving with GFU
-		delete $inputgenome->{feature_counts};
-		if (defined($inputgenome->{ontology_events})){
-			my $ont_event = {
-				 "id" => "SSO",
-				  "method" => Bio::KBase::Utilities::method(),
-				  "method_version" => $self->util_version(),
-				  "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
-				  "timestamp" => Bio::KBase::Utilities::timestamp()
-			};
-			push(@{$inputgenome->{ontology_events}}, $ont_event);
-		}
-	}
-	#----------------------
-	# Runs, the annotation, comment out if you dont have the reference files
-	#---------------------
+    my $genome = $inputgenome;
+    my $genehash = {};
+    my $num_coding = 0;
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            # Caching feature functions for future comparison against new functions
+            # defined by RAST service in order to calculate number of updated features.
+            # If function is not set we treat it as empty string to avoid perl warning.
+            my $func = $genome->{features}->[$i]->{function};
+            if (not defined($func)) {
+                $func = "";
+            }
+            $genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
+        }
+    }
+    if (defined($genome->{non_coding_features})) {
+        for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
+            $genehash->{$genome->{non_coding_features}->[$i]->{id}} = 1;
+        }
+    }
+    if (defined($inputgenome->{features})) {
+        ## Checking if it's recent old genome containing both CDSs and genes in "features" array
+        if ((not defined($inputgenome->{cdss})) && (not defined($inputgenome->{mrnas}))) {
+            my $genes = [];
+            my $non_genes = [];
+            for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+                my $feature = $inputgenome->{features}->[$i];
+                if ($feature->{type} eq "gene" and not(defined($feature->{protein_translation}))) {
+                    # gene without protein translation
+                    push(@{$genes}, $feature);
+                } else {
+                    push(@{$non_genes}, $feature);
+                }
+            }
+            if ((scalar @{$genes} > 0) && (scalar @{$non_genes} > 0)) {
+                # removing genes from features
+                $inputgenome->{features} = $non_genes;
+            }
+        }
+        ## Temporary switching feature type from 'gene' to 'CDS':
+        for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
+            my $feature = $inputgenome->{features}->[$i];
+            if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
+                $feature->{type} = "CDS";
+            }
+        }
+        # When RAST annotates the genome it becomes incompatible with the new
+        # spec. Removing this attribute triggers an "upgrade" to the genome
+        # that fixes these problems when saving with GFU
+        delete $inputgenome->{feature_counts};
+        if (defined($inputgenome->{ontology_events})){
+            my $ont_event = {
+                 "id" => "SSO",
+                  "method" => Bio::KBase::Utilities::method(),
+                  "method_version" => $self->util_version(),
+                  "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
+                  "timestamp" => Bio::KBase::Utilities::timestamp()
+            };
+            push(@{$inputgenome->{ontology_events}}, $ont_event);
+        }
+    }
+    #----------------------
+    # Runs, the annotation, comment out if you dont have the reference files
+    #---------------------
     $genome = $gaserv->run_pipeline($inputgenome, $workflow);
 
     delete $genome->{contigs};
@@ -697,340 +712,340 @@ sub annotate_process {
 #
 #	print "Array size =".scalar @{$genome->{features}}."\n";
 #	print "Number to splice out = ".scalar @splice_list."\n";
-	foreach my $key (reverse @splice_list) {
-		if ($key =~ /\D/ ) {
-			print "INVALID:size=".scalar @{$genome->{features}}."\n";
-#			print Dumper $key;
-		}
-		else {
-			my $ftr = $genome->{features}->[$key];
-			if (defined($ftr->{location})) {
-				$ftr->{dna_sequence_length} = 0;
-				$ftr->{md5} = '';
-				for (my $i=0; $i < scalar @{$ftr->{location}}; $i++) {
-					$ftr->{location}->[$i]->[1]  = $ftr->{location}->[$i]->[1]+0;
-					$ftr->{location}->[$i]->[3]  = $ftr->{location}->[$i]->[3]+0;
-					$ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3]+0;
-				}
-			}
-			delete  $ftr->{feature_creation_event};
-			my $non = splice(@{$genome->{features}},$key,1);
-			push(@{$genome->{non_coding_features}}, $non);
+    foreach my $key (reverse @splice_list) {
+        if ($key =~ /\D/ ) {
+            print "INVALID:size=".scalar @{$genome->{features}}."\n";
+#           print Dumper $key;
+        }
+        else {
+            my $ftr = $genome->{features}->[$key];
+            if (defined($ftr->{location})) {
+                $ftr->{dna_sequence_length} = 0;
+                $ftr->{md5} = '';
+                for (my $i=0; $i < scalar @{$ftr->{location}}; $i++) {
+                    $ftr->{location}->[$i]->[1]  = $ftr->{location}->[$i]->[1]+0;
+                    $ftr->{location}->[$i]->[3]  = $ftr->{location}->[$i]->[3]+0;
+                    $ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3]+0;
+                }
+            }
+            delete  $ftr->{feature_creation_event};
+            my $non = splice(@{$genome->{features}},$key,1);
+            push(@{$genome->{non_coding_features}}, $non);
 
-			$count++;
-		}
+            $count++;
+        }
+    }
 
-	}
+    if (defined($contigobj) && defined($contigobj->{contigs}) &&
+        scalar(@{$contigobj->{contigs}})>0 ) {
+        $genome->{num_contigs} = @{$contigobj->{contigs}};
+        $genome->{md5} = $contigobj->{md5};
+    }
+    #Getting the seed ontology dictionary
+    #Sam: I need to build the PlantSEED ontology and use it here
+    my $output = Bio::KBase::KBaseEnv::get_objects([{
+        workspace => "KBaseOntology",
+        name => "seed_subsystem_ontology"
+    }]);
+    #Building a hash of standardized seed function strings
+    my $funchash = {};
+    foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
+        my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
+        $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+        $rolename =~ s/\s//g;
+        $rolename =~ s/\#.*$//g;
+        $funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
+    }
+    my $newftrs = 0;
+    my $newncfs = 0;
+    my $update_cdss = 'N';
+    my $proteins = 0;
+    my $others = 0;
+    my $seedfunctions = 0;
+    my $genomefunchash;
+    my $seedfunchash;
+    my $advancedmessage = '';
+    %types = ();
+    if (defined($genome->{features})) {
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+                # Let's count number of features with functions updated by RAST service.
+                # If function is not set we treat it as empty string to avoid perl warning.
+                $newftrs++;
+                my $func = $ftr->{function};
+                if (not defined($func)) {
+                    $func = "";
+                }
+                if ($ftr->{type} eq 'CDS' && !defined($genome->{cdss}->[$i])) {
+                    #Some of the optional gene finders don't respect new genome format
+                    #They may not have the cdss
+                    $update_cdss = 'Y';
+                }
+            } else {
+                $num_coding++;
+            }
+            if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
+                $ftr->{type} = $1;
+            }
+            if (defined($ftr->{protein_translation})) {
+                $ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
+                $ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
+                $proteins++;
+            } else {
+                $others++;
+            }
+            if (defined($ftr->{dna_sequence})) {
+                $ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
+            }
+            if (defined($ftr->{quality}->{weighted_hit_count})) {
+                $ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
+            }
+            if (defined($ftr->{quality}->{hit_count})) {
+                $ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
+            }
+            if (defined($ftr->{annotations})) {
+                delete $ftr->{annotations};
+            }
+            if (defined($ftr->{location})) {
+                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
+                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+            }
+            delete $ftr->{feature_creation_event};
+            if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
+                for (my $j=0; $j < @{$genome->{features}}; $j++) {
+                    if ($i ne $j) {
+                        if ($ftr->{location}->[0]->[0] eq $genome->{features}->[$j]->{location}->[0]->[0]) {
+                            if ($ftr->{location}->[0]->[1] == $genome->{features}->[$j]->{location}->[0]->[1]) {
+                                if ($ftr->{location}->[0]->[2] eq $genome->{features}->[$j]->{location}->[0]->[2]) {
+                                    if ($ftr->{location}->[0]->[3] == $genome->{features}->[$j]->{location}->[0]->[3]) {
+                                        if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
+                                            $genome->{features}->[$j]->{function} = $ftr->{function};
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
+                if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
+                    $ftr->{function} = $oldfunchash->{$ftr->{id}};
+                }
+            }
+            if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
+                my $function = $ftr->{function};
+                my $array = [split(/\#/,$function)];
+                $function = shift(@{$array});
+                $function =~ s/\s+$//;
+                $array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
+                my $marked = 0;
+                for (my $j=0;$j < @{$array}; $j++) {
+                    my $rolename = lc($array->[$j]);
+                    $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+                    $rolename =~ s/\s//g;
+                    $rolename =~ s/\#.*$//g;
+                    $genomefunchash->{$rolename} = 1;
+                    if (defined($funchash->{$rolename})) {
+                        $seedfunchash->{$rolename} = 1;
+                        if ($marked == 0) {
+                            $seedfunctions++;
+                            $marked = 1;
+                        }
+                        my $ont_term = $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}};
+                        if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
+                            $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
+                                 evidence => [],
+                                 id => $funchash->{$rolename}->{id},
+                                 term_name => $funchash->{$rolename}->{name},
+                                 ontology_ref => "KBaseOntology/seed_subsystem_ontology",
+                                 term_lineage => [],
+                            };
+                        }
+                        my $found = 0;
+                        if (ref($ont_term) eq 'ARRAY'){
+                            push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
+                        } else {
+                            for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
+                                if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::Utilities::method()) {
+                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::Utilities::timestamp();
+                                    $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
+                                    $found = 1;
+                                    last;
+                                }
+                            }
+                            if ($found == 0) {
+                                push(
+                                    @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
+                                    {
+                                        method         => Bio::KBase::Utilities::method(),
+                                        method_version => $self->util_version(),
+                                        timestamp      => Bio::KBase::Utilities::timestamp()
+                                    });
+                            }
+                        }
+                        if (exists ($ftr->{ontology_terms}->{SSO})) {
+                            foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
+                                if ($sso =~ /SSO:000009304/) {
+                                    $advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+                                }
+                                elsif ($sso =~ /SSO:000009291/) {
+                                    $advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-	if (defined($contigobj) && defined($contigobj->{contigs}) && scalar(@{$contigobj->{contigs}})>0 ) {
-		$genome->{num_contigs} = @{$contigobj->{contigs}};
-		$genome->{md5} = $contigobj->{md5};
-	}
-	#Getting the seed ontology dictionary
-	#Sam: I need to build the PlantSEED ontology and use it here
-	my $output = Bio::KBase::KBaseEnv::get_objects([{
-		workspace => "KBaseOntology",
-		name => "seed_subsystem_ontology"
-	}]);
-	#Building a hash of standardized seed function strings
-	my $funchash = {};
-	foreach my $term (keys(%{$output->[0]->{data}->{term_hash}})) {
-		my $rolename = lc($output->[0]->{data}->{term_hash}->{$term}->{name});
-		$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-		$rolename =~ s/\s//g;
-		$rolename =~ s/\#.*$//g;
-		$funchash->{$rolename} = $output->[0]->{data}->{term_hash}->{$term};
-	}
-	my $newftrs = 0;
-	my $newncfs = 0;
-	my $update_cdss = 'N';
-	my $proteins = 0;
-	my $others = 0;
-	my $seedfunctions = 0;
-	my $genomefunchash;
-	my $seedfunchash;
-	my $advancedmessage = '';
-	%types = ();
-	if (defined($genome->{features})) {
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
-				# Let's count number of features with functions updated by RAST service.
-				# If function is not set we treat it as empty string to avoid perl warning.
-				$newftrs++;
-				my $func = $ftr->{function};
-				if (not defined($func)) {
-					$func = "";
-				}
-				if ($ftr->{type} eq 'CDS' && !defined($genome->{cdss}->[$i])) {
-					#Some of the optional gene finders don't respect new genome format
-					#They may not have the cdss
-					$update_cdss = 'Y';
-				}
-			} else {
-				$num_coding++;
-			}
-			if (!defined($ftr->{type}) && $ftr->{id} =~ m/(\w+)\.\d+$/) {
-				$ftr->{type} = $1;
-			}
-			if (defined($ftr->{protein_translation})) {
-				$ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
-				$ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
-				$proteins++;
-			} else {
-				$others++;
-			}
-			if (defined($ftr->{dna_sequence})) {
-				$ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
-			}
-			if (defined($ftr->{quality}->{weighted_hit_count})) {
-				$ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
-			}
-			if (defined($ftr->{quality}->{hit_count})) {
-				$ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
-			}
-			if (defined($ftr->{annotations})) {
-				delete $ftr->{annotations};
-			}
-			if (defined($ftr->{location})) {
-				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
-			}
-			delete $ftr->{feature_creation_event};
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
-				for (my $j=0; $j < @{$genome->{features}}; $j++) {
-					if ($i ne $j) {
-						if ($ftr->{location}->[0]->[0] eq $genome->{features}->[$j]->{location}->[0]->[0]) {
-							if ($ftr->{location}->[0]->[1] == $genome->{features}->[$j]->{location}->[0]->[1]) {
-								if ($ftr->{location}->[0]->[2] eq $genome->{features}->[$j]->{location}->[0]->[2]) {
-									if ($ftr->{location}->[0]->[3] == $genome->{features}->[$j]->{location}->[0]->[3]) {
-										if ($ftr->{type} ne $genome->{features}->[$j]->{type}) {
-											$genome->{features}->[$j]->{function} = $ftr->{function};
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
-				if (defined($parameters->{retain_old_anno_for_hypotheticals}) && $parameters->{retain_old_anno_for_hypotheticals} == 1)	{
-					$ftr->{function} = $oldfunchash->{$ftr->{id}};
-				}
-			}
-			if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
-				my $function = $ftr->{function};
-				my $array = [split(/\#/,$function)];
-				$function = shift(@{$array});
-				$function =~ s/\s+$//;
-				$array = [split(/\s*;\s+|\s+[\@\/]\s+/,$function)];
-				my $marked = 0;
-				for (my $j=0;$j < @{$array}; $j++) {
-					my $rolename = lc($array->[$j]);
-					$rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
-					$rolename =~ s/\s//g;
-					$rolename =~ s/\#.*$//g;
-					$genomefunchash->{$rolename} = 1;
-					if (defined($funchash->{$rolename})) {
-						$seedfunchash->{$rolename} = 1;
-						if ($marked == 0) {
-							$seedfunctions++;
-							$marked = 1;
-						}
-						my $ont_term = $ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}};
-						if (!defined($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}})) {
-							$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}} = {
-								 evidence => [],
-								 id => $funchash->{$rolename}->{id},
-								 term_name => $funchash->{$rolename}->{name},
-								 ontology_ref => "KBaseOntology/seed_subsystem_ontology",
-								 term_lineage => [],
-							};
-						}
-						my $found = 0;
-						if (ref($ont_term) eq 'ARRAY'){
-							push(@{$ont_term}, $#{$inputgenome->{ontology_events}});
-						} else {
-							for (my $k = 0; $k < @{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}}; $k++) {
-								if ($ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method} eq Bio::KBase::Utilities::method()) {
-									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{timestamp} = Bio::KBase::Utilities::timestamp();
-									$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}->[$k]->{method_version} = $self->util_version();
-									$found = 1;
-									last;
-								}
-							}
-							if ($found == 0) {
-								push(
-									@{$ftr->{ontology_terms}->{SSO}->{$funchash->{$rolename}->{id}}->{evidence}},
-									{
-										method         => Bio::KBase::Utilities::method(),
-										method_version => $self->util_version(),
-										timestamp      => Bio::KBase::Utilities::timestamp()
-									});
-							}
-						}
-						if (exists ($ftr->{ontology_terms}->{SSO})) {
-							foreach my $sso (keys($ftr->{ontology_terms}->{SSO})) {
-								if ($sso =~ /SSO:000009304/) {
-									$advancedmessage .= "Found selenocysteine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
-								}
-								elsif ($sso =~ /SSO:000009291/) {
-									$advancedmessage .= "Found pyrrolysine-containing gene $ftr->{ontology_terms}->{SSO}->{$sso}\n";
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+        ## Rolling protein features back from 'CDS' to 'gene':
+        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+            my $ftr = $genome->{features}->[$i];
+            if ($ftr->{type} eq "CDS") {
+                $ftr->{type} = "gene"
+            }
+            if (exists $oldtype->{$ftr->{id}} && $oldtype->{$ftr->{id}} =~ /gene/) {
+                $ftr->{type} = $oldtype->{$ftr->{id}};
+            }
+            if (defined($ftr->{location})) {
+                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
+                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+            }
+            #   $ftr->{type} = 'gene';
+            my $type = '';
+            if ( defined$ftr->{type}) {
+                $type = 'Coding '.$ftr->{type};
+            } else {
+                $type = 'Coding ';
+            }
+            #	Count the output feature types
+            if (exists $types{$type}) {
+                $types{$type} += 1;
+            } else {
+                $types{$type} = 1;
+            }
+            delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
+            delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
+        }
+        if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
+            ## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
+            my $cdss = [];
+            $genome->{cdss} = $cdss;
+            my $mrnas = [];
+            $genome->{mrnas} = $mrnas;
+            for (my $i=0; $i < @{$genome->{features}}; $i++) {
+                my $feature = $genome->{features}->[$i];
+                if (defined($feature->{protein_translation})) {
+                    my $gene_id = $feature->{id};
+                    my $cds_id = $gene_id . "_CDS";
+                    my $mrna_id = $gene_id . "_mRNA";
+                    my $location = $feature->{location};
+                    my $md5 = $feature->{md5};
+                    my $function = $feature->{function};
+                    if (not defined($function)) {
+                        $function = "";
+                    }
+                    my $ontology_terms = $feature->{ontology_terms};
+                    if (not defined($ontology_terms)) {
+                        $ontology_terms = {};
+                    }
+                    my $protein_translation = $feature->{protein_translation};
+                    my $protein_translation_length = length($protein_translation);
+                    my $aliases = [];
+                    if (defined($feature->{aliases})) {
+                        $aliases = $feature->{aliases};
+                        # Found some pseudogenes that have wrong structure for aliases
+                        if (ref($aliases) !~ /ARRAY/) {
+                            $aliases = [$feature->{aliases}];
+                        }
+                    }
+                    push(@{$cdss}, {
+                        id => $cds_id,
+                        location => $location,
+                        md5 => $md5,
+                        parent_gene => $gene_id,
+                        parent_mrna => $mrna_id,
+                        function => $function,
+                        ontology_terms => $ontology_terms,
+                        protein_translation => $protein_translation,
+                        protein_translation_length => $protein_translation_length,
+                        aliases => $aliases
+                    });
+                    push(@{$mrnas}, {
+                        id => $mrna_id,
+                        location => $location,
+                        md5 => $md5,
+                        parent_gene => $gene_id,
+                        cds => $cds_id
+                    });
+                    $feature->{cdss} = [$cds_id];
+                    $feature->{mrnas} = [$mrna_id];
+                }
+            }
+        }
+    }
+    my $num_non_coding = 0;
+    if (defined($genome->{non_coding_features})) {
+        for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
+            my $ftr = $genome->{non_coding_features}->[$i];
+            if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
+                # Let's count number of non_coding_features with functions updated by RAST service.
+                # If function is not set we treat it as empty string to avoid perl warning.
+                $newncfs++;
+                $newftrs++;
+                my $func = $ftr->{function};
+                if (not defined($func)) {
+                    $func = "";
+                }
 
-		## Rolling protein features back from 'CDS' to 'gene':
-		for (my $i=0; $i < @{$genome->{features}}; $i++) {
-			my $ftr = $genome->{features}->[$i];
-			if ($ftr->{type} eq "CDS") {
-				$ftr->{type} = "gene"
-			}
-			if (exists $oldtype->{$ftr->{id}} && $oldtype->{$ftr->{id}} =~ /gene/) {
-				$ftr->{type} = $oldtype->{$ftr->{id}};
-			}
-			if (defined($ftr->{location})) {
-				$ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-				$ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
-			}
-#			$ftr->{type} = 'gene';
-			my $type = '';
-			if ( defined$ftr->{type}) {
-				$type = 'Coding '.$ftr->{type};
-			} else {
-				$type = 'Coding ';
-			}
-			#	Count the output feature types
-			if (exists $types{$type}) {
-				$types{$type} += 1;
-			} else {
-				$types{$type} = 1;
-			}
-			delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
-			delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
-		}
-		if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
-			## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
-			my $cdss = [];
-			$genome->{cdss} = $cdss;
-			my $mrnas = [];
-			$genome->{mrnas} = $mrnas;
-			for (my $i=0; $i < @{$genome->{features}}; $i++) {
-				my $feature = $genome->{features}->[$i];
-				if (defined($feature->{protein_translation})) {
-					my $gene_id = $feature->{id};
-					my $cds_id = $gene_id . "_CDS";
-					my $mrna_id = $gene_id . "_mRNA";
-					my $location = $feature->{location};
-					my $md5 = $feature->{md5};
-					my $function = $feature->{function};
-					if (not defined($function)) {
-						$function = "";
-					}
-					my $ontology_terms = $feature->{ontology_terms};
-					if (not defined($ontology_terms)) {
-						$ontology_terms = {};
-					}
-					my $protein_translation = $feature->{protein_translation};
-					my $protein_translation_length = length($protein_translation);
-					my $aliases = [];
-					if (defined($feature->{aliases})) {
-						$aliases = $feature->{aliases};
-						# Found some pseudogenes that have wrong structure for aliases
-						if (ref($aliases) !~ /ARRAY/) {
-							$aliases = [$feature->{aliases}];
-						}
-					}
-					push(@{$cdss}, {
-						id => $cds_id,
-						location => $location,
-						md5 => $md5,
-						parent_gene => $gene_id,
-						parent_mrna => $mrna_id,
-						function => $function,
-						ontology_terms => $ontology_terms,
-						protein_translation => $protein_translation,
-						protein_translation_length => $protein_translation_length,
-						aliases => $aliases
-					});
-					push(@{$mrnas}, {
-						id => $mrna_id,
-						location => $location,
-						md5 => $md5,
-						parent_gene => $gene_id,
-						cds => $cds_id
-					});
-					$feature->{cdss} = [$cds_id];
-					$feature->{mrnas} = [$mrna_id];
-				}
-			}
-		}
-	}
-	my $num_non_coding = 0;
-	if (defined($genome->{non_coding_features})) {
-		for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
-			my $ftr = $genome->{non_coding_features}->[$i];
-			if (defined($genehash) && !defined($genehash->{$ftr->{id}})) {
-				# Let's count number of non_coding_features with functions updated by RAST service.
-				# If function is not set we treat it as empty string to avoid perl warning.
-				$newncfs++;
-				$newftrs++;
-				my $func = $ftr->{function};
-				if (not defined($func)) {
-					$func = "";
-				}
+            } else {
+                $num_non_coding++;
+            }
+            my $type = '';
+            if ( defined$ftr->{type} && $ftr->{type} =~ /coding/) {
+                $type = $ftr->{type} ;
+            } elsif (defined$ftr->{type}) {
+                $type = 'Non-coding '.$ftr->{type} ;
+            } else {
+                $type = 'Non-coding ';
+            }
+            #	Count the output feature types
+            if (exists $types{$type}) {
+                $types{$type} += 1;
+            } else {
+                $types{$type} = 1;
+            }
+        }
+    }
+    if (defined($inputgenome)) {
+        $message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
+        if  (%types) {
+            $message .= "Output genome has the following feature types:\n";
+            for my $key (sort keys(%types)) {
+                $message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
+            }
+        }
+    }
 
-			} else {
-				$num_non_coding++;
-			}
-			my $type = '';
-			if ( defined$ftr->{type} && $ftr->{type} =~ /coding/) {
-				$type = $ftr->{type} ;
-			} elsif (defined$ftr->{type}) {
-				$type = 'Non-coding '.$ftr->{type} ;
-			} else {
-				$type = 'Non-coding ';
-			}
-			#	Count the output feature types
-			if (exists $types{$type}) {
-				$types{$type} += 1;
-			} else {
-				$types{$type} = 1;
-			}
-		}
-	}
-	if (defined($inputgenome)) {
-		$message .= "In addition to the remaining original $num_coding coding features and $num_non_coding non-coding features, ".$newftrs." new features were called, of which $newncfs are non-coding.\n";
-		if  (%types) {
-			$message .= "Output genome has the following feature types:\n";
-			for my $key (sort keys(%types)) {
-				$message .= sprintf("\t%-30s %5d \n", $key, $types{$key});
-			}
-		}
-	}
-
-	$message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
-	$message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
-	print($message);
-	if (!defined($genome->{assembly_ref})) {
-		delete $genome->{assembly_ref};
-	}
-	if (defined($contigobj)) {
-		$genome->{gc_content} = $contigobj->{_gc};
-		if ($contigobj->{_kbasetype} eq "ContigSet") {
-			$genome->{contigset_ref} = $contigobj->{_reference};
-		} else {
-			$genome->{assembly_ref} = $contigobj->{_reference};
-		}
-	}
+    $message .= "Overall, the genes have ".keys(%{$genomefunchash})." distinct functions. \nThe genes include ".$seedfunctions." genes with a SEED annotation ontology across ".keys(%{$seedfunchash})." distinct SEED functions.\n";
+    $message .= "The number of distinct functions can exceed the number of genes because some genes have multiple functions.\n";
+    print($message);
+    if (!defined($genome->{assembly_ref})) {
+        delete $genome->{assembly_ref};
+    }
+    if (defined($contigobj)) {
+        $genome->{gc_content} = $contigobj->{_gc};
+        if ($contigobj->{_kbasetype} eq "ContigSet") {
+            $genome->{contigset_ref} = $contigobj->{_reference};
+        } else {
+            $genome->{assembly_ref} = $contigobj->{_reference};
+        }
+    }
 #	print "SEND OFF FOR SAVING\n";
 #	print "***** Domain       = $genome->{domain}\n";
 #	print "***** Genitic_code = $genome->{genetic_code}\n";
@@ -1039,33 +1054,33 @@ sub annotate_process {
 #	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
 #	print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
-	my $gaout = Bio::KBase::KBaseEnv::gfu_client()->save_one_genome({
-		workspace => $parameters->{workspace},
+    my $gaout = Bio::KBase::KBaseEnv::gfu_client()->save_one_genome({
+        workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
         data => $genome,
         provenance => [{
-			"time" => DateTime->now()->datetime()."+0000",
-			service_ver => $self->util_version(),
-			service => "RAST_SDK",
-			method => Bio::KBase::Utilities::method(),
-			method_params => [$parameters],
-			input_ws_objects => [],
-			resolved_ws_objects => [],
-			intermediate_incoming => [],
-			intermediate_outgoing => []
-		}],
+            "time" => DateTime->now()->datetime()."+0000",
+            service_ver => $self->util_version(),
+            service => "RAST_SDK",
+            method => Bio::KBase::Utilities::method(),
+            method_params => [$parameters],
+            input_ws_objects => [],
+            resolved_ws_objects => [],
+            intermediate_incoming => [],
+            intermediate_outgoing => []
+        }],
         hidden => 0
-	});
-	Bio::KBase::KBaseEnv::add_object_created({
-		"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
-		"description" => "Annotated genome"
-	});
-	Bio::KBase::Utilities::print_report_message({
-		message => "<pre>".$message."</pre>",
-		append => 0,
-		html => 0
-	});
-	return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
+    });
+    Bio::KBase::KBaseEnv::add_object_created({
+        "ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+        "description" => "Annotated genome"
+    });
+    Bio::KBase::Utilities::print_report_message({
+        message => "<pre>".$message."</pre>",
+        append => 0,
+        html => 0
+    });
+    return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
 }
 
 # Get the scientific name for a NCBI taxon.

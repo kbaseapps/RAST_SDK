@@ -117,6 +117,7 @@ sub _get_genome_gff_contents {
 
     # getting gff_contents from $obj_ref if it is of genome type
     my $obj_info = $self->_fetch_object_info($obj, $chk);
+    return [] unless $obj_info;
 
     my $in_type = $obj_info->[2];
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
@@ -129,9 +130,9 @@ sub _get_genome_gff_contents {
             croak "**rast_genome ERROR: GFF file is empty!\n";
         }
         ($gff_contents, $attr_delimiter) = $self->_parse_gff(
-											$gff_filename, $attr_delimiter);
+            $gff_filename, $attr_delimiter);
     }
-	return $gff_contents;
+    return $gff_contents;
 }
 
 
@@ -194,6 +195,7 @@ sub _get_contigs {
     return {} unless $chk->{check_passed};
 
     my $info = $self->_fetch_object_info($ref, $chk);
+    return {} unless $info;
 
     my ($contigs, $contigID_hash);
     my $obj = {
@@ -373,6 +375,12 @@ sub _create_inputgenome_from_genome {
 
     $inputgenome = $self->_get_genome($input_obj_ref);
 
+    my ($oldfunchash, $oldtype, $types_ref);
+    my %types = ();
+    ($oldfunchash, $oldtype, $types_ref,
+        $inputgenome) = $self->_get_oldfunchash_oldtype_types($inputgenome);
+    %types = %{$types_ref};
+
     my ($contigref, $contigobj, $contigID_hash);
     if($inputgenome->{domain} !~ /Eukaryota|Plant/){
         if (defined($inputgenome->{contigset_ref})) {
@@ -382,11 +390,6 @@ sub _create_inputgenome_from_genome {
         }
         ($contigobj, $contigID_hash) = $self->_get_contigs($contigref);
     }
-    my ($oldfunchash, $oldtype, $types_ref);
-    my %types = ();
-    ($oldfunchash, $oldtype, $types_ref,
-        $inputgenome) = $self->_get_oldfunchash_oldtype_types($inputgenome);
-    %types = %{$types_ref};
     return ($inputgenome, $contigobj, $contigID_hash, $oldfunchash, $oldtype, \%types);
 }
 
@@ -466,7 +469,7 @@ sub _set_parameters_by_input {
     my $chk = $self->_validate_KB_objref_name($input_obj_ref);
     return ((), {}) unless $chk->{check_passed};
     my $input_obj_info = $self->_fetch_object_info($input_obj_ref, $chk, $ws);
-    return ((), {}) unless defined($input_obj_info);
+    return ((), {}) unless $input_obj_info;
 
     my $gn_name = $parameters->{output_genome_name};
     my $in_type = $input_obj_info->[2];
@@ -477,7 +480,7 @@ sub _set_parameters_by_input {
 
     if (!$is_assembly && !$is_genome) {
         croak ("Only KBaseGenomes.Genome, KBaseGenomes.ContigSet, ".
-           "KBaseGenomeAnnotations.Assembly, and ".
+               "KBaseGenomeAnnotations.Assembly, and ".
                "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
     }
 
@@ -553,9 +556,9 @@ sub _set_messageNcontigs {
     my $message = "";
     if (defined($inputgenome->{domain})) {
         $tax_domain = ($inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
-        if ($tax_domain eq 'U' ) {
-            $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
-        }
+    }
+    if ($tax_domain eq 'U' ) {
+        $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
     }
     if (defined($contigobj)) {
         my $count = 0;
@@ -639,47 +642,6 @@ sub _set_genecall_workflow {
     my $contigobj = $rast_details{contigobj};
 
     my $workflow = {stages => []};
-
-    my $genecalls = "";
-    if (defined($parameters->{call_features_CDS_prodigal})
-            && $parameters->{call_features_CDS_prodigal} == 1)   {
-        if (@{$inputgenome->{features}} > 0) {
-            $message .= "The existing gene features were cleared due to selection of gene calling with Prodigal.\n";
-            #$inputgenome->{features} = [];
-        }
-        if (length($genecalls) == 0) {
-            $genecalls = "Standard gene features were called using: ";
-        } else {
-            $genecalls .= "; ";
-        }
-        $genecalls .= "prodigal";
-        push(@{$workflow->{stages}}, {name => "call_features_CDS_prodigal"});
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
-        }
-    }
-    if (defined($parameters->{call_features_CDS_glimmer3})
-            && $parameters->{call_features_CDS_glimmer3} == 1)   {
-        if (@{$inputgenome->{features}} > 0) {
-            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
-            #$inputgenome->{features} = [];
-        }
-        if (length($genecalls) == 0) {
-            $genecalls = "Standard features were called using: ";
-        } else {
-            $genecalls .= "; ";
-        }
-        $genecalls .= "glimmer3";
-        push(@{$workflow->{stages}},{
-            name => "call_features_CDS_glimmer3",
-            "glimmer3_parameters" => {
-                        "min_training_len" => "2000"}
-        });
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
-        }
-    }
-    $genecalls .= ".\n" if (length($genecalls) > 0);
 
     my $extragenecalls = "";
     if (defined($parameters->{call_features_rRNA_SEED})
@@ -812,6 +774,63 @@ sub _set_genecall_workflow {
     }
     $extragenecalls .= ".\n" if (length($extragenecalls) > 0);
 
+    my $genecalls = "";
+    if (defined($parameters->{call_features_CDS_glimmer3})
+            && $parameters->{call_features_CDS_glimmer3} == 1)   {
+        if (@{$inputgenome->{features}} > 0) {
+            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
+#           $inputgenome->{features} = [];
+        }
+        if (length($genecalls) == 0) {
+            $genecalls = "Standard features were called using: ";
+        } else {
+            $genecalls .= "; ";
+        }
+        $genecalls .= "glimmer3";
+        push(@{$workflow->{stages}},{
+            name => "call_features_CDS_glimmer3",
+            "glimmer3_parameters" => {
+                        "min_training_len" => "2000"}
+        });
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
+        }
+    }
+    if (defined($parameters->{call_features_CDS_prodigal})
+            && $parameters->{call_features_CDS_prodigal} == 1)   {
+        if (@{$inputgenome->{features}} > 0) {
+            $message .= "The existing gene features were cleared due to selection of gene calling with Prodigal.\n";
+            #$inputgenome->{features} = [];
+        }
+        if (length($genecalls) == 0) {
+            $genecalls = "Standard gene features were called using: ";
+        } else {
+            $genecalls .= "; ";
+        }
+        $genecalls .= "prodigal";
+        push(@{$workflow->{stages}}, {name => "call_features_CDS_prodigal"});
+        if (!defined($contigobj)) {
+            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
+        }
+    }
+    $genecalls .= ".\n" if (length($genecalls) > 0);
+#	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
+#		if (@{$inputgenome->{features}} > 0) {
+##			$inputgenome->{features} = [];
+#			$message .= " Existing gene features were cleared due to selection of gene calling with Glimmer3, Prodigal, or Genmark.";
+#		}
+#		if (length($genecalls) == 0) {
+#			$genecalls = "Standard gene features were called using: ";
+#		} else {
+#			$genecalls .= "; ";
+#		}
+#		$genecalls .= "genemark";
+#		push(@{$workflow->{stages}},{name => "call_features_CDS_genemark"});
+#		if (!defined($contigobj)) {
+#			Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
+#		}
+#	}
+
     $rast_details{genecall_workflow} = $workflow;
     $rast_details{message} = $message;
     $rast_details{extragenecalls} = $extragenecalls;
@@ -913,7 +932,7 @@ sub _set_annotation_workflow {
     }
     if (defined($parameters->{resolve_overlapping_features})
             && $parameters->{resolve_overlapping_features} == 1) {
-        push(@{$workflow->{stages}},{
+        push(@{$workflow->{stages}}, {
             name => "resolve_overlapping_features",
             "resolve_overlapping_features_parameters" => {}
         });
@@ -964,7 +983,7 @@ sub _set_annotation_workflow {
 ##      genecall_workflow => $gc_workflow,
 ##      annotate_workflow => $anno_workflow,
 ##      extragenecalls => $extragenecalls,
-##      extra_workflow => $workflow,
+##      renumber_workflow => $workflow,
 ##      genecalls => $genecalls,
 ##      annomessage => $annomessage
 ##  }, $inputgenome);
@@ -993,7 +1012,6 @@ sub _renumber_features {
             }
             $inputgenome->{features} = $replace;
         }
-
         $message .= $genecalls;
     }
     if (length($extragenecalls) > 0) {
@@ -1003,47 +1021,46 @@ sub _renumber_features {
         $message .= $annomessage;
     }
     $rast_details{message} = $message;
-    $rast_details{extra_workflow} = $workflow;
+    $rast_details{renumber_workflow} = $workflow;
 
     return (\%rast_details, $inputgenome);
 }
-
 
 #
 ## Final massage $inputgenome and $workflows
 ## Input:
 ##  ($rast_details = {
-##      parameters => $parameters,
-##      oldfunchash => $oldfunchash,
-##      oldtype => $oldtype,
-##      types => \%types,
-##      contigobj => $contigobj,
-##      message => $message,
-##      tax_domain => $tax_domain
-##      genecall_workflow => $gc_workflow,
-##      annotate_workflow => $anno_workflow,
-##      extragenecalls => $extragenecalls,
-##      extra_workflow => $workflow,
-##      genecalls => $genecalls,
-##      annomessage => $annomessage
-##  }, $inputgenome);
+#      parameters => $parameters,
+#      oldfunchash => $oldfunchash,
+#      oldtype => $oldtype,
+#      types => \%types,
+#      contigobj => $contigobj,
+#      message => $message,
+#      tax_domain => $tax_domain
+#      genecall_workflow => $gc_workflow,
+#      annotate_workflow => $anno_workflow,
+#      extragenecalls => $extragenecalls,
+#      renumber_workflow => $workflow,
+#      genecalls => $genecalls,
+#      annomessage => $annomessage
+#  }, $inputgenome);
 ## Returns:
 ##  $rast_details = {
-##      parameters => $parameters,
-##      oldfunchash => $oldfunchash,
-##      oldtype => $oldtype,
-##      types => \%types,
-##      contigobj => $contigobj,
-##      message => $message,
-##      tax_domain => $tax_domain
-##      genecall_workflow => $gc_workflow,
-##      annotate_workflow => $anno_workflow,
-##      extragenecalls => $extragenecalls,
-##      extra_workflow => $workflow,
-##      genecalls => $genecalls,
-##      annomessage => $annomessage,
-##      genehash => $genehash
-##  }, $inputgenome);
+#      parameters => $parameters,
+#      oldfunchash => $oldfunchash,
+#      oldtype => $oldtype,
+#      types => \%types,
+#      contigobj => $contigobj,
+#      message => $message,
+#      tax_domain => $tax_domain
+#      genecall_workflow => $gc_workflow,
+#      annotate_workflow => $anno_workflow,
+#      extragenecalls => $extragenecalls,
+#      renumber_workflow => $workflow,
+#      genecalls => $genecalls,
+#      annomessage => $annomessage,
+#      genehash => $genehash
+#  }, $inputgenome);
 #
 sub _pre_rast_call {
     my ($self, $rast_ref, $inputgenome) = @_;
@@ -1099,7 +1116,7 @@ sub _pre_rast_call {
         # spec. Removing this attribute triggers an "upgrade" to the genome
         # that fixes these problems when saving with GFU
         delete $inputgenome->{feature_counts};
-        if (defined($inputgenome->{ontology_events})){
+        if (defined($inputgenome->{ontology_events})) {
             my $ont_event = {
                 "id" => "SSO",
                 "method" => Bio::KBase::Utilities::method(),
@@ -1112,7 +1129,6 @@ sub _pre_rast_call {
     }
 
     $rast_details{genehash} = $genehash;
-
     return (\%rast_details, $inputgenome);
 }
 #
@@ -1677,11 +1693,13 @@ sub _save_annotation_results {
     };
 }
 
+## _build_workflows
+#  input: $parameters
 #
 ## return:(
 #  {genecall_workflow=>$workflow1,
 #   annotation_workflow=>$workflow2,
-#   extra_workflow=>$workflow3
+#   renumber_workflow=>$workflow3
 #   oldfunchash=>$oldfunchash,
 #   oldtype=>$oldtype,
 #   message=>$message,
@@ -1745,8 +1763,7 @@ sub _build_workflows {
 sub _run_rast_genecalls {
     my ($self, $in_genome, $wf_gcs) = @_;
 
-    my $gced_gn = $self->_run_rast_workflow($in_genome, $wf_gcs);
-    return $gced_gn;
+    return $self->_run_rast_workflow($in_genome, $wf_gcs);
 }
 
 ##----end gene call subs----##
@@ -1795,6 +1812,7 @@ sub _write_gff_from_genome {
     return '' unless $chk->{check_passed};
 
     my $obj_info = $self->_fetch_object_info($genome_ref, $chk);
+    return '' unless $obj_info;
 
     my $in_type = $obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
@@ -1976,6 +1994,7 @@ sub _generate_stats_from_aa {
 
     print "++++++++++++++_generate_stats_from_aa on $gn_ref++++++++++++\n";
     my $gn_info = $self->_fetch_object_info($gn_ref, $chk);
+    return %gn_stats unless $gn_info;
 
     my $in_type = $gn_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
@@ -2242,6 +2261,12 @@ sub _generate_genome_report {
     }
 
     my $gn_info = $self->_fetch_object_info($aa_ref, $chk);
+    unless( $gn_info ) {
+        return {"output_genome_ref"=>$aa_ref,
+                "workspace_name"=>undef,
+                "report_name"=>undef,
+                "report_ref"=>undef};
+    }
     my $gn_ws = $gn_info->[7];
 
     my %aa_stats = $self->_generate_stats_from_aa($aa_ref);
@@ -2301,13 +2326,13 @@ sub _fetch_object_data {
 ## Return the object info if it passes, undef otherwise.
 #
 sub _fetch_object_info {
-    my ($self, $obj, $chk, $ws=undef) = @_;
+    my ($self, $obj, $chk, $ws) = @_;
 
     my $ret_obj_info = undef;
     my $objs = [];
     if( $chk->{is_ref} ) {
         $objs = [{ref=>$obj}];
-    } elsif( $chk->{is_name} ) {
+    } elsif( $chk->{is_name} && defined($ws) ) {
         my $ref = Bio::KBase::KBaseEnv::buildref($ws, $obj);
         $objs = [{ref=>$ref}];
     }
@@ -2498,6 +2523,34 @@ sub _get_feature_function_lookup {
     return %function_lookup;
 }
 
+## Combine all the workflows into one
+sub _combine_workflows {
+    my ($self, $rast_ref) = @_;
+
+    my %rast_details = %{ $rast_ref };
+    my $comp_workflow = {stages => []};
+    my $wf_genecall = $rast_details{genecall_workflow};
+    my $wf_annotate = $rast_details{annotate_workflow};
+    my $wf_renum = $rast_details{renumber_workflow};
+
+    if ($wf_genecall && @{$wf_genecall->{stages}}) {
+        print "There are genecall workflows:\n".Dumper($wf_genecall);
+        push @{$comp_workflow->{stages}}, @{$wf_genecall->{stages}};
+    }
+    if ($wf_annotate && @{$wf_annotate->{stages}}) {
+        print "There are annotation workflows:\n".Dumper($wf_annotate);
+        push @{$comp_workflow->{stages}}, @{$wf_annotate->{stages}};
+    }
+    ## could be skipped: running the renumber_features workflow
+    if ($wf_renum && @{$wf_renum->{stages}}) {
+        print "There is a renumber feature workflow:\n".Dumper($wf_renum);
+        push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
+    }
+
+    print "The combined workflows:\n".Dumper($comp_workflow);
+    return $comp_workflow;
+}
+
 
 ##----main function----##
 #
@@ -2520,11 +2573,14 @@ sub rast_genome {
 
     my $params = $self->_check_annotation_params($inparams);
     my $input_obj_ref = $params->{object_ref};
-    my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
 
+    ## 1. build the workflows for RAST-ing
+    my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
     my %rast_details = %{ $rast_ref };
 
-    ## 1. call genes first
+=begin
+    ## Separting gene-calling from annotation
+    ## 2.1 call genes first
     my $wf_genecalls = $rast_details{genecall_workflow};
     my $gc_genome = $self->_run_rast_genecalls($inputgenome, $wf_genecalls);
     my $gc_ftrs = $gc_genome->{features};
@@ -2536,29 +2592,49 @@ sub rast_genome {
     }
     print "\n***********Gene calling resulted in ".$gc_ftr_count." features.\n";
 
-    ## 2. run rast annotation (and extra workflows) after genecall
-    my $annotated_genome = $self->_run_rast_workflow($gc_genome,
-                                                     $rast_details{annotate_workflow});
+    ## 2.2 run rast annotation (and extra workflows) after genecall
+    my $ann_wf = $rast_details{annotate_workflow};
+    my $renum_wf = $rast_details{renumber_workflow};
+    push @{$ann_wf->{stages}}, @{$renum_wf->{stages}};
+    my $annotated_genome = $self->_run_rast_workflow($gc_genome, $ann_wf);
 
-    ## could be skipped: running the renumber_features workflow
-    #my $extra_workflow = $gc_rast{extra_workflow};
-    #my $genome_renumed = $self->_run_rast_workflow($annotated_genome, $extra_workflow);
-
-    ## 3. post-rasting process
+    ## 2.3 post-rasting process
     my $genome_final = $self->_post_rast_ann_call($annotated_genome,
                                                   $inputgenome,
                                                   $rast_details{parameters},
                                                   $rast_details{contigobj});
+=cut
+#=begin
+    ## OR: 2. combine all workflows and run it at once
+    my $rasted_genome = $self->_run_rast_workflow(
+                                    $inputgenome,
+                                    $self->_combine_workflows($rast_ref));
+    my $rast_ftrs = $rasted_genome->{features};
+    my $rast_ftr_count = scalar @{$rast_ftrs};
+    unless ($rast_ftr_count >= 1) {
+        print( "Empty input genome features after full workflow, "
+               ."return an empty object.\n" );
+        return {};
+    }
+
+    print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
+
+    my $genome_final = $self->_post_rast_ann_call($rasted_genome,
+                                                  $inputgenome,
+                                                  $rast_details{parameters},
+                                                  $rast_details{contigobj});
+#=cut
+
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
     print( "\n***********Post rast processing resulted in $cd_ftr_count coding features "
            ."and $nc_ftr_count non_coding features.\n");
 
-    ## 4. build seed ontology
+    ## 3. build seed ontology
     ($genome_final, $rast_ref) = $self->_build_seed_ontology(
                                          $rast_ref, $genome_final, $inputgenome);
 
-    ## 5. summarize annotation
+    ## 4. summarize annotation
     ($genome_final, $rast_ref) = $self->_summarize_annotation(
                                          $rast_ref, $genome_final, $inputgenome);
 
@@ -2579,7 +2655,8 @@ sub rast_genome {
         }
     }
 
-    ## save the annotated genome--if saving failed, return {} so that downstream can skip it
+    ## 5. save the annotated genome
+    ## If saving failed, return {} so that downstream can skip it
     my ($aa_out, $out_msg) = $self->_save_annotation_results($genome_final, $rast_ref);
     unless ( %$aa_out ) {
         print( $out_msg."No annotation is saved on $input_obj_ref\n" );
@@ -2612,7 +2689,7 @@ sub _build_param_from_obj {
     my ($self, $obj, $chk, $ws, $out_genomeSet) = @_;
 
     my $obj_info = $self->_fetch_object_info($obj, $chk, $ws);
-    return unless $obj_info;
+    return undef unless $obj_info;
 
     my $obj_name = $obj_info->[1];
     return {
