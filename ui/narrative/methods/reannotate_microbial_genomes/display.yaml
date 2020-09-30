@@ -164,9 +164,9 @@ description : |
     <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/reannotate_microbial_genomes/release">Annotate Multiple Microbial Genomes</a> uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic genomes, to update the annotations of genomes, or to perform computations on a set of genomes so that they are consistent. The newly generated genomes will have the same names as the input genomes with “.RAST” appended.</p>
     <p>The release versions of the RASTtk component services used in this app are:
     <ul>
-      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
-      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
-      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20200922</i></li>
     </ul>
     </p>
     <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/reannotate_microbial_genomes/">Annotate Multiple Microbial Genomes</a> uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic genomes, to update the annotations of genomes, or to perform computations on a set of genomes so that they are consistent. The newly generated genomes will have the same names as the input genomes with “.RAST” appended.</p>
@@ -236,7 +236,7 @@ description : |
     <p><strong>Additional Information</strong><br>For more information on the steps of the default RAStk pipeline please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org</a>.</p>
 
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
-    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”http://kbase.us/contact-us/”>contact us</a>.</p>
+    Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href=”https://www.kbase.us/support/”>contact us</a>.</p>
 
     <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
 

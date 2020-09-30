@@ -25,12 +25,12 @@ RUN \
     git clone https://github.com/kbase/genome_annotation && \
     git clone https://github.com/kbase/idserver && \
     . /kb/dev_container/user-env.sh && \
-    cd kb_seed && git checkout 20190314 && \
+    cd kb_seed && git checkout 20200922 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
     cd strep_repeats && make && make TARGET=/kb/deployment deploy && cd .. && \
-    cd kmer_annotation_figfam && git checkout  20200922 && \
+    cd kmer_annotation_figfam && git checkout 20200922 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
-    cd genome_annotation && git checkout  20200922 && \
+    cd genome_annotation && git checkout 20200922 && \
     make && make TARGET=/kb/deployment deploy && cd .. && \
     cd idserver && make && make TARGET=/kb/deployment deploy && cd .. && \
     # local file edits \
