@@ -47,9 +47,9 @@ description : |
     <p>This KBase App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_metagenome/release">Annotate Metagenome Assembly and Re-annotate Metagenome</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or metagenome assemblies.</p>
     <p>The release versions of the RASTtk component services used in this app are:
     <ul>
-      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
-      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
-      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20200922</i></li>
     </ul>
     </p>
     <p>The Annotate Metagenome Assembly and Re-annotate Metagenome with RASTtk App takes an assembly or a metagenome assembly as an input, adds annotation and creates an Annotated Metagenome Assembly as an output object. This will make the annotations consistent with KBase genomes and prepare the metagenome for further analysis by other KBase Apps, especially the Metabolic Modeling Apps. An assembly is a FastA file imported as an Assembly object or is the output of one of the assembly apps in KBase</p>

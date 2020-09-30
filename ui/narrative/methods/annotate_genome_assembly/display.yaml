@@ -67,9 +67,9 @@ description : |
     <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_genome_assembly/release">Annotate Genome/Assembly</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate a prokaryotic genome or to update the annotations of a genome.</p>
     <p>The release versions of the RASTtk component services used in this app are:
     <ul>
-      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20190314</i></li>
-      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20160225-prod</i></li>
-      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20160225-prod</i></li>
+      <li><a href="https://github.com/kbase/kb_seed">kb_seed</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/kmer_annotation_figfam">kmer_annotation_figfam</a>: <i>tag 20200922</i></li>
+      <li><a href="https://github.com/kbase/genome_annotation">genome_annotation</a>: <i>tag 20200922</i></li>
     </ul>
     </p>
 
