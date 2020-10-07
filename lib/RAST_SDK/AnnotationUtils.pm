@@ -2,12 +2,12 @@ package RAST_SDK::AnnotationUtils;
 
 ##########################################################################
 # This module is built to handle the annotation of Assembly
-# (KBaseGenomeAnnotations.Assembly or Genome
+# (KBaseGenomeAnnotations.Assembly) and/or Genome
 # (KBaseGenomes/KBaseGenomeAnnotations.GenomeAnnotation) object(s)
-# and create a KBaseGenomeAnnotations.Assembly/GenomeAnnotation  object/set
+# and create a KBaseGenomeAnnotations.Assembly/GenomeAnnotation object/set
 ###########################################################################
 
-our $VERSION = '0.1.8';
+our $VERSION = '0.1.9';
 use strict;
 use warnings;
 
@@ -2548,20 +2548,19 @@ sub _combine_workflows {
     my $wf_renum = $rast_details{renumber_workflow};
 
     if ($wf_genecall && @{$wf_genecall->{stages}}) {
-        print "There are genecall workflows:\n".Dumper($wf_genecall);
+        # print "There are genecall workflows:\n".Dumper($wf_genecall);
         push @{$comp_workflow->{stages}}, @{$wf_genecall->{stages}};
     }
     if ($wf_annotate && @{$wf_annotate->{stages}}) {
-        print "There are annotation workflows:\n".Dumper($wf_annotate);
+        # print "There are annotation workflows:\n".Dumper($wf_annotate);
         push @{$comp_workflow->{stages}}, @{$wf_annotate->{stages}};
     }
     ## could be skipped: running the renumber_features workflow
     if ($wf_renum && @{$wf_renum->{stages}}) {
-        print "There is a renumber feature workflow:\n".Dumper($wf_renum);
+        # print "There is a renumber feature workflow:\n".Dumper($wf_renum);
         push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
     }
 
-    print "The combined workflows:\n".Dumper($comp_workflow);
     return $comp_workflow;
 }
 
@@ -2592,40 +2591,13 @@ sub rast_genome {
     my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
     my %rast_details = %{ $rast_ref };
 
-=begin
-    ## Separting gene-calling from annotation
-    ## 2.1 call genes first
-    my $wf_genecalls = $rast_details{genecall_workflow};
-    my $gc_genome = $self->_run_rast_genecalls($inputgenome, $wf_genecalls);
-    my $gc_ftrs = $gc_genome->{features};
-    my $gc_ftr_count = scalar @{$gc_ftrs};
-    unless ($gc_ftr_count >= 1) {
-        print( "Empty input genome features after gene calls, skip rasting, "
-               ."return an empty object.\n" );
-        return {};
-    }
-    print "\n***********Gene calling resulted in ".$gc_ftr_count." features.\n";
-
-    ## 2.2 run rast annotation (and extra workflows) after genecall
-    my $ann_wf = $rast_details{annotate_workflow};
-    my $renum_wf = $rast_details{renumber_workflow};
-    push @{$ann_wf->{stages}}, @{$renum_wf->{stages}};
-    my $annotated_genome = $self->_run_rast_workflow($gc_genome, $ann_wf);
-
-    ## 2.3 post-rasting process
-    my $genome_final = $self->_post_rast_ann_call($annotated_genome,
-                                                  $inputgenome,
-                                                  $rast_details{parameters},
-                                                  $rast_details{contigobj});
-=cut
-#=begin
-    ## OR: 2. combine all workflows and run it at once
+    ## 2. combine all workflows and run it at once
     my $rasted_genome = $self->_run_rast_workflow(
                                     $inputgenome,
                                     $self->_combine_workflows($rast_ref));
     my $rast_ftrs = $rasted_genome->{features};
     my $rast_ftr_count = scalar @{$rast_ftrs};
-    unless ($rast_ftr_count >= 1) {
+    unless ($rast_ftr_count > 0) {
         print( "Empty input genome features after full workflow, "
                ."return an empty object.\n" );
         return {};
@@ -2637,7 +2609,6 @@ sub rast_genome {
                                                   $inputgenome,
                                                   $rast_details{parameters},
                                                   $rast_details{contigobj});
-#=cut
 
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
@@ -2689,8 +2660,8 @@ sub rast_genome {
     my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
     my $gff_contents = $self->_get_genome_gff_contents($aa_ref);
     if (defined($aa_ref) && defined($params->{create_report}) &&
-        $params->{create_report} == 1) {
-            $rast_ret = $self->_generate_genome_report(
+            $params->{create_report} == 1) {
+        $rast_ret = $self->_generate_genome_report(
                           $aa_ref, $gff_contents, \%ftr_func_lookup,
                           $rasted_ftr_count, $out_msg);
     }
