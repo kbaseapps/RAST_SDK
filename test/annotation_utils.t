@@ -1218,6 +1218,7 @@ subtest 'Impl_annotate_genome' => sub {
       "test Impl annotate_genome on an assembly died.";
 };
 
+
 subtest '_validate_KB_objref_name' => sub {
 	my $obj = 'qzhang:narrative_1581052755332/short_one_metagenome';
 	my $pass_test = $annoutil->_validate_KB_objref_name($obj);
@@ -1270,6 +1271,11 @@ subtest '_validate_KB_objref_name' => sub {
 	$pass_test = $annoutil->_validate_KB_objref_name($obj);
 	ok ($pass_test->{check_passed}, "$obj is a valid workspace object.\n");
 	ok ($pass_test->{is_name}, "$obj is a valid workspace object name.\n");
+
+	$obj = '123/abc/|fg/8';
+	$pass_test = $annoutil->_validate_KB_objref_name($obj);
+	ok ($pass_test->{check_passed} == 0, "$obj is an invalid workspace object.\n");
+	ok ($pass_test->{is_name} == 0, "$obj is an invalid workspace object name.\n");
 };
 
 
@@ -1978,6 +1984,7 @@ subtest 'bulk_rast_genomes' => sub {
 	is ($rfsq_ann2->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
         "The genomeSet ref is set correctly");
 };
+
 
 RASTTestUtils::clean_up();
 

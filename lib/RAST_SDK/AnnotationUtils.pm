@@ -123,8 +123,9 @@ sub _get_genome_gff_contents {
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
                      $in_type =~ /KBaseGenomeAnnotatioVns.GenomeAnnotation/);
 
+    $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     if ($is_genome) {
-        # generating the gff file directly from genome
+        # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
         unless (-s $gff_filename) {
             croak "**rast_genome ERROR: GFF file is empty!\n";
@@ -189,30 +190,32 @@ sub _get_contigs_from_fastafile {
 ## Note: the input $ref has a value which is a Workspace.ref_string
 #
 sub _get_contigs {
-    my ($self, $ref) = @_;
+    my ($self, $obj) = @_;
 
-    my $chk = $self->_validate_KB_objref_name($ref);
+    my $chk = $self->_validate_KB_objref_name($obj);
     return {} unless $chk->{check_passed};
 
-    my $info = $self->_fetch_object_info($ref, $chk);
-    return {} unless $info;
+    my $obj_info = $self->_fetch_object_info($obj, $chk);
+    return {} unless $obj_info;
 
-    my ($contigs, $contigID_hash);
-    my $obj = {
-        _reference => $ref,
-        id => $info->[0],
-        name => $info->[1],
-        source_id => $info->[0],
+    $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
+    my $ret_obj = {
+        _reference => $obj,
+        id => $obj_info->[0],
+        name => $obj_info->[1],
+        source_id => $obj,
         source => "KBase",
         type => "SingleGenome",
         contigs => []
     };
-    if ($info->[2] =~ /Assembly/) {
-        my $fpath = $self->_get_fasta_from_assembly($ref);
-        ($contigs, $contigID_hash) = $self->_get_contigs_from_fastafile($fpath);
-        $obj->{contigs} = $contigs;
 
-        my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$obj->{contigs}}];
+    my ($contigs, $contigID_hash);
+    if ($obj_info->[2] =~ /Assembly/) {
+        my $fpath = $self->_get_fasta_from_assembly($obj);
+        ($contigs, $contigID_hash) = $self->_get_contigs_from_fastafile($fpath);
+        $ret_obj->{contigs} = $contigs;
+
+        my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$ret_obj->{contigs}}];
         my $str = "";
         for (my $i=0; $i < @{$sortedarray}; $i++) {
             if (length($str) > 0) {
@@ -220,26 +223,26 @@ sub _get_contigs {
             }
             $str .= $sortedarray->[$i]->{sequence};
         }
-        print("Assembly $obj->{_reference} Downloaded\n");
-        $obj->{md5} = Digest::MD5::md5_hex($str);
-        $obj->{_kbasetype} = "Assembly";
-    } elsif ($info->[2] =~ /ContigSet/) {
-        $obj = $self->_fetch_object_data($ref);
-        $obj->{_kbasetype} = "ContigSet";
-        $obj->{_reference} = $ref;
-        print("Contigset $obj->{_reference} Downloaded\n");
+        print("Assembly $ret_obj->{_reference} Downloaded\n");
+        $ret_obj->{md5} = Digest::MD5::md5_hex($str);
+        $ret_obj->{_kbasetype} = "Assembly";
+    } elsif ($obj_info->[2] =~ /ContigSet/) {
+        $ret_obj = $self->_fetch_object_data($obj);
+        $ret_obj->{_kbasetype} = "ContigSet";
+        $ret_obj->{_reference} = $obj;
+        print("Contigset $ret_obj->{_reference} Downloaded\n");
     }
     my $totallength = 0;
     my $gclength = 0;
-    for (my $i=0; $i < @{$obj->{contigs}}; $i++) {
-        my $newseq = $obj->{contigs}->[$i]->{sequence};
+    for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {
+        my $newseq = $ret_obj->{contigs}->[$i]->{sequence};
         $totallength += length($newseq);
         $newseq =~ s/[atAT]//g;
         $gclength += length($newseq);
     }
-    $obj->{_gc} = int(1000*$gclength/$totallength+0.5);
-    $obj->{_gc} = $obj->{_gc}/1000;
-    return ($obj, $contigID_hash);
+    $ret_obj->{_gc} = int(1000*$gclength/$totallength+0.5);
+    $ret_obj->{_gc} = $ret_obj->{_gc}/1000;
+    return ($ret_obj, $contigID_hash);
 }
 
 #
@@ -483,6 +486,8 @@ sub _set_parameters_by_input {
                "KBaseGenomeAnnotations.Assembly, and ".
                "KBaseGenomeAnnotations.Assembly will be annotated by this app.\n");
     }
+
+    $input_obj_ref = $input_obj_info->[6].'/'.$input_obj_info->[0].'/'.$input_obj_info->[4];
 
     my $types_ref;
     if ($is_genome) {
@@ -1814,6 +1819,7 @@ sub _write_gff_from_genome {
     my $obj_info = $self->_fetch_object_info($genome_ref, $chk);
     return '' unless $obj_info;
 
+    $genome_ref = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     my $in_type = $obj_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -1844,6 +1850,12 @@ sub _validate_KB_objref_name {
        };
 
     my @str_arr = split ('/', $obj_str);
+
+    if( @str_arr > 3 ) {
+        $ret->{check_passed} = 0;
+        return $ret;
+    }
+
     if( @str_arr == 1 ) {
         ## assuming it is a string as an object name
         if( $str_arr[0] =~ m/[^\\w\\|._-]/ ) {
@@ -1851,6 +1863,7 @@ sub _validate_KB_objref_name {
             return $ret;
         }
     }
+
     unless( $str_arr[0] =~ m/[^\\w\\|._-]/ ) {
         $ret->{check_passed} = 0;
         return $ret;
@@ -1996,6 +2009,7 @@ sub _generate_stats_from_aa {
     my $gn_info = $self->_fetch_object_info($gn_ref, $chk);
     return %gn_stats unless $gn_info;
 
+    $gn_ref = $gn_info->[6].'/'.$gn_info->[0].'/'.$gn_info->[4];
     my $in_type = $gn_info->[2];
     my $is_assembly = ($in_type =~ /KBaseGenomeAnnotations\.Assembly/ ||
                        $in_type =~ /KBaseGenomes\.ContigSet/);
@@ -2268,7 +2282,7 @@ sub _generate_genome_report {
                 "report_ref"=>undef};
     }
     my $gn_ws = $gn_info->[7];
-
+    $aa_ref = $gn_info->[6].'/'.$gn_info->[0].'/'.$gn_info->[4];
     my %aa_stats = $self->_generate_stats_from_aa($aa_ref);
     my %aa_gff_stats = $self->_generate_stats_from_gffContents($aa_gff_conts);
     my %subsys_info = $self->_fetch_subsystem_info();
@@ -2306,8 +2320,8 @@ sub _fetch_object_data {
     my $ret_obj_data = {};
 
     unless ($obj_ref =~ m/^\d+\/\d+\/\d+$/) {
-		print "invalid object reference: $obj_ref\n";
-        return $ret_obj_data;
+        print "invalid object reference: $obj_ref\n";
+        return {};
     }
     try {
         $ret_obj_data = $self->{ws_client}->get_objects2(
@@ -2691,6 +2705,7 @@ sub _build_param_from_obj {
     my $obj_info = $self->_fetch_object_info($obj, $chk, $ws);
     return undef unless $obj_info;
 
+    $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     my $obj_name = $obj_info->[1];
     return {
         object_ref => $obj,
