@@ -150,7 +150,7 @@ sub _get_contigs_from_fastafile {
     close($fh);
     $fasta =~ s/\>([^\n]+)\n/>$1\|\|\|/g;
     $fasta =~ s/\n//g;
-    my $array = [split(/\>/,$fasta)];
+    my $array = [split(/\>/, $fasta)];
     for (my $i=0; $i < @{$array}; $i++) {
         if (scalar @contigs > $self->{max_contigs}) {
             Bio::KBase::Exceptions::ArgumentValidationError->throw(
@@ -172,7 +172,7 @@ sub _get_contigs_from_fastafile {
                 my $contigobject = {
                     id => $tmp_contigID,
                     name => $tmp_contigID,
-                    "length" => length($subarray->[1]),
+                    length => length($subarray->[1]),
                     md5 => Digest::MD5::md5_hex($subarray->[1]),
                     sequence => $subarray->[1],
                     description => $description
@@ -203,7 +203,7 @@ sub _get_contigs {
         _reference => $obj,
         id => $obj_info->[0],
         name => $obj_info->[1],
-        source_id => $obj,
+        source_id => $obj_info->[0],
         source => "KBase",
         type => "SingleGenome",
         contigs => []
@@ -240,8 +240,10 @@ sub _get_contigs {
         $newseq =~ s/[atAT]//g;
         $gclength += length($newseq);
     }
-    $ret_obj->{_gc} = int(1000*$gclength/$totallength+0.5);
-    $ret_obj->{_gc} = $ret_obj->{_gc}/1000;
+    if( $totallength ) {
+        $ret_obj->{_gc} = int(1000*$gclength/$totallength+0.5);
+        $ret_obj->{_gc} = $ret_obj->{_gc}/1000;
+    }
     return ($ret_obj, $contigID_hash);
 }
 
@@ -418,23 +420,22 @@ sub _check_NC_features {
             #print "Non-conding feature type value= $ncoding_ftr->{type}\n";
         }
     }
-    if ($cnt == scalar @{$ncoding_features}) {
-        print "***INFO***: All $cnt non-coding features have defined type**********\n";
+    if ($cnt == scalar @{$ncoding_features} and $cnt > 0) {
+        print "***INFO***: All $cnt non-coding features have defined field type***\n";
     }
 }
 
 
 ## Mapping the contigIDs back to their original (long) names
 sub _remap_contigIDs {
-    my ($self, $contigID_hash, $genome) = @_;
+    my ($self, $contigID_hash, $gn_contig_ids) = @_;
 
-    my $contigs = $genome->{contigs};
-    for my $ctg_obj (@{$contigs}) {
-        my $cid = $ctg_obj->{id};
-        $ctg_obj->{id} = $contigID_hash->{$cid};
-        $ctg_obj->{name} = $contigID_hash->{$cid};
+    return $gn_contig_ids unless $contigID_hash;
+
+    for my $ctg_id (@{$gn_contig_ids}) {
+        $ctg_id = $contigID_hash->{$ctg_id};
     }
-    return $genome;
+    return $gn_contig_ids;
 }
 ## end helper subs
 #
@@ -1153,15 +1154,18 @@ sub _run_rast_workflow {
     my $rasted_gn = $in_genome;
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
-        print "**********Genome input passed to the run_rast_workflow with:\n".Dumper($workflow)." is of type of $g_data_type, prepare it**********.\n";
+        print "**********Genome input passed to the run_rast_workflow with:\n".
+              Dumper($workflow)." is of type of $g_data_type, prepare it**********.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
     try {
         my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($rasted_gn, $workflow);
-        print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}.\n";
+        print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow).
+              "\non $in_genome->{id}.\n";
     } catch {
-        print "********ERROR calling rast run_pipeline with\n".Dumper($workflow)."\non $in_genome->{id}:\n$_\n";
+        print "********ERROR calling rast run_pipeline with\n".Dumper($workflow).
+              "\non $in_genome->{id}:\n$_\n";
         $rasted_gn = $in_genome;
     };
     return $rasted_gn;
@@ -1650,12 +1654,16 @@ sub _save_annotation_results {
 
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
-        print "INFO******Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving******.\n";
+        print "INFO***Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving***.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
 
     $self->_check_NC_features($rasted_gn);
-    $rasted_gn = $self->_remap_contigIDs($gc_rast{contigID_hash}, $rasted_gn);
+    if( $rasted_gn->{contig_ids} ) {
+        my $remapped_ctg_ids = $self->_remap_contigIDs($gc_rast{contigID_hash},
+                                                       $rasted_gn->{contig_ids});
+        $rasted_gn->{contig_ids} = $remapped_ctg_ids;
+    }
 
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);

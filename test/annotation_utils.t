@@ -58,8 +58,8 @@ my $obj_asmb_refseq = "55141/266/3";  # prod assembly
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
 my $obj3 = "55141/77/1";  # prod KBaseGenomeAnnotations.Assembly
-my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1
-my $obj_65386_2 = '65386/12/1';
+my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1/Clostridium_botulinum
+my $obj_65386_2 = '65386/12/1'; # Methanosarcina_acetivorans_C2A
 
 my $asmb_fasta;
 
@@ -114,26 +114,28 @@ my $test_ftrs = [{
  ],
  }];
 
-
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
-    my $contigID_hash = {
+    my $contigID_hash = {};
+    my $gn0_ctg_ids = ['fake_contig_id_1', 'fake_contig_id_2'];
+    my $gn1_ctg_ids= $annoutil->_remap_contigIDs($contigID_hash, $gn0_ctg_ids);
+    cmp_deeply($gn1_ctg_ids, $gn0_ctg_ids, "No contigID mapping happened--contigID_hash was empty");
+
+    $contigID_hash = {
           'contigID_1' => 'NZ_CP028859.1',
-          'contigID_2' => 'NZ_CP028860.1'
+          'contigID_2' => 'NZ_CP028860.1',
+          'contigID_3' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
     };
-    my $gn = {
-        contigs => [
-            {id => 'contigID_1',
-             name => 'contigID_1'},
-            {id => 'contigID_2',
-             name => 'contigID_2'}
-        ]
-    };
-    $gn = $annoutil->_remap_contigIDs($contigID_hash, $gn);
-    my $contig1 = $gn->{contigs}[0];
-    my $contig2 = $gn->{contigs}[1];
-    ok ($contig1->{id} eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
-    ok ($contig2->{id} eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+    $gn0_ctg_ids = [];
+
+    $gn1_ctg_ids = $annoutil->_remap_contigIDs($contigID_hash, $gn0_ctg_ids);
+    ok ( @{$gn0_ctg_ids} eq 0, "No contigID remapping because of empty contigs array.");
+
+    my $gn_ctg_ids = ['contigID_1', 'contigID_2', 'contigID_3'];
+    $gn_ctg_ids = $annoutil->_remap_contigIDs($contigID_hash, $gn_ctg_ids);
+    ok ($gn_ctg_ids->[0] eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
+    ok ($gn_ctg_ids->[1] eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+    ok ($gn_ctg_ids->[2] eq $contigID_hash->{contigID_3}, "mapped contigID correctly");
 };
 
 subtest '_get_contigs_from_fastafile' => sub {
@@ -177,18 +179,26 @@ subtest '_get_contigs' => sub {
     my $obj_ref = $parameters->{object_ref};
     my $obj = $annoutil->_fetch_object_data($obj_ref);
 
+    my ($ret_contig_obj, $cid_hash);
     lives_ok {
-        my $contig_obj1 = $annoutil->_get_contigs($obj->{assembly_ref});
-        print "anno_utils _get_contigs returns:\n".Dumper(keys %$contig_obj1);
-    } '_get_contigs runs successfully on genome';
+        ($ret_contig_obj, $cid_hash) = $annoutil->_get_contigs($obj_ref);
+    } "_get_contigs returns empty contigs on genome object $obj_ref";
+    ok (@{$ret_contig_obj->{contigs}} eq 0, 'returned object has no contigs!');
+    ok (!defined($cid_hash), 'no contigID_hash!');
 
     lives_ok {
-        my $contig_obj2 = $annoutil->_get_contigs($obj_asmb);
-        print "anno_utils _get_contigs returns:\n".Dumper(keys %$contig_obj2);
-    } '_get_contigs runs successfully on assembly';
+        ($ret_contig_obj, $cid_hash) = $annoutil->_get_contigs($obj->{assembly_ref});
+    } "_get_contigs runs successfully on assembly_ref $obj->{assembly_ref}";
+    ok (@{$ret_contig_obj->{contigs}} > 0, 'returned object has contigs!');
+    ok (defined($cid_hash), 'There is a contigID_hash:'.Dumper($cid_hash));
+
+    lives_ok {
+        ($ret_contig_obj, $cid_hash) = $annoutil->_get_contigs($obj_asmb);
+    } "_get_contigs runs successfully on assembly $obj_asmb";
+    ok (@{$ret_contig_obj->{contigs}} > 0, 'returned object has contigs!');
+    ok (defined($cid_hash), 'There is a contigID_hash:'.Dumper($cid_hash));
 
 };
-
 
 ## Testing the feature_function_lookup related functions
 subtest '_get_feature_function_lookup' => sub {
@@ -286,8 +296,8 @@ subtest '_set_parameters_by_input' => sub {
           'contigID_1' => 'NZ_CP028859.1',
           'contigID_2' => 'NZ_CP028860.1'
     };
-    cmp_deeply($rast_details01{contigID_hash},
-               $expected_contigID_hash, "contigID hash was generated correctly.");
+    cmp_deeply($rast_details01{contigID_hash}, $expected_contigID_hash,
+               "contigID hash on $obj_65386_1 was generated correctly.");
 
     # another genome object in workspace #65386 that did not have a problem to run
     $parameters02 = {
@@ -343,6 +353,12 @@ subtest '_set_parameters_by_input' => sub {
     # after merging with default gene call settings
     cmp_deeply($parameters02, $expected_params022, "parameters has default workflows.");
 
+    $expected_contigID_hash = {
+          'contigID_1' => 'NC_003552.1'
+    };
+    cmp_deeply($rast_details02{contigID_hash}, $expected_contigID_hash,
+               "contigID hash on $obj_65386_2 was generated correctly.");
+
     # a genome object
     $parameters1 = {
          output_genome_name => 'test_out_gn_name1',
@@ -388,7 +404,7 @@ subtest '_set_parameters_by_input' => sub {
     # before merging with default gene call settings
     cmp_deeply($parameters1, $expected_params1, 'parameters has expected input param values.');
 
-    #  merge with the default gene call settings
+    # merge with the default gene call settings
     $default_params = $annoutil->_set_default_parameters();
     $parameters1 = { %$default_params, %$parameters1 };
     $rast_details1{parameters} = $parameters1;
@@ -420,12 +436,12 @@ subtest '_set_parameters_by_input' => sub {
     }
 
     my $expected_params3 = {
-          'object_ref' => $obj_asmb,
-          'genetic_code' => undef,
-          'output_genome_name' => $parameters2->{output_genome_name},
-          'domain' => undef,
-          'scientific_name' => undef,
-          'output_workspace' => $ws_name
+        object_ref => $obj_asmb,
+        genetic_code => undef,
+        output_genome_name => $parameters2->{output_genome_name},
+        domain => undef,
+        scientific_name => undef,
+        output_workspace => $ws_name
     };
     lives_ok {
         ($rast_ref, $inputgenome2) = $annoutil->_set_parameters_by_input(
@@ -450,7 +466,6 @@ subtest '_set_parameters_by_input' => sub {
         "inputgenome has ".scalar @{$rast_details2{contigobj}{contigs}} ." contig(s).");
     is ($inputgenome2->{assembly_ref}, $obj_asmb, 'inputgenome assembly_ref is correct.');
 };
-
 
 # Test _set_messageNcontigs with genome/assembly object refs in prod
 subtest '_set_messageNcontigs' => sub {
@@ -1024,7 +1039,8 @@ subtest '_save_annotation_results' => sub {
 
     # a genome object in workspace #65386
     my $nc_ftr_count = @{$final_genome01->{non_coding_features}};
-    print "\n********For case $obj_65386_1*********\nBEFORE _save_annotation_results there are $nc_ftr_count non_coding features.\n";
+    print "\n********For case $obj_65386_1*********\n".
+          "BEFORE _save_annotation_results there are $nc_ftr_count non_coding features.\n";
 
     my $ncoding_features01 = $final_genome01->{non_coding_features};
     my $cnt = 0;
@@ -1036,7 +1052,7 @@ subtest '_save_annotation_results' => sub {
             }
         }
     }
-    ok ($nc_ftr_count==$cnt, "All $cnt non-coding features have defined type.\n");
+    ok ($nc_ftr_count==$cnt, "All $cnt non-coding features have defined field of type.\n");
 
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
@@ -1045,7 +1061,8 @@ subtest '_save_annotation_results' => sub {
     cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
 
     $nc_ftr_count = @{$final_genome01->{non_coding_features}};
-    print "\n********For case $obj_65386_1*********\nAFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
+    print "\n********For case $obj_65386_1*********\n".
+          "AFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
 
     # another genome object in workspace #65386
     lives_ok {
@@ -1984,7 +2001,6 @@ subtest 'bulk_rast_genomes' => sub {
 	is ($rfsq_ann2->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
         "The genomeSet ref is set correctly");
 };
-
 
 RASTTestUtils::clean_up();
 
