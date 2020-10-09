@@ -682,10 +682,7 @@ sub annotate_process {
         $genome->{non_coding_features} = [];
     }
     ## re-mapping the contig ids back to their original names/ids
-    if( $genome->{contig_ids} ) {
-        $genome->{contig_ids} = $ann_util->_remap_contigIDs($contigID_hash,
-                                                            $genome->{contig_ids});
-    }
+    $genome = $ann_util->_remap_contigIDs($contigID_hash, $genome);
 
     my @splice_list = ();
     if (defined($genome->{features})) {

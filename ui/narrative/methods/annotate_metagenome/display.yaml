@@ -5,7 +5,6 @@ name     : Annotate Metagenome Assembly and Re-annotate Metagenome with RASTtk -
 
 tooltip  : |
     Annotate Metagenome Assembly and Re-annotate Metagenome with RASTtk (Rapid Annotations using Subsystems Technology toolkit).
-
 screenshots :
     []
 
@@ -36,13 +35,11 @@ parameters :
             Assembly or Annotated Metagenome Assembly
         short-hint : |
             A metagenome (set of DNA contigs) or Annotated Metagenome Assembly object (set of features with Ontology and Function to reannotate)
-
     output_metagenome_name :
         ui-name : |
             Output Metagenome Name
         short-hint : |
             Name of the resulting Annotated Metagenome Assembly to be saved in the Narrative
-
 description : |
     <p>This KBase App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_metagenome/release">Annotate Metagenome Assembly and Re-annotate Metagenome</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate prokaryotic assemblies or metagenome assemblies.</p>
     <p>The release versions of the RASTtk component services used in this app are:

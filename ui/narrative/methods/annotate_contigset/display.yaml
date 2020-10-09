@@ -5,7 +5,6 @@ name     : Annotate Microbial Assembly with RASTtk - v1.073
 
 tooltip  : |
     Annotate a bacterial or archaeal assembly using RASTtk (Rapid Annotations using Subsystems Technology toolkit).
-
 screenshots :
     []
 
@@ -36,134 +35,111 @@ parameters :
             Assembly
         short-hint : |
             An Assembly or ContigSet object to annotate.
-
     scientific_name :
         ui-name : |
             Scientific Name
         short-hint : |
             The scientific name to assign to the genome as found at https://www.ncbi.nlm.nih.gov/taxonomy.
-
     domain :
         ui-name : |
             Domain
         short-hint : |
             The domain of life of the organism being annotated. Bacteria and Archaea are acceptable values.
-
     genetic_code :
         ui-name : |
             Genetic Code
         short-hint : |
             The genetic code used in translating to protein sequences. See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for more information on genetic codes.
-
     call_features_rRNA_SEED :
         ui-name : |
             Call rRNAs
         short-hint : |
             Call rRNA non-coding features with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_tRNA_trnascan :
         ui-name : |
             Call tRNA trnascan
         short-hint : |
             Call tRNA non-coding feature with trnascan in RAST. See http://rast.nmpdr.org/ for more information.
-
     call_selenoproteins :
         ui-name : |
             Call selenoproteins
         short-hint : |
             Call new selenoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_pyrrolysoproteins :
         ui-name : |
             Call pyrrolysoproteins
         short-hint : |
             Call new pyrrolysoprotein-containing genes with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_repeat_region_SEED :
         ui-name : |
             Call SEED repeat region
         short-hint : |
             Call SEED-defined non-coding repeat regions. See http://rast.nmpdr.org/ for more information.
-
     call_features_insertion_sequences :
         ui-name : |
             Call features insertion sequences
         short-hint : |
             Call non-coding features insertion sequences with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_strep_suis_repeat :
         ui-name : |
             Call strep suis repeats
         short-hint : |
             Call non-coding strep suis repeats with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_strep_pneumo_repeat :
         ui-name : |
             Call strep pneumo repeats
         short-hint : |
             Call non-coding strep pneumo repeats with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_crispr :
         ui-name : |
             Call crisprs
         short-hint : |
             Call non-coding crisprs with RAST. See http://rast.nmpdr.org/ for more information.
-
     call_features_CDS_glimmer3 :
         ui-name : |
             Call glimmer3
         short-hint : |
             Call CDS features with glimmer3. See http://rast.nmpdr.org/ for more information. WARNING: Calling new genes will delete existing genes. Glimmer will not run if all contigs < 2000nt.
-
     call_features_CDS_prodigal :
         ui-name : |
             Call prodigal
         short-hint : |
             Call CDS features with prodigal. See https://github.com/hyattpd/Prodigal for more information. WARNING: Calling new genes will delete existing genes.
-
     annotate_proteins_kmer_v2 :
         ui-name : |
             Annotate proteins kmer v2
         short-hint : |
             Annotate proteins kmer v2 with RAST. See http://rast.nmpdr.org/ for more information.
-
     kmer_v1_parameters :
         ui-name : |
             Annotate proteins Kmer v1
         short-hint : |
             Annotate proteins kmer v1 with RAST. See http://rast.nmpdr.org/ for more information.
-
     annotate_proteins_similarity :
         ui-name : |
             Annotate proteins similarity
         short-hint : |
             Annotate proteins similarity with RAST. See http://rast.nmpdr.org/ for more information.
-
     retain_old_anno_for_hypotheticals :
         ui-name : |
             Retain old annotations for hypotheticals
         short-hint : |
             Retain old annotations for hypotheticals.
-
     resolve_overlapping_features :
         ui-name : |
             Resolve overlapping features
         short-hint : |
             Resolve overlapping features. See http://rast.nmpdr.org/ for more information.
-
     call_features_prophage_phispy :
         ui-name : |
             Call features prophage phispy
         short-hint : |
             Call features prophage phispy with RAST. See http://rast.nmpdr.org/ for more information.
-
     output_genome :
         ui-name : |
             Output Genome Name
         short-hint : |
             Name to assign the output genome.
-
-
 description : |
     <p>This KBase annotation App (<a href="https://narrative.kbase.us/#appcatalog/app/RAST_SDK/annotate_contigset/release">Annotate Microbial Assembly</a>) uses components from the RAST (<a href= "http://rast.nmpdr.org/">Rapid Annotations using Subsystems Technology</a>) toolkit [1,2,3] to annotate an assembled bacterial or archaeal genome.</p>
     <p>The release versions of the RASTtk component services used in this app are:
@@ -174,13 +150,9 @@ description : |
     </ul>
     </p>
     <p>The required input is an Assembly object (older Narratives used the term ContigSet object). An Assembly can be generated using any of the Assembly Apps, by importing a FASTA file, or by uploading an .faa file directly from NCBI via FTP (<a href="https://narrative.kbase.us/#catalog/apps/kb_uploadmethods/upload_web_file/release">Upload File to Staging from Web</a>) and then importing.</p>
-
     <p>Assemblies have three essential metadata fields that must be completed: <strong>scientific name</strong>, <strong>domain</strong>, and <strong>genetic code</strong>. The default genetic code for bacterial and archaeal genomes is genetic code 11. KBase annotation also supports genetic code 4 for Mycoplasma and genetic code 25. For more information on genetic codes, please refer to <a href="http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi">this NCBI document</a>. All metadata fields are required because they affect conditional parameters in various programs that are being run. Use existing scientific names whenever possible.</p>
-
     <p>The App annotates the Assembly-typed object (a set of contigs) and generates a Genome-typed object with both coding and non-coding features. By definition, Assembly objects have no annotation (only sequence) and the default is to select nearly all of the available App options. The available annotation features are in the advanced parameters and are discussed in more detail below.</p>
-
     <p>For addition help, view this <a href="http://kbase.us/annotate-microbial-contigs-method/" target="_blank">Tutorial for Annotate Microbial Contigs</a>.</p>
-
     <p><strong>The Default Annotation Pipeline</strong><br>Clicking &quot;Run&quot; will run the default pipeline. For a typical 2-5 MBp genome, this should take about 5 minutes. Because this is the first annotation for this assembly, the default pipeline consists of the following steps:
     <ul>
     <li>DNA/RNA-based predictions
@@ -190,56 +162,41 @@ description : |
     <li><i>Call CRISPRs (default = on)</i><br>This is a custom tool that uses a perl regular expression-based search to find CRISPR elements.</li>
     <li><i>Find prophage elements with phispy (default = off)</i><br>This will use the phispy program to find prophage elements [13]. </li>
     </ol></li>
-
     <li>Gene predictions
     <ol>
     <li><i>Call protein-encoding genes with both Prodigal [11] and Glimmer3 [12] (default = on)</i></li>
     <li><i>Call selenoproteins and pyrrolysylproteins [7] (default = on)</i><br>These are custom BLAST-based tools.</li>
     </ol></li>
-
     <li>Repeats
     <ol>
     <li><i>Call <a href="http://www.theseed.org/wiki/Main_Page">SEED</a> large repeat regions (default = on)</i><br>This is a BLASTn search within the genome for regions greater than 95% nucleotide similarity greater than or equal to 100bp in length.</li>
     <li><i>Find Streptococcus repeat regions [9, 10] (default = on)</i><br>This is a command that should only be implemented if the genus is Streptococcus.</li>
     </ol></li>
-
     <li>Add SEED Functions/Annotation to protein-encoding genes (k-mers needed for Metabolic Modeling)
     <ol>
     <li><i>Annotate protein-encoding genes with k-mers (version 2; default = on)</i><br>This is a set of signature k-mers (amino acid 8-mers) built from the annotations in the <a href="http://www.theseed.org/wiki/Main_Page">CoreSEED</a>. The CoreSEED is a database of ~1,000 diverse microbial genomes and is currently the main focus of the RAST manual annotation efforts. Annotating using this k-mer set provides the user with our most stable and best estimate of the core gene functions.</li>
-
     <li><i>Annotate remaining hypothetical proteins with k-mers (version 1; default = on)</i><br>This set of k-mers is built from the FigFam collection [8] in the PubSEED, which is the publically annotated version of the SEED database that consists of ~12,000 microbial genomes. The &quot;classic&quot; version of RAST on the RAST website (http://rast.nmpdr.org) uses the FigFam-based k-mers (hence the version 1 designation).</li>
-
     <li><i>Annotate remaining hypothetical proteins by protein similarity (default = on)</i><br>We have several non-redundant databases for the most common genera.  If the genus name of your organism matches one of these, a search will be performed against the remaining hypothetical proteins to attempt to find a function.  The search uses a combination of BLAT [4] and BLAST [5].</li>
     </ol></li>
-
     <li>Other
     <ol>
     <li><i>Perform a basic gene overlap removal (default = on)</i><br>Using multiple gene calling algorithms can result in overlapping gene calls. This program is a custom tool that attempts to minimize overlaps and gaps to provide a set of calls that has a smaller number of gene calling errors. We do not recommend using overlap removal if you are attempting to annotate phage.</li>
-
     <li><i>Retain old annotations for hypotheticals (default = off)</i><br>In instances where the pipeline fails to find an annotation for a gene, this will retain the original annotation from the input Genome-typed object.</li>
     </ol></li>
     </ul>
     </p>
-
     <p><strong>Advanced Annotation Options</strong><br>If you wish to customize the features in your annotation, click the &quot;show advanced options&quot; link. This will display the full set of available annotation options. The &quot;Call features prophage phispy&quot option is <strong>unchecked because it is slower.</strong></p>
-
     <p><strong>The Results</strong>
     <ul>
     <li>The <i>Objects</i> section has a table of all the data objects that were created by the App. Click on the name of the data object to open a data viewer cell (below the currently selected cell).</li>
     <li>The <i>Summary</i> section gives details about the coding and noncoding features that were created and the average protein length.</li>
     </ul>
     </p>
-
     <p><strong>GUI Output</strong><br>The GUI output currently consists of three tabs. The &quot;Overview&quot; tab provides basic information on the annotation job, the &quot;Browse Features&quot; tab allows the user to scroll through the features that were called,  and the &quot;Browse Contigs&quot; tab provides information on the contigs in the genome. Users can sort on the various types of features. Note that some features will overlap (e.g., &quot;prophage&quot; and &quot;CDS&quot;).</p>
-
     <p><strong>Additional Information</strong><br>For more information on the steps of the default RAStk pipeline, please refer to our publication on this (publication forthcoming). For more detailed tutorial information and to explore the additional functionality of RASTtk not currently available in the Narrative interface please refer to <a href="http://tutorial.theseed.org">http://tutorial.theseed.org</a>.</p>
-
     <p><strong>Team members who developed & deployed algorithm in KBase:</strong>
     Thomas Brettin, James Davis, Terry Disz, Robert Edwards, Chris Henry, Gary Olsen, Robert Olson, Ross Overbeek, Bruce Parrello, Gordon Pusch, Roman Sutormin, and Fangfang Xia. For questions, please <a href="https://www.kbase.us/support/">contact us</a>.</p>
-
     <p><b><i>The authors of RAST request that if you use the results of this annotation in your work, please cite the first three listed publications:</i></b></p>
-
-
 publications :
 
     -
@@ -306,3 +263,4 @@ publications :
         display-text: |
             [13] Akhter S, Aziz RK, Edwards RA. PhiSpy: a novel algorithm for finding prophages in bacterial genomes that combines similarity- and composition-based strategies. Nucleic Acids Res. 2012;40: e126. doi:10.1093/nar/gks406
         link: https://academic.oup.com/nar/article/40/16/e126/1027055
+

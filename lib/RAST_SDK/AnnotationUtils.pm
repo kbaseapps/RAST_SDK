@@ -428,15 +428,63 @@ sub _check_NC_features {
 
 ## Mapping the contigIDs back to their original (long) names
 sub _remap_contigIDs {
-    my ($self, $contigID_hash, $gn_contig_ids) = @_;
+    my ($self, $contigID_hash, $gn) = @_;
 
-    return $gn_contig_ids unless $contigID_hash;
+    return $gn unless $contigID_hash;
 
-    for my $ctg_id (@{$gn_contig_ids}) {
-        $ctg_id = $contigID_hash->{$ctg_id};
+    if( $gn->{contig_ids} && @{$gn->{contig_ids}} > 0 ) {
+      for my $ctg_id (@{$gn->{contig_ids}}) {
+        if( $contigID_hash->{$ctg_id} ) {
+            $ctg_id = $contigID_hash->{$ctg_id};
+        }
+      }
     }
-    return $gn_contig_ids;
+    if( $gn->{contigs} && @{$gn->{contigs}} > 0) {
+      for my $ctg (@{$gn->{contigs}}) {
+        if( $contigID_hash->{$ctg->{id}} ) {
+            $ctg->{id} = $contigID_hash->{$ctg->{id}};
+		}
+        if( $contigID_hash->{$ctg->{name}} ) {
+            $ctg->{name} = $contigID_hash->{$ctg->{name}};
+        }
+      }
+    }
+    my $loc_ctg_id;
+    if($gn->{features} && @{$gn->{features}} > 0) {
+      for my $ftr (@{$gn->{features}}) {
+        $loc_ctg_id = $ftr->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{non_coding_features} && @{$gn->{non_coding_features}} > 0) {
+      for my $nc_ftr (@{$gn->{non_coding_features}}) {
+        $loc_ctg_id = $nc_ftr->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{cdss} && @{$gn->{cdss}} > 0) {
+      for my $cds (@{$gn->{cdss}}) {
+        $loc_ctg_id = $cds->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{mrnas} && @{$gn->{mrnas}} > 0) {
+      for my $mrna (@{$gn->{mrnas}}) {
+        $loc_ctg_id = $mrna->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    return $gn;
 }
+
 ## end helper subs
 #
 
@@ -1175,7 +1223,11 @@ sub _run_rast_workflow {
 ## process the rast genecall & annotation result
 #
 sub _post_rast_ann_call {
-    my ($self, $genome, $inputgenome, $parameters, $contigobj) = @_;
+    my ($self, $genome, $inputgenome, $rast_ref) = @_;
+
+    my %rast_details = %{ $rast_ref };
+    my $parameters = $rast_details{parameters},
+    my $contigobj = $rast_details{contigobj});
 
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
@@ -1201,6 +1253,7 @@ sub _post_rast_ann_call {
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
     }
+    $genome = $self->_remap_contigIDs($rast_details{contigID_hash}, $genome);
     $genome = $self->_move_non_coding_features($genome, $contigobj);
     return $genome;
 }
@@ -1657,12 +1710,7 @@ sub _save_annotation_results {
         print "INFO***Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving***.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
-
     $self->_check_NC_features($rasted_gn);
-    if( $rasted_gn->{contig_ids} ) {
-        $rasted_gn->{contig_ids} = $self->_remap_contigIDs($gc_rast{contigID_hash},
-                                                           $rasted_gn->{contig_ids});
-    }
 
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -2612,10 +2660,9 @@ sub rast_genome {
 
     print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
 
+    # remap the contig ids/names
     my $genome_final = $self->_post_rast_ann_call($rasted_genome,
-                                                  $inputgenome,
-                                                  $rast_details{parameters},
-                                                  $rast_details{contigobj});
+                                                  $inputgenome, $rast_ref);
 
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
