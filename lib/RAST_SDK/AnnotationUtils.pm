@@ -1660,9 +1660,8 @@ sub _save_annotation_results {
 
     $self->_check_NC_features($rasted_gn);
     if( $rasted_gn->{contig_ids} ) {
-        my $remapped_ctg_ids = $self->_remap_contigIDs($gc_rast{contigID_hash},
-                                                       $rasted_gn->{contig_ids});
-        $rasted_gn->{contig_ids} = $remapped_ctg_ids;
+        $rasted_gn->{contig_ids} = $self->_remap_contigIDs($gc_rast{contigID_hash},
+                                                           $rasted_gn->{contig_ids});
     }
 
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});

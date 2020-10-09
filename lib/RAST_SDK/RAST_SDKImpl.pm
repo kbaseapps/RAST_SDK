@@ -257,7 +257,7 @@ sub annotate_process {
             } elsif (defined($inputgenome->{assembly_ref})) {
                 $contigref = $inputgenome->{assembly_ref};
             }
-                ($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
+            ($contigobj, $contigID_hash) = $self->util_get_contigs(undef,
                                         $inputgenome->{_reference}.";".$contigref)
         }
         $parameters->{genetic_code} = $inputgenome->{genetic_code};
@@ -682,7 +682,10 @@ sub annotate_process {
         $genome->{non_coding_features} = [];
     }
     ## re-mapping the contig ids back to their original names/ids
-    $genome = $ann_util->_remap_contigIDs($contigID_hash, $genome);
+    if( $genome->{contig_ids} ) {
+        $genome->{contig_ids} = $ann_util->_remap_contigIDs($contigID_hash,
+                                                            $genome->{contig_ids});
+    }
 
     my @splice_list = ();
     if (defined($genome->{features})) {
