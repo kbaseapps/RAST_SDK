@@ -129,7 +129,7 @@ subtest '_remap_contigIDs' => sub {
     $gn0_ctg_ids = [];
 
     $gn1_ctg_ids = $annoutil->_remap_contigIDs($contigID_hash, $gn0_ctg_ids);
-    ok ( @{$gn0_ctg_ids} eq 0, "No contigID remapping because of empty contigs array.");
+    ok ( @{$gn0_ctg_ids} eq 0, "No contigID remapping because of empty contig id array.");
 
     my $gn_ctg_ids = ['contigID_1', 'contigID_2', 'contigID_3'];
     $gn_ctg_ids = $annoutil->_remap_contigIDs($contigID_hash, $gn_ctg_ids);
