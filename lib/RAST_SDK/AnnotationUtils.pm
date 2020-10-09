@@ -1227,7 +1227,7 @@ sub _post_rast_ann_call {
 
     my %rast_details = %{ $rast_ref };
     my $parameters = $rast_details{parameters},
-    my $contigobj = $rast_details{contigobj});
+    my $contigobj = $rast_details{contigobj};
 
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
@@ -2660,7 +2660,6 @@ sub rast_genome {
 
     print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
 
-    # remap the contig ids/names
     my $genome_final = $self->_post_rast_ann_call($rasted_genome,
                                                   $inputgenome, $rast_ref);
 
