@@ -117,23 +117,32 @@ my $test_ftrs = [{
 
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
-    my $contigID_hash = {
-          'contigID_1' => 'NZ_CP028859.1',
-          'contigID_2' => 'NZ_CP028860.1'
+    my $contigID_hash = {};
+    my $gn0 = {
+            contig_ids => ['fake_contig_id_1', 'fake_contig_id_2'],
     };
+    my $gn1 = $annoutil->_remap_contigIDs($contigID_hash, $gn0);
+    cmp_deeply($gn1, $gn0, "No contigID mapping happened--contigID_hash was empty");
+
+    $contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1',
+          'contigID_3' => 'NZ_CP028859.1',
+          'contigID_4' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
+    };
+    $gn0 = { contig_ids => [] };
+
+    $gn1 = $annoutil->_remap_contigIDs($contigID_hash, $gn0);
+    ok ( @{$gn1->{contig_ids}} eq 0, "No contigID remapping because of empty contig id array.");
+
     my $gn = {
-        contigs => [
-            {id => 'contigID_1',
-             name => 'contigID_1'},
-            {id => 'contigID_2',
-             name => 'contigID_2'}
-        ]
+           contig_ids => ['contigID_1', 'contigID_2', 'contigID_3', 'contigID_4']
     };
     $gn = $annoutil->_remap_contigIDs($contigID_hash, $gn);
-    my $contig1 = $gn->{contigs}[0];
-    my $contig2 = $gn->{contigs}[1];
-    ok ($contig1->{id} eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
-    ok ($contig2->{id} eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+    ok ($gn->{contig_ids}->[0] eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
+    ok ($gn->{contig_ids}->[1] eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+    ok ($gn->{contig_ids}->[2] eq $contigID_hash->{contigID_3}, "mapped contigID correctly");
+    ok ($gn->{contig_ids}->[3] eq $contigID_hash->{contigID_4}, "mapped contigID correctly");
 };
 
 subtest '_get_contigs_from_fastafile' => sub {
@@ -864,6 +873,170 @@ subtest '_run_rast_workflow_ann' => sub {
 };
 
 
+## Just print to explore the finalgenome data structure and find the contig_ids##
+subtest '_check_contigID_mapping' => sub {
+    my $gn_pairs = [
+        {gn => $ann_genome01, rd_ref => \%rast_details01},
+        {gn => $ann_genome02, rd_ref => \%rast_details02},
+        {gn => $ann_genome1, rd_ref => \%rast_details1},
+        {gn => $ann_genome2, rd_ref => \%rast_details2}
+    ];
+    my $cnt_limit = 5;
+    for my $p (@$gn_pairs) {
+        my %rd = %{ $p->{rd_ref} };
+        my $pgn = $p->{gn};
+        my $cnt = 0;
+        print "\n=========before remapping the rasted genome on $pgn->{id}:\n";
+        print "\n------ keys of the rasted genome on $pgn->{id}:\n".
+               Dumper(keys %{ $pgn });
+        if( $pgn->{contig_ids} &&  @{$pgn->{contig_ids}} > 0) {
+            print "\n------the rasted genome's contig_ids:\n".
+                   Dumper( $pgn->{contig_ids});
+        }
+        if( $pgn->{contigs} &&  @{$pgn->{contigs}} > 0) {
+            for my $ctg (@{$pgn->{contigs}}) {
+                print "\n------the rasted genome contig's id=$ctg->{id}";
+            }
+        }
+        if( $pgn->{features} && @{$pgn->{features}} > 0) {
+            $cnt = 0;
+            for my $ftr (@{$pgn->{features}}) {
+                $cnt += 1;
+                print "\n------the rasted genome feature location's contig_id=".
+                      "$ftr->{location}[0][0]";
+                if( $cnt > $cnt_limit ) {
+                    last;
+                }
+            }
+        }
+        if( $pgn->{non_coding_features} &&
+            @{$pgn->{non_coding_features}} > 0) {
+            $cnt = 0;
+            for my $nc_ftr (@{$pgn->{non_coding_features}}) {
+                $cnt += 1;
+                print "\n------the rasted genome nc_feature location's contig_id=".
+                      "$nc_ftr->{location}[0][0]";
+                if( $cnt > $cnt_limit ) {
+                    last;
+                }
+            }
+        }
+        if( $pgn->{cdss} && @{$pgn->{cdss}} > 0 ) {
+            $cnt = 0;
+            for my $cds (@{$pgn->{cdss}}) {
+                $cnt += 1;
+                print "\n------the rasted genome cdss location's contig_id=".
+                      "$cds->{location}[0][0]";
+                if( $cnt > $cnt_limit ) {
+                    last;
+                }
+            }
+        }
+        if( $pgn->{mrnas} && @{$pgn->{mrnas}} > 0 ) {
+            $cnt = 0;
+            for my $mrna (@{$pgn->{mrnas}}) {
+                $cnt += 1;
+                print "\n------the rasted genome mrnas location's contig_id=".
+                      "$mrna->{location}[0][0]";
+                if( $cnt > $cnt_limit ) {
+                    last;
+                }
+            }
+        }
+        my $ctgID_hash = $rd{contigID_hash};
+        if( $ctgID_hash ) {
+            print "\nThere is a contigID_hash:\n".Dumper($ctgID_hash);
+        }
+        else {
+            print "\nThere is NO contigID_hash in $pgn->{id}:\n".Dumper(keys %rd);
+        }
+        ## Run the remapping
+        my $pgn1 = $annoutil->_remap_contigIDs( $ctgID_hash, $pgn );
+        print "\n=========after remapping the rasted genome on $pgn->{id}:\n";
+
+        if( $pgn1->{contig_ids} &&  @{$pgn1->{contig_ids}} > 0) {
+            print "\n------the rasted genome's contig_ids:\n".
+                   Dumper( $pgn1->{contig_ids});
+            my $exp_ctg_ids = $pgn->{contig_ids};
+            for my $cid (@{$exp_ctg_ids}) {
+                $cid = $ctgID_hash->{$cid};
+            }
+            cmp_deeply $pgn1->{contig_ids}, $exp_ctg_ids,
+                        'contig ids remapped correctly';
+        }
+        if( $pgn1->{contigs} &&  @{$pgn1->{contigs}} > 0) {
+            for( my $i = 0; $i < @{$pgn1->{contigs}}; $i++ ) {
+                my $ctg_id = @{$pgn1->{contigs}}[$i]->{id};
+                my $old_ctg_id = @{$pgn->{contigs}}[$i]->{id};
+                if( $i < $cnt_limit ) {
+                  print "\n------the rasted genome contig's id=$ctg_id";
+                }
+                ok( (!defined($ctgID_hash->{$old_ctg_id}) && $ctg_id eq $old_ctg_id) ||
+                     $ctg_id eq $ctgID_hash->{$old_ctg_id},
+                    'id of contigs re-mapped correctly' );
+            }
+        }
+        if( $pgn1->{features} && @{$pgn1->{features}} > 0) {
+            for( my $i = 0; $i < @{$pgn1->{features}}; $i++ ) {
+                my $ftr_locid = @{$pgn1->{features}}[$i]->{location}[0][0];
+                my $old_ftr_locid = @{$pgn->{features}}[$i]->{location}[0][0];
+                if( $i < $cnt_limit ) {
+                  print "\n------the rasted genome feature location's contig_id=".
+                        "$ftr_locid";
+                }
+                ok( (!defined($ctgID_hash->{$old_ftr_locid}) &&
+                      $ftr_locid eq $old_ftr_locid) ||
+                      $ftr_locid eq $ctgID_hash->{$old_ftr_locid},
+                    'id of contigs in feature locations re-mapped correctly' );
+            }
+        }
+        if( $pgn1->{non_coding_features} &&
+            @{$pgn1->{non_coding_features}} > 0) {
+            for( my $i = 0; $i < @{$pgn1->{non_coding_features}}; $i++ ) {
+                my $nc_ftr_locid = @{$pgn1->{non_coding_features}}[$i]->{location}[0][0];
+                my $old_ncftr_locid = @{$pgn->{non_coding_features}}[$i]->{location}[0][0];
+                if( $i < $cnt_limit ) {
+                  print "\n------the rasted genome nc_feature location's contig_id=".
+                        "$nc_ftr_locid";
+                }
+                ok( (!defined($ctgID_hash->{$old_ncftr_locid}) &&
+                      $nc_ftr_locid eq $old_ncftr_locid) ||
+                      $nc_ftr_locid eq $ctgID_hash->{$old_ncftr_locid},
+                    'id of contigs in nc_feature locations re-mapped correctly' );
+            }
+        }
+        if( $pgn1->{cdss} && @{$pgn1->{cdss}} > 0 ) {
+            for( my $i = 0; $i < @{$pgn1->{cdss}}; $i++ ) {
+                my $cds_locid = @{$pgn1->{cdss}}[$i]->{location}[0][0];
+                my $old_cds_locid = @{$pgn->{cdss}}[$i]->{location}[0][0];
+                if( $i < $cnt_limit ) {
+                  print "\n------the rasted genome cdss location's contig_id=".
+                        "$cds_locid";
+                }
+                ok( (!defined($ctgID_hash->{$old_cds_locid}) &&
+                      $cds_locid eq $old_cds_locid) ||
+                      $cds_locid eq $ctgID_hash->{$old_cds_locid},
+                    'id of contigs in cds locations re-mapped correctly' );
+            }
+        }
+        if( $pgn1->{mrnas} && @{$pgn1->{mrnas}} > 0 ) {
+            for( my $i = 0; $i < @{$pgn1->{mrnas}}; $i++ ) {
+                my $mrna_locid = @{$pgn1->{mrnas}}[$i]->{location}[0][0];
+                my $old_mrna_locid = @{$pgn->{mrnas}}[$i]->{location}[0][0];
+                if( $i < $cnt_limit ) {
+                  print "\n------the rasted genome mrnas location's contig_id=".
+                        "$mrna_locid";
+                }
+                ok( (!defined($ctgID_hash->{$old_mrna_locid}) &&
+                      $mrna_locid eq $old_mrna_locid) ||
+                      $ctgID_hash->{$old_mrna_locid},
+                    'id of contigs in mrnas locations re-mapped correctly' );
+            }
+        }
+    }
+};
+
+
 # Test _post_rast_ann_call with genome/assembly object refs in prod
 subtest '_post_rast_ann_call' => sub {
     # a genome object in workspace #65386
@@ -878,9 +1051,7 @@ subtest '_post_rast_ann_call' => sub {
     print "**for $obj_65386_1:Count of non_coding_features WITH 'type' BEFORE _post_rast_ann_call:$cnt\n";
     lives_ok {
         $final_genome01 = $annoutil->_post_rast_ann_call(
-                          $ann_genome01, $inputgenome01,
-                          $rast_details01{parameters},
-                          $rast_details01{contigobj});
+                          $ann_genome01, $inputgenome01, \%rast_details01);
     } "_post_rast_ann_call runs successfully on genome $obj_65386_1";
     # Focus on the 'non_coding_features' type field check
     $cnt = 0;
@@ -905,9 +1076,7 @@ subtest '_post_rast_ann_call' => sub {
     print "**for $obj_65386_2:Count of non_coding_features WITH 'type' BEFORE _post_rast_ann_call:$cnt\n";
     lives_ok {
         $final_genome02 = $annoutil->_post_rast_ann_call(
-                          $ann_genome02, $inputgenome02,
-                          $rast_details02{parameters},
-                          $rast_details02{contigobj});
+                          $ann_genome02, $inputgenome02, \%rast_details02);
     } "_post_rast_ann_call runs successfully on genome $obj_65386_2";
     # Focus on the 'non_coding_features' type field check
     $cnt = 0;
@@ -922,17 +1091,13 @@ subtest '_post_rast_ann_call' => sub {
     # a genome object
     lives_ok {
         $final_genome1 = $annoutil->_post_rast_ann_call(
-                          $ann_genome1, $inputgenome1,
-                          $rast_details1{parameters},
-                          $rast_details1{contigobj});
+                          $ann_genome1, $inputgenome1, \%rast_details1);
     } "_post_rast_ann_call runs successfully on genome $obj_Ecoli";
 
     # an assembly object
     lives_ok {
         $final_genome2 = $annoutil->_post_rast_ann_call(
-                          $ann_genome2, $inputgenome2,
-                          $rast_details2{parameters},
-                          $rast_details2{contigobj});
+                          $ann_genome2, $inputgenome2, \%rast_details2);
     } "_post_rast_ann_call runs successfully on assembly $obj_asmb";
 };
 

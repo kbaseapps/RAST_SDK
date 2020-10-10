@@ -415,19 +415,65 @@ sub _check_NC_features {
     }
 }
 
-
 ## Mapping the contigIDs back to their original (long) names
 sub _remap_contigIDs {
-    my ($self, $contigID_hash, $genome) = @_;
+    my ($self, $contigID_hash, $gn) = @_;
 
-    my $contigs = $genome->{contigs};
-    foreach my $ctg_obj (@{$contigs}) {
-        my $cid = $ctg_obj->{id};
-        $ctg_obj->{id} = $contigID_hash->{$cid};
-        $ctg_obj->{name} = $contigID_hash->{$cid};
+    return $gn unless $contigID_hash;
+
+    if( $gn->{contig_ids} && @{$gn->{contig_ids}} > 0 ) {
+      for my $ctg_id (@{$gn->{contig_ids}}) {
+        if( $contigID_hash->{$ctg_id} ) {
+            $ctg_id = $contigID_hash->{$ctg_id};
+        }
+      }
     }
-    return $genome;
+    if( $gn->{contigs} && @{$gn->{contigs}} > 0) {
+      for my $ctg (@{$gn->{contigs}}) {
+        if( $contigID_hash->{$ctg->{id}} ) {
+            $ctg->{id} = $contigID_hash->{$ctg->{id}};
+		}
+        if( $contigID_hash->{$ctg->{name}} ) {
+            $ctg->{name} = $contigID_hash->{$ctg->{name}};
+        }
+      }
+    }
+    my $loc_ctg_id;
+    if($gn->{features} && @{$gn->{features}} > 0) {
+      for my $ftr (@{$gn->{features}}) {
+        $loc_ctg_id = $ftr->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{non_coding_features} && @{$gn->{non_coding_features}} > 0) {
+      for my $nc_ftr (@{$gn->{non_coding_features}}) {
+        $loc_ctg_id = $nc_ftr->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{cdss} && @{$gn->{cdss}} > 0) {
+      for my $cds (@{$gn->{cdss}}) {
+        $loc_ctg_id = $cds->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    if( $gn->{mrnas} && @{$gn->{mrnas}} > 0) {
+      for my $mrna (@{$gn->{mrnas}}) {
+        $loc_ctg_id = $mrna->{location}[0][0];
+        if( $contigID_hash->{$loc_ctg_id} ) {
+            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
+        }
+      }
+    }
+    return $gn;
 }
+
 ## end helper subs
 #
 
@@ -1149,7 +1195,11 @@ sub _run_rast_workflow {
 ## process the rast genecall & annotation result
 #
 sub _post_rast_ann_call {
-    my ($self, $genome, $inputgenome, $parameters, $contigobj) = @_;
+    my ($self, $genome, $inputgenome, $rast_ref) = @_;
+
+    my %rast_details = %{ $rast_ref };
+    my $parameters = $rast_details{parameters},
+    my $contigobj = $rast_details{contigobj};
 
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
@@ -1175,6 +1225,7 @@ sub _post_rast_ann_call {
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
     }
+    $genome = $self->_remap_contigIDs($rast_details{contigID_hash}, $genome);
     $genome = $self->_move_non_coding_features($genome, $contigobj);
     return $genome;
 }
@@ -1634,7 +1685,6 @@ sub _save_annotation_results {
     }
 
     $self->_check_NC_features($rasted_gn);
-    $rasted_gn = $self->_remap_contigIDs($gc_rast{contigID_hash}, $rasted_gn);
 
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -2653,9 +2703,8 @@ sub rast_genome {
 
     ## 3. post-rasting process
     my $genome_final = $self->_post_rast_ann_call($annotated_genome,
-                                                  $inputgenome,
-                                                  $rast_details{parameters},
-                                                  $rast_details{contigobj});
+                                                  $inputgenome, $rast_ref);
+
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
     print( "\n***********Post rast processing resulted in $cd_ftr_count coding features "
