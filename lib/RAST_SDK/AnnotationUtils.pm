@@ -7,7 +7,7 @@ package RAST_SDK::AnnotationUtils;
 # and create a KBaseGenomeAnnotations.Assembly/GenomeAnnotation object/set
 ###########################################################################
 
-our $VERSION = '0.1.9';
+our $VERSION = '1.0.1';
 use strict;
 use warnings;
 
@@ -121,7 +121,7 @@ sub _get_genome_gff_contents {
 
     my $in_type = $obj_info->[2];
     my $is_genome = ($in_type =~ /KBaseGenomes.Genome/ ||
-                     $in_type =~ /KBaseGenomeAnnotatioVns.GenomeAnnotation/);
+                     $in_type =~ /KBaseGenomeAnnotations.GenomeAnnotation/);
 
     $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     if ($is_genome) {
@@ -434,56 +434,38 @@ sub _remap_contigIDs {
 
     if( $gn->{contig_ids} && @{$gn->{contig_ids}} > 0 ) {
       for my $ctg_id (@{$gn->{contig_ids}}) {
-        if( $contigID_hash->{$ctg_id} ) {
-            $ctg_id = $contigID_hash->{$ctg_id};
-        }
+        $ctg_id = $contigID_hash->{ $ctg_id } if $contigID_hash->{ $ctg_id };
       }
     }
     if( $gn->{contigs} && @{$gn->{contigs}} > 0) {
       for my $ctg (@{$gn->{contigs}}) {
-        if( $contigID_hash->{$ctg->{id}} ) {
-            $ctg->{id} = $contigID_hash->{$ctg->{id}};
-		}
-        if( $contigID_hash->{$ctg->{name}} ) {
-            $ctg->{name} = $contigID_hash->{$ctg->{name}};
-        }
+        $ctg->{id} = $contigID_hash->{$ctg->{id}} if $contigID_hash->{$ctg->{id}};
+        $ctg->{name} = $contigID_hash->{$ctg->{name}} if $contigID_hash->{$ctg->{name}};
       }
     }
-    my $loc_ctg_id;
-    if($gn->{features} && @{$gn->{features}} > 0) {
-      for my $ftr (@{$gn->{features}}) {
-        $loc_ctg_id = $ftr->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{non_coding_features} && @{$gn->{non_coding_features}} > 0) {
-      for my $nc_ftr (@{$gn->{non_coding_features}}) {
-        $loc_ctg_id = $nc_ftr->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{cdss} && @{$gn->{cdss}} > 0) {
-      for my $cds (@{$gn->{cdss}}) {
-        $loc_ctg_id = $cds->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{mrnas} && @{$gn->{mrnas}} > 0) {
-      for my $mrna (@{$gn->{mrnas}}) {
-        $loc_ctg_id = $mrna->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
+
+    $gn->{features} = $self->_map_location_contigIDs($contigID_hash, $gn->{features});
+    $gn->{non_coding_features} = $self->_map_location_contigIDs(
+                                        $contigID_hash,$gn->{non_coding_features});
+    $gn->{cdss} = $self->_map_location_contigIDs($contigID_hash, $gn->{cdss});
+    $gn->{mrnas} = $self->_map_location_contigIDs($contigID_hash, $gn->{mrnas});
+
     return $gn;
 }
+
+sub _map_location_contigIDs {
+    my ($self, $ctgID_hash, $arr) = @_;
+    my $ctg_id;
+
+    if( $arr && @{$arr} > 0) {
+      for my $ftr (@{$arr}) {
+        $ctg_id = $ftr->{location}[0][0];
+        $ctg_id = $ctgID_hash->{$ctg_id} if $ctg_id && $ctgID_hash->{$ctg_id};
+      }
+    }
+    return $arr;
+}
+
 
 ## end helper subs
 #
@@ -1225,9 +1207,8 @@ sub _run_rast_workflow {
 sub _post_rast_ann_call {
     my ($self, $genome, $inputgenome, $rast_ref) = @_;
 
-    my %rast_details = %{ $rast_ref };
-    my $parameters = $rast_details{parameters},
-    my $contigobj = $rast_details{contigobj};
+    my $parameters = $rast_ref->{ parameters };
+    my $contigobj = $rast_ref->{ contigobj };
 
     delete $genome->{contigs};
     delete $genome->{feature_creation_event};
@@ -1253,7 +1234,7 @@ sub _post_rast_ann_call {
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
     }
-    $genome = $self->_remap_contigIDs($rast_details{contigID_hash}, $genome);
+    $genome = $self->_remap_contigIDs($rast_ref->{contigID_hash}, $genome);
     $genome = $self->_move_non_coding_features($genome, $contigobj);
     return $genome;
 }
@@ -2660,8 +2641,7 @@ sub rast_genome {
 
     print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
 
-    my $genome_final = $self->_post_rast_ann_call($rasted_genome,
-                                                  $inputgenome, $rast_ref);
+    my $genome_final = $self->_post_rast_ann_call($rasted_genome, $inputgenome, $rast_ref);
 
     my $cd_ftr_count = @{$genome_final->{features}};
     my $nc_ftr_count = @{$genome_final->{non_coding_features}};
