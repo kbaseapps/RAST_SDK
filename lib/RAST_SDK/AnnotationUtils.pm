@@ -394,7 +394,7 @@ sub _create_inputgenome_from_assembly {
 
 sub _util_version {
 	my ($self) = @_;
-	my $VERSION = '0.1.8';
+	my $VERSION = '1.8.1';
     return $VERSION;
 }
 
