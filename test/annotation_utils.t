@@ -1028,50 +1028,18 @@ subtest '_check_contigID_mapping' => sub {
                         'contig ids of contigs array remapped correctly';
         }
 
-        my $exp_locs = [];
-        my $result_locs = [];
-        if( $genome_after_remapping->{features} ) {
-            for my $ftr_after (@{$genome_after_remapping->{features}}) {
+        my ($exp_locs, $result_locs);
+        for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
+            next unless $genome_after_remapping->{$feature_type};
+            $result_locs = [];
+            for my $ftr_after ( @{ $genome_after_remapping->{$feature_type} } ) {
                 push @{$result_locs}, $ftr_after->{location};
-            }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{features});
+            }    
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{$feature_type});
 
             cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of feature locations remapped correctly';
-        }
+                        "contig ids of $feature_type locations remapped correctly";
 
-        $result_locs = [];
-        if( $genome_after_remapping->{non_coding_features} ) {
-            for my $ncftr_after (@{$genome_after_remapping->{non_coding_features}}) {
-                push @{$result_locs}, $ncftr_after->{location};
-            }
-            $exp_locs = get_feature_locations(
-                            $ctgID_hash, $genome_before_remapping->{non_coding_features});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of non_coding_feature locations remapped correctly';
-        }
-
-        $result_locs = [];
-        if( $genome_after_remapping->{cdss} ) {
-            for my $cds_after (@{$genome_after_remapping->{cdss}}) {
-                push @{$result_locs}, $cds_after->{location};
-            }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{cdss});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of cdss locations remapped correctly';
-        }
-
-        $result_locs = [];
-        if( $genome_after_remapping->{mrnas} ) {
-            for my $mrna_after (@{$genome_after_remapping->{mrnas}}) {
-                push @{$result_locs}, $mrna_after->{location};
-            }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{mrnas});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of mrnas locations remapped correctly';
         }
     }
 };
