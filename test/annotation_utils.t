@@ -46,6 +46,21 @@ my $scratch = $config->{ 'scratch' };    #'/kb/module/work/tmp';
 my $rast_genome_dir
     = $annoutil->_create_rast_subdir( $scratch, "genome_annotation_dir_" );
 
+sub get_feature_locations {
+    my ($ctgID_hash, $ftr_arr) = @_;
+    my $ret_locs  = [];
+    for my $ftr (@{$ftr_arr}) {
+        for my $loc (@{$ftr->{location}} ) {
+            if( $ctgID_hash->{$loc->[0]} ) {
+                $loc->[0] = $ctgID_hash->{$loc->[0]};
+            }
+        }
+        push @{$ret_locs}, $ftr->{location};
+    }
+    return $ret_locs;
+}
+
+
 ##-----------------Test Blocks--------------------##
 
 my $obj_Echinacea = "55141/242/1";  # prod genome
@@ -114,6 +129,99 @@ my $test_ftrs = [{
  ],
  }];
 
+# test the _map_location_contigIDs function
+subtest '_map_location_contigIDs' => sub {
+    my $arr_with_locations = [
+        {location => [[
+            'contigID_1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'contigID_2',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028858.1',
+            777,
+            '+',
+            898
+        ]]},
+        {location => [[
+            'contigID_4',
+            1000,
+            '+',
+            1234
+        ]]},
+        {location => [
+          [
+            'contigID_3',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'contigID_3',
+            259915,
+            '-',
+            36
+          ]
+        ]}
+    ];
+    my $contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1',
+          'contigID_3' => 'NC_003552.1',
+          'contigID_4' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
+    };
+    my $arr_mapped = $annoutil->_map_location_contigIDs($contigID_hash, $arr_with_locations);
+    my $expected = [
+        {location => [[
+            'NZ_CP028859.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028860.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028858.1',
+            777,
+            '+',
+            898
+        ]]},
+        {location => [[
+            'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome',
+            1000,
+            '+',
+            1234
+        ]]},
+        {location => [
+          [
+            'NC_003552.1',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'NC_003552.1',
+            259915,
+            '-',
+            36
+          ]
+        ]}
+    ];
+
+    cmp_deeply $arr_mapped, $expected, 'remapping location contig_ids correctly';
+};
+
 
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
@@ -133,7 +241,7 @@ subtest '_remap_contigIDs' => sub {
     $gn0 = { contig_ids => [] };
 
     $gn1 = $annoutil->_remap_contigIDs($contigID_hash, $gn0);
-    ok ( @{$gn1->{contig_ids}} eq 0, "No contigID remapping because of empty contig id array.");
+    cmp_deeply $gn1->{ contig_ids }, [], 'No contigID remapping: empty contig ID array';
 
     my $gn = {
            contig_ids => ['contigID_1', 'contigID_2', 'contigID_3', 'contigID_4']
@@ -228,7 +336,6 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
-
 
 #
 ## Global variables for the annotation process steps to share ##
@@ -881,161 +988,103 @@ subtest '_check_contigID_mapping' => sub {
         {gn => $ann_genome1, rd_ref => \%rast_details1},
         {gn => $ann_genome2, rd_ref => \%rast_details2}
     ];
-    my $cnt_limit = 5;
     for my $p (@$gn_pairs) {
         my %rd = %{ $p->{rd_ref} };
-        my $pgn = $p->{gn};
-        my $cnt = 0;
-        print "\n=========before remapping the rasted genome on $pgn->{id}:\n";
-        print "\n------ keys of the rasted genome on $pgn->{id}:\n".
-               Dumper(keys %{ $pgn });
-        if( $pgn->{contig_ids} &&  @{$pgn->{contig_ids}} > 0) {
-            print "\n------the rasted genome's contig_ids:\n".
-                   Dumper( $pgn->{contig_ids});
-        }
-        if( $pgn->{contigs} &&  @{$pgn->{contigs}} > 0) {
-            for my $ctg (@{$pgn->{contigs}}) {
-                print "\n------the rasted genome contig's id=$ctg->{id}";
-            }
-        }
-        if( $pgn->{features} && @{$pgn->{features}} > 0) {
-            $cnt = 0;
-            for my $ftr (@{$pgn->{features}}) {
-                $cnt += 1;
-                print "\n------the rasted genome feature location's contig_id=".
-                      "$ftr->{location}[0][0]";
-                if( $cnt > $cnt_limit ) {
-                    last;
-                }
-            }
-        }
-        if( $pgn->{non_coding_features} &&
-            @{$pgn->{non_coding_features}} > 0) {
-            $cnt = 0;
-            for my $nc_ftr (@{$pgn->{non_coding_features}}) {
-                $cnt += 1;
-                print "\n------the rasted genome nc_feature location's contig_id=".
-                      "$nc_ftr->{location}[0][0]";
-                if( $cnt > $cnt_limit ) {
-                    last;
-                }
-            }
-        }
-        if( $pgn->{cdss} && @{$pgn->{cdss}} > 0 ) {
-            $cnt = 0;
-            for my $cds (@{$pgn->{cdss}}) {
-                $cnt += 1;
-                print "\n------the rasted genome cdss location's contig_id=".
-                      "$cds->{location}[0][0]";
-                if( $cnt > $cnt_limit ) {
-                    last;
-                }
-            }
-        }
-        if( $pgn->{mrnas} && @{$pgn->{mrnas}} > 0 ) {
-            $cnt = 0;
-            for my $mrna (@{$pgn->{mrnas}}) {
-                $cnt += 1;
-                print "\n------the rasted genome mrnas location's contig_id=".
-                      "$mrna->{location}[0][0]";
-                if( $cnt > $cnt_limit ) {
-                    last;
-                }
-            }
-        }
+        my $genome_before_remapping = $p->{gn};
         my $ctgID_hash = $rd{contigID_hash};
         if( $ctgID_hash ) {
             print "\nThere is a contigID_hash:\n".Dumper($ctgID_hash);
         }
         else {
-            print "\nThere is NO contigID_hash in $pgn->{id}:\n".Dumper(keys %rd);
+            print "\nThere is NO contigID_hash in $genome_before_remapping->{id}:\n".Dumper(keys %rd);
+            next;
         }
-        ## Run the remapping
-        my $pgn1 = $annoutil->_remap_contigIDs( $ctgID_hash, $pgn );
-        print "\n=========after remapping the rasted genome on $pgn->{id}:\n";
 
-        if( $pgn1->{contig_ids} &&  @{$pgn1->{contig_ids}} > 0) {
-            print "\n------the rasted genome's contig_ids:\n".
-                   Dumper( $pgn1->{contig_ids});
-            my $exp_ctg_ids = $pgn->{contig_ids};
-            for my $cid (@{$exp_ctg_ids}) {
-                $cid = $ctgID_hash->{$cid};
+        ## Run the remapping
+        my $genome_after_remapping = $annoutil->_remap_contigIDs( $ctgID_hash, $genome_before_remapping );
+        print "\n=========after remapping the rasted genome on $genome_before_remapping->{id}:\n";
+
+        my $exp_ctg_ids = [];
+        if( $genome_after_remapping->{contig_ids} &&
+                @{$genome_after_remapping->{contig_ids}} > 0) {
+            for my $cid (@{$genome_before_remapping->{contig_ids}}) {
+                if( $ctgID_hash->{$cid} ) {
+                    push @{$exp_ctg_ids}, $ctgID_hash->{$cid};
+                } else {
+                    push @{$exp_ctg_ids}, $cid;
+                }
             }
-            cmp_deeply $pgn1->{contig_ids}, $exp_ctg_ids,
+            cmp_deeply $genome_after_remapping->{contig_ids}, $exp_ctg_ids,
                         'contig ids remapped correctly';
         }
-        if( $pgn1->{contigs} &&  @{$pgn1->{contigs}} > 0) {
-            for( my $i = 0; $i < @{$pgn1->{contigs}}; $i++ ) {
-                my $ctg_id = @{$pgn1->{contigs}}[$i]->{id};
-                my $old_ctg_id = @{$pgn->{contigs}}[$i]->{id};
-                if( $i < $cnt_limit ) {
-                  print "\n------the rasted genome contig's id=$ctg_id";
+
+        $exp_ctg_ids = [];
+        my $result_ctg_ids = [];
+        if( $genome_after_remapping->{contigs} &&
+                @{$genome_after_remapping->{contigs}} > 0) {
+            for my $ctg_before (@{$genome_before_remapping->{contigs}}) {
+                if( $ctgID_hash->{$ctg_before->{id}} ) {
+                    push @{$exp_ctg_ids}, $ctgID_hash->{$ctg_before->{id}};
+                } else {
+                    push @{$exp_ctg_ids}, $ctg_before->{id};
                 }
-                ok( (!defined($ctgID_hash->{$old_ctg_id}) && $ctg_id eq $old_ctg_id) ||
-                     $ctg_id eq $ctgID_hash->{$old_ctg_id},
-                    'id of contigs re-mapped correctly' );
             }
+            for my $ctg_after (@{$genome_after_remapping->{contigs}}) {
+                push @{$result_ctg_ids}, $ctg_after->{id};
+            }
+            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+                        'contig ids of contigs array remapped correctly';
         }
-        if( $pgn1->{features} && @{$pgn1->{features}} > 0) {
-            for( my $i = 0; $i < @{$pgn1->{features}}; $i++ ) {
-                my $ftr_locid = @{$pgn1->{features}}[$i]->{location}[0][0];
-                my $old_ftr_locid = @{$pgn->{features}}[$i]->{location}[0][0];
-                if( $i < $cnt_limit ) {
-                  print "\n------the rasted genome feature location's contig_id=".
-                        "$ftr_locid";
-                }
-                ok( (!defined($ctgID_hash->{$old_ftr_locid}) &&
-                      $ftr_locid eq $old_ftr_locid) ||
-                      $ftr_locid eq $ctgID_hash->{$old_ftr_locid},
-                    'id of contigs in feature locations re-mapped correctly' );
+
+        my $exp_locs = [];
+        my $result_locs = [];
+        if( $genome_after_remapping->{features} &&
+                @{$genome_after_remapping->{features}} > 0) {
+            for my $ftr_after (@{$genome_after_remapping->{features}}) {
+                push @{$result_locs}, $ftr_after->{location};
             }
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{features});
+
+            cmp_deeply $result_locs, $exp_locs,
+                        'contig ids of feature locations remapped correctly';
         }
-        if( $pgn1->{non_coding_features} &&
-            @{$pgn1->{non_coding_features}} > 0) {
-            for( my $i = 0; $i < @{$pgn1->{non_coding_features}}; $i++ ) {
-                my $nc_ftr_locid = @{$pgn1->{non_coding_features}}[$i]->{location}[0][0];
-                my $old_ncftr_locid = @{$pgn->{non_coding_features}}[$i]->{location}[0][0];
-                if( $i < $cnt_limit ) {
-                  print "\n------the rasted genome nc_feature location's contig_id=".
-                        "$nc_ftr_locid";
-                }
-                ok( (!defined($ctgID_hash->{$old_ncftr_locid}) &&
-                      $nc_ftr_locid eq $old_ncftr_locid) ||
-                      $nc_ftr_locid eq $ctgID_hash->{$old_ncftr_locid},
-                    'id of contigs in nc_feature locations re-mapped correctly' );
+
+        $result_locs = [];
+        if( $genome_after_remapping->{non_coding_features} &&
+                @{$genome_after_remapping->{non_coding_features}} > 0) {
+            for my $ncftr_after (@{$genome_after_remapping->{non_coding_features}}) {
+                push @{$result_locs}, $ncftr_after->{location};
             }
+            $exp_locs = get_feature_locations(
+                            $ctgID_hash, $genome_before_remapping->{non_coding_features});
+
+            cmp_deeply $result_locs, $exp_locs,
+                        'contig ids of non_coding_feature locations remapped correctly';
         }
-        if( $pgn1->{cdss} && @{$pgn1->{cdss}} > 0 ) {
-            for( my $i = 0; $i < @{$pgn1->{cdss}}; $i++ ) {
-                my $cds_locid = @{$pgn1->{cdss}}[$i]->{location}[0][0];
-                my $old_cds_locid = @{$pgn->{cdss}}[$i]->{location}[0][0];
-                if( $i < $cnt_limit ) {
-                  print "\n------the rasted genome cdss location's contig_id=".
-                        "$cds_locid";
-                }
-                ok( (!defined($ctgID_hash->{$old_cds_locid}) &&
-                      $cds_locid eq $old_cds_locid) ||
-                      $cds_locid eq $ctgID_hash->{$old_cds_locid},
-                    'id of contigs in cds locations re-mapped correctly' );
+
+        $result_locs = [];
+        if( $genome_after_remapping->{cdss} && @{$genome_after_remapping->{cdss}} > 0 ) {
+            for my $cds_after (@{$genome_after_remapping->{cdss}}) {
+                push @{$result_locs}, $cds_after->{location};
             }
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{cdss});
+
+            cmp_deeply $result_locs, $exp_locs,
+                        'contig ids of cdss locations remapped correctly';
         }
-        if( $pgn1->{mrnas} && @{$pgn1->{mrnas}} > 0 ) {
-            for( my $i = 0; $i < @{$pgn1->{mrnas}}; $i++ ) {
-                my $mrna_locid = @{$pgn1->{mrnas}}[$i]->{location}[0][0];
-                my $old_mrna_locid = @{$pgn->{mrnas}}[$i]->{location}[0][0];
-                if( $i < $cnt_limit ) {
-                  print "\n------the rasted genome mrnas location's contig_id=".
-                        "$mrna_locid";
-                }
-                ok( (!defined($ctgID_hash->{$old_mrna_locid}) &&
-                      $mrna_locid eq $old_mrna_locid) ||
-                      $ctgID_hash->{$old_mrna_locid},
-                    'id of contigs in mrnas locations re-mapped correctly' );
+
+        $result_locs = [];
+        if( $genome_after_remapping->{mrnas} && @{$genome_after_remapping->{mrnas}} > 0 ) {
+            for my $mrna_after (@{$genome_after_remapping->{mrnas}}) {
+                push @{$result_locs}, $mrna_after->{location};
             }
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{mrnas});
+
+            cmp_deeply $result_locs, $exp_locs,
+                        'contig ids of mrnas locations remapped correctly';
         }
     }
 };
-
 
 # Test _post_rast_ann_call with genome/assembly object refs in prod
 subtest '_post_rast_ann_call' => sub {

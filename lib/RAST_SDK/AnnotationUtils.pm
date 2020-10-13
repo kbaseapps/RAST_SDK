@@ -394,7 +394,7 @@ sub _create_inputgenome_from_assembly {
 
 sub _util_version {
 	my ($self) = @_;
-	my $VERSION = '0.1.6';
+	my $VERSION = '0.1.8';
     return $VERSION;
 }
 
@@ -423,55 +423,38 @@ sub _remap_contigIDs {
 
     if( $gn->{contig_ids} && @{$gn->{contig_ids}} > 0 ) {
       for my $ctg_id (@{$gn->{contig_ids}}) {
-        if( $contigID_hash->{$ctg_id} ) {
-            $ctg_id = $contigID_hash->{$ctg_id};
-        }
+        $ctg_id = $contigID_hash->{ $ctg_id } if $contigID_hash->{ $ctg_id };
       }
     }
     if( $gn->{contigs} && @{$gn->{contigs}} > 0) {
       for my $ctg (@{$gn->{contigs}}) {
-        if( $contigID_hash->{$ctg->{id}} ) {
-            $ctg->{id} = $contigID_hash->{$ctg->{id}};
-		}
-        if( $contigID_hash->{$ctg->{name}} ) {
-            $ctg->{name} = $contigID_hash->{$ctg->{name}};
-        }
+        $ctg->{id} = $contigID_hash->{$ctg->{id}} if $contigID_hash->{$ctg->{id}};
+        $ctg->{name} = $contigID_hash->{$ctg->{name}} if $contigID_hash->{$ctg->{name}};
       }
     }
-    my $loc_ctg_id;
-    if($gn->{features} && @{$gn->{features}} > 0) {
-      for my $ftr (@{$gn->{features}}) {
-        $loc_ctg_id = $ftr->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{non_coding_features} && @{$gn->{non_coding_features}} > 0) {
-      for my $nc_ftr (@{$gn->{non_coding_features}}) {
-        $loc_ctg_id = $nc_ftr->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{cdss} && @{$gn->{cdss}} > 0) {
-      for my $cds (@{$gn->{cdss}}) {
-        $loc_ctg_id = $cds->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
-    if( $gn->{mrnas} && @{$gn->{mrnas}} > 0) {
-      for my $mrna (@{$gn->{mrnas}}) {
-        $loc_ctg_id = $mrna->{location}[0][0];
-        if( $contigID_hash->{$loc_ctg_id} ) {
-            $loc_ctg_id = $contigID_hash->{$loc_ctg_id};
-        }
-      }
-    }
+    $gn->{features} = $self->_map_location_contigIDs($contigID_hash, $gn->{features});
+    $gn->{non_coding_features} = $self->_map_location_contigIDs(
+                                        $contigID_hash, $gn->{non_coding_features});
+    $gn->{cdss} = $self->_map_location_contigIDs($contigID_hash, $gn->{cdss});
+    $gn->{mrnas} = $self->_map_location_contigIDs($contigID_hash, $gn->{mrnas});
+
     return $gn;
+}
+
+sub _map_location_contigIDs {
+    my ($self, $ctgID_hash, $arr) = @_;
+    my $ctg_id;
+
+    if( $arr && @{$arr} > 0) {
+        for my $ftr (@{$arr}) {
+            my $locs = $ftr->{location};
+            for my $loc (@{$locs}) {
+                $ctg_id = $loc->[0];
+                $loc->[0] = $ctgID_hash->{$ctg_id} if $ctg_id && $ctgID_hash->{$ctg_id};
+            }
+        }
+    }
+    return $arr;
 }
 
 ## end helper subs
