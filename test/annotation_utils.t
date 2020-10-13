@@ -1053,7 +1053,7 @@ subtest '_check_contigID_mapping' => sub {
         }
 
         $result_locs = [];
-        if( $genome_after_remapping->{cdss} && @{$genome_after_remapping->{cdss}} > 0 ) {
+        if( $genome_after_remapping->{cdss} ) {
             for my $cds_after (@{$genome_after_remapping->{cdss}}) {
                 push @{$result_locs}, $cds_after->{location};
             }
@@ -1064,7 +1064,7 @@ subtest '_check_contigID_mapping' => sub {
         }
 
         $result_locs = [];
-        if( $genome_after_remapping->{mrnas} && @{$genome_after_remapping->{mrnas}} > 0 ) {
+        if( $genome_after_remapping->{mrnas} ) {
             for my $mrna_after (@{$genome_after_remapping->{mrnas}}) {
                 push @{$result_locs}, $mrna_after->{location};
             }
