@@ -458,14 +458,16 @@ sub _map_location_contigIDs {
     my $ctg_id;
 
     if( $arr && @{$arr} > 0) {
-      for my $ftr (@{$arr}) {
-        $ctg_id = $ftr->{location}[0][0];
-        $ctg_id = $ctgID_hash->{$ctg_id} if $ctg_id && $ctgID_hash->{$ctg_id};
-      }
+        for my $ftr (@{$arr}) {
+            my $locs = $ftr->{location};
+            for my $loc (@{$locs}) {
+                $ctg_id = $loc->[0];
+                $loc->[0] = $ctgID_hash->{$ctg_id} if $ctg_id && $ctgID_hash->{$ctg_id};
+            }
+        }
     }
     return $arr;
 }
-
 
 ## end helper subs
 #

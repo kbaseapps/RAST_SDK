@@ -46,6 +46,20 @@ my $scratch = $config->{ 'scratch' };    #'/kb/module/work/tmp';
 my $rast_genome_dir
     = $annoutil->_create_rast_subdir( $scratch, "genome_annotation_dir_" );
 
+sub get_feature_locations {
+    my ($ctgID_hash, $ftr_arr) = @_;
+    my $ret_locs  = [];
+    for my $ftr (@{$ftr_arr}) {
+        for my $loc (@{$ftr->{location}} ) {
+            if( $ctgID_hash->{$loc->[0]} ) {
+                $loc->[0] = $ctgID_hash->{$loc->[0]};
+            }
+        }
+        push @{$ret_locs}, $ftr->{location};
+    }
+    return $ret_locs;
+}
+
 ##-----------------Test Blocks--------------------##
 
 my $obj_Echinacea = "55141/242/1";  # prod genome
@@ -118,49 +132,94 @@ my $test_ftrs = [{
 # test the _map_location_contigIDs function
 subtest '_map_location_contigIDs' => sub {
     my $arr_with_locations = [
-        {location = [[
+        {location => [[
             'contigID_1',
             123,
             '+',
             456
         ]]},
-        {location = [[
+        {location => [[
             'contigID_2',
             123,
             '+',
             456
         ]]},
-        {location = [[
-            'contigID_3',
+        {location => [[
+            'NZ_CP028858.1',
             777,
             '+',
             898
         ]]},
-        {location = [[
+        {location => [[
             'contigID_4',
             1000,
             '+',
             1234
         ]]},
+        {location => [
+          [
+            'contigID_3',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'contigID_3',
+            259915,
+            '-',
+            36
+          ]
+        ]}
     ];
     my $contigID_hash = {
           'contigID_1' => 'NZ_CP028859.1',
           'contigID_2' => 'NZ_CP028860.1',
-          'contigID_3' => 'NZ_CP028858.1',
+          'contigID_3' => 'NC_003552.1',
           'contigID_4' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
     };
-    $arr_mapped = $annoutil->_map_location_contigIDs($contigID_hash, $arr_with_locations);
-    my $exp_cids = ['NZ_CP028859.1', 'NZ_CP028860.1', 'NZ_CP028858.1', 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'];
-    my $result_cids = [];
-    for my $arr_item (@{$arr_with_locations}) {
-        my $cid = $arr_item->{location}[0][0];
-        if( $contigID_hash->{$cid} ) {
-            push @$result_cids, $contigID_hash->{$cid};
-        } else {
-            push @$result_cids, $cid;
-        }
-    }
-    cmp_deeply $result_cids,$exp_cids, 'remapping location contig_ids correctly';
+    my $arr_mapped = $annoutil->_map_location_contigIDs($contigID_hash, $arr_with_locations);
+    my $expected = [
+        {location => [[
+            'NZ_CP028859.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028860.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028858.1',
+            777,
+            '+',
+            898
+        ]]},
+        {location => [[
+            'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome',
+            1000,
+            '+',
+            1234
+        ]]},
+        {location => [
+          [
+            'NC_003552.1',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'NC_003552.1',
+            259915,
+            '-',
+            36
+          ]
+        ]}
+    ];
+
+    cmp_deeply $arr_mapped, $expected, 'remapping location contig_ids correctly';
 };
 
 
@@ -950,6 +1009,7 @@ subtest '_check_contigID_mapping' => sub {
         }
         else {
             print "\nThere is NO contigID_hash in $genome_before_remapping->{id}:\n".Dumper(keys %rd);
+            next;
         }
         ## Run the remapping
         my $genome_after_remapping = $annoutil->_remap_contigIDs( $ctgID_hash, $genome_before_remapping );
@@ -987,73 +1047,51 @@ subtest '_check_contigID_mapping' => sub {
                         'contig ids of contigs array remapped correctly';
         }
 
-        $exp_ctg_ids = [];
-        $result_ctg_ids = [];
+        my $exp_locs = [];
+        my $result_locs = [];
         if( $genome_after_remapping->{features} &&
                 @{$genome_after_remapping->{features}} > 0) {
-            for my $ftr_before (@{$genome_before_remapping->{features}}) {
-                if( $ctgID_hash->{$ftr_before->{location}[0][0]} ) {
-                    push @{$exp_ctg_ids}, $ctgID_hash->{$ftr_before->{location}[0][0]};
-                } else {
-                    push @{$exp_ctg_ids}, $ftr_before->{location}[0][0];
-                }
-            }
             for my $ftr_after (@{$genome_after_remapping->{features}}) {
-                push @{$result_ctg_ids}, $ftr_after->{location}[0][0];
+                push @{$result_locs}, $ftr_after->{location};
             }
-            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{features});
+
+            cmp_deeply $result_locs, $exp_locs,
                         'contig ids of feature locations remapped correctly';
         }
 
-        $exp_ctg_ids = [];
-        $result_ctg_ids = [];
+        $result_locs = [];
         if( $genome_after_remapping->{non_coding_features} &&
                 @{$genome_after_remapping->{non_coding_features}} > 0) {
-            for my $ncftr_before (@{$genome_before_remapping->{non_coding_features}}) {
-                if( $ctgID_hash->{$ncftr_before->{location}[0][0]} ) {
-                    push @{$exp_ctg_ids}, $ctgID_hash->{$ncftr_before->{location}[0][0]};
-                } else {
-                    push @{$exp_ctg_ids}, $ncftr_before->{location}[0][0];
-                }
-            }
             for my $ncftr_after (@{$genome_after_remapping->{non_coding_features}}) {
-                push @{$result_ctg_ids}, $ncftr_after->{location}[0][0];
+                push @{$result_locs}, $ncftr_after->{location};
             }
-            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+            $exp_locs = get_feature_locations(
+                            $ctgID_hash, $genome_before_remapping->{non_coding_features});
+
+            cmp_deeply $result_locs, $exp_locs,
                         'contig ids of non_coding_feature locations remapped correctly';
         }
 
-        $exp_ctg_ids = [];
-        $result_ctg_ids = [];
+        $result_locs = [];
         if( $genome_after_remapping->{cdss} && @{$genome_after_remapping->{cdss}} > 0 ) {
-            for my $cds_before (@{$genome_before_remapping->{cdss}}) {
-                if( $ctgID_hash->{$cds_before->{location}[0][0]} ) {
-                    push @{$exp_ctg_ids}, $ctgID_hash->{$cds_before->{location}[0][0]};
-                } else {
-                    push @{$exp_ctg_ids}, $cds_before->{location}[0][0];
-                }
-            }
             for my $cds_after (@{$genome_after_remapping->{cdss}}) {
-                push @{$result_ctg_ids}, $cds_after->{location}[0][0];
+                push @{$result_locs}, $cds_after->{location};
             }
-            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{cdss});
+
+            cmp_deeply $result_locs, $exp_locs,
                         'contig ids of cdss locations remapped correctly';
         }
 
-        $exp_ctg_ids = [];
-        $result_ctg_ids = [];
+        $result_locs = [];
         if( $genome_after_remapping->{mrnas} && @{$genome_after_remapping->{mrnas}} > 0 ) {
-            for my $mrna_before (@{$genome_before_remapping->{mrnas}}) {
-                if( $ctgID_hash->{$mrna_before->{location}[0][0]} ) {
-                    push @{$exp_ctg_ids}, $ctgID_hash->{$mrna_before->{location}[0][0]};
-                } else {
-                    push @{$exp_ctg_ids}, $mrna_before->{location}[0][0];
-                }
-            }
             for my $mrna_after (@{$genome_after_remapping->{mrnas}}) {
-                push @{$result_ctg_ids}, $mrna_after->{location}[0][0];
+                push @{$result_locs}, $mrna_after->{location};
             }
-            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{mrnas});
+
+            cmp_deeply $result_locs, $exp_locs,
                         'contig ids of mrnas locations remapped correctly';
         }
     }
