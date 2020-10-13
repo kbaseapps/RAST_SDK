@@ -247,10 +247,10 @@ subtest '_remap_contigIDs' => sub {
            contig_ids => ['contigID_1', 'contigID_2', 'contigID_3', 'contigID_4']
     };
     $gn = $annoutil->_remap_contigIDs($contigID_hash, $gn);
-    ok ($gn->{contig_ids}->[0] eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
-    ok ($gn->{contig_ids}->[1] eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
-    ok ($gn->{contig_ids}->[2] eq $contigID_hash->{contigID_3}, "mapped contigID correctly");
-    ok ($gn->{contig_ids}->[3] eq $contigID_hash->{contigID_4}, "mapped contigID correctly");
+    cmp_deeply
+     $gn->{ contig_ids },
+     [  $contigID_hash->{ contigID_1 }, $contigID_hash->{ contigID_2 }, $contigID_hash->{ contigID_3 }, $contigID_hash->{ contigID_4 } ],
+     'contig IDs remapped correctly';
 };
 
 subtest '_get_contigs_from_fastafile' => sub {
