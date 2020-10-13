@@ -443,30 +443,24 @@ sub _remap_contigIDs {
         $ctg->{name} = $contigID_hash->{$ctg->{name}} if $contigID_hash->{$ctg->{name}};
       }
     }
-
-    $gn->{features} = $self->_map_location_contigIDs($contigID_hash, $gn->{features});
-    $gn->{non_coding_features} = $self->_map_location_contigIDs(
-                                        $contigID_hash,$gn->{non_coding_features});
-    $gn->{cdss} = $self->_map_location_contigIDs($contigID_hash, $gn->{cdss});
-    $gn->{mrnas} = $self->_map_location_contigIDs($contigID_hash, $gn->{mrnas});
+    for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
+        $gn->{ $feature_type } = $self->_map_location_contigIDs( $contigID_hash, $gn->{ $feature_type } );
+    }
 
     return $gn;
 }
 
 sub _map_location_contigIDs {
-    my ($self, $ctgID_hash, $arr) = @_;
-    my $ctg_id;
+    my ($self, $ctgID_hash, $ftr_arr) = @_;
 
-    if( $arr && @{$arr} > 0) {
-        for my $ftr (@{$arr}) {
-            my $locs = $ftr->{location};
-            for my $loc (@{$locs}) {
-                $ctg_id = $loc->[0];
-                $loc->[0] = $ctgID_hash->{$ctg_id} if $ctg_id && $ctgID_hash->{$ctg_id};
-            }
+    return $ftr_arr unless $ftr_arr && $ctgID_hash;
+
+    for my $ftr ( @{ $ftr_arr } ) {
+        for my $loc ( @{ $ftr->{location} } ) {
+            $loc->[0] = $ctgID_hash->{$loc->[0]} if $loc->[0] && $ctgID_hash->{$loc->[0]};
         }
     }
-    return $arr;
+    return $ftr_arr;
 }
 
 ## end helper subs

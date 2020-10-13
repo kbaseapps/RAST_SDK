@@ -894,7 +894,7 @@ subtest '_pre_rast_call' => sub {
     } "_pre_rast_call runs successfully on genome $obj_65386_1";
     %rast_details01 = %{ $rast_ref }; # dereference
     my $genehash01 = $rast_details01{genehash};
-    ok (keys %{$genehash01}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash01, "Gene hash created from genome with elements.");
     if (defined($inputgenome01->{ontology_events})){
         ok (@{$inputgenome01->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome01->{ontology_events}}." ontology events for genome.");
@@ -912,7 +912,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details02 = %{ $rast_ref }; # dereference
     my $genehash02 = $rast_details02{genehash};
 
-    ok (keys %{$genehash02}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash02, "Gene hash created from genome with elements.");
     if (defined($inputgenome02->{ontology_events})){
         ok (@{$inputgenome02->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome02->{ontology_events}}." ontology events for genome.");
@@ -930,7 +930,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details1 = %{ $rast_ref }; # dereference
     my $genehash1 = $rast_details1{genehash};
 
-    ok (keys %{$genehash1}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash1, "Gene hash created from genome with elements.");
     if (defined($inputgenome1->{ontology_events})){
         ok (@{$inputgenome1->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome1->{ontology_events}}." ontology events for genome.");
@@ -948,7 +948,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details2 = %{$rast_ref}; # dereference
     my $genehash2 = $rast_details2{genehash};
 
-    ok (keys %{$genehash2} == 0, "Gene hash created from assembly with no elements.");
+    ok (keys %$genehash2 == 0, "Gene hash created from assembly with no elements.");
     if (defined($inputgenome2->{ontology_events})){
         ok (@{$inputgenome2->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome2->{ontology_events}}." ontology events for assembly.");
@@ -1004,20 +1004,14 @@ subtest '_check_contigID_mapping' => sub {
         my $genome_before_remapping = $p->{gn};
 
         my $ctgID_hash = $rd{contigID_hash};
-        if( $ctgID_hash ) {
-            print "\nThere is a contigID_hash:\n".Dumper($ctgID_hash);
-        }
-        else {
-            print "\nThere is NO contigID_hash in $genome_before_remapping->{id}:\n".Dumper(keys %rd);
-            next;
-        }
+        ok( keys %$ctgID_hash, "There is a contigID_hash" );
+
         ## Run the remapping
         my $genome_after_remapping = $annoutil->_remap_contigIDs( $ctgID_hash, $genome_before_remapping );
         print "\n=========after remapping the rasted genome on $genome_before_remapping->{id}:\n";
 
         my $exp_ctg_ids = [];
-        if( $genome_after_remapping->{contig_ids} &&
-                @{$genome_after_remapping->{contig_ids}} > 0) {
+        if( $genome_after_remapping->{contig_ids} ) {
             for my $cid (@{$genome_before_remapping->{contig_ids}}) {
                 if( $ctgID_hash->{$cid} ) {
                     push @{$exp_ctg_ids}, $ctgID_hash->{$cid};
@@ -1031,8 +1025,7 @@ subtest '_check_contigID_mapping' => sub {
 
         $exp_ctg_ids = [];
         my $result_ctg_ids = [];
-        if( $genome_after_remapping->{contigs} &&
-                @{$genome_after_remapping->{contigs}} > 0) {
+        if( $genome_after_remapping->{contigs} ) {
             for my $ctg_before (@{$genome_before_remapping->{contigs}}) {
                 if( $ctgID_hash->{$ctg_before->{id}} ) {
                     push @{$exp_ctg_ids}, $ctgID_hash->{$ctg_before->{id}};
@@ -1047,52 +1040,17 @@ subtest '_check_contigID_mapping' => sub {
                         'contig ids of contigs array remapped correctly';
         }
 
-        my $exp_locs = [];
-        my $result_locs = [];
-        if( $genome_after_remapping->{features} &&
-                @{$genome_after_remapping->{features}} > 0) {
-            for my $ftr_after (@{$genome_after_remapping->{features}}) {
+        my ($exp_locs, $result_locs);
+        for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
+            next unless $genome_after_remapping->{$feature_type};
+            $result_locs = [];
+            for my $ftr_after ( @{ $genome_after_remapping->{$feature_type} } ) {
                 push @{$result_locs}, $ftr_after->{location};
             }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{features});
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{$feature_type});
 
             cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of feature locations remapped correctly';
-        }
-
-        $result_locs = [];
-        if( $genome_after_remapping->{non_coding_features} &&
-                @{$genome_after_remapping->{non_coding_features}} > 0) {
-            for my $ncftr_after (@{$genome_after_remapping->{non_coding_features}}) {
-                push @{$result_locs}, $ncftr_after->{location};
-            }
-            $exp_locs = get_feature_locations(
-                            $ctgID_hash, $genome_before_remapping->{non_coding_features});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of non_coding_feature locations remapped correctly';
-        }
-
-        $result_locs = [];
-        if( $genome_after_remapping->{cdss} && @{$genome_after_remapping->{cdss}} > 0 ) {
-            for my $cds_after (@{$genome_after_remapping->{cdss}}) {
-                push @{$result_locs}, $cds_after->{location};
-            }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{cdss});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of cdss locations remapped correctly';
-        }
-
-        $result_locs = [];
-        if( $genome_after_remapping->{mrnas} && @{$genome_after_remapping->{mrnas}} > 0 ) {
-            for my $mrna_after (@{$genome_after_remapping->{mrnas}}) {
-                push @{$result_locs}, $mrna_after->{location};
-            }
-            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{mrnas});
-
-            cmp_deeply $result_locs, $exp_locs,
-                        'contig ids of mrnas locations remapped correctly';
+                        "contig ids of $feature_type locations remapped correctly";
         }
     }
 };
