@@ -46,6 +46,21 @@ my $scratch = $config->{ 'scratch' };    #'/kb/module/work/tmp';
 my $rast_genome_dir
     = $annoutil->_create_rast_subdir( $scratch, "genome_annotation_dir_" );
 
+sub get_feature_locations {
+    my ($ctgID_hash, $ftr_arr) = @_;
+    my $ret_locs  = [];
+    for my $ftr (@{$ftr_arr}) {
+        for my $loc (@{$ftr->{location}} ) {
+            if( $ctgID_hash->{$loc->[0]} ) {
+                $loc->[0] = $ctgID_hash->{$loc->[0]};
+            }
+        }
+        push @{$ret_locs}, $ftr->{location};
+    }
+    return $ret_locs;
+}
+
+
 ##-----------------Test Blocks--------------------##
 
 my $obj_Echinacea = "55141/242/1";  # prod genome
@@ -114,26 +129,128 @@ my $test_ftrs = [{
  ],
  }];
 
+# test the _map_location_contigIDs function
+subtest '_map_location_contigIDs' => sub {
+    my $arr_with_locations = [
+        {location => [[
+            'contigID_1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'contigID_2',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028858.1',
+            777,
+            '+',
+            898
+        ]]},
+        {location => [[
+            'contigID_4',
+            1000,
+            '+',
+            1234
+        ]]},
+        {location => [
+          [
+            'contigID_3',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'contigID_3',
+            259915,
+            '-',
+            36
+          ]
+        ]}
+    ];
+    my $contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1',
+          'contigID_3' => 'NC_003552.1',
+          'contigID_4' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
+    };
+    my $arr_mapped = $annoutil->_map_location_contigIDs($contigID_hash, $arr_with_locations);
+    my $expected = [
+        {location => [[
+            'NZ_CP028859.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028860.1',
+            123,
+            '+',
+            456
+        ]]},
+        {location => [[
+            'NZ_CP028858.1',
+            777,
+            '+',
+            898
+        ]]},
+        {location => [[
+            'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome',
+            1000,
+            '+',
+            1234
+        ]]},
+        {location => [
+          [
+            'NC_003552.1',
+            259992,
+            '-',
+            36
+          ],
+          [
+            'NC_003552.1',
+            259915,
+            '-',
+            36
+          ]
+        ]}
+    ];
+
+    cmp_deeply $arr_mapped, $expected, 'remapping location contig_ids correctly';
+};
+
 
 ## Re-mapping the contigIDs back to their original (long) names
 subtest '_remap_contigIDs' => sub {
-    my $contigID_hash = {
-          'contigID_1' => 'NZ_CP028859.1',
-          'contigID_2' => 'NZ_CP028860.1'
+    my $contigID_hash = {};
+    my $gn0 = {
+            contig_ids => ['fake_contig_id_1', 'fake_contig_id_2'],
     };
+    my $gn1 = $annoutil->_remap_contigIDs($contigID_hash, $gn0);
+    cmp_deeply($gn1, $gn0, "No contigID mapping happened--contigID_hash was empty");
+
+    $contigID_hash = {
+          'contigID_1' => 'NZ_CP028859.1',
+          'contigID_2' => 'NZ_CP028860.1',
+          'contigID_3' => 'NZ_CP028859.1',
+          'contigID_4' => 'CP0035411Candidatus_Carsonella_ruddii_CE_isolate_Thao2000_complete_genome'
+    };
+    $gn0 = { contig_ids => [] };
+
+    $gn1 = $annoutil->_remap_contigIDs($contigID_hash, $gn0);
+    cmp_deeply $gn1->{ contig_ids }, [], 'No contigID remapping: empty contig ID array';
+
     my $gn = {
-        contigs => [
-            {id => 'contigID_1',
-             name => 'contigID_1'},
-            {id => 'contigID_2',
-             name => 'contigID_2'}
-        ]
+           contig_ids => ['contigID_1', 'contigID_2', 'contigID_3', 'contigID_4']
     };
     $gn = $annoutil->_remap_contigIDs($contigID_hash, $gn);
-    my $contig1 = $gn->{contigs}[0];
-    my $contig2 = $gn->{contigs}[1];
-    ok ($contig1->{id} eq $contigID_hash->{contigID_1}, "mapped contigID correctly");
-    ok ($contig2->{id} eq $contigID_hash->{contigID_2}, "mapped contigID correctly");
+    cmp_deeply
+     $gn->{ contig_ids },
+     [  $contigID_hash->{ contigID_1 }, $contigID_hash->{ contigID_2 }, $contigID_hash->{ contigID_3 }, $contigID_hash->{ contigID_4 } ],
+     'contig IDs remapped correctly';
 };
 
 subtest '_get_contigs_from_fastafile' => sub {
@@ -219,7 +336,6 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
-
 
 #
 ## Global variables for the annotation process steps to share ##
@@ -768,7 +884,7 @@ subtest '_pre_rast_call' => sub {
     } "_pre_rast_call runs successfully on genome $obj_65386_1";
     %rast_details01 = %{ $rast_ref }; # dereference
     my $genehash01 = $rast_details01{genehash};
-    ok (keys %{$genehash01}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash01, "Gene hash created from genome with elements.");
     if (defined($inputgenome01->{ontology_events})){
         ok (@{$inputgenome01->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome01->{ontology_events}}." ontology events for genome.");
@@ -786,7 +902,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details02 = %{ $rast_ref }; # dereference
     my $genehash02 = $rast_details02{genehash};
 
-    ok (keys %{$genehash02}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash02, "Gene hash created from genome with elements.");
     if (defined($inputgenome02->{ontology_events})){
         ok (@{$inputgenome02->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome02->{ontology_events}}." ontology events for genome.");
@@ -804,7 +920,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details1 = %{ $rast_ref }; # dereference
     my $genehash1 = $rast_details1{genehash};
 
-    ok (keys %{$genehash1}, "Gene hash created from genome with elements.");
+    ok (keys %$genehash1, "Gene hash created from genome with elements.");
     if (defined($inputgenome1->{ontology_events})){
         ok (@{$inputgenome1->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome1->{ontology_events}}." ontology events for genome.");
@@ -822,7 +938,7 @@ subtest '_pre_rast_call' => sub {
     %rast_details2 = %{$rast_ref}; # dereference
     my $genehash2 = $rast_details2{genehash};
 
-    ok (keys %{$genehash2} == 0, "Gene hash created from assembly with no elements.");
+    ok (keys %$genehash2 == 0, "Gene hash created from assembly with no elements.");
     if (defined($inputgenome2->{ontology_events})){
         ok (@{$inputgenome2->{ontology_events}} > 0,
             "There are ".scalar @{$inputgenome2->{ontology_events}}." ontology events for assembly.");
@@ -864,6 +980,70 @@ subtest '_run_rast_workflow_ann' => sub {
 };
 
 
+## Just print to explore the finalgenome data structure and find the contig_ids##
+subtest '_check_contigID_mapping' => sub {
+    my $gn_pairs = [
+        {gn => $ann_genome01, rd_ref => \%rast_details01},
+        {gn => $ann_genome02, rd_ref => \%rast_details02},
+        {gn => $ann_genome1, rd_ref => \%rast_details1},
+        {gn => $ann_genome2, rd_ref => \%rast_details2}
+    ];
+    for my $p (@$gn_pairs) {
+        my %rd = %{ $p->{rd_ref} };
+        my $genome_before_remapping = $p->{gn};
+        my $ctgID_hash = $rd{contigID_hash};
+        ok( keys %$ctgID_hash, "There is a contigID_hash" );
+
+        ## Run the remapping
+        my $genome_after_remapping = $annoutil->_remap_contigIDs( $ctgID_hash, $genome_before_remapping );
+        print "\n=========after remapping the rasted genome on $genome_before_remapping->{id}:\n";
+
+        my $exp_ctg_ids = [];
+        if( $genome_after_remapping->{contig_ids} ) {
+            for my $cid (@{$genome_before_remapping->{contig_ids}}) {
+                if( $ctgID_hash->{$cid} ) {
+                    push @{$exp_ctg_ids}, $ctgID_hash->{$cid};
+                } else {
+                    push @{$exp_ctg_ids}, $cid;
+                }
+            }
+            cmp_deeply $genome_after_remapping->{contig_ids}, $exp_ctg_ids,
+                        'contig ids remapped correctly';
+        }
+
+        $exp_ctg_ids = [];
+        my $result_ctg_ids = [];
+        if( $genome_after_remapping->{contigs} ) {
+            for my $ctg_before (@{$genome_before_remapping->{contigs}}) {
+                if( $ctgID_hash->{$ctg_before->{id}} ) {
+                    push @{$exp_ctg_ids}, $ctgID_hash->{$ctg_before->{id}};
+                } else {
+                    push @{$exp_ctg_ids}, $ctg_before->{id};
+                }
+            }
+            for my $ctg_after (@{$genome_after_remapping->{contigs}}) {
+                push @{$result_ctg_ids}, $ctg_after->{id};
+            }
+            cmp_deeply $result_ctg_ids, $exp_ctg_ids,
+                        'contig ids of contigs array remapped correctly';
+        }
+
+        my ($exp_locs, $result_locs);
+        for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
+            next unless $genome_after_remapping->{$feature_type};
+            $result_locs = [];
+            for my $ftr_after ( @{ $genome_after_remapping->{$feature_type} } ) {
+                push @{$result_locs}, $ftr_after->{location};
+            }    
+            $exp_locs = get_feature_locations($ctgID_hash, $genome_before_remapping->{$feature_type});
+
+            cmp_deeply $result_locs, $exp_locs,
+                        "contig ids of $feature_type locations remapped correctly";
+
+        }
+    }
+};
+
 # Test _post_rast_ann_call with genome/assembly object refs in prod
 subtest '_post_rast_ann_call' => sub {
     # a genome object in workspace #65386
@@ -878,9 +1058,7 @@ subtest '_post_rast_ann_call' => sub {
     print "**for $obj_65386_1:Count of non_coding_features WITH 'type' BEFORE _post_rast_ann_call:$cnt\n";
     lives_ok {
         $final_genome01 = $annoutil->_post_rast_ann_call(
-                          $ann_genome01, $inputgenome01,
-                          $rast_details01{parameters},
-                          $rast_details01{contigobj});
+                          $ann_genome01, $inputgenome01, \%rast_details01);
     } "_post_rast_ann_call runs successfully on genome $obj_65386_1";
     # Focus on the 'non_coding_features' type field check
     $cnt = 0;
@@ -905,9 +1083,7 @@ subtest '_post_rast_ann_call' => sub {
     print "**for $obj_65386_2:Count of non_coding_features WITH 'type' BEFORE _post_rast_ann_call:$cnt\n";
     lives_ok {
         $final_genome02 = $annoutil->_post_rast_ann_call(
-                          $ann_genome02, $inputgenome02,
-                          $rast_details02{parameters},
-                          $rast_details02{contigobj});
+                          $ann_genome02, $inputgenome02, \%rast_details02);
     } "_post_rast_ann_call runs successfully on genome $obj_65386_2";
     # Focus on the 'non_coding_features' type field check
     $cnt = 0;
@@ -922,17 +1098,13 @@ subtest '_post_rast_ann_call' => sub {
     # a genome object
     lives_ok {
         $final_genome1 = $annoutil->_post_rast_ann_call(
-                          $ann_genome1, $inputgenome1,
-                          $rast_details1{parameters},
-                          $rast_details1{contigobj});
+                          $ann_genome1, $inputgenome1, \%rast_details1);
     } "_post_rast_ann_call runs successfully on genome $obj_Ecoli";
 
     # an assembly object
     lives_ok {
         $final_genome2 = $annoutil->_post_rast_ann_call(
-                          $ann_genome2, $inputgenome2,
-                          $rast_details2{parameters},
-                          $rast_details2{contigobj});
+                          $ann_genome2, $inputgenome2, \%rast_details2);
     } "_post_rast_ann_call runs successfully on assembly $obj_asmb";
 };
 
