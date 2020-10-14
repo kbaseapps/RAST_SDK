@@ -1,6 +1,11 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 1.8.1
+__Changes__
+Mainly for a fix of the contig_id bug introduced by the fix of the long-standing long-contig-id/name bug.
+Upped the version number for potential release.
+
 ### Version 0.1.8
 __Changes__
 Merged all development starting from AMA in annotate_metaG_rebased branch into master; then merged changes by AJ on test file/module renaming and cpanfile addition.
