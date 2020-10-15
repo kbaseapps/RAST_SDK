@@ -7,7 +7,7 @@ package RAST_SDK::AnnotationUtils;
 # and create a KBaseGenomeAnnotations.Assembly/GenomeAnnotation object/set
 ###########################################################################
 
-our $VERSION = '1.0.1';
+our $VERSION = '1.9.1';
 use strict;
 use warnings;
 
@@ -312,6 +312,11 @@ sub _set_default_parameters {
     };
 }
 
+sub _trim {
+    my ($self, $s) = @_;
+    my $newstring = $s =~ s/^\s+|\s+$//gr;
+    return $newstring;
+}
 
 sub _get_oldfunchash_oldtype_types {
     my ($self, $in_genome) = @_;
@@ -321,7 +326,7 @@ sub _get_oldfunchash_oldtype_types {
     my %types = ();
 
     for my $ftr ( @{ $in_genome->{ features }} ) {
-        if (!defined($ftr->{type}) || $ftr->{type} lt '     ') {
+        unless ($ftr->{type} && $self->_trim($ftr->{type})) {
             if (defined($ftr->{protein_translation})) {
                 $ftr->{type} = 'gene';
             } else {
@@ -1053,7 +1058,7 @@ sub _renumber_features {
         $message .= $annomessage;
     }
     $rast_details{message} = $message;
-    $rast_details{renumber_workflow} = $workflow;
+    $rast_details{renumber_workflow} = $workflow if $workflow->{stages};
 
     return (\%rast_details, $inputgenome);
 }
@@ -1100,26 +1105,24 @@ sub _pre_rast_call {
     my %rast_details = %{ $rast_ref };
     my $genome = $inputgenome;
     my $genehash = {};
-    if (defined($genome->{features})) {
-        for (my $i=0; $i < @{$genome->{features}}; $i++) {
+    if ( $genome->{features} && @{ $genome->{features} } ) {
+        for my $gn_ftr (@{ $genome->{features} }) {
             # Caching feature functions for future comparison against new functions
             # defined by RAST service in order to calculate number of updated features.
             # If function is not set we treat it as empty string to avoid perl warning.
-            my $func = $genome->{features}->[$i]->{function};
-            if (not defined($func)) {
-                $func = "";
-            }
-            $genehash->{$genome->{features}->[$i]->{id}}->{$func} = 1;
+            my $func = $gn_ftr->{function};
+            $func = "" unless $func;
+            $genehash->{$gn_ftr->{id}}->{$func} = 1;
         }
     }
-    if (defined($genome->{non_coding_features})) {
-        for (my $i=0; $i < @{$genome->{non_coding_features}}; $i++) {
-            $genehash->{$genome->{non_coding_features}->[$i]->{id}} = 1;
+    if ( $genome->{non_coding_features} && @{ $genome->{non_coding_features} } ) {
+        for my $nc_ftr (@{ $genome->{non_coding_features} }) {
+            $genehash->{$nc_ftr->{id}} = 1;
         }
     }
-    if (defined($inputgenome->{features})) {
+    if ( $inputgenome->{features} && @{ $inputgenome->{features} } ) {
         ## Checking if it's recent old genome containing both CDSs and genes in "features" array
-        if ((not defined($inputgenome->{cdss})) && (not defined($inputgenome->{mrnas}))) {
+        if (!defined($inputgenome->{cdss}) && !defined($inputgenome->{mrnas})) {
             my $genes = [];
             my $non_genes = [];
             for (my $i=0; $i < @{$inputgenome->{features}}; $i++) {
@@ -1160,7 +1163,7 @@ sub _pre_rast_call {
         }
     }
 
-    $rast_details{genehash} = $genehash;
+    $rast_details{genehash} = $genehash if $genehash;
     return (\%rast_details, $inputgenome);
 }
 #
