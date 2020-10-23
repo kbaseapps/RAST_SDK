@@ -72,9 +72,6 @@ my $obj_asmb_refseq = "55141/266/3";  # prod assembly
 my $obj1 = "37798/14/1";  # appdev
 my $obj2 = "37798/15/1";  # appdev
 my $obj3 = "55141/77/1";  # prod KBaseGenomeAnnotations.Assembly
-my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1/Clostridium_botulinum
-my $obj_65386_2 = '65386/12/1'; # Methanosarcina_acetivorans_C2A
-my $obj_refseq_GCF = '63171/483/1';  # refseq_GCF_GCF_900128725.1
 
 my $asmb_fasta;
 
@@ -91,6 +88,12 @@ unless ( $asmb_fasta ) {
 
 #####RAST_SDK Module test objects #####
 my $obj2_1 = "63171/315/1";
+my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1/Clostridium_botulinum
+my $obj_65386_2 = '65386/12/1'; # Methanosarcina_acetivorans_C2A
+my $obj_refseq_GCF = '63171/483/1';  # refseq_GCF_GCF_900128725.1
+my $GEBA_1003_asmb = '63171/564/1';
+my $GEBA_1003_asmb_ann = '63171/569/1';
+
 
 # used for function lookup in report testing
 my $test_ftrs = [{
@@ -128,7 +131,6 @@ my $test_ftrs = [{
      ]
  ],
  }];
-
 
 # test the _map_location_contigIDs function
 subtest '_map_location_contigIDs' => sub {
@@ -1093,17 +1095,6 @@ subtest '_run_rast_workflow_ann' => sub {
     } "_run_rast_workflow returns normally on assembly $obj_asmb";
 };
 
-=begin
-print "1.BEGIN???????????Check the refseq_GCF genome rasted results???????????\n";
-my $nc_features = $ann_genome00->{non_coding_features};
-for my $ftr ( @{ $nc_features } ) {
-    print "No field type found for $ftr" unless $ftr->{type};
-}
-print Dumper($ann_genome00->{contig_ids});
-my $ctgID_hash00 = $rast_ref00->{contigID_hash};
-print "The contigID_hash=".Dumper($ctgID_hash00);
-print "END???????????Check the refseq_GCF genome rasted results???????????\n";
-=cut
 
 ## test remapping of contig_ids##
 subtest '_check_contigID_mapping' => sub {
@@ -1170,7 +1161,6 @@ subtest '_check_contigID_mapping' => sub {
         }
     }
 };
-
 
 # Test _post_rast_ann_call with genome/assembly object refs in prod
 subtest '_post_rast_ann_call' => sub {
@@ -1347,7 +1337,6 @@ subtest '_summarize_annotation' => sub {
               $rast_ref2, $final_genome2, $inputgenome2);
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
-
 
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
@@ -1984,8 +1973,26 @@ subtest 'anno_utils_rast_genome' => sub {
     }
 };
 
+## testing Impl_rast_genome_assembly using $GEBA_1003_asmb from prod
+ # to investigate the extra features
+subtest 'Impl_rast_genome_assembly1' => sub {
+    my $parms = {
+        "object_ref" => $GEBA_1003_asmb,
+        "output_genome_name" => "rasted_GEBA_1003_asmb",
+        "output_workspace" => $ws_name,
+        "create_report" => 1
+    };
+    my $rast_ret;
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } 'Impl rast_genome call on $GEBA_1003_asmb returns normally on genome.';
+    # ok ($rast_ret->{output_genome_ref} !~ m/[^\\w\\|._-]/,
+    ok ( !defined($rast_ret->{output_genome_ref}),
+         "rast_genome_assembly returned an undef object ref." );
+};
+
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
-subtest 'Impl_rast_genome_assembly' => sub {
+subtest 'Impl_rast_genome_assembly2' => sub {
     my $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_genome",
@@ -2255,6 +2262,40 @@ subtest 'generate_genome_report2' => sub {
     my $ret_rpt = $annoutil->_generate_genome_report(
                 $obj_asmb_ann, $gff_contents, \%ftr_tab, $ftr_cnt, $test_msg);
     ok( exists($ret_rpt->{report_ref}), 'Report generation returns report_ref.');
+    ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
+    ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
+};
+
+## testing generate_genome_report on $GEBA_1003_asmb_ann
+#  to check on extra/unwanted features
+subtest 'generate_genome_report3' => sub {
+    my $stats_ok = 'stats generation runs ok.\n';
+
+    my $gff_path = $annoutil->_write_gff_from_genome($GEBA_1003_asmb_ann);
+
+    my ($gff_contents, $attr_delimiter) = ([], '=');
+
+    my (%gff_stats, %obj_stats);
+    lives_ok {
+        ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
+        %gff_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+        %obj_stats = $annoutil->_generate_stats_from_aa($GEBA_1003_asmb_ann);
+    } $stats_ok;
+
+    is(keys %gff_stats, 2, "_generate_stats_from_gffContents on $GEBA_1003_asmb_ann should return non-empty.\n");
+    ok(exists($gff_stats{gene_role_map}), '_generate_stats_from_gffContents stats contains gene_roles.');
+    ok(exists($gff_stats{function_roles}), '_generate_stats_from_gffContents stats contains function roles.');
+    ok( $obj_stats{gc_content}, '_generate_stats_from_aa stats contains GC_Content.');
+    ok( $obj_stats{contig_count}, '_generate_stats_from_aa stats contains contig_count.');
+    ok( $obj_stats{num_features}, '_generate_stats_from_aa stats contains num_features.');
+
+    my %ftr_tab = $annoutil->_get_feature_function_lookup($test_ftrs);
+    my $test_msg = "Test message for reporting of annotation details";
+    my $ftr_cnt = scalar @{$test_ftrs};
+
+    my $ret_rpt = $annoutil->_generate_genome_report(
+                $GEBA_1003_asmb_ann, $gff_contents, \%ftr_tab, $ftr_cnt, $test_msg);
+    ok( exists($ret_rpt->{report_ref}), "Report generation on $GEBA_1003_asmb_ann returns report_ref.");
     ok( exists($ret_rpt->{report_name}), 'Report generation returns report_name.');
     ok( exists($ret_rpt->{output_genome_ref}), 'Report generation returns output_gemome_ref.');
 };

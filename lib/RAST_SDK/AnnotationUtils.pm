@@ -1672,13 +1672,13 @@ sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
     print "SEND OFF FOR SAVING\n";
-#   print "***** Domain       = $genome->{domain}\n";
-#   print "***** Genitic_code = $genome->{genetic_code}\n";
-#   print "***** Scientific_namee = $genome->{scientific_name}\n";
-#   print "***** Number of features=".scalar  @{$genome->{features}}."\n";
-#   print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
-#   print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
-#   print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
+    print "***** Domain       = $genome->{domain}\n";
+    print "***** Genitic_code = $genome->{genetic_code}\n";
+    print "***** Scientific_namee = $genome->{scientific_name}\n";
+    print "***** Number of features=".scalar  @{$genome->{features}}."\n";
+    print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
+    print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
+    print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
 
     my %gc_rast = %{ $rast_ref };
     my $parameters = $gc_rast{parameters},
@@ -1695,13 +1695,16 @@ sub _save_annotation_results {
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
 
+    if (defined($rasted_gn->{genetic_code})) {
+        $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
+    }
     try {
         $gaout = $gfu_client->save_one_genome({
             workspace => $parameters->{output_workspace},
             name => $parameters->{output_genome_name},
             data => $rasted_gn,
             provenance => [{
-                "time" => DateTime->now()->datetime()."+0000",
+                time => DateTime->now()->datetime()."+0000",
                 service_ver => $self->_util_version(),
                 service => "RAST_SDK",
                 method => Bio::KBase::Utilities::method(),
@@ -1717,8 +1720,8 @@ sub _save_annotation_results {
         $gaout_info = $gaout->{info};
         my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
         Bio::KBase::KBaseEnv::add_object_created({
-            "ref" => $ref,
-            "description" => "Annotated genome"
+            ref => $ref,
+            description => "Annotated genome"
         });
         Bio::KBase::Utilities::print_report_message({
             message => "<pre>".$message."</pre>",
@@ -1726,7 +1729,7 @@ sub _save_annotation_results {
             html => 0
         });
         print "One genome has been saved\n";
-        return ({"ref" => $ref}, $message);
+        return ({ref => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
         return ({}, $err_msg);
@@ -2072,8 +2075,12 @@ sub _generate_stats_from_aa {
         my $gn_data = $self->_fetch_object_data($gn_ref);
         $gn_stats{gc_content} = $gn_data->{gc_content};
         $gn_stats{contig_count} = $gn_data->{num_contigs};
-        $gn_stats{num_features} = $gn_data->{num_features};
         $gn_stats{feature_counts} = $gn_data->{feature_counts};
+        if( $gn_data->{num_features} ) {
+            $gn_stats{num_features} = $gn_data->{num_features};
+        } else {
+            $gn_stats{num_features} = $gn_data->{feature_counts}->{CDS};
+        }
     }
     return %gn_stats;
 }
@@ -2270,17 +2277,21 @@ sub _write_html_from_stats {
 
     my $gene_count = keys %$genes;
     my $rpt_footer .= "<p><strong>Gene Total Count = $gene_count</strong></p>\n";
-    if (defined($obj_stats{contig_count}) && defined($obj_stats{num_features})) {
+    if( $obj_stats{contig_count} ) {
         $rpt_footer .= "<p><strong>Contig Count = $obj_stats{contig_count}</strong></p>\n";
+    }
+    if( $obj_stats{num_features} ) {
         $rpt_footer .= "<p><strong>Feature Count = $obj_stats{num_features}</strong></p>\n";
-        # $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
+    }
+    if( $obj_stats{gc_content} ) {
+        $rpt_footer .= "<p><strong>GC Content = $obj_stats{gc_content}</strong></p>\n";
     }
     my $srch1 = "(<replaceHeader>)(.*)(</replaceHeader>)";
     my $srch2 = "(<replaceFooter>)(.*)(</replaceFooter>)";
     my $srch3 = "(<replaceTableData>)(.*)(</replaceTableData>)";
 
     $file_content =~ s/$srch1/$rpt_header/;
-    #$file_content =~ s/$srch2/$rpt_footer/;
+    $file_content =~ s/$srch2/$rpt_footer/;
     $file_content =~ s/$srch3/$rpt_data/;
 
     my $report_file_path = catfile($self->{genome_dir}, 'genome_report.html');
