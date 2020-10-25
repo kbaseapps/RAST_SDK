@@ -94,7 +94,6 @@ my $obj_refseq_GCF = '63171/483/1';  # refseq_GCF_GCF_900128725.1
 my $GEBA_1003_asmb = '63171/564/1';
 my $GEBA_1003_asmb_ann = '63171/569/1';
 
-
 # used for function lookup in report testing
 my $test_ftrs = [{
  'id' => '10000_1',
@@ -2278,8 +2277,8 @@ subtest 'generate_genome_report3' => sub {
     my (%gff_stats, %obj_stats);
     lives_ok {
         ($gff_contents, $attr_delimiter) = $annoutil->_parse_gff($gff_path, $attr_delimiter);
-        %gff_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
-        %obj_stats = $annoutil->_generate_stats_from_aa($GEBA_1003_asmb_ann);
+         %gff_stats = $annoutil->_generate_stats_from_gffContents($gff_contents);
+         %obj_stats = $annoutil->_generate_stats_from_aa($GEBA_1003_asmb_ann);
     } $stats_ok;
 
     is(keys %gff_stats, 2, "_generate_stats_from_gffContents on $GEBA_1003_asmb_ann should return non-empty.\n");
@@ -2307,6 +2306,66 @@ subtest '_generate_stats_from_aa' => sub {
 
     %ret_stats = $annoutil->_generate_stats_from_aa($obj_Echinacea_ann);
     ok(keys %ret_stats, "Statistics generation from $obj_Echinacea_ann returns result.");
+};
+
+## Checking the rmrnas and cdss features of genome $GEBA_1003_asmb
+#  and compare it with the rasted $GEBA_1003_asmb_ann.
+subtest '_generate_stats_from_aa_GEBA' => sub {
+    my ($gff_contents, $attr_delimiter) = ([], '=');
+    my $gff_path = '';
+
+    my $aa_stats_ok = 'stats generation from AA runs ok.\n';
+
+    my %ret_stats = ();
+    my %gn_stats = ();
+
+    # $GEBA_1003_asmb
+	my $gn_data = $annoutil->_fetch_object_data($GEBA_1003_asmb);
+	$gn_stats{gc_content} = $gn_data->{gc_content};
+	$gn_stats{contig_count} = $gn_data->{num_contigs};
+	$gn_stats{feature_counts} = $gn_data->{feature_counts};
+	if( $gn_data->{num_features} ) {
+		$gn_stats{num_features} = $gn_data->{num_features};
+	} else {
+		$gn_stats{num_features} = $gn_data->{feature_counts}->{CDS};
+	}
+
+    lives_ok {
+        %ret_stats = $annoutil->_generate_stats_from_aa($GEBA_1003_asmb);
+    } $aa_stats_ok;
+    ok(keys %ret_stats, "Statistics generated from annotated genome $GEBA_1003_asmb.");
+    ok( $gn_stats{gc_content} == $ret_stats{gc_content},
+        "GC Content of assembly matched in two different methods.");
+    ok( $gn_stats{contig_count} == $ret_stats{contig_count},
+        "Contig content of assembly matched in two different methods.");
+    ok( !defined($gn_stats{num_features}) && !defined($ret_stats{num_features}),
+        "num_features of assembly undefined.");
+    ok( !defined($gn_stats{feature_counts}) && !defined($ret_stats{feature_counts}),
+        "feature_counts of assembly undefined.");
+
+    # $GEBA_1003_asmb_ann
+    %ret_stats = ();
+	$gn_data = $annoutil->_fetch_object_data($GEBA_1003_asmb_ann);
+	$gn_stats{gc_content} = $gn_data->{gc_content};
+	$gn_stats{contig_count} = $gn_data->{num_contigs};
+	$gn_stats{feature_counts} = $gn_data->{feature_counts};
+	if( $gn_data->{num_features} ) {
+		$gn_stats{num_features} = $gn_data->{num_features};
+	} else {
+		$gn_stats{num_features} = $gn_data->{feature_counts}->{CDS};
+	}
+    lives_ok {
+        %ret_stats = $annoutil->_generate_stats_from_aa($GEBA_1003_asmb_ann);
+    } $aa_stats_ok;
+    ok(keys %ret_stats, "Statistics generated from annotated genome $GEBA_1003_asmb_ann.");
+    ok( $gn_stats{gc_content} == $ret_stats{gc_content},
+        "GC Content of assembly matched in two different methods.");
+    ok( $gn_stats{contig_count} == $ret_stats{contig_count},
+        "Contig content of assembly matched in two different methods.");
+    ok( $gn_stats{num_features} == $ret_stats{num_features},
+        "num_features of annotated genome correct.");
+    cmp_deeply( $gn_stats{feature_counts}, $ret_stats{feature_counts},
+                "feature_counts of matched.");
 };
 
 # Testing two small uniq functions

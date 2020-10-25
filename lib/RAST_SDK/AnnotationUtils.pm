@@ -450,6 +450,7 @@ sub _remap_contigIDs {
     }
     for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
         $gn->{ $feature_type } = $self->_map_location_contigIDs( $contigID_hash, $gn->{ $feature_type } );
+        print "After rasting, there are ". scalar @{ $gn->{ $feature_type } }." features of $feature_type type.\n";
     }
 
     return $gn;
@@ -2060,16 +2061,26 @@ sub _generate_stats_from_aa {
     $gn_stats{genome_type} = $gn_info->[2];
 
     if ($is_assembly ) {
+        $gn_stats{num_features} = undef;
+        $gn_stats{feature_counts} = undef;
+        $gn_stats{gc_content} = undef;
+        $gn_stats{contig_count} = undef;
+
         if (defined($gn_info->[10])) {
             $gn_stats{gc_content} = $gn_info->[10]->{'GC content'};
             $gn_stats{contig_count} = $gn_info->[10]->{'N Contigs'};
         }
         else {
-            $gn_stats{gc_content} = undef;
-            $gn_stats{contig_count} = undef;
+            my $asmb_data = $self->_fetch_object_data($gn_ref);
+            $gn_stats{gc_content} = $asmb_data->{gc_content};
+            $gn_stats{contig_count} = $asmb_data->{num_contigs};
+            if( $asmb_data->{feature_counts} ) {
+                $gn_stats{feature_counts} = $asmb_data->{feature_counts};
+                if( $asmb_data->{feature_counts}->{CDS} ) {
+                    $gn_stats{num_features} = $asmb_data->{feature_counts}->{CDS};
+                }
+            }
         }
-        $gn_stats{num_features} = 0;
-        $gn_stats{feature_counts} = {};
     }
     elsif ($is_meta_assembly || $is_genome) {
         my $gn_data = $self->_fetch_object_data($gn_ref);
