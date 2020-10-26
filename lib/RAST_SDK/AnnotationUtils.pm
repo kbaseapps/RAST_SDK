@@ -450,7 +450,9 @@ sub _remap_contigIDs {
     }
     for my $feature_type ( qw( features non_coding_features cdss mrnas ) ) {
         $gn->{ $feature_type } = $self->_map_location_contigIDs( $contigID_hash, $gn->{ $feature_type } );
-        print "After rasting, there are ". scalar @{ $gn->{ $feature_type } }." features of $feature_type type.\n";
+        if( $gn->{ $feature_type } ) {
+            print "After rasting, there are ". scalar @{ $gn->{ $feature_type } }." features of $feature_type type.\n";
+        }
     }
 
     return $gn;
@@ -2835,8 +2837,8 @@ sub bulk_rast_genomes {
 
     # if $anngns is empty, return empty hash
     return {} unless @$anngns;
-    print "Bulk rasted ".scalar @$anngns." genomes.\n"; # .Dumper($anngns);
 
+    print "Bulk rasted ".scalar @$anngns." genomes.\n"; # .Dumper($anngns);
     # create, save and then return that GenomeSet object's ref
     my $kbutil = installed_clients::kb_SetUtilitiesClient->new($self->{call_back_url});
     my $kbutil_output = $kbutil->KButil_Build_GenomeSet({

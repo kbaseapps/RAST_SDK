@@ -2385,7 +2385,6 @@ subtest 'annoutil_uniq_functions' => sub {
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
 
-
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
@@ -2402,12 +2401,12 @@ subtest 'bulk_rast_genomes' => sub {
     my ($rfsq_ann1, $rfsq_ann2);
 
     lives_ok {
-        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2]; # array of prod objects
+        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2];
         $params->{input_text} = '';
         $rfsq_ann1 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
     ok ( %$rfsq_ann1,
-         "INFO:bulk_rast_genomes returns a hash on [$refseq_gn1, $refseq_gn2].");
+         "bulk_rast_genomes returns a hash on multiple inputs:$refseq_gn1, $refseq_gn2.");
     is ($rfsq_ann1->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
         "The genomeSet ref is set correctly");
 
@@ -2417,7 +2416,7 @@ subtest 'bulk_rast_genomes' => sub {
         $rfsq_ann2 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on string of 2 genomes returns normally.";
     ok ( %$rfsq_ann2,
-         "INFO:bulk_rast_genomes returns a hash on input text '$refseq_gn1; $refseq_gn2'.");
+         "INFO:bulk_rast_genomes returns a hash on input text '$refseq_gn1; $refseq_gn2.");
 	is ($rfsq_ann2->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
         "The genomeSet ref is set correctly");
 };
