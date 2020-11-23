@@ -681,8 +681,13 @@ sub _set_genecall_workflow {
     my $tax_domain = $rast_details{tax_domain};
     my $contigobj = $rast_details{contigobj};
 
-    my $workflow = {stages => []};
 
+    if (!defined($contigobj)) {
+        $rast_details{genecall_workflow} = {};
+        return \%rast_details;
+    }
+
+    my $workflow = {stages => []};
     my $extragenecalls = "";
     if (defined($parameters->{call_features_rRNA_SEED})
             && $parameters->{call_features_rRNA_SEED} == 1) {
@@ -693,9 +698,6 @@ sub _set_genecall_workflow {
         }
         $extragenecalls .= "rRNA";
         push(@{$workflow->{stages}},{name => "call_features_rRNA_SEED"});
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-        }
     }
     if (defined($parameters->{call_features_tRNA_trnascan})
             && $parameters->{call_features_tRNA_trnascan} == 1) {
@@ -706,9 +708,6 @@ sub _set_genecall_workflow {
         }
         $extragenecalls .= "tRNA";
         push(@{$workflow->{stages}}, {name => "call_features_tRNA_trnascan"});
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-        }
     }
     if (defined($parameters->{call_selenoproteins})
             && $parameters->{call_selenoproteins} == 1) {
@@ -720,9 +719,6 @@ sub _set_genecall_workflow {
             }
             $extragenecalls .= "selenoproteins";
             push(@{$workflow->{stages}},{name => "call_selenoproteins"});
-            if (!defined($contigobj)) {
-                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-            }
         } else {
             $message .= "Did not call selenoproteins because the tax_domain is 'U'\n\n";
         }
@@ -737,9 +733,6 @@ sub _set_genecall_workflow {
             }
             $extragenecalls .= "pyrrolysoproteins";
             push(@{$workflow->{stages}},{name => "call_pyrrolysoproteins"});
-            if (!defined($contigobj)) {
-                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-            }
         } else {
             $message .= "Did not call pyrrolysoproteins because the tax_domain is 'U'\n\n";
         }
@@ -759,9 +752,6 @@ sub _set_genecall_workflow {
                             "min_length" => "100"
                      }
         });
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-        }
     }
     if (defined($parameters->{call_features_strep_suis_repeat})
 			&& defined($parameters->{scientific_name})) {
@@ -774,9 +764,6 @@ sub _set_genecall_workflow {
             }
             $extragenecalls .= "strep suis repeats";
             push(@{$workflow->{stages}},{name => "call_features_strep_suis_repeat"});
-            if (!defined($contigobj)) {
-                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-            }
         }
     }
     if (defined($parameters->{call_features_strep_pneumo_repeat})
@@ -790,9 +777,6 @@ sub _set_genecall_workflow {
             }
             $extragenecalls .= "strep pneumonia repeats";
             push(@{$workflow->{stages}},{name => "call_features_strep_pneumo_repeat"});
-            if (!defined($contigobj)) {
-                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-            }
         }
     }
     if (defined($parameters->{call_features_crispr})
@@ -805,9 +789,6 @@ sub _set_genecall_workflow {
             }
             $extragenecalls .= "crispr";
             push(@{$workflow->{stages}},{name => "call_features_crispr"});
-            if (!defined($contigobj)) {
-                Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!");
-            }
         } else {
             $message .= "Did not call crisprs because the domain is tax_domain is 'U'\n\n";
         }
@@ -832,9 +813,6 @@ sub _set_genecall_workflow {
             "glimmer3_parameters" => {
                         "min_training_len" => "2000"}
         });
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
-        }
     }
     if (defined($parameters->{call_features_CDS_prodigal})
             && $parameters->{call_features_CDS_prodigal} == 1)   {
@@ -849,9 +827,6 @@ sub _set_genecall_workflow {
         }
         $genecalls .= "prodigal";
         push(@{$workflow->{stages}}, {name => "call_features_CDS_prodigal"});
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot call genes on genome with no contigs!\n");
-        }
     }
     $genecalls .= ".\n" if (length($genecalls) > 0);
 #	if (defined($parameters->{call_features_CDS_genemark}) && $parameters->{call_features_CDS_genemark} == 1)	{
@@ -1789,6 +1764,7 @@ sub _build_workflows {
 
     ## refactor 3 -- set gene call workflow
     $rast_ref = $self->_set_genecall_workflow($rast_ref, $inputgenome);
+    return (undef, $inputgenome) unless $rast_ref->{genecall_workflow};
 
     ## refactor 4 -- set annotation workflow
     $rast_ref = $self->_set_annotation_workflow($rast_ref);
@@ -2025,7 +2001,13 @@ sub _check_bulk_annotation_params {
         $params->{input_assemblies} = [$params->{input_assemblies}];
     }
     $params->{input_assemblies} = $self->_uniq_ref($params->{input_assemblies});
-    unless ($params->{input_text}) {
+    if ($params->{input_text}) {
+        # remove matches in set [\s\t\r]
+        $params->{input_text} =~ s/\s//g;
+        $params->{input_text} =~ s/\\t//g;
+        $params->{input_text} =~ s/\\r//g;
+        $params->{input_text} =~ s/\\n/;/g;
+    } else {
         $params->{input_text} = '';
     }
     if (!defined($params->{genetic_code})) {
@@ -2648,8 +2630,12 @@ sub rast_genome {
 
     ## 1. build the workflows for RAST-ing
     my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
-    my %rast_details = %{ $rast_ref };
+    unless( $rast_ref ) {
+        print "INFO: Cannot call genes on genome with no contigs!\n";
+        return {};
+    }
 
+    my %rast_details = %{ $rast_ref };
     ## 2. combine all workflows and run it at once
     my $rasted_genome = $self->_run_rast_workflow(
                                     $inputgenome,
@@ -2768,6 +2754,7 @@ sub _get_bulk_rast_parameters {
 
     my $chk = {};
     my $bulk_inparams = ();
+
     for my $asmb (@$in_assemblies) {
         $chk = $self->_validate_KB_objref_name($asmb);
         next unless $chk->{check_passed};
@@ -2835,23 +2822,39 @@ sub bulk_rast_genomes {
         }
     }
 
-    # if $anngns is empty, return empty hash
-    return {} unless @$anngns;
+    my $empty_return = {
+        "output_genomeSet_ref"=>undef,
+        "output_workspace"=>$ws,
+        "report_name"=>"empty results",
+        "report_ref"=>undef
+    };
 
-    print "Bulk rasted ".scalar @$anngns." genomes.\n"; # .Dumper($anngns);
+    # if $anngns is empty, return empty hash
+    return $empty_return unless @$anngns;
+
+    print "Bulk rasted ".scalar @$anngns." genomes."; # .Dumper($anngns);
+
     # create, save and then return that GenomeSet object's ref
     my $kbutil = installed_clients::kb_SetUtilitiesClient->new($self->{call_back_url});
-    my $kbutil_output = $kbutil->KButil_Build_GenomeSet({
-        workspace_name => $ws,
-        input_refs => $anngns,
-        output_name => $out_genomeSet,
-        desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
-    });
-
-    return {"output_genomeSet_ref"=>$ws."/".$out_genomeSet,
+    try {
+        my $kbutil_output = $kbutil->KButil_Build_GenomeSet({
+            workspace_name => $ws,
+            input_refs => $anngns,
+            output_name => $out_genomeSet,
+            desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
+        });
+        print "********SUCCEEDED: generated a GenomeSet of ".scalar @$anngns." annotated genoms.";
+        return {
+            "output_genomeSet_ref"=>$ws."/".$out_genomeSet,
             "output_workspace"=>$ws,
             "report_name"=>$kbutil_output->{report_name},
-            "report_ref"=>$kbutil_output->{report_ref}};
+            "report_ref"=>$kbutil_output->{report_ref}
+        };
+    } catch {
+        print "********ERROR calling KButil_Build_GenomeSet function to create a set of ".scalar @$anngns." annotated genomes.";
+        $empty_return->{report_name} = "failed GenomeSet creation";
+        return $empty_return;
+    };
 }
 
 

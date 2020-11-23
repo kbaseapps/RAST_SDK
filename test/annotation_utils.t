@@ -1779,7 +1779,6 @@ subtest '_check_annotation_params' => sub {
         'When blank, '.$set_default_ok);
 };
 
-
 subtest '_check_bulk_annotation_params' => sub {
     my $error_message = qr/ERROR:Missing required inputs/;
     my $error_mand = qr/Mandatory arguments missing/;
@@ -1835,6 +1834,14 @@ subtest '_check_bulk_annotation_params' => sub {
     ok (!@{$ret_parms5->{input_genomes}} && !@{$ret_parms5->{input_assemblies}},
         "No input genome or assembly was specified as input.");
 
+    $params->{input_genomes} = []; # array of a prod object
+    $params->{input_text} = '48109/9/1; 123/4/5;\t6789/12/8; |\n897/65/2';
+    my $exp_input_text = '48109/9/1;123/4/5;6789/12/8;|;897/65/2';
+    my $ret_parms5a = $annoutil->_check_bulk_annotation_params($params);
+    print $ret_parms5a->{input_text};
+    ok ($ret_parms5a->{input_text} eq $exp_input_text,
+        "Got rid of spaces in the string of input_text.");
+
     $params->{input_genomes} = "48109/9/1"; # non-array
     $params->{input_text} = '';
     my $ret_parms6 = $annoutil->_check_bulk_annotation_params($params);
@@ -1867,7 +1874,6 @@ subtest '_check_bulk_annotation_params' => sub {
     ok (@{$ret_parms10->{input_genomes}}==2 && @{$ret_parms10->{input_assemblies}}==2,
         "Both input_genomes and input_assemblies arrays have 2 elements.");
 };
-
 
 subtest '_parseNwrite_gff' => sub {
     # testing get the gff from a genome using obj ids from prod ONLY
@@ -2053,7 +2059,6 @@ subtest '_get_bulk_rast_parameters' => sub {
     # testing invalid object name/id inputs
     $parms->{input_text} = '55141/266/3;55141/212/1;63171/394/1;abc/3/2;333/22/a';
     @refs = split(';', $parms->{input_text});
-
     lives_ok {
         $params = $annoutil->_get_bulk_rast_parameters($parms);
     } "anno_utils _get_bulk_rast_parameters call returns normally.";
@@ -2065,6 +2070,21 @@ subtest '_get_bulk_rast_parameters' => sub {
             ok ($annoutil->_value_in_array($ref, $params) == 0, "invalid reference $ref is excluded from the parameters\n");
         }
     }
+
+    # testing input text string with [\s\r\t\n|;]
+    $parms->{input_genomes} = [];
+    $parms->{input_assemblies} = [];
+    $parms->{input_text} = '55141/242/1;55141/266/3;55141/212/1;|;63171/394/1';
+    my $input_arr = ['55141/242/1', '55141/266/3', '55141/212/1', '63171/394/1'];
+    lives_ok {
+        $params = $annoutil->_get_bulk_rast_parameters($parms);
+    } "anno_utils _get_bulk_rast_parameters call with input text containing '\\s\\r\\t\\n|;' returns normally.";
+    my $param_objrefs = [];
+    for my $param (@{ $params }) {
+        push $param_objrefs, $param->{object_ref};
+    }
+    cmp_deeply( $param_objrefs, set(@$input_arr),
+                "bulk input_text parameter has been correctly parsed.");
 };
 
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
@@ -2386,9 +2406,37 @@ subtest 'annoutil_uniq_functions' => sub {
 };
 
 #
-## testing bulk_rast_genomes using obj ids from public workspace id of 19217
+## testing bulk_rast_genomes using obj ids from my own workspaces
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
 ## so an empty hash is returned.
+#
+subtest 'bulk_rast_genomes' => sub {
+    my $parms = {
+          'input_genomes' => [
+                               '55141/242/1',
+                               '55141/212/1'
+                             ],
+          'create_report' => 0,
+          'output_workspace' => $ws_name,
+          'output_GenomeSet_name' => 'out_genomeSet',
+          'input_assemblies' => [
+                                  '55141/266/3',
+                                  '55141/243/1'
+                                ],
+          'input_text' => '55141/266/3;55141/212/1;63171/394/1'
+    };
+
+    my $bulk_ann_ret;
+    lives_ok {
+        $bulk_ann_ret = $annoutil->bulk_rast_genomes($parms);
+    } "annoutil->bulk_rast_genomes call on array of 2 genomes, array of 2 assemblies and input text string returns successfully.";
+    #print "bulk_rast_genomes on input_genomes array returned:\n".Dumper($bulk_ann_ret);
+    ok($bulk_ann_ret->{report_ref}, "Annotation report generated!!");
+    ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
+};
+
+#
+## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 #
 subtest 'bulk_rast_genomes' => sub {
     my $params = {
@@ -2405,20 +2453,18 @@ subtest 'bulk_rast_genomes' => sub {
         $params->{input_text} = '';
         $rfsq_ann1 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
-    ok ( %$rfsq_ann1,
-         "bulk_rast_genomes returns a hash on multiple inputs:$refseq_gn1, $refseq_gn2.");
-    is ($rfsq_ann1->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
-        "The genomeSet ref is set correctly");
+    #print "bulk_rast_genomes on input_genomes array returned:\n".Dumper($rfsq_ann1);
+    ok($rfsq_ann1->{report_ref}, "Annotation report generated!!");
+    ok($rfsq_ann1->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 
     lives_ok {
         $params->{input_genomes} = [];
         $params->{input_text} = "19217/172902/1;19217/330276/1";
         $rfsq_ann2 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on string of 2 genomes returns normally.";
-    ok ( %$rfsq_ann2,
-         "INFO:bulk_rast_genomes returns a hash on input text '$refseq_gn1; $refseq_gn2.");
-	is ($rfsq_ann2->{output_genomeSet_ref}, $ws_name."/".$params->{output_GenomeSet_name},
-        "The genomeSet ref is set correctly");
+    #print "bulk_rast_genomes on input_text string returned:\n".Dumper($rfsq_ann2);
+    ok($rfsq_ann2->{report_ref}, "Annotation report generated!!");
+    ok($rfsq_ann2->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
 RASTTestUtils::clean_up();
