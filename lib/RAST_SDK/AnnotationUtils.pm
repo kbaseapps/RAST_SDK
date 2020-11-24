@@ -1013,7 +1013,7 @@ sub _renumber_features {
 
     my $workflow = {stages => []};
 
-    if (length($genecalls) > 0) {
+    if ($genecalls && length($genecalls) > 0) {
         push(@{$workflow->{stages}},{name => "renumber_features"});
 
         if (@{$inputgenome->{features}} > 0) {
@@ -1029,7 +1029,7 @@ sub _renumber_features {
         }
         $message .= $genecalls;
     }
-    if (length($extragenecalls) > 0) {
+    if ($extragenecalls && length($extragenecalls) > 0) {
         $message .= $extragenecalls;
     }
     if (length($annomessage) > 0) {
@@ -2582,22 +2582,21 @@ sub _get_feature_function_lookup {
 sub _combine_workflows {
     my ($self, $rast_ref) = @_;
 
-    my %rast_details = %{ $rast_ref };
     my $comp_workflow = {stages => []};
-    my $wf_genecall = $rast_details{genecall_workflow};
-    my $wf_annotate = $rast_details{annotate_workflow};
-    my $wf_renum = $rast_details{renumber_workflow};
+    my $wf_genecall = $rast_ref->{genecall_workflow};
+    my $wf_annotate = $rast_ref->{annotate_workflow};
+    my $wf_renum = $rast_ref->{renumber_workflow};
 
-    if ($wf_genecall && @{$wf_genecall->{stages}}) {
+    if ($wf_genecall->{stages} && @{$wf_genecall->{stages}}) {
         # print "There are genecall workflows:\n".Dumper($wf_genecall);
         push @{$comp_workflow->{stages}}, @{$wf_genecall->{stages}};
     }
-    if ($wf_annotate && @{$wf_annotate->{stages}}) {
+    if ($wf_annotate->{stages} && @{$wf_annotate->{stages}}) {
         # print "There are annotation workflows:\n".Dumper($wf_annotate);
         push @{$comp_workflow->{stages}}, @{$wf_annotate->{stages}};
     }
     ## could be skipped: running the renumber_features workflow
-    if ($wf_renum && @{$wf_renum->{stages}}) {
+    if ($wf_renum->{stages} && @{$wf_renum->{stages}}) {
         # print "There is a renumber feature workflow:\n".Dumper($wf_renum);
         push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
     }
