@@ -30,6 +30,7 @@ use Data::Structure::Util qw( unbless );
 use Data::UUID;
 use Try::Tiny;
 
+use installed_clients::annotation_ontology_apiClient;
 use GenomeTypeObject;
 
 use Bio::KBase::KBaseEnv;
@@ -1125,6 +1126,8 @@ sub _pre_rast_call {
                 $feature->{type} = "CDS";
             }
         }
+## Potentially to be taken care of by the save_annotation_results function, so should be commented out
+=begin 
         # When RAST annotates the genome it becomes incompatible with the new
         # spec. Removing this attribute triggers an "upgrade" to the genome
         # that fixes these problems when saving with GFU
@@ -1139,6 +1142,7 @@ sub _pre_rast_call {
             };
             push(@{$inputgenome->{ontology_events}}, $ont_event);
         }
+=cut
     }
 
     $rast_details{genehash} = $genehash if $genehash;
@@ -1646,6 +1650,122 @@ sub _summarize_annotation {
     return ($genome, \%rast_details);
 }
 
+## Saving annotated genome with the GFU client
+sub _save_genome_with_gfu {
+    my ($self, $input_gn, $parameters, $message) = @_;
+ 
+    my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
+    my ($gaout, $gaout_info);
+    try {
+        $gaout = $gfu_client->save_one_genome({
+            workspace => $parameters->{output_workspace},
+            name => $parameters->{output_genome_name},
+            data => $input_gn,
+            provenance => [{
+                time => DateTime->now()->datetime()."+0000",
+                service_ver => $self->_util_version(),
+                service => "RAST_SDK",
+                method => Bio::KBase::Utilities::method(),
+                method_params => [$parameters],
+                input_ws_objects => [],
+                resolved_ws_objects => [],
+                intermediate_incoming => [],
+                intermediate_outgoing => []
+            }],
+            hidden => 0
+        });
+
+        $gaout_info = $gaout->{info};
+        my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
+
+        Bio::KBase::KBaseEnv::add_object_created({
+            ref => $ref,
+            description => "RAST annotation"
+        });
+        Bio::KBase::Utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+        print "One genome has been saved with GFU.save_one_genome.\n";
+        return ({ref => $ref}, $message);
+    } catch {
+        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
+        return ({}, $err_msg);
+    };
+}
+## End saving annotated genome with the GFU client
+
+
+## Building ontology events
+sub _build_ontology_events {
+    my ($self, $input_gn, $args) = @_;
+	my $gn_with_events = {
+		object => $input_gn,
+		events => [],
+		save => 1,
+		output_name => $args->{output_genome_name},
+		output_workspace => $args->{output_workspace},
+		type => "KBaseGenomes.Genome"
+	};
+
+    if ( $input_gn->{features} && @{ $input_gn->{features}} ) {
+        # When RAST annotates the genome it becomes incompatible with the new
+        # spec. Removing this attribute triggers an "upgrade" to the genome
+        # that fixes these problems when saving with GFU
+        delete $input_gn->{feature_counts};
+        foreach my $ftr (@{ $input_gn->{features}}) {
+            my $new_event = {
+                description => "RAST annotation",
+                ontology_id => "SSO",
+                method => Bio::KBase::Utilities::method(),
+                method_version => $self->_util_version(),
+                timestamp => Bio::KBase::Utilities::timestamp(1),
+			    ontology_terms => {}
+            };
+
+            my $gene_id = $ftr->{id};
+            my $arr_funcs = $ftr->{functions};
+            foreach my $func_role (@{$arr_funcs}) {
+                push(@{$new_event->{ontology_terms}->{$gene_id}}, {term => $func_role});
+            }
+            push(@{$gn_with_events->{events}}, $new_event);
+        }
+    }
+    return $gn_with_events;
+}
+
+
+## Saving annotated genome with the ontology service
+sub _save_genome_with_ontSer {
+    my ($self, $input_gn, $message) = @_;
+	print "Calling ontology service!";
+    # my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(undef,token => Bio::KBase::utilities::token());
+
+    my $anno_ontSer_client = installed_clients::annotation_ontology_apiClient->new($self->{call_back_url});
+    try {
+	    my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($input_gn);
+        my $ref = $ontSer_output->{output_ref};
+	    Bio::KBase::kbaseenv::add_object_created({
+            ref => $ref,
+            description => "RAST annotation"
+		});
+
+        Bio::KBase::Utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+        print "One genome has been saved with ontology service.\n";
+        return ({ref => $ref}, $message);
+    } catch {
+        my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
+        return ({}, $err_msg);
+    };
+}
+
+## End saving annotated genome with the ontology service
+
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
@@ -1670,48 +1790,16 @@ sub _save_annotation_results {
     }
     $self->_check_NC_features($rasted_gn);
 
-    my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
-    my ($gaout, $gaout_info);
-
     if (defined($rasted_gn->{genetic_code})) {
         $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
     }
-    try {
-        $gaout = $gfu_client->save_one_genome({
-            workspace => $parameters->{output_workspace},
-            name => $parameters->{output_genome_name},
-            data => $rasted_gn,
-            provenance => [{
-                time => DateTime->now()->datetime()."+0000",
-                service_ver => $self->_util_version(),
-                service => "RAST_SDK",
-                method => Bio::KBase::Utilities::method(),
-                method_params => [$parameters],
-                input_ws_objects => [],
-                resolved_ws_objects => [],
-                intermediate_incoming => [],
-                intermediate_outgoing => []
-            }],
-            hidden => 0
-        });
 
-        $gaout_info = $gaout->{info};
-        my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
-        Bio::KBase::KBaseEnv::add_object_created({
-            ref => $ref,
-            description => "Annotated genome"
-        });
-        Bio::KBase::Utilities::print_report_message({
-            message => "<pre>".$message."</pre>",
-            append => 0,
-            html => 0
-        });
-        print "One genome has been saved\n";
-        return ({ref => $ref}, $message);
-    } catch {
-        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
-        return ({}, $err_msg);
-    };
+    ## Saving annotated genome by GFU client
+    $self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
+
+    ## Saving annotated genome by annotaton_ontology_api client
+    #my $gn_evts = $self->_build_ontology_events($rasted_gn, $parameters);
+    #$self->_save_genome_with_ontSer($gn_evts, $message);
 }
 
 ## _build_workflows

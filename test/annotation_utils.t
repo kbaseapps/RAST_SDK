@@ -131,6 +131,7 @@ my $test_ftrs = [{
  ],
  }];
 
+=begin
 # test the _map_location_contigIDs function
 subtest '_map_location_contigIDs' => sub {
     my $arr_with_locations = [
@@ -1602,6 +1603,7 @@ subtest '_validate_KB_objref_name' => sub {
 	ok ($pass_test->{check_passed} == 0, "$obj is an invalid workspace object.\n");
 	ok ($pass_test->{is_name} == 0, "$obj is an invalid workspace object name.\n");
 };
+=cut
 
 
 ## Combine several workflows into one
@@ -1653,7 +1655,7 @@ subtest '_combine_workflows' => sub {
     cmp_deeply($exp_wf3, $ret_wf, "workflow3 combined as expected.");
 };
 
-
+=begin
 ## _fetch_object_info with additonal argument added
 subtest '_fetch_object_info' => sub {
     my $obj = '63171/441/1';
@@ -2434,6 +2436,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($bulk_ann_ret->{report_ref}, "Annotation report generated!!");
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
+=cut
 
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
@@ -2446,10 +2449,12 @@ subtest 'bulk_rast_genomes' => sub {
     };
     my $refseq_gn1 = "19217/172902/1";
     my $refseq_gn2 = "19217/330276/1";
+    my $refseq_gn3 = "19217/131931/1";  # failed to save in the narrative test
+    my $refseq_gn4 = "19217/143319/1";  # failed to save in the narrative test
     my ($rfsq_ann1, $rfsq_ann2);
 
     lives_ok {
-        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2];
+        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2, $refseq_gn3, $refseq_gn4];
         $params->{input_text} = '';
         $rfsq_ann1 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";

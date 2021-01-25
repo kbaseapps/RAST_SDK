@@ -172,6 +172,7 @@ sub util_get_contigs {
     return ($obj, $contigID_hash);
 }
 
+
 sub annotate_process {
     my ($self,$parameters, $config, $ctx) = @_;
     my $ann_util = RAST_SDK::AnnotationUtils->new($config, $ctx);
@@ -830,6 +831,7 @@ sub annotate_process {
                 }
             }
         }
+=begin
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
             my $ftr = $genome->{features}->[$i];
             if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
@@ -902,7 +904,7 @@ sub annotate_process {
                 }
             }
         }
-
+=cut
         ## Rolling protein features back from 'CDS' to 'gene':
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
             my $ftr = $genome->{features}->[$i];
@@ -1054,6 +1056,8 @@ sub annotate_process {
 #	print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
 #	print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
 #	print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
+
+=begin #replace this genome saving block with the ontology service call
     my $gaout = Bio::KBase::KBaseEnv::gfu_client()->save_one_genome({
         workspace => $parameters->{workspace},
         name => $parameters->{output_genome},
@@ -1071,8 +1075,9 @@ sub annotate_process {
         }],
         hidden => 0
     });
+    my $gn_ref = $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4];
     Bio::KBase::KBaseEnv::add_object_created({
-        "ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4],
+        "ref" => $gn_ref,
         "description" => "Annotated genome"
     });
     Bio::KBase::Utilities::print_report_message({
@@ -1080,7 +1085,10 @@ sub annotate_process {
         append => 0,
         html => 0
     });
-    return ({"ref" => $gaout->{info}->[6]."/".$gaout->{info}->[0]."/".$gaout->{info}->[4]},$message);
+    return ({"ref" => $gn_ref}, $message);
+=cut
+    my $input = $ann_util->_build_ontology_events($genome, $parameters);
+    $ann_util->_save_genome_with_ontSer( $input, $message );
 }
 
 # Get the scientific name for a NCBI taxon.
