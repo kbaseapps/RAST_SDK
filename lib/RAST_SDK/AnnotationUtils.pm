@@ -30,7 +30,6 @@ use Data::Structure::Util qw( unbless );
 use Data::UUID;
 use Try::Tiny;
 
-use installed_clients::annotation_ontology_apiClient;
 use GenomeTypeObject;
 
 use Bio::KBase::KBaseEnv;
@@ -45,6 +44,7 @@ use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
 use installed_clients::kb_SetUtilitiesClient;
+use installed_clients::annotation_ontology_apiClient;
 
 
 #######################Begin refactor annotate_process########################
@@ -1391,6 +1391,7 @@ sub _build_seed_ontology {
                 }
             }
         }
+=begin
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
             my $ftr = $genome->{features}->[$i];
             if (defined($oldfunchash->{$ftr->{id}}) && (!defined($ftr->{function}) || $ftr->{function} =~ /hypothetical\sprotein/)) {
@@ -1463,6 +1464,7 @@ sub _build_seed_ontology {
                 }
             }
         }
+=cut
         ## Rolling protein features back from 'CDS' to 'gene':
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
             my $ftr = $genome->{features}->[$i];
@@ -1739,17 +1741,19 @@ sub _build_ontology_events {
 ## Saving annotated genome with the ontology service
 sub _save_genome_with_ontSer {
     my ($self, $input_gn, $message) = @_;
-	print "Calling ontology service!";
-    # my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(undef,token => Bio::KBase::utilities::token());
+    print "Calling ontology service!";
+    #my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(undef,token => Bio::KBase::Utilities::token());
 
-    my $anno_ontSer_client = installed_clients::annotation_ontology_apiClient->new($self->{call_back_url});
+    my $anno_ontSer_client = installed_clients::annotation_ontology_apiClient->new(
+                                $self->{call_back_url},
+                                ('service_version'=>'dev', 'async_version'=>'dev'));
     try {
-	    my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($input_gn);
+        my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($input_gn);
         my $ref = $ontSer_output->{output_ref};
-	    Bio::KBase::kbaseenv::add_object_created({
+        Bio::KBase::kbaseenv::add_object_created({
             ref => $ref,
             description => "RAST annotation"
-		});
+        });
 
         Bio::KBase::Utilities::print_report_message({
             message => "<pre>".$message."</pre>",
@@ -1795,11 +1799,11 @@ sub _save_annotation_results {
     }
 
     ## Saving annotated genome by GFU client
-    $self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
+    #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
 
     ## Saving annotated genome by annotaton_ontology_api client
-    #my $gn_evts = $self->_build_ontology_events($rasted_gn, $parameters);
-    #$self->_save_genome_with_ontSer($gn_evts, $message);
+    my $gn_evts = $self->_build_ontology_events($rasted_gn, $parameters);
+    $self->_save_genome_with_ontSer($gn_evts, $message);
 }
 
 ## _build_workflows

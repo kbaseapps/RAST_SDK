@@ -1144,7 +1144,7 @@ sub new
 
     if ($self->can('_init_instance'))
     {
-	$self->_init_instance();
+        $self->_init_instance();
     }
     return $self;
 }
