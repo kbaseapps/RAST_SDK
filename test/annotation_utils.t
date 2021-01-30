@@ -350,6 +350,7 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
+=cut
 
 #
 ## Global variables for the annotation process steps to share ##
@@ -1373,31 +1374,32 @@ subtest '_save_annotation_results' => sub {
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome01, $rast_ref01);
-    } "_save_annotation_results failed on genome $obj_65386_1 and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results on genome $obj_65386_1 returned as expected.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # another genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome02, $rast_ref02);
-    } "_save_annotation_results failed on genome $obj_65386_2 and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results failed on genome $obj_65386_2 returned as expected.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # a genome object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome1, $rast_ref1);
-    } "_save_annotation_results failed on genome $obj_Ecoli and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results failed on genome $obj_Ecoli returned as expected";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # an assembly object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome2, $rast_ref2);
-    } "_save_annotation_results failed on assembly $obj_asmb and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results on assembly $obj_asmb returned expected result.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 };
 
+=begin
 #
 ## variables for testing _build_workflows, _run_rast_workflow
 ## _run_rast_genecalls and _pre_rast_call
@@ -1510,40 +1512,6 @@ subtest '_run_rast_genecalls' => sub {
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
 
-subtest 'Impl_annotate_genome' => sub {
-    my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
-    my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
-    my $genome_obj_name = 'Acidilobus_sp_CIS';
-
-    my $parms={
-        "input_contigset" => $assembly_obj_name,
-        "workspace" => $ws_name,
-        "output_genome" => 'Acidilobus_sp_7',
-        "scientific_name" => 'Acidilobus sp 7',
-        "domain" => 'A',
-        "genetic_code" => '4',
-        "call_features_CDS_prodigal" => '1',
-    };
-    my $rast_ann;
-    throws_ok {
-        $rast_ann = $rast_impl->annotate_genome($parms);
-        my $genome_ref = $ws_name . "/" . $genome_obj_name;
-        my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
-        print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
-        print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
-
-        ok(defined($genome_obj->{features}), "Features array is present");
-        ok(scalar @{ $genome_obj->{features} } gt 0, "Number of features");
-        ok(defined($genome_obj->{cdss}), "CDSs array is present");
-        ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
-        ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
-        ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
-        ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
-        ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
-    } qr/Error invoking method call_/,
-      "test Impl annotate_genome on an assembly died.";
-};
-
 
 subtest '_validate_KB_objref_name' => sub {
 	my $obj = 'qzhang:narrative_1581052755332/short_one_metagenome';
@@ -1603,7 +1571,6 @@ subtest '_validate_KB_objref_name' => sub {
 	ok ($pass_test->{check_passed} == 0, "$obj is an invalid workspace object.\n");
 	ok ($pass_test->{is_name} == 0, "$obj is an invalid workspace object name.\n");
 };
-=cut
 
 
 ## Combine several workflows into one
@@ -1655,7 +1622,6 @@ subtest '_combine_workflows' => sub {
     cmp_deeply($exp_wf3, $ret_wf, "workflow3 combined as expected.");
 };
 
-=begin
 ## _fetch_object_info with additonal argument added
 subtest '_fetch_object_info' => sub {
     my $obj = '63171/441/1';
@@ -1679,7 +1645,7 @@ subtest '_fetch_object_info' => sub {
     is ( $ret->[6], 63171, "correct workspace id found");
     is ( $ret->[7], $ws, "correct workspace found");
 
-	my $obj2 = 'Clostridium_old.RAST';
+    my $obj2 = 'Clostridium_old.RAST';
     $pass_test = $annoutil->_validate_KB_objref_name($obj1);
     ok ($pass_test->{check_passed}, "$obj2 passed id format check.\n");
     ok ($pass_test->{is_name}, "$obj2 is a valid workspace object name.\n");
@@ -1921,8 +1887,8 @@ subtest '_parseNwrite_gff' => sub {
 };
 
 
+# testing get the gff from a genome using obj ids from prod ONLY
 subtest '_write_gff_from_genome' => sub {
-    # testing get the gff from a genome using obj ids from prod ONLY
     my $gff_fpath;
     lives_ok {
         $gff_fpath = $annoutil->_write_gff_from_genome($obj_Ecoli);
@@ -1947,7 +1913,7 @@ subtest '_write_gff_from_genome' => sub {
 
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
-    my ($parms, $rast_ret, $genome_obj);
+    my ($parms, $rast_ret, $genome_obj, $rast_gn_data);
     $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
@@ -1980,6 +1946,7 @@ subtest 'anno_utils_rast_genome' => sub {
     }
 };
 
+
 ## testing Impl_rast_genome_assembly using $GEBA_1003_asmb from prod
  # to investigate the extra features
 subtest 'Impl_rast_genome_assembly1' => sub {
@@ -1997,6 +1964,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 };
+
 
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly2' => sub {
@@ -2028,6 +1996,7 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to local annotation on assembly with empty features, no rast was run.");
 };
+
 
 ## testing _get_bulk_rast_parameters using obj ids from prod ONLY
 subtest '_get_bulk_rast_parameters' => sub {
@@ -2089,8 +2058,9 @@ subtest '_get_bulk_rast_parameters' => sub {
                 "bulk input_text parameter has been correctly parsed.");
 };
 
+
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
-subtest 'rast_genomes_assemblies' => sub {
+subtest 'Impl_rast_genomes_assemblies' => sub {
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
@@ -2129,6 +2099,43 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
+=cut
+
+=begin
+subtest 'Impl_annotate_genome' => sub {
+    my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
+    my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
+    my $genome_obj_name = 'Acidilobus_sp_CIS';
+
+    my $parms={
+        "input_contigset" => $assembly_obj_name,
+        "workspace" => $ws_name,
+        "output_genome" => 'Acidilobus_sp_7',
+        "scientific_name" => 'Acidilobus sp 7',
+        "domain" => 'A',
+        "genetic_code" => '4',
+        "call_features_CDS_prodigal" => '1',
+    };
+    my $rast_ann;
+    throws_ok {
+        $rast_ann = $rast_impl->annotate_genome($parms);
+        my $genome_ref = $ws_name . "/" . $genome_obj_name;
+        my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
+        print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
+        print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
+
+        ok(defined($genome_obj->{features}), "Features array is present");
+        ok(scalar @{ $genome_obj->{features} } gt 0, "Number of features");
+        ok(defined($genome_obj->{cdss}), "CDSs array is present");
+        ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
+        ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
+        ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
+        ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
+        ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
+    } qr/Error invoking method call_/,
+      "test Impl annotate_genome on an assembly died.";
+};
+
 
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
@@ -2168,6 +2175,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
       'Blank genome_text AND empty input_genoms die correctly'
       or diag explain $params;
 };
+
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
@@ -2222,6 +2230,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     #print "Stats from GFF on $obj_asmb_ann: \n".Dumper(\%ret_stats);
     is(keys %ret_stats, 2, "Statistics generated from gffContents on $obj_asmb_ann.");
 };
+
 
 # testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report1' => sub {
@@ -2406,6 +2415,7 @@ subtest 'annoutil_uniq_functions' => sub {
     my @sorted_ret = sort @{$uniq_ref};
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
+=cut
 
 #
 ## testing bulk_rast_genomes using obj ids from my own workspaces
@@ -2436,7 +2446,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($bulk_ann_ret->{report_ref}, "Annotation report generated!!");
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
-=cut
+
 
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
