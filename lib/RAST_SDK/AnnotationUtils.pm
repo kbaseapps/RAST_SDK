@@ -1686,54 +1686,6 @@ sub _save_genome_with_gfu {
 }
 ## End saving annotated genome with the GFU client
 
-
-## Building ontology events
-sub _build_ontology_events {
-    my ($self, $input_gn, $args) = @_;
-
-    my $gn_with_events = {
-        object => $input_gn,
-        events => [],
-        save => 1,
-        output_name => $args->{output_genome_name},
-        output_workspace => $args->{output_workspace},
-        type => "KBaseGenomes.Genome"
-    };
-    $gn_with_events->{'workspace-url'} = $self->{ws_url};
-
-    if ( $input_gn->{features} && @{ $input_gn->{features}} ) {
-        foreach my $ftr (@{$input_gn->{features}}) {
-            if (!defined($ftr->{dna_sequence_length})) {
-                $ftr->{dna_sequence_length} = 0;
-            }
-
-            my $new_event = {
-                description => "RAST annotation",
-                ontology_id => "SSO",
-                method => Bio::KBase::Utilities::method(),
-                method_version => $self->_util_version(),
-                timestamp => Bio::KBase::Utilities::timestamp(1),
-			    ontology_terms => {}
-            };
-
-            my $gene_id = $ftr->{id};
-            if (defined($ftr->{function})) {
-                push(@{$new_event->{ontology_terms}->{$gene_id}}, {term => $ftr->{function}});
-            }
-            if (defined($ftr->{functions})) {
-                my $arr_funcs = $ftr->{functions};
-                foreach my $func_role (@{$arr_funcs}) {
-                    push(@{$new_event->{ontology_terms}->{$gene_id}}, {term => $func_role});
-                }
-            }
-            push(@{$gn_with_events->{events}}, $new_event);
-        }
-    }
-    $gn_with_events->{object} = $input_gn;
-    return $gn_with_events;
-}
-
-
 # Re-assuring the genome object has all required data items by
 # the annotation_ontolog_api
 sub _fillRequiredFields {
@@ -1814,13 +1766,13 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{mrnas})) {
         $input_obj->{mrnas} = [];
     }
-    if (!defined($input_obj->{warnings})) {
-        $input_obj->{warnings} = [];
-    }
     foreach my $mrna (@{$input_obj->{mrnas}}) {
         if (!defined($mrna->{dna_sequence_length})) {
             $mrna->{dna_sequence_length} = 0;
         }
+    }
+    if (!defined($input_obj->{warnings})) {
+        $input_obj->{warnings} = [];
     }
     return $input_obj;
 }
@@ -1841,10 +1793,108 @@ sub _reformat_feature_aliases {
     return $ftr;
 }
 
+sub _create_onto_terms {
+    my ($self, $input_gn, $ftr_type) = @_;
+    return {} unless exists($input_gn->{$ftr_type});
+
+    #print "\nCreating ontology terms for ".$ftr_type;
+    #print "\nCounts for features of ".$ftr_type."=".scalar @{$input_gn->{$ftr_type}};
+    my $onto_terms = {};
+    foreach my $ftr (@{$input_gn->{$ftr_type}}) {
+        my $gene_id = $ftr->{id};
+        if (!defined($ftr->{dna_sequence_length})) {
+            $ftr->{dna_sequence_length} = 0;
+        }
+
+        if (defined($ftr->{function})) {
+            push(@{$onto_terms->{$gene_id}}, {term => $ftr->{function}});
+        }
+        if (defined($ftr->{functions})) {
+            foreach my $func_role (@{$ftr->{functions}}) {
+                push(@{$onto_terms->{$gene_id}}, {term => $func_role});
+            }
+        }
+    }
+    return $onto_terms;
+}
+
+## Building ontology events
+sub _build_ontology_events {
+    my ($self, $input_gn, $args) = @_;
+
+    my $gn_with_events = {
+        object => $input_gn,
+        events => [],
+        save => 1,
+        output_name => $args->{output_genome_name},
+        output_workspace => $args->{output_workspace},
+        type => "KBaseGenomes.Genome"
+    };
+    $gn_with_events->{'workspace-url'} = $self->{ws_url};
+
+    print "\nBuilding ontology events for ".$input_gn->{id};
+    my ($ftr_onto_terms, $cds_onto_terms, $nc_onto_terms);
+    if ( $input_gn->{features} && @{ $input_gn->{features}} ) {
+        $ftr_onto_terms = $self->_create_onto_terms($input_gn, 'features');
+        if (keys %{$ftr_onto_terms}) {
+            my $ftr_onto_event = {
+                description => "RAST annotation",
+                ontology_id => "SSO",
+                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
+                method_version => $self->_util_version(),
+                timestamp => Bio::KBase::Utilities::timestamp(1),
+                ontology_terms => $ftr_onto_terms
+            };
+            push @{$gn_with_events->{events}}, $ftr_onto_event;
+        }
+    }
+    if ( $input_gn->{cdss} && @{ $input_gn->{cdss}} ) {
+        $cds_onto_terms = $self->_create_onto_terms($input_gn, 'cdss');
+        if (keys %{$cds_onto_terms}) {
+            my $cds_onto_event = {
+                description => "RAST annotation",
+                ontology_id => "SSO",
+                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
+                method_version => $self->_util_version(),
+                timestamp => Bio::KBase::Utilities::timestamp(1),
+                ontology_terms => $cds_onto_terms
+            };
+            push @{$gn_with_events->{events}}, $cds_onto_event;
+        }
+    }
+    if ( $input_gn->{non_coding_features} && @{ $input_gn->{non_coding_features}} ) {
+        $nc_onto_terms = $self->_create_onto_terms($input_gn, 'non_coding_features');
+        if (keys %{$nc_onto_terms}) {
+            my $nc_onto_event = {
+                description => "RAST annotation",
+                ontology_id => "SSO",
+                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
+                method_version => $self->_util_version(),
+                timestamp => Bio::KBase::Utilities::timestamp(1),
+                ontology_terms => $nc_onto_terms
+            };
+            push @{$gn_with_events->{events}}, $nc_onto_event;
+        }
+    }
+    $gn_with_events->{object} = $input_gn;
+
+    return $gn_with_events;
+}
+
 ## Printing the data structure of an input genome
 sub _print_genome_data {
-    my ($self, $inputobj) = @_;
-    print "checking RAST genome data structure---------------\n";
+    my ($self, $inputgn) = @_;
+
+	print "\nConfirming RAST genome data structure---------------\n";
+	print "Keys of the genome structure================:\n".Dumper(keys %$inputgn);
+	if (defined($inputgn->{events}) and @{$inputgn->{events}} > 0 ) {
+		print "genome events count=".scalar @{$inputgn->{events}}."\n";
+		print "Two genome events data, for example================:\n";
+		print Dumper(@{$inputgn->{events}}[0..1]);
+	}
+
+    my $inputobj = $inputgn->{object};
+    print "\nChecking RAST genome object data structure---------------\n";
     print "Keys of the json object================:\n".Dumper(keys %$inputobj);
     if (defined($inputobj->{feature_counts})) {
         print "Genome feature_counts data================:\n";
@@ -1867,8 +1917,8 @@ sub _save_genome_with_ontSer {
     my ($self, $input_gn, $params, $message) = @_;
     print "Calling ontology service!";
 
-    $input_gn = $self->_fillRequiredFields($input_gn);
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
+    # $self->_print_genome_data($gn_with_events);
 
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
@@ -1891,13 +1941,6 @@ sub _save_genome_with_ontSer {
     } catch {
         my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
         print $err_msg;
-		if (defined($gn_with_events->{events}) and @{$gn_with_events->{events}} > 0 ) {
-			print "genome events count=".scalar @{$gn_with_events->{events}}."\n";
-			print "Two genome events data, for example================:\n";
-			print Dumper(@{$gn_with_events->{events}}[0..2]);
-		}
-        $self->_print_genome_data($gn_with_events->{object});
-
         return ({}, $err_msg);
     };
 }
@@ -1907,6 +1950,8 @@ sub _save_genome_with_ontSer {
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
+
+    $genome = $self->_fillRequiredFields($genome);
     print "SEND OFF FOR SAVING\n";
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
@@ -2620,7 +2665,7 @@ sub _fetch_object_info {
         $ret_obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>$objs}
                         )->{infos}->[0];
-        print "INFO: object info for $obj------\n".Dumper($ret_obj_info);
+        # print "INFO: object info for $obj------\n".Dumper($ret_obj_info);
         return $ret_obj_info;
     } catch {
         warn "INFO: Workspace.get_object_info3 failed to access $obj.\n";
