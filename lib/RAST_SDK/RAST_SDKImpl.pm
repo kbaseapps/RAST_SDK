@@ -1087,6 +1087,7 @@ sub annotate_process {
     });
     return ({"ref" => $gn_ref}, $message);
 =cut
+    $genome = $ann_util->_fillRequiredFields($genome);
     my $input = $ann_util->_build_ontology_events($genome, $parameters);
     $ann_util->_save_genome_with_ontSer( $input, $message );
 }
