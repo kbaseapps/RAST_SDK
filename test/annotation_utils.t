@@ -1494,7 +1494,7 @@ subtest '_create_onto_terms' => sub {
 
     $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
     $termSize = keys %$ret_terms;
-    ok ($termSize, "$termSize non_coding_features ontology terms created.");
+    ok (!$termSize, "$termSize non_coding_features ontology terms created.");
 
     # rasted from an assembly object
     $genome_clone = clone($final_genome2);
@@ -1510,6 +1510,7 @@ subtest '_create_onto_terms' => sub {
     $termSize = keys %$ret_terms;
     ok (!$termSize, "$termSize non_coding_features ontology terms created.");
 };
+=cut
 
 
 # Test _build_ontology_events for RAST annotated objects in prod
@@ -1561,7 +1562,6 @@ subtest '_build_ontology_events' => sub {
     $evts = $ret_gn->{events};
     ok( $evts, "_build_ontology_events returns events.");
 };
-=cut
 
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
@@ -1583,6 +1583,7 @@ subtest '_save_annotation_results' => sub {
         }
     }
     ok ($nc_ftr_count==$cnt, "All $cnt non-coding features have defined field of type.\n");
+    #print "***BEFORE OntSer saving, RAST annotation object data****\n".Dumper($final_genome00);
 
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(

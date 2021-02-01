@@ -1206,7 +1206,7 @@ sub _post_rast_ann_call {
         $genome->{source_id} = $parameters->{output_genome_name};
     }
     if (defined($inputgenome->{gc_content})) {
-        $genome->{gc_content} = $inputgenome->{gc_content};
+        $genome->{gc_content} = $inputgenome->{gc_content}+0;
     }
     if (defined($genome->{gc})) {
         $genome->{gc_content} = $genome->{gc}+0;
@@ -1490,9 +1490,7 @@ sub _build_seed_ontology {
         if ((!defined($genome->{cdss})) || (!defined($genome->{mrnas})) || $update_cdss eq 'Y') {
             ## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
             my $cdss = [];
-            $genome->{cdss} = $cdss;
             my $mrnas = [];
-            $genome->{mrnas} = $mrnas;
             for (my $i=0; $i < @{$genome->{features}}; $i++) {
                 my $feature = $genome->{features}->[$i];
                 if (defined($feature->{protein_translation})) {
@@ -1537,6 +1535,8 @@ sub _build_seed_ontology {
                     $feature->{mrnas} = [$mrna_id];
                 }
             }
+            $genome->{cdss} = $cdss;
+            $genome->{mrnas} = $mrnas;
         }
     }
 
@@ -1628,7 +1628,7 @@ sub _summarize_annotation {
         delete $genome->{assembly_ref};
     }
     if (defined($contigobj)) {
-        $genome->{gc_content} = $contigobj->{_gc};
+        $genome->{gc_content} = $contigobj->{_gc}+0;
         if ($contigobj->{_kbasetype} eq "ContigSet") {
             $genome->{contigset_ref} = $contigobj->{_reference};
         } else {
@@ -1721,6 +1721,9 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{genetic_code})) {
         $input_obj->{genetic_code} = 11;
     }
+    if (defined($input_obj->{gc_content})) {
+        $input_obj->{gc_content} = $input_obj->{gc_content}+0;
+    }
     if (!defined($input_obj->{dna_size})) {
         $input_obj->{dna_size} = 0;
     }
@@ -1793,6 +1796,18 @@ sub _reformat_feature_aliases {
     return $ftr;
 }
 
+sub _sanitize_rolename {
+    my ($self, $rolename) = @_;
+
+    $rolename = lc($rolename);
+    $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+    $rolename =~ s/\s//g;
+    $rolename =~ s/\#.*$//g;
+
+    return $rolename;
+}
+
+
 sub _create_onto_terms {
     my ($self, $input_gn, $ftr_type) = @_;
     return {} unless exists($input_gn->{$ftr_type});
@@ -1807,14 +1822,20 @@ sub _create_onto_terms {
         }
 
         if (defined($ftr->{function})) {
-            push(@{$onto_terms->{$gene_id}}, {term => $ftr->{function}});
+            push @{$onto_terms->{$gene_id}}, {
+                term => $self->_sanitize_rolename($ftr->{function})
+            };
         }
         if (defined($ftr->{functions})) {
             foreach my $func_role (@{$ftr->{functions}}) {
-                push(@{$onto_terms->{$gene_id}}, {term => $func_role});
+                push @{$onto_terms->{$gene_id}}, {
+                    term => $self->_sanitize_rolename($func_role)
+                };
             }
         }
     }
+    my $ontoTermSize = keys %$onto_terms;
+    print "\nCreated $ontoTermSize ontology terms for $ftr_type";
     return $onto_terms;
 }
 
@@ -1834,35 +1855,22 @@ sub _build_ontology_events {
 
     print "\nBuilding ontology events for ".$input_gn->{id};
 
-    my ($ftr_onto_terms, $cds_onto_terms, $nc_onto_terms);
-    my $onto_terms = {};
-    if ( $input_gn->{features} && @{ $input_gn->{features}} ) {
-        $ftr_onto_terms = $self->_create_onto_terms($input_gn, 'features');
+    my $all_onto_terms = {};
+    for my $feature_type (qw( features non_coding_features cdss mrnas )) {
+        next unless $input_gn->{$feature_type} && @{$input_gn->{$feature_type}};
+        my $ftr_onto_terms = $self->_create_onto_terms($input_gn, $feature_type);
         if (keys %{$ftr_onto_terms}) {
-            $onto_terms = {%$onto_terms, %$ftr_onto_terms};
+            $all_onto_terms = {%$all_onto_terms, %$ftr_onto_terms};
         }
     }
-    if ( $input_gn->{cdss} && @{ $input_gn->{cdss}} ) {
-        $cds_onto_terms = $self->_create_onto_terms($input_gn, 'cdss');
-        if (keys %{$cds_onto_terms}) {
-            $onto_terms = {%$onto_terms, %$cds_onto_terms};
-        }
-    }
-    if ( $input_gn->{non_coding_features} && @{ $input_gn->{non_coding_features}} ) {
-        $nc_onto_terms = $self->_create_onto_terms($input_gn, 'non_coding_features');
-        if (keys %{$nc_onto_terms}) {
-            $onto_terms = {%$onto_terms, %$nc_onto_terms};
-        }
-    }
-    my $single_onto_event = {
+    push @{$gn_with_events->{events}}, {
         description => "RAST annotation",
         ontology_id => "SSO",
-        method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
+        method => "RAST-annotate_genome",
         method_version => $self->_util_version(),
         timestamp => Bio::KBase::Utilities::timestamp(1),
-        ontology_terms => $onto_terms
+        ontology_terms => $all_onto_terms
     };
-    push @{$gn_with_events->{events}}, $single_onto_event;
     $gn_with_events->{object} = $input_gn;
 
     return $gn_with_events;
@@ -1923,7 +1931,7 @@ sub _save_genome_with_ontSer {
             append => 0,
             html => 0
         });
-        print "One genome has been saved with ontology service.\n";
+        print "\nOne genome has been saved with ontology service.\n";
         return ({ref => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
@@ -1936,7 +1944,6 @@ sub _save_genome_with_ontSer {
 
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
-
 
     $genome = $self->_fillRequiredFields($genome);
     print "SEND OFF FOR SAVING\n";
