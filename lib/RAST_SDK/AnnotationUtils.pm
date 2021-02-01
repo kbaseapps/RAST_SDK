@@ -1833,49 +1833,36 @@ sub _build_ontology_events {
     $gn_with_events->{'workspace-url'} = $self->{ws_url};
 
     print "\nBuilding ontology events for ".$input_gn->{id};
+
     my ($ftr_onto_terms, $cds_onto_terms, $nc_onto_terms);
+    my $onto_terms = {};
     if ( $input_gn->{features} && @{ $input_gn->{features}} ) {
         $ftr_onto_terms = $self->_create_onto_terms($input_gn, 'features');
         if (keys %{$ftr_onto_terms}) {
-            my $ftr_onto_event = {
-                description => "RAST annotation",
-                ontology_id => "SSO",
-                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
-                method_version => $self->_util_version(),
-                timestamp => Bio::KBase::Utilities::timestamp(1),
-                ontology_terms => $ftr_onto_terms
-            };
-            push @{$gn_with_events->{events}}, $ftr_onto_event;
+            $onto_terms = {%$onto_terms, %$ftr_onto_terms};
         }
     }
     if ( $input_gn->{cdss} && @{ $input_gn->{cdss}} ) {
         $cds_onto_terms = $self->_create_onto_terms($input_gn, 'cdss');
         if (keys %{$cds_onto_terms}) {
-            my $cds_onto_event = {
-                description => "RAST annotation",
-                ontology_id => "SSO",
-                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
-                method_version => $self->_util_version(),
-                timestamp => Bio::KBase::Utilities::timestamp(1),
-                ontology_terms => $cds_onto_terms
-            };
-            push @{$gn_with_events->{events}}, $cds_onto_event;
+            $onto_terms = {%$onto_terms, %$cds_onto_terms};
         }
     }
     if ( $input_gn->{non_coding_features} && @{ $input_gn->{non_coding_features}} ) {
         $nc_onto_terms = $self->_create_onto_terms($input_gn, 'non_coding_features');
         if (keys %{$nc_onto_terms}) {
-            my $nc_onto_event = {
-                description => "RAST annotation",
-                ontology_id => "SSO",
-                method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
-                method_version => $self->_util_version(),
-                timestamp => Bio::KBase::Utilities::timestamp(1),
-                ontology_terms => $nc_onto_terms
-            };
-            push @{$gn_with_events->{events}}, $nc_onto_event;
+            $onto_terms = {%$onto_terms, %$nc_onto_terms};
         }
     }
+    my $single_onto_event = {
+        description => "RAST annotation",
+        ontology_id => "SSO",
+        method => "RAST-annotate_genome", #Bio::KBase::Utilities::method(),
+        method_version => $self->_util_version(),
+        timestamp => Bio::KBase::Utilities::timestamp(1),
+        ontology_terms => $onto_terms
+    };
+    push @{$gn_with_events->{events}}, $single_onto_event;
     $gn_with_events->{object} = $input_gn;
 
     return $gn_with_events;

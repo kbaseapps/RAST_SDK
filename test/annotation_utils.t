@@ -1551,7 +1551,6 @@ subtest '_build_ontology_events' => sub {
     } "_build_ontology_events on rasted genome from $obj_Ecoli";
     $evts = $ret_gn->{events};
     ok( $evts, "_build_ontology_events returns events.");
-    #cmp_deeply $ret_gn->{events}, [], '_build_ontology_events returns an empty events array.';
 
     # from an assembly object
     $genome_clone = clone($final_genome2);
@@ -1563,7 +1562,6 @@ subtest '_build_ontology_events' => sub {
     ok( $evts, "_build_ontology_events returns events.");
 };
 =cut
-
 
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
@@ -1590,41 +1588,40 @@ subtest '_save_annotation_results' => sub {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome00, $rast_ref00);
     } "_save_annotation_results finished on genome $obj_refseq_GCF and returned results.";
-    ok (exists($save_ret->{ref}), "_save_annotation_results on $final_genome00 succeeded.");
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
+    #my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
+    #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 
     $nc_ftr_count = @{$final_genome01->{non_coding_features}};
     print "\n********For case $obj_refseq_GCF*********\n".
           "AFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
-
     # a genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome01, $rast_ref01);
     } "_save_annotation_results on genome $obj_65386_1 returned as expected.";
-    ok (exists($save_ret->{ref}), "_save_annotation_results on $final_genome01 succeeded.");
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # another genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome02, $rast_ref02);
     } "_save_annotation_results finished on genome $obj_65386_2 returned as expected.";
-    ok (exists($save_ret->{ref}), "_save_annotation_results on $final_genome02 succeeded.");
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # a genome object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome1, $rast_ref1);
     } "_save_annotation_results finished on genome $obj_Ecoli returned as expected";
-    ok (exists($save_ret->{ref}), "_save_annotation_results on $final_genome1 succeeded.");
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # an assembly object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome2, $rast_ref2);
     } "_save_annotation_results on assembly $obj_asmb returned expected result.";
-    ok (exists($save_ret->{ref}), "_save_annotation_results on $final_genome2 succeeded.");
-    #my $ret_data = $annoutil->_get_genome($save_ret->{ref});
-    #print Dumper(keys %$ret_data);
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 };
 
 =begin
