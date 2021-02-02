@@ -129,10 +129,9 @@ sub _get_genome_gff_contents {
     if ($is_genome) {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
-        if (-s $gff_filename) {
-            ($gff_contents, $attr_delimiter) = $self->_parse_gff(
+        return [] unless (-s $gff_filename);
+        ($gff_contents, $attr_delimiter) = $self->_parse_gff(
                                                  $gff_filename, $attr_delimiter);
-        }
     }
     return $gff_contents;
 }
@@ -2910,8 +2909,7 @@ sub rast_genome {
         return {};
     }
 
-    print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
-
+    print "\n***********RAST on $input_obj_ref resulted in ".$rast_ftr_count." features.\n";
     my $genome_final = $self->_post_rast_ann_call($rasted_genome, $inputgenome, $rast_ref);
 
     my $cd_ftr_count = @{$genome_final->{features}};
@@ -2929,7 +2927,7 @@ sub rast_genome {
 
     my $ftrs = $genome_final->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
-    print "\n***********Finally RAST resulted ".$rasted_ftr_count." features.\n";
+    print "\n**Finally RAST $input_obj_ref feature counts: $rasted_ftr_count";
 
     my $prnt_num = 10;
     if ($rasted_ftr_count) {
@@ -2960,10 +2958,13 @@ sub rast_genome {
         report_name => undef,
         report_ref => undef
     };
-    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
+
     my $gff_contents = $self->_get_genome_gff_contents($aa_ref);
-    if (defined($aa_ref) && defined($params->{create_report}) &&
-            $params->{create_report} == 1 && $gff_contents) {
+    return $rast_ret unless @$gff_contents;
+
+    if (defined($aa_ref) && defined($params->{create_report})
+            && $params->{create_report} == 1) {
+        my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
         $rast_ret = $self->_generate_genome_report(
                           $aa_ref, $gff_contents, \%ftr_func_lookup,
                           $rasted_ftr_count, $out_msg);
