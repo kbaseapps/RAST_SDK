@@ -6,6 +6,7 @@ use Carp qw(croak);
 use File::Compare;
 use Config::Simple;
 use Bio::KBase::AuthToken;
+use Clone 'clone';
 
 use RASTTestUtils;
 
@@ -131,6 +132,7 @@ my $test_ftrs = [{
  ],
  }];
 
+=begin
 # test the _map_location_contigIDs function
 subtest '_map_location_contigIDs' => sub {
     my $arr_with_locations = [
@@ -349,6 +351,7 @@ subtest '_get_feature_function_lookup' => sub {
     my $ann_src3 = $annoutil->_find_function_source(\%ffunc_lookup, $func_role);
     is ($ann_src3, $exp_src3, "Found function $func_role with annotation source of: $ann_src3");
 };
+=cut
 
 #
 ## Global variables for the annotation process steps to share ##
@@ -1337,6 +1340,229 @@ subtest '_summarize_annotation' => sub {
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
 
+=begin
+# Test _reformat_feature_aliases for RAST annotated objects in prod
+subtest '_reformat_feature_aliases' => sub {
+    my $ret_cds;
+
+    # a refseq genome object in workspace #63171
+    foreach my $cds (@{$final_genome00->{cdss}}[0..2]) {
+        ok (!defined($cds->{aliases}), "Aliases data is undef, so nothing will be changed.");
+        $ret_cds = $annoutil->_reformat_feature_aliases($cds);
+        cmp_deeply $ret_cds, $cds, "No change.";
+    }
+
+    # a genome object in workspace #65386
+    foreach my $cds (@{$final_genome01->{cdss}}[0..2]) {
+        ok (ref($cds->{aliases}->[0]) =~ /ARRAY/, "Aliases data is array of arrays, so nothing will be changed.");
+        $ret_cds = $annoutil->_reformat_feature_aliases($cds);
+        cmp_deeply $ret_cds, $cds, "no change.";
+    }
+
+    # a genome object in workspace #65386
+    foreach my $cds (@{$final_genome02->{cdss}}[0..2]) {
+        ok (ref($cds->{aliases}->[0]) =~ /ARRAY/, "Aliases data is array of arrays, so nothing will be changed.");
+        $ret_cds = $annoutil->_reformat_feature_aliases($cds);
+        cmp_deeply $ret_cds, $cds, "no change.";
+    }
+
+    # a genome object
+    foreach my $cds (@{$final_genome1->{cdss}}[0..2]) {
+        print "Before: the aliases data:\n".Dumper($cds->{aliases});
+        ok (ref($cds->{aliases}->[0]) !~ /ARRAY/, "Aliases data is array of strings, so it will be changed.");
+		my $expected = [];
+		for my $als (@{$cds->{aliases}})  {
+			my @ary = ('alias', $als);
+			push(@{$expected}, \@ary);
+		}
+        $ret_cds = $annoutil->_reformat_feature_aliases($cds);
+        cmp_deeply $ret_cds->{aliases}, $expected, "Aliases changed correctly.";
+    }
+
+    # rasted from an assembly object
+    foreach my $cds (@{$final_genome2->{cdss}}[0..2]) {
+        ok (!defined($cds->{aliases}), "Because of no aliases data, nothing will be changed.");
+        $ret_cds = $annoutil->_reformat_feature_aliases($cds);
+        cmp_deeply $ret_cds, $cds, "no change.";
+    }
+};
+
+
+# Test _fillRequiredFields for RAST annotated objects in prod
+subtest '_fillRequiredFields' => sub {
+    # a refseq genome object in workspace #63171
+    my $genome_clone = clone($final_genome00);
+    my $ret_gn = $annoutil->_fillRequiredFields($genome_clone);
+    my @this_not_that = ();
+    foreach (keys %$ret_gn) {
+        push(@this_not_that, $_) unless exists $final_genome00->{$_};
+    }
+    ok (!@this_not_that, "No new fields added.");
+
+    # a genome object in workspace #65386
+    @this_not_that = ();
+    $genome_clone = clone($final_genome01);
+    $ret_gn = $annoutil->_fillRequiredFields($genome_clone);
+    foreach (keys %$ret_gn) {
+        push(@this_not_that, $_) unless exists $final_genome01->{$_};
+    }
+    ok (!@this_not_that, "No new fields added.");
+
+    # a genome object in workspace #65386
+    @this_not_that = ();
+    $genome_clone = clone($final_genome02);
+    $ret_gn = $annoutil->_fillRequiredFields($genome_clone);
+    foreach (keys %$ret_gn) {
+        push(@this_not_that, $_) unless exists $final_genome02->{$_};
+    }
+    ok (!@this_not_that, "No new fields added.");
+    print "Diff_arr=".Dumper(\@this_not_that);
+
+    # a genome object
+    @this_not_that = ();
+    $genome_clone = clone($final_genome1);
+    $ret_gn = $annoutil->_fillRequiredFields($genome_clone);
+    foreach (keys %$ret_gn) {
+        push(@this_not_that, $_) unless exists $final_genome1->{$_};
+    }
+    ok (@this_not_that, "New fields added:".Dumper(\@this_not_that));
+
+    # rasted from an assembly object
+    @this_not_that = ();
+    $genome_clone = clone($final_genome2);
+    $ret_gn = $annoutil->_fillRequiredFields($genome_clone);
+    foreach (keys %$ret_gn) {
+        push(@this_not_that, $_) unless exists $final_genome2->{$_};
+    }
+    ok (@this_not_that, "New fields added:".Dumper(\@this_not_that));
+};
+
+
+# Test _create_onto_terms for RAST annotated objects in prod
+subtest '_create_onto_terms' => sub {
+    # a refseq genome object in workspace #63171
+    my $genome_clone = clone($final_genome00);
+    my $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'features');
+    my $termSize = keys %$ret_terms;
+    ok (!$termSize, "No features to create ontology terms.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'cdss');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize cdss ontology terms created.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize non_coding_features ontology terms created.");
+
+    # a genome object in workspace #65386
+    $genome_clone = clone($final_genome01);
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "No features to create ontology terms.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'cdss');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize cdss ontology terms created.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize non_coding_features ontology terms created.");
+
+    # a genome object in workspace #65386
+    $genome_clone = clone($final_genome02);
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "No features to create ontology terms.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'cdss');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize cdss ontology terms created.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize non_coding_features ontology terms created.");
+
+    # a genome object
+    $genome_clone = clone($final_genome1);
+    my $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "No features to create ontology terms.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'cdss');
+    $termSize = keys %$ret_terms;
+    ok ($termSize, "$termSize cdss ontology terms created.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "$termSize non_coding_features ontology terms created.");
+
+    # rasted from an assembly object
+    $genome_clone = clone($final_genome2);
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "No features to create ontology terms.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'cdss');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "$termSize cdss ontology terms created.");
+
+    $ret_terms = $annoutil->_create_onto_terms($genome_clone, 'non_coding_features');
+    $termSize = keys %$ret_terms;
+    ok (!$termSize, "$termSize non_coding_features ontology terms created.");
+};
+=cut
+
+
+# Test _build_ontology_events for RAST annotated objects in prod
+subtest '_build_ontology_events' => sub {
+    my ($ret_gn, $pm, $evts, $genome_clone);
+
+    # a refseq genome object in workspace #63171
+    $genome_clone = clone($final_genome00);
+    $pm = $rast_ref00->{parameters};
+    lives_ok {
+        $ret_gn = $annoutil->_build_ontology_events($genome_clone, $pm);
+    } "_build_ontology_events on rasted genome from $obj_refseq_GCF";
+    $evts = $ret_gn->{events};
+    ok( $evts, "_build_ontology_events returns events.");
+
+    # a genome object in workspace #65386
+    $genome_clone = clone($final_genome01);
+    $pm = $rast_ref01->{parameters};
+    lives_ok {
+        $ret_gn = $annoutil->_build_ontology_events($genome_clone, $pm);
+    } "_build_ontology_events on rasted genome from $obj_65386_1";
+    $evts = $ret_gn->{events};
+    ok( $evts, "_build_ontology_events returns events.");
+
+    # another genome object in workspace #65386
+    $genome_clone = clone($final_genome02);
+    $pm = $rast_ref02->{parameters};
+    lives_ok {
+        $ret_gn = $annoutil->_build_ontology_events($genome_clone, $pm);
+    } "_build_ontology_events on rasted genome from $obj_65386_2";
+    $evts = $ret_gn->{events};
+    ok( $evts, "_build_ontology_events returns events.");
+
+    # a genome object
+    $genome_clone = clone($final_genome1);
+    $pm = $rast_ref1->{parameters};
+    lives_ok {
+        $ret_gn = $annoutil->_build_ontology_events($genome_clone, $pm);
+    } "_build_ontology_events on rasted genome from $obj_Ecoli";
+    $evts = $ret_gn->{events};
+    ok( $evts, "_build_ontology_events returns events.");
+
+    # from an assembly object
+    $genome_clone = clone($final_genome2);
+    $pm = $rast_ref2->{parameters};
+    lives_ok {
+        $ret_gn = $annoutil->_build_ontology_events($genome_clone, $pm);
+    } "_build_ontology_events on rasted genome annotated from $obj_asmb";
+    $evts = $ret_gn->{events};
+    ok( $evts, "_build_ontology_events returns events.");
+};
+
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
     my ($save_ret, $out_msg);
@@ -1357,46 +1583,49 @@ subtest '_save_annotation_results' => sub {
         }
     }
     ok ($nc_ftr_count==$cnt, "All $cnt non-coding features have defined field of type.\n");
+    #print "***BEFORE OntSer saving, RAST annotation object data****\n".Dumper($final_genome00);
 
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome00, $rast_ref00);
-    } "_save_annotation_results failed on genome $obj_refseq_GCF and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results finished on genome $obj_refseq_GCF and returned results.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
+    #my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
+    #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 
     $nc_ftr_count = @{$final_genome01->{non_coding_features}};
     print "\n********For case $obj_refseq_GCF*********\n".
           "AFTER _save_annotation_results there are $nc_ftr_count non_coding features.\n";
-
     # a genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome01, $rast_ref01);
-    } "_save_annotation_results failed on genome $obj_65386_1 and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results on genome $obj_65386_1 returned as expected.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # another genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome02, $rast_ref02);
-    } "_save_annotation_results failed on genome $obj_65386_2 and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results finished on genome $obj_65386_2 returned as expected.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # a genome object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome1, $rast_ref1);
-    } "_save_annotation_results failed on genome $obj_Ecoli and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results finished on genome $obj_Ecoli returned as expected";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # an assembly object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome2, $rast_ref2);
-    } "_save_annotation_results failed on assembly $obj_asmb and returned {}";
-    cmp_deeply $save_ret, {}, '_save_annotation_results returns an empty hash';
+    } "_save_annotation_results on assembly $obj_asmb returned expected result.";
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 };
 
+=begin
 #
 ## variables for testing _build_workflows, _run_rast_workflow
 ## _run_rast_genecalls and _pre_rast_call
@@ -1509,40 +1738,6 @@ subtest '_run_rast_genecalls' => sub {
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
 
-subtest 'Impl_annotate_genome' => sub {
-    my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
-    my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
-    my $genome_obj_name = 'Acidilobus_sp_CIS';
-
-    my $parms={
-        "input_contigset" => $assembly_obj_name,
-        "workspace" => $ws_name,
-        "output_genome" => 'Acidilobus_sp_7',
-        "scientific_name" => 'Acidilobus sp 7',
-        "domain" => 'A',
-        "genetic_code" => '4',
-        "call_features_CDS_prodigal" => '1',
-    };
-    my $rast_ann;
-    throws_ok {
-        $rast_ann = $rast_impl->annotate_genome($parms);
-        my $genome_ref = $ws_name . "/" . $genome_obj_name;
-        my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
-        print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
-        print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
-
-        ok(defined($genome_obj->{features}), "Features array is present");
-        ok(scalar @{ $genome_obj->{features} } gt 0, "Number of features");
-        ok(defined($genome_obj->{cdss}), "CDSs array is present");
-        ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
-        ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
-        ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
-        ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
-        ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
-    } qr/Error invoking method call_/,
-      "test Impl annotate_genome on an assembly died.";
-};
-
 
 subtest '_validate_KB_objref_name' => sub {
 	my $obj = 'qzhang:narrative_1581052755332/short_one_metagenome';
@@ -1653,7 +1848,6 @@ subtest '_combine_workflows' => sub {
     cmp_deeply($exp_wf3, $ret_wf, "workflow3 combined as expected.");
 };
 
-
 ## _fetch_object_info with additonal argument added
 subtest '_fetch_object_info' => sub {
     my $obj = '63171/441/1';
@@ -1677,7 +1871,7 @@ subtest '_fetch_object_info' => sub {
     is ( $ret->[6], 63171, "correct workspace id found");
     is ( $ret->[7], $ws, "correct workspace found");
 
-	my $obj2 = 'Clostridium_old.RAST';
+    my $obj2 = 'Clostridium_old.RAST';
     $pass_test = $annoutil->_validate_KB_objref_name($obj1);
     ok ($pass_test->{check_passed}, "$obj2 passed id format check.\n");
     ok ($pass_test->{is_name}, "$obj2 is a valid workspace object name.\n");
@@ -1919,8 +2113,8 @@ subtest '_parseNwrite_gff' => sub {
 };
 
 
+# testing get the gff from a genome using obj ids from prod ONLY
 subtest '_write_gff_from_genome' => sub {
-    # testing get the gff from a genome using obj ids from prod ONLY
     my $gff_fpath;
     lives_ok {
         $gff_fpath = $annoutil->_write_gff_from_genome($obj_Ecoli);
@@ -1945,7 +2139,7 @@ subtest '_write_gff_from_genome' => sub {
 
 subtest 'anno_utils_rast_genome' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
-    my ($parms, $rast_ret, $genome_obj);
+    my ($parms, $rast_ret, $genome_obj, $rast_gn_data);
     $parms = {
         "object_ref" => $obj_Ecoli,
         "output_genome_name" => "rasted_ecoli_prod",
@@ -1978,6 +2172,7 @@ subtest 'anno_utils_rast_genome' => sub {
     }
 };
 
+
 ## testing Impl_rast_genome_assembly using $GEBA_1003_asmb from prod
  # to investigate the extra features
 subtest 'Impl_rast_genome_assembly1' => sub {
@@ -1995,6 +2190,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 };
+
 
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly2' => sub {
@@ -2026,6 +2222,7 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to local annotation on assembly with empty features, no rast was run.");
 };
+
 
 ## testing _get_bulk_rast_parameters using obj ids from prod ONLY
 subtest '_get_bulk_rast_parameters' => sub {
@@ -2087,8 +2284,9 @@ subtest '_get_bulk_rast_parameters' => sub {
                 "bulk input_text parameter has been correctly parsed.");
 };
 
+
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
-subtest 'rast_genomes_assemblies' => sub {
+subtest 'Impl_rast_genomes_assemblies' => sub {
     my $params = {
         "output_GenomeSet_name" => "out_genomeSet"
     };
@@ -2127,6 +2325,43 @@ subtest 'rast_genomes_assemblies' => sub {
         my $ret_ann9 = $rast_impl->rast_genomes_assemblies($params);
     } "rast_impl rast_genomes_assemblies call on two arrays returns normally.";
 };
+=cut
+
+=begin
+subtest 'Impl_annotate_genome' => sub {
+    my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
+    my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
+    my $genome_obj_name = 'Acidilobus_sp_CIS';
+
+    my $parms={
+        "input_contigset" => $assembly_obj_name,
+        "workspace" => $ws_name,
+        "output_genome" => 'Acidilobus_sp_7',
+        "scientific_name" => 'Acidilobus sp 7',
+        "domain" => 'A',
+        "genetic_code" => '4',
+        "call_features_CDS_prodigal" => '1',
+    };
+    my $rast_ann;
+    throws_ok {
+        $rast_ann = $rast_impl->annotate_genome($parms);
+        my $genome_ref = $ws_name . "/" . $genome_obj_name;
+        my $genome_obj = $ws_client->get_objects([{ref=>$genome_ref}])->[0]->{data};
+        print "\n\nOUTPUT OBJECT DOMAIN = $genome_obj->{domain}\n";
+        print "OUTPUT OBJECT G_CODE = $genome_obj->{genetic_code}\n";
+
+        ok(defined($genome_obj->{features}), "Features array is present");
+        ok(scalar @{ $genome_obj->{features} } gt 0, "Number of features");
+        ok(defined($genome_obj->{cdss}), "CDSs array is present");
+        ok(scalar @{ $genome_obj->{cdss} } gt 0, "Number of CDSs");
+        ok(defined($genome_obj->{mrnas}), "mRNAs array is present");
+        ok(scalar @{ $genome_obj->{mrnas} } gt 0, "Number of mRNAs");
+        ok($genome_obj->{scientific_name} eq "Acidilobus sp 7", "Sci name is correct");
+        ok(!defined($genome_obj->{taxon_assignments}), "Taxon assignments is undefined");
+    } qr/Error invoking method call_/,
+      "test Impl annotate_genome on an assembly died.";
+};
+
 
 # Test checking annotate_genomes input params for empty input_genomes and blank/undef genome_text
 subtest 'annotation_genomes_throw_messages' => sub {
@@ -2166,6 +2401,7 @@ subtest 'annotation_genomes_throw_messages' => sub {
       'Blank genome_text AND empty input_genoms die correctly'
       or diag explain $params;
 };
+
 
 #----- For checking the stats of a given obj id in prod ONLY-----#
 my $stats_ok = 'stats generation runs ok.\n';
@@ -2220,6 +2456,7 @@ subtest '_generate_stats_from_aa & from_gffContents' => sub {
     #print "Stats from GFF on $obj_asmb_ann: \n".Dumper(\%ret_stats);
     is(keys %ret_stats, 2, "Statistics generated from gffContents on $obj_asmb_ann.");
 };
+
 
 # testing generate_genome_report using obj ids from prod ONLY
 subtest 'generate_genome_report1' => sub {
@@ -2404,7 +2641,9 @@ subtest 'annoutil_uniq_functions' => sub {
     my @sorted_ret = sort @{$uniq_ref};
     cmp_deeply(sort @expected_array, @sorted_ret, 'unique array ref is correct');
 };
+=cut
 
+=begin
 #
 ## testing bulk_rast_genomes using obj ids from my own workspaces
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
@@ -2435,6 +2674,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
+
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 #
@@ -2446,10 +2686,12 @@ subtest 'bulk_rast_genomes' => sub {
     };
     my $refseq_gn1 = "19217/172902/1";
     my $refseq_gn2 = "19217/330276/1";
+    my $refseq_gn3 = "19217/131931/1";  # failed to save in the narrative test
+    my $refseq_gn4 = "19217/143319/1";  # failed to save in the narrative test
     my ($rfsq_ann1, $rfsq_ann2);
 
     lives_ok {
-        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2];
+        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2, $refseq_gn3, $refseq_gn4];
         $params->{input_text} = '';
         $rfsq_ann1 = $annoutil->bulk_rast_genomes($params);
     } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
@@ -2466,6 +2708,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($rfsq_ann2->{report_ref}, "Annotation report generated!!");
     ok($rfsq_ann2->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
+=cut
 
 RASTTestUtils::clean_up();
 

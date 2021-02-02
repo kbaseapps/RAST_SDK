@@ -44,6 +44,8 @@ use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
 use installed_clients::kb_SetUtilitiesClient;
+use installed_clients::annotation_ontology_apiClient;
+use installed_clients::annotation_ontology_apiServiceClient;
 
 
 #######################Begin refactor annotate_process########################
@@ -127,11 +129,10 @@ sub _get_genome_gff_contents {
     if ($is_genome) {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
-        unless (-s $gff_filename) {
-            croak "**rast_genome ERROR: GFF file is empty!\n";
+        if (-s $gff_filename) {
+            ($gff_contents, $attr_delimiter) = $self->_parse_gff(
+                                                 $gff_filename, $attr_delimiter);
         }
-        ($gff_contents, $attr_delimiter) = $self->_parse_gff(
-            $gff_filename, $attr_delimiter);
     }
     return $gff_contents;
 }
@@ -329,6 +330,7 @@ sub _get_oldfunchash_oldtype_types {
         unless ($ftr->{type} && $self->_trim($ftr->{type})) {
             if (defined($ftr->{protein_translation})) {
                 $ftr->{type} = 'gene';
+                $ftr->{protein_md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
             } else {
                 $ftr->{type} = 'other';
             }
@@ -343,6 +345,7 @@ sub _get_oldfunchash_oldtype_types {
             }
             $oldfunchash->{$ftr->{id}} = $ftr->{function};
             $ftr->{function} = "hypothetical protein";
+            $ftr->{protein_md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
         }
         elsif ($ftr->{type} eq "gene") {
             $ftr->{type} = 'Non-coding '.$ftr->{type};
@@ -1123,8 +1126,11 @@ sub _pre_rast_call {
             my $feature = $inputgenome->{features}->[$i];
             if ($feature->{type} eq "gene" and defined($feature->{protein_translation})) {
                 $feature->{type} = "CDS";
+                $feature->{protein_md5} = Digest::MD5::md5_hex($feature->{protein_translation});
             }
         }
+## Potentially to be taken care of by the save_annotation_results function, so should be commented out
+=begin 
         # When RAST annotates the genome it becomes incompatible with the new
         # spec. Removing this attribute triggers an "upgrade" to the genome
         # that fixes these problems when saving with GFU
@@ -1139,6 +1145,7 @@ sub _pre_rast_call {
             };
             push(@{$inputgenome->{ontology_events}}, $ont_event);
         }
+=cut
     }
 
     $rast_details{genehash} = $genehash if $genehash;
@@ -1199,7 +1206,7 @@ sub _post_rast_ann_call {
         $genome->{source_id} = $parameters->{output_genome_name};
     }
     if (defined($inputgenome->{gc_content})) {
-        $genome->{gc_content} = $inputgenome->{gc_content};
+        $genome->{gc_content} = $inputgenome->{gc_content}+0;
     }
     if (defined($genome->{gc})) {
         $genome->{gc_content} = $genome->{gc}+0;
@@ -1223,17 +1230,7 @@ sub _move_non_coding_features {
     if (defined($genome->{features})) {
         for (my $i=0; $i < scalar @{$genome->{features}}; $i++) {
             my $ftr = $genome->{features}->[$i];
-            if (defined($ftr->{aliases}) && scalar @{$ftr->{aliases}} > 0)  {
-                if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-                # Found some pseudogenes that have wrong structure for aliases
-                    my $tmp = [];
-                    for my $key (@{$ftr->{aliases}})  {
-                        my @ary = ('alias', $key);
-                        push(@{$tmp}, \@ary);
-                    }
-                    $ftr->{aliases} = $tmp;
-                }
-            }
+            $ftr = $self->_reformat_feature_aliases($ftr);
             if (defined ($ftr->{type}) && $ftr->{type} ne 'gene' && $ftr->{type} ne 'CDS') {
                 push(@splice_list, $i);
             }
@@ -1394,6 +1391,7 @@ sub _build_seed_ontology {
                     $ftr->{function} = $oldfunchash->{$ftr->{id}};
                 }
             }
+=begin
             if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
                 my $function = $ftr->{function};
                 my $array = [split(/\#/,$function)];
@@ -1458,6 +1456,7 @@ sub _build_seed_ontology {
                     }
                 }
             }
+=cut
         }
         ## Rolling protein features back from 'CDS' to 'gene':
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
@@ -1485,15 +1484,13 @@ sub _build_seed_ontology {
             } else {
                 $types{$type} = 1;
             }
-            delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
-            delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
+            #delete $genome->{features}->[$i]->{type} if (exists $ftr->{type});
+            #delete $genome->{features}->[$i]->{protein_md5} if (exists $ftr->{protein_md5});
         }
-        if ((not defined($genome->{cdss})) || (not defined($genome->{mrnas})) || $update_cdss eq 'Y') {
+        if ((!defined($genome->{cdss})) || (!defined($genome->{mrnas})) || $update_cdss eq 'Y') {
             ## Reconstructing new feature arrays ('cdss' and 'mrnas') if they are not present:
             my $cdss = [];
-            $genome->{cdss} = $cdss;
             my $mrnas = [];
-            $genome->{mrnas} = $mrnas;
             for (my $i=0; $i < @{$genome->{features}}; $i++) {
                 my $feature = $genome->{features}->[$i];
                 if (defined($feature->{protein_translation})) {
@@ -1512,14 +1509,8 @@ sub _build_seed_ontology {
                     }
                     my $protein_translation = $feature->{protein_translation};
                     my $protein_translation_length = length($protein_translation);
-                    my $aliases = [];
-                    if (defined($feature->{aliases})) {
-                        $aliases = $feature->{aliases};
-                        # Found some pseudogenes that have wrong structure for aliases
-                        if (ref($aliases) !~ /ARRAY/) {
-                            $aliases = [$feature->{aliases}];
-                        }
-                    }
+                    my $dna_sequence_length = 3*$protein_translation_length;
+                    $feature = $self->_reformat_feature_aliases($feature);
                     push(@{$cdss}, {
                         id => $cds_id,
                         location => $location,
@@ -1530,7 +1521,8 @@ sub _build_seed_ontology {
                         ontology_terms => $ontology_terms,
                         protein_translation => $protein_translation,
                         protein_translation_length => $protein_translation_length,
-                        aliases => $aliases
+                        dna_sequence_length => $dna_sequence_length,
+                        aliases => $feature->{aliases}
                     });
                     push(@{$mrnas}, {
                         id => $mrna_id,
@@ -1543,6 +1535,8 @@ sub _build_seed_ontology {
                     $feature->{mrnas} = [$mrna_id];
                 }
             }
+            $genome->{cdss} = $cdss;
+            $genome->{mrnas} = $mrnas;
         }
     }
 
@@ -1634,7 +1628,7 @@ sub _summarize_annotation {
         delete $genome->{assembly_ref};
     }
     if (defined($contigobj)) {
-        $genome->{gc_content} = $contigobj->{_gc};
+        $genome->{gc_content} = $contigobj->{_gc}+0;
         if ($contigobj->{_kbasetype} eq "ContigSet") {
             $genome->{contigset_ref} = $contigobj->{_reference};
         } else {
@@ -1646,13 +1640,316 @@ sub _summarize_annotation {
     return ($genome, \%rast_details);
 }
 
+## Saving annotated genome with the GFU client
+sub _save_genome_with_gfu {
+    my ($self, $input_gn, $parameters, $message) = @_;
+ 
+    my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
+    my ($gaout, $gaout_info);
+    try {
+        $gaout = $gfu_client->save_one_genome({
+            workspace => $parameters->{output_workspace},
+            name => $parameters->{output_genome_name},
+            data => $input_gn,
+            provenance => [{
+                time => DateTime->now()->datetime()."+0000",
+                service_ver => $self->_util_version(),
+                service => "RAST_SDK",
+                method => Bio::KBase::Utilities::method(),
+                method_params => [$parameters],
+                input_ws_objects => [],
+                resolved_ws_objects => [],
+                intermediate_incoming => [],
+                intermediate_outgoing => []
+            }],
+            hidden => 0
+        });
+
+        $gaout_info = $gaout->{info};
+        my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
+
+        Bio::KBase::KBaseEnv::add_object_created({
+            ref => $ref,
+            description => "RAST annotation"
+        });
+        Bio::KBase::Utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+        print "One genome has been saved with GFU.save_one_genome.\n";
+        return ({ref => $ref}, $message);
+    } catch {
+        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
+        return ({}, $err_msg);
+    };
+}
+## End saving annotated genome with the GFU client
+
+# Re-assuring the genome object has all required data items by
+# the annotation_ontolog_api
+sub _fillRequiredFields {
+    my ($self, $input_obj) = @_;
+    if (!defined($input_obj->{genome_tiers})) {
+        print "FOUND no 'genome_tiers' in RASTed genome data!";
+        $input_obj->{genome_tiers} = [
+            "ExternalDB",
+            "User"
+        ];
+    }
+    if (!defined($input_obj->{molecule_type})) {
+        print "FOUND no 'molecule_type' in RASTed genome data!";
+        $input_obj->{molecule_type} = "DNA";
+    }
+    if (!defined($input_obj->{features})) {
+        $input_obj->{features} = [];
+    }
+    if (!defined($input_obj->{feature_counts})) {
+        $input_obj->{feature_counts} = {
+	        CDS => 0,
+	        gene => 0,
+	        ncRNA => 0,
+	        "non-protein_encoding_gene" => 0,
+	        protein_encoding_gene => 0,
+	        rRNA => 0,
+	        regulatory => 0,
+	        repeat_region => 0,
+	        tRNA => 0,
+	        tmRNA => 0
+        };
+    }
+    if (!defined($input_obj->{genetic_code})) {
+        $input_obj->{genetic_code} = 11;
+    }
+    if (defined($input_obj->{gc_content})) {
+        $input_obj->{gc_content} = $input_obj->{gc_content}+0;
+    }
+    if (!defined($input_obj->{dna_size})) {
+        $input_obj->{dna_size} = 0;
+    }
+    if (!defined($input_obj->{domain})) {
+        $input_obj->{domain} = 'Bacteria';
+    }
+    if (!defined($input_obj->{publications})) {
+        $input_obj->{publications} = [];
+    }
+    if (!defined($input_obj->{source_id})) {
+        $input_obj->{source_id} = $input_obj->{id};
+    }
+    if (!defined($input_obj->{external_source_origination_date})) {
+        $input_obj->{external_source_origination_date} = Bio::KBase::Utilities::timestamp(1);
+    }
+    if (!defined($input_obj->{notes})) {
+        $input_obj->{notes} = "Genome imported from RAST annotation";
+    }
+    if (!defined($input_obj->{taxon_ref})) {
+        $input_obj->{taxon_ref} = 'ReferenceTaxons/unknown_taxon';
+    }
+    if (!defined($input_obj->{num_contigs})) {
+        $input_obj->{num_contigs} = 0;
+    }
+    if (!defined($input_obj->{contig_ids})) {
+        $input_obj->{contig_ids} = [];
+    }
+    if (!defined($input_obj->{contig_lengths})) {
+        $input_obj->{contig_lengths} = [];
+    }
+    if (!defined($input_obj->{non_coding_features})) {
+        $input_obj->{non_coding_features} = [];
+    }
+    if (!defined($input_obj->{cdss})) {
+        $input_obj->{cdss} = [];
+    }
+    foreach my $cds (@{$input_obj->{cdss}}) {
+        $cds = $self->_reformat_feature_aliases($cds);
+        if (!defined($cds->{protein_md5})) {
+            $cds->{protein_md5} = $cds->{md5};
+        }
+    }
+    if (!defined($input_obj->{mrnas})) {
+        $input_obj->{mrnas} = [];
+    }
+    foreach my $mrna (@{$input_obj->{mrnas}}) {
+        if (!defined($mrna->{dna_sequence_length})) {
+            $mrna->{dna_sequence_length} = 0;
+        }
+    }
+    if (!defined($input_obj->{warnings})) {
+        $input_obj->{warnings} = [];
+    }
+    return $input_obj;
+}
+
+sub _reformat_feature_aliases {
+    my ($self, $ftr) = @_;
+    if (defined($ftr->{aliases}) && @{$ftr->{aliases}})  {
+        if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
+        # Found some pseudogenes that have wrong structure for aliases
+            my $tmp = [];
+            for my $key (@{$ftr->{aliases}})  {
+                my @ary = ('alias', $key);
+                push(@{$tmp}, \@ary);
+            }
+            $ftr->{aliases} = $tmp;
+        }
+    }
+    return $ftr;
+}
+
+sub _sanitize_rolename {
+    my ($self, $rolename) = @_;
+
+    $rolename = lc($rolename);
+    $rolename =~ s/[\d\-]+\.[\d\-]+\.[\d\-]+\.[\d\-]+//g;
+    $rolename =~ s/\s//g;
+    $rolename =~ s/\#.*$//g;
+
+    return $rolename;
+}
+
+
+sub _create_onto_terms {
+    my ($self, $input_gn, $ftr_type) = @_;
+    return {} unless exists($input_gn->{$ftr_type});
+
+    #print "\nCreating ontology terms for ".$ftr_type;
+    #print "\nCounts for features of ".$ftr_type."=".scalar @{$input_gn->{$ftr_type}};
+    my $onto_terms = {};
+    foreach my $ftr (@{$input_gn->{$ftr_type}}) {
+        my $gene_id = $ftr->{id};
+        if (!defined($ftr->{dna_sequence_length})) {
+            $ftr->{dna_sequence_length} = 0;
+        }
+
+        if (defined($ftr->{function})) {
+            push @{$onto_terms->{$gene_id}}, {
+                term => $self->_sanitize_rolename($ftr->{function})
+            };
+        }
+        if (defined($ftr->{functions})) {
+            foreach my $func_role (@{$ftr->{functions}}) {
+                push @{$onto_terms->{$gene_id}}, {
+                    term => $self->_sanitize_rolename($func_role)
+                };
+            }
+        }
+    }
+    my $ontoTermSize = keys %$onto_terms;
+    print "\nCreated $ontoTermSize ontology terms for $ftr_type";
+    return $onto_terms;
+}
+
+## Building ontology events
+sub _build_ontology_events {
+    my ($self, $input_gn, $args) = @_;
+
+    my $gn_with_events = {
+        object => $input_gn,
+        events => [],
+        save => 1,
+        output_name => $args->{output_genome_name},
+        output_workspace => $args->{output_workspace},
+        type => "KBaseGenomes.Genome"
+    };
+    $gn_with_events->{'workspace-url'} = $self->{ws_url};
+
+    print "\nBuilding ontology events for ".$input_gn->{id};
+
+    my $all_onto_terms = {};
+    for my $feature_type (qw( features non_coding_features cdss mrnas )) {
+        next unless $input_gn->{$feature_type} && @{$input_gn->{$feature_type}};
+        my $ftr_onto_terms = $self->_create_onto_terms($input_gn, $feature_type);
+        if (keys %{$ftr_onto_terms}) {
+            $all_onto_terms = {%$all_onto_terms, %$ftr_onto_terms};
+        }
+    }
+    push @{$gn_with_events->{events}}, {
+        description => "RAST annotation",
+        ontology_id => "SSO",
+        method => "RAST-annotate_genome",
+        method_version => $self->_util_version(),
+        timestamp => Bio::KBase::Utilities::timestamp(1),
+        ontology_terms => $all_onto_terms
+    };
+    $gn_with_events->{object} = $input_gn;
+
+    return $gn_with_events;
+}
+
+## Printing the data structure of an input genome
+sub _print_genome_data {
+    my ($self, $inputgn) = @_;
+
+	print "\nConfirming RAST genome data structure---------------\n";
+	print "Keys of the genome structure================:\n".Dumper(keys %$inputgn);
+	if (defined($inputgn->{events}) and @{$inputgn->{events}} > 0 ) {
+		print "genome events count=".scalar @{$inputgn->{events}}."\n";
+		print "Two genome events data, for example================:\n";
+		print Dumper(@{$inputgn->{events}}[0..1]);
+	}
+
+    my $inputobj = $inputgn->{object};
+    print "\nChecking RAST genome object data structure---------------\n";
+    print "Keys of the json object================:\n".Dumper(keys %$inputobj);
+    if (defined($inputobj->{feature_counts})) {
+        print "Genome feature_counts data================:\n";
+        print Dumper($inputobj->{feature_counts});
+    }
+    if (defined($inputobj->{cdss}) and @{$inputobj->{cdss}} > 0) {
+        print "genome cdss count=".scalar @{$inputobj->{cdss}}."\n";
+        print "Two genome cdss data, for example================:\n";
+        print Dumper(@{$inputobj->{cdss}}[0..1]);
+    }
+    if (defined($inputobj->{mrnas}) and @{$inputobj->{mrnas}} > 0 ) {
+        print "genome mrnas count=".scalar @{$inputobj->{mrnas}}."\n";
+        print "Two genome mrnas data, for example================:\n";
+        print Dumper(@{$inputobj->{mrnas}}[0..1]);
+    }
+}
+
+## Saving annotated genome with the ontology service
+sub _save_genome_with_ontSer {
+    my ($self, $input_gn, $params, $message) = @_;
+    print "Calling ontology service!";
+
+    my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
+    # $self->_print_genome_data($gn_with_events);
+
+    my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
+	                                        undef, token => $self->{_token});
+    try {
+        my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
+        my $ref = $ontSer_output->{output_ref};
+
+        Bio::KBase::KBaseEnv::add_object_created({
+            ref => $ref,
+            description => "RAST annotation"
+        });
+
+        Bio::KBase::Utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+        print "\nOne genome has been saved with ontology service.\n";
+        return ({ref => $ref}, $message);
+    } catch {
+        my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
+        print $err_msg;
+        return ({}, $err_msg);
+    };
+}
+
+## End saving annotated genome with the ontology service
+
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
+    $genome = $self->_fillRequiredFields($genome);
     print "SEND OFF FOR SAVING\n";
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
-    print "***** Scientific_namee = $genome->{scientific_name}\n";
+    print "***** Scientific_name = $genome->{scientific_name}\n";
     print "***** Number of features=".scalar  @{$genome->{features}}."\n";
     print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
     print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
@@ -1670,48 +1967,14 @@ sub _save_annotation_results {
     }
     $self->_check_NC_features($rasted_gn);
 
-    my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
-    my ($gaout, $gaout_info);
-
     if (defined($rasted_gn->{genetic_code})) {
         $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
     }
-    try {
-        $gaout = $gfu_client->save_one_genome({
-            workspace => $parameters->{output_workspace},
-            name => $parameters->{output_genome_name},
-            data => $rasted_gn,
-            provenance => [{
-                time => DateTime->now()->datetime()."+0000",
-                service_ver => $self->_util_version(),
-                service => "RAST_SDK",
-                method => Bio::KBase::Utilities::method(),
-                method_params => [$parameters],
-                input_ws_objects => [],
-                resolved_ws_objects => [],
-                intermediate_incoming => [],
-                intermediate_outgoing => []
-            }],
-            hidden => 0
-        });
+    ## Saving annotated genome by GFU client
+    #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
 
-        $gaout_info = $gaout->{info};
-        my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
-        Bio::KBase::KBaseEnv::add_object_created({
-            ref => $ref,
-            description => "Annotated genome"
-        });
-        Bio::KBase::Utilities::print_report_message({
-            message => "<pre>".$message."</pre>",
-            append => 0,
-            html => 0
-        });
-        print "One genome has been saved\n";
-        return ({ref => $ref}, $message);
-    } catch {
-        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
-        return ({}, $err_msg);
-    };
+    ## Saving annotated genome by annotaton_ontology_api client
+    $self->_save_genome_with_ontSer($rasted_gn, $parameters, $message);
 }
 
 ## _build_workflows
@@ -2396,7 +2659,7 @@ sub _fetch_object_info {
         $ret_obj_info = $self->{ws_client}->get_object_info3(
                                  {objects=>$objs}
                         )->{infos}->[0];
-        print "INFO: object info for $obj------\n".Dumper($ret_obj_info);
+        # print "INFO: object info for $obj------\n".Dumper($ret_obj_info);
         return $ret_obj_info;
     } catch {
         warn "INFO: Workspace.get_object_info3 failed to access $obj.\n";
@@ -2697,11 +2960,10 @@ sub rast_genome {
         report_name => undef,
         report_ref => undef
     };
-
     my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
     my $gff_contents = $self->_get_genome_gff_contents($aa_ref);
     if (defined($aa_ref) && defined($params->{create_report}) &&
-            $params->{create_report} == 1) {
+            $params->{create_report} == 1 && $gff_contents) {
         $rast_ret = $self->_generate_genome_report(
                           $aa_ref, $gff_contents, \%ftr_func_lookup,
                           $rasted_ftr_count, $out_msg);
