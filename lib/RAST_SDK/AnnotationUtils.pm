@@ -1703,6 +1703,11 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{features})) {
         $input_obj->{features} = [];
     }
+    foreach my $ftr (@{$input_obj->{features}}) {
+        if (!defined($ftr->{cdss})) {
+            $ftr->{cdss} = [];
+        }
+    }
     if (!defined($input_obj->{feature_counts})) {
         $input_obj->{feature_counts} = {
 	        CDS => 0,
@@ -1783,7 +1788,7 @@ sub _reformat_feature_aliases {
     my ($self, $ftr) = @_;
     if (defined($ftr->{aliases}) && @{$ftr->{aliases}})  {
         if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-        # Found some pseudogenes that have wrong structure for aliases
+            # Found some pseudogenes that have wrong structure for aliases
             my $tmp = [];
             for my $key (@{$ftr->{aliases}})  {
                 my @ary = ('alias', $key);
@@ -1871,7 +1876,7 @@ sub _build_ontology_events {
         ontology_terms => $all_onto_terms
     };
     $gn_with_events->{object} = $input_gn;
-
+    #print "Ontology terms:\n".Dumper($all_onto_terms);
     return $gn_with_events;
 }
 
@@ -1930,7 +1935,6 @@ sub _save_genome_with_ontSer {
             append => 0,
             html => 0
         });
-        print "\nOne genome has been saved with ontology service.\n";
         return ({ref => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";

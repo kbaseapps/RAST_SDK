@@ -353,6 +353,7 @@ subtest '_get_feature_function_lookup' => sub {
 };
 =cut
 
+=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -1627,6 +1628,7 @@ subtest '_save_annotation_results' => sub {
     my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 };
+=cut
 
 =begin
 #
@@ -2189,7 +2191,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
 
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } "Impl rast_genome call on $GEBA_1003_asmb returns {}.";
+    } "Impl rast_genome call on $GEBA_1003_asmb returns.";
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 
@@ -2201,7 +2203,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } "Impl rast_genome call on $parms->{object_ref} returns {}.";
+    } "Impl rast_genome call on $parms->{object_ref} returns.";
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 
@@ -2213,8 +2215,8 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-        #print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
-    } "Impl rast_genome_assembly call on $parms->{object_ref} returns $rast_ret->{output_genome_ref}.";
+        print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
     ok ($rast_ret->{output_genome_ref}, "success on $parms->{object_ref}");
 
     $parms = {
@@ -2226,8 +2228,21 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
         print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
-    } "Impl rast_genome_assembly call on $parms->{object_ref} returns $rast_ret->{output_genome_ref}.";
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
     ok ($rast_ret->{output_genome_ref}, "success on $parms->{object_ref}");
+
+    $parms = {
+        "object_ref" => "63171/528/1",  # test_checkAll_Ecoli_Sept23
+        "output_genome_name" => "rasted_test_chkAll",
+        "output_workspace" => $ws_name,
+        "create_report" => 1
+    };
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+        print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
+    ok ( !defined($rast_ret->{output_genome_ref}),
+         "rast_genome_assembly returned an undef object ref." );
 };
 
 
