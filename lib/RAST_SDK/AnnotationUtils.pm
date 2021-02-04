@@ -1781,6 +1781,9 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{warnings})) {
         $input_obj->{warnings} = [];
     }
+    if (!defined($input_obj->{ontology_events})) {
+        $input_obj->{ontology_events} = [];
+    }
     return $input_obj;
 }
 
@@ -1922,6 +1925,7 @@ sub _save_genome_with_ontSer {
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
     try {
+        #print "Input data with Ontology terms sent to add_annotation_ontology_events:\n".Dumper($gn_with_events);
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
         my $ref = $ontSer_output->{output_ref};
 
@@ -1972,6 +1976,9 @@ sub _save_annotation_results {
 
     if (defined($rasted_gn->{genetic_code})) {
         $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
+    }
+    if (defined($rasted_gn->{gc_content})) {
+        $rasted_gn->{gc_content} = $rasted_gn->{gc_content}+0;
     }
     ## Saving annotated genome by GFU client
     #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
