@@ -129,6 +129,8 @@ sub _get_genome_gff_contents {
     if ($is_genome) {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
+        my $fsize = -s $gff_filename;
+        print "GFF file at $gff_filename has a size of $fsize";
         if (-s $gff_filename) {
             ($gff_contents, $attr_delimiter) = $self->_parse_gff(
                                                  $gff_filename, $attr_delimiter);
@@ -2127,7 +2129,6 @@ sub _write_gff_from_genome {
     my $gff_result;
     try {
         $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
-
         return $gff_result->{file_path};
     } catch {
         croak "**_write_gff_from_genome ERROR:\n$_\n";
