@@ -129,9 +129,13 @@ sub _get_genome_gff_contents {
     if ($is_genome) {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
-        return [] unless (-s $gff_filename);
-        ($gff_contents, $attr_delimiter) = $self->_parse_gff(
+        if (-s $gff_filename) {
+            ($gff_contents, $attr_delimiter) = $self->_parse_gff(
                                                  $gff_filename, $attr_delimiter);
+        } else {
+            print "GFF is empty ";
+            $gff_contents = [];
+        }
     }
     return $gff_contents;
 }
@@ -2124,7 +2128,6 @@ sub _write_gff_from_genome {
     try {
         $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
 
-        unless (-s $gff_result->{file_path}) {print "GFF is empty ";}
         return $gff_result->{file_path};
     } catch {
         croak "**_write_gff_from_genome ERROR:\n$_\n";
