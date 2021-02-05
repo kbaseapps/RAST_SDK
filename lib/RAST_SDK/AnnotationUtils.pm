@@ -129,9 +129,14 @@ sub _get_genome_gff_contents {
     if ($is_genome) {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
+        my $fsize = -s $gff_filename;
+        print "GFF file at $gff_filename has a size of $fsize";
         if (-s $gff_filename) {
             ($gff_contents, $attr_delimiter) = $self->_parse_gff(
                                                  $gff_filename, $attr_delimiter);
+        } else {
+            print "GFF is empty ";
+            $gff_contents = [];
         }
     }
     return $gff_contents;
@@ -1704,6 +1709,11 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{features})) {
         $input_obj->{features} = [];
     }
+    foreach my $ftr (@{$input_obj->{features}}) {
+        if (!defined($ftr->{cdss})) {
+            $ftr->{cdss} = [];
+        }
+    }
     if (!defined($input_obj->{feature_counts})) {
         $input_obj->{feature_counts} = {
 	        CDS => 0,
@@ -1777,6 +1787,9 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{warnings})) {
         $input_obj->{warnings} = [];
     }
+    if (!defined($input_obj->{ontology_events})) {
+        $input_obj->{ontology_events} = [];
+    }
     return $input_obj;
 }
 
@@ -1784,7 +1797,7 @@ sub _reformat_feature_aliases {
     my ($self, $ftr) = @_;
     if (defined($ftr->{aliases}) && @{$ftr->{aliases}})  {
         if (ref($ftr->{aliases}->[0]) !~ /ARRAY/) {
-        # Found some pseudogenes that have wrong structure for aliases
+            # Found some pseudogenes that have wrong structure for aliases
             my $tmp = [];
             for my $key (@{$ftr->{aliases}})  {
                 my @ary = ('alias', $key);
@@ -1872,7 +1885,7 @@ sub _build_ontology_events {
         ontology_terms => $all_onto_terms
     };
     $gn_with_events->{object} = $input_gn;
-
+    #print "Ontology terms:\n".Dumper($all_onto_terms);
     return $gn_with_events;
 }
 
@@ -1918,6 +1931,7 @@ sub _save_genome_with_ontSer {
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
     try {
+        #print "Input data with Ontology terms sent to add_annotation_ontology_events:\n".Dumper($gn_with_events);
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
         my $ref = $ontSer_output->{output_ref};
 
@@ -1931,7 +1945,6 @@ sub _save_genome_with_ontSer {
             append => 0,
             html => 0
         });
-        print "\nOne genome has been saved with ontology service.\n";
         return ({ref => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
@@ -1969,6 +1982,9 @@ sub _save_annotation_results {
 
     if (defined($rasted_gn->{genetic_code})) {
         $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
+    }
+    if (defined($rasted_gn->{gc_content})) {
+        $rasted_gn->{gc_content} = $rasted_gn->{gc_content}+0;
     }
     ## Saving annotated genome by GFU client
     #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
@@ -2113,8 +2129,6 @@ sub _write_gff_from_genome {
     my $gff_result;
     try {
         $gff_result = $gfu->genome_to_gff({"genome_ref" => $genome_ref});
-
-        unless (-s $gff_result->{file_path}) {print "GFF is empty ";}
         return $gff_result->{file_path};
     } catch {
         croak "**_write_gff_from_genome ERROR:\n$_\n";
@@ -2910,8 +2924,7 @@ sub rast_genome {
         return {};
     }
 
-    print "\n***********RAST calling resulted in ".$rast_ftr_count." features.\n";
-
+    print "\n***********RAST on $input_obj_ref resulted in ".$rast_ftr_count." features.\n";
     my $genome_final = $self->_post_rast_ann_call($rasted_genome, $inputgenome, $rast_ref);
 
     my $cd_ftr_count = @{$genome_final->{features}};
@@ -2929,7 +2942,7 @@ sub rast_genome {
 
     my $ftrs = $genome_final->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
-    print "\n***********Finally RAST resulted ".$rasted_ftr_count." features.\n";
+    print "\n**Finally RAST $input_obj_ref feature counts: $rasted_ftr_count";
 
     my $prnt_num = 10;
     if ($rasted_ftr_count) {
@@ -2960,10 +2973,13 @@ sub rast_genome {
         report_name => undef,
         report_ref => undef
     };
-    my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
+
     my $gff_contents = $self->_get_genome_gff_contents($aa_ref);
-    if (defined($aa_ref) && defined($params->{create_report}) &&
-            $params->{create_report} == 1 && $gff_contents) {
+    return $rast_ret unless @$gff_contents;
+
+    if (defined($aa_ref) && defined($params->{create_report})
+            && $params->{create_report} == 1) {
+        my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
         $rast_ret = $self->_generate_genome_report(
                           $aa_ref, $gff_contents, \%ftr_func_lookup,
                           $rasted_ftr_count, $out_msg);
