@@ -204,7 +204,6 @@ sub _get_contigs {
     my $obj_info = $self->_fetch_object_info($obj, $chk);
     return {} unless $obj_info;
 
-    $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     my $ret_obj = {
         _reference => $obj,
         id => $obj_info->[0],
@@ -404,7 +403,7 @@ sub _create_inputgenome_from_genome {
         if (defined($inputgenome->{contigset_ref})) {
             $contigref = $inputgenome->{contigset_ref};
         } elsif (defined($inputgenome->{assembly_ref})) {
-            $contigref = $inputgenome->{assembly_ref};
+            $contigref = $input_obj_ref.";".$inputgenome->{assembly_ref};
         }
         ($contigobj, $contigID_hash) = $self->_get_contigs($contigref);
     }
@@ -2140,11 +2139,17 @@ sub _validate_KB_objref_name {
     my $ret = {
             "is_ref" => 0,
             "is_name" => 0,
+            "is_refchain" => 0,
             "check_passed" => 1
        };
 
-    my @str_arr = split ('/', $obj_str);
+    my @str_arr = split (';', $obj_str);
+    if( @str_arr > 1 ) {
+        $ret->{is_refchain} = 1;
+        $obj_str = $str_arr[@str_arr - 1];
+    }
 
+    @str_arr = split ('/', $obj_str);
     if( @str_arr > 3 ) {
         $ret->{check_passed} = 0;
         return $ret;

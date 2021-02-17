@@ -76,8 +76,10 @@ my $obj3 = "55141/77/1";  # prod KBaseGenomeAnnotations.Assembly
 my $asmb_fasta;
 
 lives_ok {
-    #$asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
-    $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj1);
+    # prod
+    $asmb_fasta = $annoutil->_get_fasta_from_assembly($obj_asmb);
+    # appdev
+    #$asmb_fasta = $annoutil->_get_fasta_from_assembly($obj1);
 } 'Got FASTA from saved assembly file';
 
 unless ( $asmb_fasta ) {
@@ -2176,10 +2178,10 @@ subtest 'anno_utils_rast_genome' => sub {
         ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
     }
 };
-=cut
 
-=begin
-## testing Impl_rast_genome_assembly using $GEBA_1003_asmb from prod
+
+## testing Impl_rast_genome_assembly
+ # using $GEBA_1003_asmb from prod
  # to investigate the extra features
 subtest 'Impl_rast_genome_assembly1' => sub {
     my $rast_ret = {};
@@ -2245,7 +2247,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 };
-
+=cut
 
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly2' => sub {
@@ -2276,10 +2278,33 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     } 'Impl rast_genome_assembly call returns.';
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to local annotation on assembly with empty features, no rast was run.");
+
+    $parms = {
+        "object_ref" => "63171/613/1",
+        "output_genome_name" => "rasted_Eco_BlastKOALA",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    ok (!defined($rast_ret ->{output_genome_ref}),
+        "due to empty features, no rast was run.");
+
+    $parms = {
+        "object_ref" => "63171/615/1",
+        "output_genome_name" => "rasted_Aspergillus_niger_ATCC_1015",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    ok (!defined($rast_ret ->{output_genome_ref}),
+        "due to empty features, no rast was run.");
 };
-=cut
 
-
+=begin
 ## testing Impl_rast_genome_assembly using obj ids from appdev ONLY
 subtest 'Impl_rast_genome_assembly3' => sub {
     my $rast_ret = {};
@@ -2309,8 +2334,8 @@ subtest 'Impl_rast_genome_assembly3' => sub {
         $rast_ret = $rast_impl->rast_genome_assembly($parms2);
     } "Impl rast_genome_assembly call returns normally on genome $parms2->{object_ref}";
     ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
-    ok ($rast_ret->{output_genome_ref},
-        "rast_genome_assembly returned a valid ref $rast_ret->{output_genome_ref}");
+    ok (!defined($rast_ret->{output_genome_ref}),
+        "rast_genome_assembly did not return a valid ref.");
     is ($rast_ret->{output_workspace}, $parms2->{output_workspace}, "workspace is correct.");
     ok (!defined($rast_ret->{report_ref}), "No report created.");
     ok (!defined($rast_ret->{report_name}), "No report created.");
@@ -2347,7 +2372,7 @@ subtest 'Impl_rast_genome_assembly3' => sub {
     ok (!defined($rast_ret->{report_ref}), "No report created.");
     ok (!defined($rast_ret->{report_name}), "No report created.");
 };
-
+=cut
 
 =begin
 ## testing _get_bulk_rast_parameters using obj ids from prod ONLY
