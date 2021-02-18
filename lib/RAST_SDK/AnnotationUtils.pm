@@ -29,6 +29,7 @@ use Text::Trim qw(trim);
 use Data::Structure::Util qw( unbless );
 use Data::UUID;
 use Try::Tiny;
+use Clone 'clone';
 
 use GenomeTypeObject;
 
@@ -1970,7 +1971,7 @@ sub _save_annotation_results {
     my %gc_rast = %{ $rast_ref };
     my $parameters = $gc_rast{parameters},
     my $message = $gc_rast{message};
-    my $rasted_gn = $genome;
+    my $rasted_gn = clone($genome);
 
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
@@ -1983,7 +1984,7 @@ sub _save_annotation_results {
         $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
     }
     if (defined($rasted_gn->{gc_content})) {
-        $rasted_gn->{gc_content} = $rasted_gn->{gc_content}+0;
+        $rasted_gn->{gc_content} = $rasted_gn->{gc_content}*1.0;
     }
     ## Saving annotated genome by GFU client
     #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
@@ -2953,7 +2954,7 @@ sub rast_genome {
     if ($rasted_ftr_count) {
         print "***********The first $prnt_num or fewer rasted features, for example***************\n";
         my $prnt_lines = ($rasted_ftr_count > $prnt_num) ? $prnt_num : $rasted_ftr_count;
-        for my $ftr (@{$ftrs}[0, $prnt_lines - 1]) {
+        for my $ftr (@{$ftrs}[0..$prnt_lines - 1]) {
             my $f_id = $ftr->{id};
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
             my $f_func = $ftr->{ function } // '';

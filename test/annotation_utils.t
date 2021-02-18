@@ -94,8 +94,9 @@ my $obj2_1 = "63171/315/1";
 my $obj_65386_1 = '65386/2/1';  # same as 63171/436/1, i.e., GCF_003058445.1/Clostridium_botulinum
 my $obj_65386_2 = '65386/12/1'; # Methanosarcina_acetivorans_C2A
 my $obj_refseq_GCF = '63171/483/1';  # refseq_GCF_GCF_900128725.1
-my $GEBA_1003_asmb = '63171/564/1';
 my $GEBA_1003_asmb_ann = '63171/569/1';
+my $GEBA_1003_asmb = '63171/564/1';
+my $obj_Ani_ATCC1_1015 = '63171/615/1';
 
 # used for function lookup in report testing
 my $test_ftrs = [{
@@ -355,7 +356,7 @@ subtest '_get_feature_function_lookup' => sub {
 };
 =cut
 
-=begin
+#=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -1342,7 +1343,7 @@ subtest '_summarize_annotation' => sub {
               $rast_ref2, $final_genome2, $inputgenome2);
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
-=cut
+#=cut
 
 =begin
 # Test _reformat_feature_aliases for RAST annotated objects in prod
@@ -1567,7 +1568,7 @@ subtest '_build_ontology_events' => sub {
 };
 =cut
 
-=begin
+#=begin
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
     my ($save_ret, $out_msg);
@@ -1594,7 +1595,7 @@ subtest '_save_annotation_results' => sub {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome00, $rast_ref00);
     } "_save_annotation_results finished on genome $obj_refseq_GCF and returned results.";
-    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded and returned:\n".Dumper($save_ret));
     #my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 
@@ -1630,7 +1631,7 @@ subtest '_save_annotation_results' => sub {
     my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 };
-=cut
+#=cut
 
 =begin
 #
@@ -2247,7 +2248,6 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     ok ( !defined($rast_ret->{output_genome_ref}),
          "rast_genome_assembly returned an undef object ref." );
 };
-=cut
 
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly2' => sub {
@@ -2258,6 +2258,7 @@ subtest 'Impl_rast_genome_assembly2' => sub {
         "create_report" => 1
     };
     my $rast_ret = {};
+
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } "Impl rast_genome_assembly call returns normally on genome $obj_Ecoli";
@@ -2290,7 +2291,6 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to empty features, no rast was run.");
-
     $parms = {
         "object_ref" => "63171/615/1",
         "output_genome_name" => "rasted_Aspergillus_niger_ATCC_1015",
@@ -2303,6 +2303,7 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     ok (!defined($rast_ret ->{output_genome_ref}),
         "due to empty features, no rast was run.");
 };
+=cut
 
 =begin
 ## testing Impl_rast_genome_assembly using obj ids from appdev ONLY
