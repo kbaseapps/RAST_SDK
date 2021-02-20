@@ -1648,6 +1648,7 @@ sub _summarize_annotation {
 ## Saving annotated genome with the GFU client
 sub _save_genome_with_gfu {
     my ($self, $input_gn, $parameters, $message) = @_;
+    print "\nCalling GFU.save_one_genome!\n";
  
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -1696,7 +1697,7 @@ sub _save_genome_with_gfu {
 sub _fillRequiredFields {
     my ($self, $input_obj) = @_;
     if (!defined($input_obj->{genome_tiers})) {
-        print "FOUND no 'genome_tiers' in RASTed genome data!";
+        print "\nFOUND no 'genome_tiers' in RASTed genome data!";
         $input_obj->{genome_tiers} = [
             "ExternalDB",
             "User"
@@ -1975,7 +1976,7 @@ sub _save_genome_with_ontSer {
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
-    print "SEND OFF FOR SAVING\n";
+    print "\nSEND OFF FOR SAVING\n";
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
     print "***** Scientific_name = $genome->{scientific_name}\n";
@@ -1997,11 +1998,12 @@ sub _save_annotation_results {
     }
     $self->_check_NC_features($rasted_gn);
 
-    ## Saving annotated genome by GFU client
-    #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
+    ## First try saving annotated genome by annotaton_ontology_api client
+    my ($save_ref, $save_msg) = $self->_save_genome_with_ontSer($rasted_gn, $parameters, $message);
+    return ($save_ref, $save_msg) if keys %$save_ref;
 
-    ## Saving annotated genome by annotaton_ontology_api client
-    $self->_save_genome_with_ontSer($rasted_gn, $parameters, $message);
+    ## If annotaton_ontology_api saving fails, save annotated genome by GFU client
+    return $self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
 }
 
 ## _build_workflows
