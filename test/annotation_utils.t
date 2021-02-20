@@ -373,7 +373,7 @@ subtest '_set_parameters_by_input' => sub {
          output_genome_name => 'test_out_gn_name00',
          scientific_name => 'Buchnera aphidicola',
          output_workspace => $ws_name,
-         object_ref => $obj_refseq_GCF
+         object_ref => $obj_refseq_GCF  #$obj_Ani_ATCC1_1015
     };
     # 00. creating default genome object
     $inputgenome00 = {
@@ -1568,6 +1568,52 @@ subtest '_build_ontology_events' => sub {
     } "_build_ontology_events on rasted genome annotated from $obj_asmb";
     $evts = $ret_gn->{events};
     ok( $evts, "_build_ontology_events returns events.");
+};
+=cut
+
+=begin
+# Test _save_genome_with_gfu with genome/assembly object refs in prod
+subtest '_save_genome_with_gfu' => sub {
+    my ($save_ret, $out_msg);
+    my %gc_rast00 = %{ $rast_ref00 };
+    my $parameters = $gc_rast00{parameters};
+    my $message = $gc_rast00{message};
+
+    lives_ok {
+        ($save_ret, $out_msg) = $annoutil->_save_genome_with_gfu(
+                                            $final_genome00, $parameters, $message);
+    } "_save_genome_with_gfu finished on genome $obj_refseq_GCF and returned:\n".Dumper($save_ret);
+    ok (!exists($save_ret->{ref}), "_save_genome_with_gfu returned with message:\n$out_msg");
+
+    # a genome object in workspace #65386
+    my %gc_rast01 = %{ $rast_ref01 };
+    $parameters = $gc_rast01{parameters};
+    $message = $gc_rast01{message};
+    lives_ok {
+        ($save_ret, $out_msg) = $annoutil->_save_genome_with_gfu(
+                                            $final_genome01, $parameters, $message);
+    } "_save_genome_with_gfu finished on genome $obj_refseq_GCF and returned:\n".Dumper($save_ret);
+    ok (!exists($save_ret->{ref}), "_save_genome_with_gfu returned with message:\n$out_msg");
+
+    # a genome object
+    my %gc_rast1 = %{ $rast_ref1 };
+    $parameters = $gc_rast1{parameters};
+    $message = $gc_rast1{message};
+    lives_ok {
+        ($save_ret, $out_msg) = $annoutil->_save_genome_with_gfu(
+                                            $final_genome1, $parameters, $message);
+    } "_save_genome_with_gfu finished on genome $obj_Ecoli returned:\n".Dumper($save_ret);
+    ok (!exists($save_ret->{ref}), "_save_genome_with_gfu returned with message:\n$out_msg");
+
+    # RAST annotation of an assembly object
+    my %gc_rast2 = %{ $rast_ref2 };
+    $parameters = $gc_rast2{parameters};
+    $message = $gc_rast2{message};
+    lives_ok {
+        ($save_ret, $out_msg) = $annoutil->_save_genome_with_gfu(
+                                            $final_genome2, $parameters, $message);
+    } "_save_genome_with_gfu on assembly $obj_asmb returned expected result:\n".Dumper($save_ret);
+    ok (!exists($save_ret->{ref}), "_save_genome_with_gfu returned with message:\n$out_msg");
 };
 =cut
 
@@ -2896,7 +2942,6 @@ subtest 'bulk_rast_genomes' => sub {
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
-#=begin
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 #

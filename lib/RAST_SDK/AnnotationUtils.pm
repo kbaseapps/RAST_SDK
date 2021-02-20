@@ -1687,6 +1687,7 @@ sub _save_genome_with_gfu {
         return ({ref => $ref}, $message);
     } catch {
         my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
+        print $err_msg;
         return ({}, $err_msg);
     };
 }
@@ -1807,6 +1808,9 @@ sub _reformat_feature_aliases {
             $ftr->{aliases} = $tmp;
         }
     }
+    else {
+        $ftr->{aliases} = [];
+    }
     return $ftr;
 }
 
@@ -1901,8 +1905,9 @@ sub _build_ontology_events {
 sub _print_genome_data {
     my ($self, $inputgn) = @_;
 
-	print "\nConfirming RAST genome data structure---------------\n";
-	print "Keys of the input genome structure================:\n".Dumper(keys %$inputgn);
+    print "\nINFO****:Confirming RAST genome data structure---------------\n";
+    print "\nINFO****:Keys of the input genome structure================:\n".Dumper(keys %$inputgn);
+    print "\nINFO****:Workspace: $inputgn->{output_workspace}";
 	if (defined($inputgn->{events}) and @{$inputgn->{events}} > 0 ) {
 		print "\nINFO****:genome events count=".scalar @{$inputgn->{events}}."\n";
 		#print "\nINFO****:genome events data================:\n";
@@ -1940,6 +1945,7 @@ sub _save_genome_with_ontSer {
     my ($self, $input_gn, $params, $message) = @_;
     print "\nCalling ontology service!\n";
 
+    my $input_gn = $self->_fillRequiredFields($input_gn);
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
     $self->_print_genome_data($gn_with_events);
 
@@ -1985,25 +1991,26 @@ sub _save_annotation_results {
     print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
     print "***** Number of mrnas=   ".scalar  @{$genome->{mrnas}}."\n";
 
+    my $g_data_type = (ref($genome) eq 'HASH') ? 'ref2Hash' : ref($genome);
+    if ($g_data_type eq 'GenomeTypeObject') {
+        print "INFO***Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving***.\n";
+        $genome = $genome->prepare_for_return();
+    }
+    $self->_check_NC_features($genome);
+
     my %gc_rast = %{ $rast_ref };
     my $parameters = $gc_rast{parameters},
     my $message = $gc_rast{message};
-    #my $rasted_gn = clone($genome);
-    my $rasted_gn = $self->_fillRequiredFields($genome);
 
-    my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
-    if ($g_data_type eq 'GenomeTypeObject') {
-        print "INFO***Genome input passed to _save_annotation_results is of type of $g_data_type, prepare it before saving***.\n";
-        $rasted_gn = $rasted_gn->prepare_for_return();
-    }
-    $self->_check_NC_features($rasted_gn);
+    # This way $genome won't be affected when $rasted_gn is changed
+    my $rasted_gn = clone($genome);
 
     ## First try saving annotated genome by annotaton_ontology_api client
     my ($save_ref, $save_msg) = $self->_save_genome_with_ontSer($rasted_gn, $parameters, $message);
     return ($save_ref, $save_msg) if keys %$save_ref;
 
     ## If annotaton_ontology_api saving fails, save annotated genome by GFU client
-    return $self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
+    return $self->_save_genome_with_gfu($genome, $parameters, $message);
 }
 
 ## _build_workflows
