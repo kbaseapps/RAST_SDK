@@ -29,6 +29,7 @@ use Text::Trim qw(trim);
 use Data::Structure::Util qw( unbless );
 use Data::UUID;
 use Try::Tiny;
+use Clone 'clone';
 
 use GenomeTypeObject;
 
@@ -130,7 +131,7 @@ sub _get_genome_gff_contents {
         # generating the gff file directly from genome object ref
         $gff_filename = $self->_write_gff_from_genome($obj);
         my $fsize = -s $gff_filename;
-        print "GFF file at $gff_filename has a size of $fsize";
+        print "\nGFF file at $gff_filename has a size of $fsize.\n";
         if (-s $gff_filename) {
             ($gff_contents, $attr_delimiter) = $self->_parse_gff(
                                                  $gff_filename, $attr_delimiter);
@@ -1210,10 +1211,10 @@ sub _post_rast_ann_call {
         $genome->{source_id} = $parameters->{output_genome_name};
     }
     if (defined($inputgenome->{gc_content})) {
-        $genome->{gc_content} = $inputgenome->{gc_content}+0;
+        $genome->{gc_content} = $inputgenome->{gc_content}*1.0;
     }
     if (defined($genome->{gc})) {
-        $genome->{gc_content} = $genome->{gc}+0;
+        $genome->{gc_content} = $genome->{gc}*1.0;
         delete $genome->{gc};
     }
     if (!defined($genome->{gc_content})) {
@@ -1632,7 +1633,7 @@ sub _summarize_annotation {
         delete $genome->{assembly_ref};
     }
     if (defined($contigobj)) {
-        $genome->{gc_content} = $contigobj->{_gc}+0;
+        $genome->{gc_content} = $contigobj->{_gc}*1.0;
         if ($contigobj->{_kbasetype} eq "ContigSet") {
             $genome->{contigset_ref} = $contigobj->{_reference};
         } else {
@@ -1731,7 +1732,7 @@ sub _fillRequiredFields {
         $input_obj->{genetic_code} = 11;
     }
     if (defined($input_obj->{gc_content})) {
-        $input_obj->{gc_content} = $input_obj->{gc_content}+0;
+        $input_obj->{gc_content} = $input_obj->{gc_content}*1.0;
     }
     if (!defined($input_obj->{dna_size})) {
         $input_obj->{dna_size} = 0;
@@ -1819,7 +1820,6 @@ sub _sanitize_rolename {
     return $rolename;
 }
 
-
 sub _create_onto_terms {
     my ($self, $input_gn, $ftr_type) = @_;
     return {} unless exists($input_gn->{$ftr_type});
@@ -1883,6 +1883,14 @@ sub _build_ontology_events {
         timestamp => Bio::KBase::Utilities::timestamp(1),
         ontology_terms => $all_onto_terms
     };
+
+    if (defined($input_gn->{genetic_code})) {
+        $input_gn->{genetic_code} = $input_gn->{genetic_code}+0;
+    }
+    if (defined($input_gn->{gc_content})) {
+        $input_gn->{gc_content} = $input_gn->{gc_content}*1.0;
+    }
+
     $gn_with_events->{object} = $input_gn;
     #print "Ontology terms:\n".Dumper($all_onto_terms);
     return $gn_with_events;
@@ -1893,44 +1901,54 @@ sub _print_genome_data {
     my ($self, $inputgn) = @_;
 
 	print "\nConfirming RAST genome data structure---------------\n";
-	print "Keys of the genome structure================:\n".Dumper(keys %$inputgn);
+	print "Keys of the input genome structure================:\n".Dumper(keys %$inputgn);
 	if (defined($inputgn->{events}) and @{$inputgn->{events}} > 0 ) {
-		print "genome events count=".scalar @{$inputgn->{events}}."\n";
-		print "Two genome events data, for example================:\n";
-		print Dumper(@{$inputgn->{events}}[0..1]);
+		print "\nINFO****:genome events count=".scalar @{$inputgn->{events}}."\n";
+		#print "\nINFO****:genome events data================:\n";
+		#print Dumper(@{$inputgn->{events}});
 	}
 
     my $inputobj = $inputgn->{object};
-    print "\nChecking RAST genome object data structure---------------\n";
-    print "Keys of the json object================:\n".Dumper(keys %$inputobj);
+    print "\nINFO****:Checking RAST genome object data structure---------------\n";
+    print "\nINFO****:Keys of the json object================:\n".Dumper(keys %$inputobj);
     if (defined($inputobj->{feature_counts})) {
-        print "Genome feature_counts data================:\n";
+        print "\nINFO****:Genome feature_counts data================:\n";
         print Dumper($inputobj->{feature_counts});
     }
     if (defined($inputobj->{cdss}) and @{$inputobj->{cdss}} > 0) {
-        print "genome cdss count=".scalar @{$inputobj->{cdss}}."\n";
-        print "Two genome cdss data, for example================:\n";
-        print Dumper(@{$inputobj->{cdss}}[0..1]);
+        print "\nINFO****:genome cdss count=".scalar @{$inputobj->{cdss}}."\n";
+        #print "\nINFO****:Two genome cdss data, for example================:\n";
+        #print Dumper(@{$inputobj->{cdss}}[0..1]);
     }
     if (defined($inputobj->{mrnas}) and @{$inputobj->{mrnas}} > 0 ) {
-        print "genome mrnas count=".scalar @{$inputobj->{mrnas}}."\n";
-        print "Two genome mrnas data, for example================:\n";
-        print Dumper(@{$inputobj->{mrnas}}[0..1]);
+        print "\nINFO****:genome mrnas count=".scalar @{$inputobj->{mrnas}}."\n";
+        #print "\nINFO****:Two genome mrnas data, for example================:\n";
+        #print Dumper(@{$inputobj->{mrnas}}[0..1]);
     }
+    if (defined($inputobj->{gc_content})) {
+        print "\nINFO****:gc_content=$inputobj->{gc_content}";
+    }
+    if (defined($inputobj->{genetic_code})) {
+        print "\nINFO****:genetic_code=$inputobj->{genetic_code}\n";
+    }
+    #print "\nINFO****:Input data with ontology terms:\n".Dumper($inputgn);
 }
 
 ## Saving annotated genome with the ontology service
 sub _save_genome_with_ontSer {
     my ($self, $input_gn, $params, $message) = @_;
-    print "Calling ontology service!";
+    print "\nCalling ontology service!\n";
 
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
-    # $self->_print_genome_data($gn_with_events);
+    $self->_print_genome_data($gn_with_events);
 
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
     try {
-        #print "Input data with Ontology terms sent to add_annotation_ontology_events:\n".Dumper($gn_with_events);
+        my $gnobj = $gn_with_events->{object};
+        $gnobj->{gc_content} = $gnobj->{gc_content}+0;
+        $gnobj->{genetic_code} = $gnobj->{genetic_code}+0;
+
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
         my $ref = $ontSer_output->{output_ref};
 
@@ -1957,7 +1975,6 @@ sub _save_genome_with_ontSer {
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
-    $genome = $self->_fillRequiredFields($genome);
     print "SEND OFF FOR SAVING\n";
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
@@ -1970,7 +1987,8 @@ sub _save_annotation_results {
     my %gc_rast = %{ $rast_ref };
     my $parameters = $gc_rast{parameters},
     my $message = $gc_rast{message};
-    my $rasted_gn = $genome;
+    #my $rasted_gn = clone($genome);
+    my $rasted_gn = $self->_fillRequiredFields($genome);
 
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
@@ -1979,12 +1997,6 @@ sub _save_annotation_results {
     }
     $self->_check_NC_features($rasted_gn);
 
-    if (defined($rasted_gn->{genetic_code})) {
-        $rasted_gn->{genetic_code} = $rasted_gn->{genetic_code}+0;
-    }
-    if (defined($rasted_gn->{gc_content})) {
-        $rasted_gn->{gc_content} = $rasted_gn->{gc_content}+0;
-    }
     ## Saving annotated genome by GFU client
     #$self->_save_genome_with_gfu($rasted_gn, $parameters, $message);
 
@@ -2333,15 +2345,15 @@ sub _generate_stats_from_aa {
         $gn_stats{contig_count} = undef;
 
         if (defined($gn_info->[10])) {
-            $gn_stats{gc_content} = $gn_info->[10]->{'GC content'};
+            $gn_stats{gc_content} = $gn_info->[10]->{'GC content'}*1.0;
             $gn_stats{contig_count} = $gn_info->[10]->{'N Contigs'};
         }
         else {
             my $asmb_data = $self->_fetch_object_data($gn_ref);
-            $gn_stats{gc_content} = $asmb_data->{gc_content};
-            $gn_stats{contig_count} = $asmb_data->{num_contigs};
+            $gn_stats{gc_content} = $asmb_data->{gc_content}*1.0;
+            $gn_stats{contig_count} = $asmb_data->{num_contigs}+0;
             if( $asmb_data->{feature_counts} ) {
-                $gn_stats{feature_counts} = $asmb_data->{feature_counts};
+                $gn_stats{feature_counts} = $asmb_data->{feature_counts}+0;
                 if( $asmb_data->{feature_counts}->{CDS} ) {
                     $gn_stats{num_features} = $asmb_data->{feature_counts}->{CDS};
                 }
@@ -2350,11 +2362,11 @@ sub _generate_stats_from_aa {
     }
     elsif ($is_meta_assembly || $is_genome) {
         my $gn_data = $self->_fetch_object_data($gn_ref);
-        $gn_stats{gc_content} = $gn_data->{gc_content};
+        $gn_stats{gc_content} = $gn_data->{gc_content}*1.0;
         $gn_stats{contig_count} = $gn_data->{num_contigs};
-        $gn_stats{feature_counts} = $gn_data->{feature_counts};
+        $gn_stats{feature_counts} = $gn_data->{feature_counts}+0;
         if( $gn_data->{num_features} ) {
-            $gn_stats{num_features} = $gn_data->{num_features};
+            $gn_stats{num_features} = $gn_data->{num_features}+0;
         } else {
             $gn_stats{num_features} = $gn_data->{feature_counts}->{CDS};
         }
@@ -2757,7 +2769,7 @@ sub _get_file_lines {
 ##----subs for parsing GFF by Seaver----##
 sub _parse_gff {
     my ($self, $gff_filename, $attr_delimiter) = @_;
-    print "Parsing GFF contents from file $gff_filename \n";
+    print "\nParsing GFF contents from file $gff_filename \n";
 
     my $gff_lines = $self->_get_file_lines($gff_filename);
     print "Read in ".scalar @{$gff_lines}." lines from GFF file $gff_filename\n";
@@ -2898,7 +2910,7 @@ sub rast_genome {
     my $self = shift;
     my($inparams) = @_;
 
-    print "rast_genome input parameter=\n". Dumper($inparams). "\n";
+    print "\nrast_genome input parameter=\n". Dumper($inparams). "\n";
     ## 0. Doing nothing on an invalid input
     my $chk = $self->_validate_KB_objref_name($inparams->{object_ref});
     unless( $chk->{check_passed} ) {
@@ -2923,11 +2935,11 @@ sub rast_genome {
                                     $self->_combine_workflows($rast_ref));
     my $rast_ftrs = $rasted_genome->{features};
     my $rast_ftr_count = scalar @{$rast_ftrs};
-    unless ($rast_ftr_count > 0) {
-        print( "Empty input genome features after full workflow, "
-               ."return an empty object.\n" );
-        return {};
-    }
+    #unless ($rast_ftr_count > 0) {
+    #    print( "Empty input genome features after full workflow, "
+    #           ."return an empty object.\n" );
+    #    return {};
+    #}
 
     print "\n***********RAST on $input_obj_ref resulted in ".$rast_ftr_count." features.\n";
     my $genome_final = $self->_post_rast_ann_call($rasted_genome, $inputgenome, $rast_ref);
@@ -2953,7 +2965,7 @@ sub rast_genome {
     if ($rasted_ftr_count) {
         print "***********The first $prnt_num or fewer rasted features, for example***************\n";
         my $prnt_lines = ($rasted_ftr_count > $prnt_num) ? $prnt_num : $rasted_ftr_count;
-        for my $ftr (@{$ftrs}[0, $prnt_lines - 1]) {
+        for my $ftr (@{$ftrs}[0..$prnt_lines - 1]) {
             my $f_id = $ftr->{id};
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
             my $f_func = $ftr->{ function } // '';
