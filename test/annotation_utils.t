@@ -96,6 +96,8 @@ my $obj_65386_2 = '65386/12/1'; # Methanosarcina_acetivorans_C2A
 my $obj_refseq_GCF = '63171/483/1';  # refseq_GCF_GCF_900128725.1
 my $GEBA_1003_asmb_ann = '63171/569/1';
 my $GEBA_1003_asmb = '63171/564/1';
+my $obj_Sco_RAST = '63171/612/1';
+my $obj_Eco_BlastKOALA = '63171/613/1';
 my $obj_Ani_ATCC1_1015 = '63171/615/1';
 
 # used for function lookup in report testing
@@ -356,7 +358,7 @@ subtest '_get_feature_function_lookup' => sub {
 };
 =cut
 
-#=begin
+=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -1067,7 +1069,8 @@ subtest '_run_rast_workflow_ann' => sub {
     # a refseq genome object in workspace #63171
     lives_ok {
         $ann_genome00 = $annoutil->_run_rast_workflow(
-              $inputgenome00, $rast_ref00->{annotate_workflow});
+              $inputgenome00, $annoutil->_combine_workflows($rast_ref00));
+              #$inputgenome00, $rast_ref00->{annotate_workflow});
     } "_run_rast_workflow on annotation runs successfully on genome $obj_refseq_GCF";
 
     # another genome object in workspace #65386
@@ -1343,7 +1346,7 @@ subtest '_summarize_annotation' => sub {
               $rast_ref2, $final_genome2, $inputgenome2);
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
-#=cut
+=cut
 
 =begin
 # Test _reformat_feature_aliases for RAST annotated objects in prod
@@ -1568,7 +1571,7 @@ subtest '_build_ontology_events' => sub {
 };
 =cut
 
-#=begin
+=begin
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
     my ($save_ret, $out_msg);
@@ -1594,7 +1597,7 @@ subtest '_save_annotation_results' => sub {
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome00, $rast_ref00);
-    } "_save_annotation_results finished on genome $obj_refseq_GCF and returned results.";
+    } "_save_annotation_results finished on genome $obj_refseq_GCF and returned:\n".Dumper($save_ret);
     ok (exists($save_ret->{ref}), "_save_annotation_results succeeded and returned:\n".Dumper($save_ret));
     #my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
@@ -1604,21 +1607,21 @@ subtest '_save_annotation_results' => sub {
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome01, $rast_ref01);
-    } "_save_annotation_results on genome $obj_65386_1 returned as expected.";
+    } "_save_annotation_results on genome $obj_65386_1 returned:".Dumper($save_ret);
     ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # another genome object in workspace #65386
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome02, $rast_ref02);
-    } "_save_annotation_results finished on genome $obj_65386_2 returned as expected.";
+    } "_save_annotation_results finished on genome $obj_65386_2 returned:\n".Dumper($save_ret);
     ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # a genome object
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome1, $rast_ref1);
-    } "_save_annotation_results finished on genome $obj_Ecoli returned as expected";
+    } "_save_annotation_results finished on genome $obj_Ecoli returned:\n".Dumper($save_ret);
     ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
 
     # RAST annotation of an assembly object
@@ -1626,16 +1629,16 @@ subtest '_save_annotation_results' => sub {
     lives_ok {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome2, $rast_ref2);
-    } "_save_annotation_results on assembly $obj_asmb returned expected result.";
+    } "_save_annotation_results on assembly $obj_asmb returned expected result:\n".Dumper($save_ret);
     ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
     my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 };
-#=cut
+=cut
 
 =begin
 #
-## variables for testing _build_workflows, _run_rast_workflow
+## variables for testing _build_workflows, _run_rast_workflow,
 ## _run_rast_genecalls and _pre_rast_call
 my ($gc_wf_ret0, $gc_inputgenome0, $gc_wf0,
     $gc_wf_ret1, $gc_inputgenome1, $gc_wf1,
@@ -1717,8 +1720,9 @@ subtest '_run_rast_workflow' => sub {
     ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($rast_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
+=cut
 
-
+=begin
 # Test _run_rast_genecalls with genome/assembly object refs in prod
 subtest '_run_rast_genecalls' => sub {
     # a genome object from https://narrative.kbase.us/narrative/ws.65386.obj.104
@@ -1745,7 +1749,6 @@ subtest '_run_rast_genecalls' => sub {
     ok (@{$gc_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($gc_gn2, $gc_inputgenome2, 'rast workflow will not run locally');
 };
-
 
 subtest '_validate_KB_objref_name' => sub {
 	my $obj = 'qzhang:narrative_1581052755332/short_one_metagenome';
@@ -2144,8 +2147,10 @@ subtest '_write_gff_from_genome' => sub {
     print "First 20 lines of the GFF file:\n";
     $annoutil->_print_fasta_gff(0, 20, $gff_fpath);
 };
+=cut
 
-subtest 'anno_utils_rast_genome' => sub {
+=begin
+subtest 'anno_utils_rast_genome1' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my ($parms, $rast_ret, $genome_obj, $rast_gn_data);
     $parms = {
@@ -2155,7 +2160,10 @@ subtest 'anno_utils_rast_genome' => sub {
     };
     lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } "annoutil->rast_genome call returns normally on genome $obj_Ecoli.";
+    } "annoutil->rast_genome call ran on genome $obj_Ecoli.";
+    ok (defined($rast_ret), "annoutil->rast_genome returned:\n".Dumper($rast_ret));
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "annoutil->rast_genome returned successfully.");
 
     $parms = {
         "object_ref" => $obj_Echinacea,
@@ -2164,7 +2172,10 @@ subtest 'anno_utils_rast_genome' => sub {
     };
     lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } "annoutil->rast_genome call returns normally on genome $obj_Echinacea.";
+    } "annoutil->rast_genome call ran on genome $obj_Echinacea.";
+    ok (defined($rast_ret), "annoutil->rast_genome returned:\n".Dumper($rast_ret));
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "annoutil->rast_genome returned successfully.");
 
     $parms = {
         "object_ref" => $obj_asmb,
@@ -2174,13 +2185,47 @@ subtest 'anno_utils_rast_genome' => sub {
 
     lives_ok {
         $rast_ret = $annoutil->rast_genome($parms);
-    } "annoutil->rast_genome call returns normally on assembly $obj_asmb.";
-    if(defined($rast_ret) && defined($rast_ret->{output_genome_ref})) {
-        ok (($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/), "rast_genome returns a VALID ref: $rast_ret->{output_genome_ref}");
-    }
+    } "annoutil->rast_genome call ran on assembly $obj_asmb.";
+    ok (keys %{ $rast_ret}, "annoutil->rast_genome returned {}:\n".Dumper($rast_ret));
 };
 
 
+subtest 'anno_utils_rast_genome2' => sub {
+    # testing anno_utils rast_genome using LLBL genome ids from prod
+    my $rast_ret;
+    my $parms = {
+        "object_ref" => $obj_Sco_RAST,
+        "output_genome_name" => "rasted_onto_Sco",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } "annoutil->rast_genome call ran on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret}, "annoutil->rast_genome returned {}:\n".Dumper($rast_ret));
+
+    my $parms = {
+        "object_ref" => $obj_Eco_BlastKOALA,
+        "output_genome_name" => "rasted_Eco_BlastKOALA",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } "annoutil->rast_genome call ran on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret}, "annoutil->rast_genome returned {}:\n".Dumper($rast_ret));
+
+    $parms = {
+        "object_ref" => $obj_Ani_ATCC1_1015,
+        "output_genome_name" => "rasted_Aspergillus_niger_ATCC_1015",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $annoutil->rast_genome($parms);
+    } "annoutil->rast_genome call ran on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret}, "annoutil->rast_genome returned {}:\n".Dumper($rast_ret));
+};
+=cut
+
+=begin
 ## testing Impl_rast_genome_assembly
  # using $GEBA_1003_asmb from prod
  # to investigate the extra features
@@ -2195,9 +2240,9 @@ subtest 'Impl_rast_genome_assembly1' => sub {
 
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } "Impl rast_genome call on $GEBA_1003_asmb returns.";
-    ok ( !defined($rast_ret->{output_genome_ref}),
-         "rast_genome_assembly returned an undef object ref." );
+    } "Impl rast_genome call on $GEBA_1003_asmb returns:\n".Dumper($rast_ret);
+    ok (defined($rast_ret->{output_genome_ref}),
+         "rast_genome_assembly returned an object ref." );
 
     $parms = {
         "object_ref" => "63171/266/3",  # Ecoli_refseq_assembly
@@ -2207,9 +2252,9 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } "Impl rast_genome call on $parms->{object_ref} returns.";
-    ok ( !defined($rast_ret->{output_genome_ref}),
-         "rast_genome_assembly returned an undef object ref." );
+    } "Impl rast_genome call on $parms->{object_ref} returns:\n".Dumper($rast_ret);
+    ok (defined($rast_ret->{output_genome_ref}),
+         "rast_genome_assembly returned an object ref." );
 
     $parms = {
         "object_ref" => $obj_Ecoli,  # Ecoli refseq genome
@@ -2219,8 +2264,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-        print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
-    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns:\n".Dumper($rast_ret);
     ok ($rast_ret->{output_genome_ref}, "success on $parms->{object_ref}");
 
     $parms = {
@@ -2231,8 +2275,7 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-        print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
-    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns:\n".Dumper($rast_ret);
     ok ($rast_ret->{output_genome_ref}, "success on $parms->{object_ref}");
 
     $parms = {
@@ -2243,12 +2286,13 @@ subtest 'Impl_rast_genome_assembly1' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-        print "$parms->{object_ref} rast_genome_assembly returns:\n".Dumper($rast_ret);
-    } "Impl rast_genome_assembly call on $parms->{object_ref} returns.";
-    ok ( !defined($rast_ret->{output_genome_ref}),
-         "rast_genome_assembly returned an undef object ref." );
+    } "Impl rast_genome_assembly call on $parms->{object_ref} returns:\n".Dumper($rast_ret);
+    ok (defined($rast_ret->{output_genome_ref}),
+         "rast_genome_assembly returned an object ref." );
 };
+=cut
 
+=begin
 ## testing Impl_rast_genome_assembly using obj ids from prod ONLY
 subtest 'Impl_rast_genome_assembly2' => sub {
     my $parms = {
@@ -2262,7 +2306,7 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } "Impl rast_genome_assembly call returns normally on genome $obj_Ecoli";
-    ok (keys %{ $rast_ret }, "rast_genome_assembly returns");
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
     ok ($rast_ret->{output_genome_ref} =~ m/[^\\w\\|._-]/,
         "rast_genome_assembly returns a valid ref");
     is ($rast_ret->{output_workspace}, $parms->{output_workspace}, "workspace is correct.");
@@ -2276,9 +2320,11 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     };
     lives_ok {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
-    } 'Impl rast_genome_assembly call returns.';
-    ok (!defined($rast_ret ->{output_genome_ref}),
-        "due to local annotation on assembly with empty features, no rast was run.");
+    } 'Impl rast_genome_assembly call completed.\n';
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "rast_impl.rast_genome_assembly returned an object ref.");
+        #"due to local annotation on assembly with empty features, no rast was run.");
 
     $parms = {
         "object_ref" => "63171/613/1",
@@ -2289,10 +2335,25 @@ subtest 'Impl_rast_genome_assembly2' => sub {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
     ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
-    ok (!defined($rast_ret ->{output_genome_ref}),
-        "due to empty features, no rast was run.");
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "rast_impl.rast_genome_assembly returned an object ref.");
+        #"due to empty features, no rast was run.");
+
     $parms = {
-        "object_ref" => "63171/615/1",
+        "object_ref" => $obj_Sco_RAST,
+        "output_genome_name" => "rasted_onto_Sco",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "rast_impl.rast_genome_assembly returned an object ref.");
+        #"due to empty features, no rast was run.");
+
+    $parms = {
+        "object_ref" => $obj_Ani_ATCC1_1015,
         "output_genome_name" => "rasted_Aspergillus_niger_ATCC_1015",
         "output_workspace" => $ws_name
     };
@@ -2300,8 +2361,9 @@ subtest 'Impl_rast_genome_assembly2' => sub {
         $rast_ret = $rast_impl->rast_genome_assembly($parms);
     } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
     ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
-    ok (!defined($rast_ret ->{output_genome_ref}),
-        "due to empty features, no rast was run.");
+    ok (defined($rast_ret ->{output_genome_ref}),
+        "rast_impl.rast_genome_assembly returned an object ref.");
+        #"due to empty features, no rast was run.");
 };
 =cut
 
@@ -2795,7 +2857,7 @@ subtest 'annoutil_uniq_functions' => sub {
 };
 =cut
 
-=begin
+#=begin
 #
 ## testing bulk_rast_genomes using obj ids from my own workspaces
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
@@ -2820,13 +2882,21 @@ subtest 'bulk_rast_genomes' => sub {
     my $bulk_ann_ret;
     lives_ok {
         $bulk_ann_ret = $annoutil->bulk_rast_genomes($parms);
-    } "annoutil->bulk_rast_genomes call on array of 2 genomes, array of 2 assemblies and input text string returns successfully.";
-    #print "bulk_rast_genomes on input_genomes array returned:\n".Dumper($bulk_ann_ret);
+    } "annoutil->bulk_rast_genomes call on array of 2 genomes, array of 2 assemblies and input text string returns successfully.\n".Dumper($bulk_ann_ret);
+    ok($bulk_ann_ret->{report_ref}, "Annotation report generated!!");
+    ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
+
+    lives_ok {
+        $parms->{input_genomes} = [$obj_Sco_RAST, $obj_Eco_BlastKOALA, $obj_Ani_ATCC1_1015];
+        $parms->{input_text} = '';
+        $parms->{output_GenomeSet_name} = "bulk_llnlSet";
+        $bulk_ann_ret = $annoutil->bulk_rast_genomes($parms);
+    } "annoutil->bulk_rast_genomes call on array of 3 genomes returns:\n".Dumper($bulk_ann_ret);
     ok($bulk_ann_ret->{report_ref}, "Annotation report generated!!");
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
-
+=begin
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 #
