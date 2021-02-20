@@ -358,7 +358,7 @@ subtest '_get_feature_function_lookup' => sub {
 };
 =cut
 
-=begin
+#=begin
 #
 ## Global variables for the annotation process steps to share ##
 #
@@ -1346,7 +1346,7 @@ subtest '_summarize_annotation' => sub {
               $rast_ref2, $final_genome2, $inputgenome2);
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
-=cut
+#=cut
 
 =begin
 # Test _reformat_feature_aliases for RAST annotated objects in prod
@@ -1571,7 +1571,7 @@ subtest '_build_ontology_events' => sub {
 };
 =cut
 
-=begin
+#=begin
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
     my ($save_ret, $out_msg);
@@ -1634,7 +1634,7 @@ subtest '_save_annotation_results' => sub {
     my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
     #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
 };
-=cut
+#=cut
 
 =begin
 #
@@ -2896,7 +2896,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($bulk_ann_ret->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
-=begin
+#=begin
 #
 ## testing bulk_rast_genomes using obj ids from public workspace id of 19217
 #
@@ -2930,7 +2930,7 @@ subtest 'bulk_rast_genomes' => sub {
     ok($rfsq_ann2->{report_ref}, "Annotation report generated!!");
     ok($rfsq_ann2->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
-=cut
+#=cut
 
 RASTTestUtils::clean_up();
 
