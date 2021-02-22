@@ -1414,7 +1414,7 @@ subtest '_fillRequiredFields' => sub {
     foreach (keys %$ret_gn) {
         push(@this_not_that, $_) unless exists $final_genome01->{$_};
     }
-    ok (!@this_not_that, "No new fields added.");
+    ok (@this_not_that, "New fields added:".Dumper(\@this_not_that));
 
     # a genome object in workspace #65386
     @this_not_that = ();
@@ -1423,8 +1423,7 @@ subtest '_fillRequiredFields' => sub {
     foreach (keys %$ret_gn) {
         push(@this_not_that, $_) unless exists $final_genome02->{$_};
     }
-    ok (!@this_not_that, "No new fields added.");
-    print "Diff_arr=".Dumper(\@this_not_that);
+    ok (@this_not_that, "New fields added:".Dumper(\@this_not_that));
 
     # a genome object
     @this_not_that = ();
@@ -1617,7 +1616,7 @@ subtest '_save_genome_with_gfu' => sub {
 };
 =cut
 
-#=begin
+=begin
 # Test _save_annotation_results with genome/assembly object refs in prod
 subtest '_save_annotation_results' => sub {
     my ($save_ret, $out_msg);
@@ -1676,11 +1675,9 @@ subtest '_save_annotation_results' => sub {
         ($save_ret, $out_msg) = $annoutil->_save_annotation_results(
                                             $final_genome2, $rast_ref2);
     } "_save_annotation_results on assembly $obj_asmb returned expected result:\n".Dumper($save_ret);
-    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded.");
-    my $saved_anno_data = $annoutil->_fetch_object_data($save_ret->{ref});
-    #print "***One OntSer saved RAST annotation object data****\n".Dumper($saved_anno_data);
+    ok (exists($save_ret->{ref}), "_save_annotation_results succeeded: $save_ret->{ref}");
 };
-#=cut
+=cut
 
 =begin
 #
