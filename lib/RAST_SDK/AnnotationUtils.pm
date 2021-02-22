@@ -1646,10 +1646,10 @@ sub _summarize_annotation {
 }
 
 ## Saving annotated genome with the GFU client
-sub _save_genome_with_gfu {
+sub _gfu_save_genome {
     my ($self, $input_gn, $parameters, $message) = @_;
-    print "\nCalling GFU.save_one_genome!\n";
- 
+    print "\nCalling GFU.save_one_genome...\n";
+
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
     try {
@@ -1673,16 +1673,6 @@ sub _save_genome_with_gfu {
 
         $gaout_info = $gaout->{info};
         my $ref = $gaout_info->[6]."/".$gaout_info->[0]."/".$gaout_info->[4];
-
-        Bio::KBase::KBaseEnv::add_object_created({
-            ref => $ref,
-            description => "RAST annotation"
-        });
-        Bio::KBase::Utilities::print_report_message({
-            message => "<pre>".$message."</pre>",
-            append => 0,
-            html => 0
-        });
         print "One genome has been saved with GFU.save_one_genome.\n";
         return ({ref => $ref}, $message);
     } catch {
@@ -1691,6 +1681,25 @@ sub _save_genome_with_gfu {
         return ({}, $err_msg);
     };
 }
+
+sub _save_genome_with_gfu {
+    my ($self, $input_gn, $parameters, $message) = @_;
+
+    my ($saved_ref, $msg) = $self->_gfu_save_genome($input_gn, $parameters, $message);
+    if( keys %$saved_ref ) {
+        Bio::KBase::KBaseEnv::add_object_created({
+            ref => $saved_ref->{ref},
+            description => "RAST annotation"
+        });
+        Bio::KBase::Utilities::print_report_message({
+            message => "<pre>".$message."</pre>",
+            append => 0,
+            html => 0
+        });
+    }
+    return ($saved_ref, $msg);
+}
+
 ## End saving annotated genome with the GFU client
 
 # Re-assuring the genome object has all required data items by
@@ -1705,16 +1714,8 @@ sub _fillRequiredFields {
         ];
     }
     if (!defined($input_obj->{molecule_type})) {
-        print "FOUND no 'molecule_type' in RASTed genome data!";
+        print "\nFOUND no 'molecule_type' in RASTed genome data!";
         $input_obj->{molecule_type} = "DNA";
-    }
-    if (!defined($input_obj->{features})) {
-        $input_obj->{features} = [];
-    }
-    foreach my $ftr (@{$input_obj->{features}}) {
-        if (!defined($ftr->{cdss})) {
-            $ftr->{cdss} = [];
-        }
     }
     if (!defined($input_obj->{feature_counts})) {
         $input_obj->{feature_counts} = {
@@ -1732,9 +1733,6 @@ sub _fillRequiredFields {
     }
     if (!defined($input_obj->{genetic_code})) {
         $input_obj->{genetic_code} = 11;
-    }
-    if (defined($input_obj->{gc_content})) {
-        $input_obj->{gc_content} = $input_obj->{gc_content}*1.0;
     }
     if (!defined($input_obj->{dna_size})) {
         $input_obj->{dna_size} = 0;
@@ -1766,31 +1764,38 @@ sub _fillRequiredFields {
     if (!defined($input_obj->{contig_lengths})) {
         $input_obj->{contig_lengths} = [];
     }
-    if (!defined($input_obj->{non_coding_features})) {
-        $input_obj->{non_coding_features} = [];
-    }
-    if (!defined($input_obj->{cdss})) {
-        $input_obj->{cdss} = [];
-    }
-    foreach my $cds (@{$input_obj->{cdss}}) {
-        $cds = $self->_reformat_feature_aliases($cds);
-        if (!defined($cds->{protein_md5})) {
-            $cds->{protein_md5} = $cds->{md5};
-        }
-    }
-    if (!defined($input_obj->{mrnas})) {
-        $input_obj->{mrnas} = [];
-    }
-    foreach my $mrna (@{$input_obj->{mrnas}}) {
-        if (!defined($mrna->{dna_sequence_length})) {
-            $mrna->{dna_sequence_length} = 0;
-        }
-    }
     if (!defined($input_obj->{warnings})) {
         $input_obj->{warnings} = [];
     }
     if (!defined($input_obj->{ontology_events})) {
         $input_obj->{ontology_events} = [];
+    }
+    for my $feature_type (qw( features non_coding_features cdss mrnas )) {
+        if (!defined($input_obj->{$feature_type})) {
+            $input_obj->{$feature_type} = [];
+        }
+        foreach my $ftr (@{$input_obj->{$feature_type}}) {
+            if (!defined($ftr->{dna_sequence_length})) {
+                $ftr->{dna_sequence_length} = 0;
+            }
+            $ftr = $self->_reformat_feature_aliases($ftr);
+        }
+    }
+    foreach my $ftr (@{$input_obj->{features}}) {
+        if (!defined($ftr->{cdss})) {
+            $ftr->{cdss} = [];
+        }
+    }
+    foreach my $cds (@{$input_obj->{cdss}}) {
+        if (!defined($cds->{protein_md5})) {
+            $cds->{protein_md5} = $cds->{md5};
+        }
+    }
+    if (defined($input_obj->{genetic_code})) {
+        $input_obj->{genetic_code} = $input_obj->{genetic_code}+0;
+    }
+    if (defined($input_obj->{gc_content})) {
+        $input_obj->{gc_content} = $input_obj->{gc_content}+0;
     }
     return $input_obj;
 }
@@ -1945,16 +1950,25 @@ sub _save_genome_with_ontSer {
     my ($self, $input_gn, $params, $message) = @_;
     print "\nCalling ontology service!\n";
 
-    my $input_gn = $self->_fillRequiredFields($input_gn);
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
+    my ($saved_ref, $msg) = $self->_gfu_save_genome($input_gn, $params, $message);
+    if (keys %$saved_ref) {
+        print "\nPassing input_ref $saved_ref->{ref}!\n";
+        $gn_with_events->{input_ref} = $saved_ref->{ref};
+    } else {
+        print "\nPassing object data!\n";
+        $gn_with_events->{object} = $input_gn;
+    }
     $self->_print_genome_data($gn_with_events);
 
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
     try {
-        my $gnobj = $gn_with_events->{object};
-        $gnobj->{gc_content} = $gnobj->{gc_content}+0;
-        $gnobj->{genetic_code} = $gnobj->{genetic_code}+0;
+        if (keys %{$gn_with_events->{object}}) {
+            my $gnobj = $gn_with_events->{object};
+            $gnobj->{gc_content} = $gnobj->{gc_content}+0;
+            $gnobj->{genetic_code} = $gnobj->{genetic_code}+0;
+        }
 
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
         my $ref = $ontSer_output->{output_ref};
@@ -1982,6 +1996,7 @@ sub _save_genome_with_ontSer {
 sub _save_annotation_results {
     my ($self, $genome, $rast_ref) = @_;
 
+    $genome = $self->_fillRequiredFields($genome);
     print "\nSEND OFF FOR SAVING\n";
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
@@ -2010,6 +2025,7 @@ sub _save_annotation_results {
     return ($save_ref, $save_msg) if keys %$save_ref;
 
     ## If annotaton_ontology_api saving fails, save annotated genome by GFU client
+    print "\n*****annotaton_ontology_api saving failed, now call GFU to save the RAST annotation.\n";
     return $self->_save_genome_with_gfu($genome, $parameters, $message);
 }
 
