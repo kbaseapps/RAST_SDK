@@ -2406,7 +2406,18 @@ subtest 'Impl_rast_genome_assembly2' => sub {
     ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
     ok (defined($rast_ret ->{output_genome_ref}),
         "rast_impl.rast_genome_assembly returned an object ref.");
-        #"due to empty features, no rast was run.");
+
+    $parms = {
+        "object_ref" => "63171/630/1",  # a user's genome
+        "output_genome_name" => "rasted_Nitrospiraceae_by_rast_genome",
+        "output_workspace" => $ws_name
+    };
+    lives_ok {
+        $rast_ret = $rast_impl->rast_genome_assembly($parms);
+    } "Impl rast_genome_assembly call returns normally on genome $parms->{object_ref}";
+    ok (keys %{ $rast_ret }, "rast_genome_assembly returns:\n".Dumper($rast_ret));
+    ok (defined($rast_ret->{output_genome_ref}),
+        "rast_impl.rast_genome_assembly returned an object ref.");
 };
 =cut
 
@@ -2585,7 +2596,23 @@ subtest 'Impl_rast_genomes_assemblies' => sub {
 =cut
 
 =begin
-subtest 'Impl_annotate_genome' => sub {
+subtest 'Impl_annotate_genome1' => sub {
+    my ($rast_ret, $msg);
+    my $parms = {
+        "input_genome" => '63171/630/1',  # a user's genome
+        "output_genome" => "rasted_Nitrospiraceae",
+        "workspace" => $ws_name,
+        "domain" => 'Bacteria',
+        "call_features_CDS_prodigal" => '1'
+    };
+
+    throws_ok {
+        $rast_ret = $rast_impl->annotate_genome($parms);
+    } qr/Error invoking method call_/,
+      "test Impl annotate_genome on a genome died.";
+};
+
+subtest 'Impl_annotate_genome2' => sub {
     my $assembly_obj_name = "Acidilobus_sp._CIS.fna";
     my $assembly_ref = RASTTestUtils::prepare_assembly($assembly_obj_name);
     my $genome_obj_name = 'Acidilobus_sp_CIS';
