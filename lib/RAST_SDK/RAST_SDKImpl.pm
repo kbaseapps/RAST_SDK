@@ -1087,9 +1087,13 @@ sub annotate_process {
     });
     return ({"ref" => $gn_ref}, $message);
 =cut
-    $genome = $ann_util->_fillRequiredFields($genome);
-    my $input = $ann_util->_build_ontology_events($genome, $parameters);
-    $ann_util->_save_genome_with_ontSer( $input, $message );
+    my $input = $ann_util->_fillRequiredFields($genome);
+    my $g_data_type = (ref($input) eq 'HASH') ? 'ref2Hash' : ref($input);
+    if ($g_data_type eq 'GenomeTypeObject') {
+        print "INFO***Genome input passed for save is of type of $g_data_type, prepare it before saving***.\n";
+        $input = $input->prepare_for_return();
+    }
+    return $ann_util->_save_genome_with_ontSer($input, $parameters, $message);
 }
 
 # Get the scientific name for a NCBI taxon.
@@ -1314,7 +1318,7 @@ sub annotate_genome
     my $config_file = $ENV{ KB_DEPLOYMENT_CONFIG };
     my $config = Config::Simple->new($config_file)->get_block('RAST_SDK');
 
-    my $output = $self->annotate_process($params, $config, $ctx);
+    my ($output, $message) = $self->annotate_process($params, $config, $ctx);
     my $reportout = Bio::KBase::KBaseEnv::create_report({
         workspace_name => $params->{workspace},
         report_object_name => $params->{output_genome}.".report",
