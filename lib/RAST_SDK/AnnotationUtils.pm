@@ -1650,6 +1650,24 @@ sub _gfu_save_genome {
     my ($self, $input_gn, $parameters, $message) = @_;
     print "\nCalling GFU.save_one_genome...\n";
 
+    if ((!defined($parameters->{output_workspace})
+	    || $parameters->{output_workspace} eq '')
+            && defined($parameters->{workspace})) {
+        # 'output_workspace' is required
+        $parameters->{output_workspace} = $parameters->{workspace};
+    }
+    if ((!defined($parameters->{output_genome_name})
+	    || $parameters->{output_genome_name} eq '')
+            && defined($parameters->{output_genome_name})) {
+        # 'output_genome_name' is required
+        $parameters->{output_genome_name} = $parameters->{output_genome};
+    }
+    if (!defined($parameters->{output_workspace})) {
+        croak "ERROR: 'output_workspace' is missing in parameters.\n";
+    }
+    if (!defined($parameters->{output_genome_name})) {
+        croak "ERROR: 'output_genome_name' is missing in parameters.\n";
+    }
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
     try {
@@ -1676,7 +1694,7 @@ sub _gfu_save_genome {
         print "One genome has been saved with GFU.save_one_genome.\n";
         return ({ref => $ref}, $message);
     } catch {
-        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:\n".Dumper($_);
+        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error:\n".Dumper($_);
         print $err_msg;
         return ({}, $err_msg);
     };
@@ -1985,7 +2003,7 @@ sub _save_genome_with_ontSer {
         });
         return ({ref => $ref}, $message);
     } catch {
-        my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:$_\n";
+        my $err_msg = "ERROR: Calling anno_ontSer_client.add_annotation_ontology_events failed with error message:\n$_\n";
         print $err_msg;
         return ({}, $err_msg);
     };
