@@ -1097,6 +1097,7 @@ sub annotate_process {
         # 'output_workspace' is required for _save_genome_with_ontSer
         $parameters->{output_workspace} = $parameters->{workspace};
     }
+    $parameters->{output_genome_name} = $parameters->{output_genome};
     return $ann_util->_save_genome_with_ontSer($input, $parameters, $message);
 }
 
