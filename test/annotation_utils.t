@@ -2602,14 +2602,13 @@ subtest 'Impl_annotate_genome1' => sub {
         "input_genome" => '63171/630/1',  # a user's genome
         "output_genome" => "rasted_Nitrospiraceae",
         "workspace" => $ws_name,
-        "domain" => 'Bacteria',
-        "call_features_CDS_prodigal" => '1'
+        "domain" => 'Bacteria'
     };
 
     throws_ok {
         $rast_ret = $rast_impl->annotate_genome($parms);
     } qr/Error invoking method call_/,
-      "test Impl annotate_genome on a genome died.";
+      "test Impl annotate_genome on a genome died due to error of invoking method call-.";
 };
 
 subtest 'Impl_annotate_genome2' => sub {

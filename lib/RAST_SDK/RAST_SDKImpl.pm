@@ -1093,6 +1093,10 @@ sub annotate_process {
         print "INFO***Genome input passed for save is of type of $g_data_type, prepare it before saving***.\n";
         $input = $input->prepare_for_return();
     }
+    if (!defined($parameters->{output_workspace}) || $parameters->{output_workspace} eq '') {
+        # 'output_workspace' is required for _save_genome_with_ontSer
+        $parameters->{output_workspace} = $parameters->{workspace};
+    }
     return $ann_util->_save_genome_with_ontSer($input, $parameters, $message);
 }
 

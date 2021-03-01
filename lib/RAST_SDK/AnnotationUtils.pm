@@ -1676,7 +1676,7 @@ sub _gfu_save_genome {
         print "One genome has been saved with GFU.save_one_genome.\n";
         return ({ref => $ref}, $message);
     } catch {
-        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:$_\n";
+        my $err_msg = "ERROR: Calling GFU.save_one_genome failed with error message:\n".Dumper($_);
         print $err_msg;
         return ({}, $err_msg);
     };
