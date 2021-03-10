@@ -1,7 +1,7 @@
 #
 # Define basic display information
 #
-name     : Annotate Microbial Genome with RASTtk - v1.073 (<font color=red>Deprecated by Annotate Genome/Assembly with RASTtk - v1.073 in 6 months</font>)
+name     : Annotate Microbial Genome with RASTtk - v1.073 (<font color=red>Deprecated by 'Annotate Genome/Assembly with RASTtk - v1.073' in 6 months</font>)
 
 tooltip  : |
     Annotate or re-annotate bacterial or archaeal genome using RASTtk (Rapid Annotations using Subsystems Technology toolkit).
