@@ -1,7 +1,7 @@
 #
 # Define basic display information
 #
-name     : Annotate Microbial Assembly with RASTtk - v1.073
+name     : Annotate Microbial Assembly with RASTtk - v1.073 (<font color=red size=2>*Deprecated by 'Annotate Genome/Assembly with RASTtk - v1.073' in 6 months</font>)
 
 tooltip  : |
     Annotate a bacterial or archaeal assembly using RASTtk (Rapid Annotations using Subsystems Technology toolkit).
