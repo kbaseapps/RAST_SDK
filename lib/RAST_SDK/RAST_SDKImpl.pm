@@ -448,25 +448,33 @@ sub annotate_process {
 
     my $genecalls = "";
     if (defined($parameters->{call_features_CDS_glimmer3}) &&
-        $parameters->{call_features_CDS_glimmer3} == 1)	{
-        if (@{$inputgenome->{features}} > 0) {
-#           $inputgenome->{features} = [];
-            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
-        }
-        if (length($genecalls) == 0) {
-            $genecalls = "Standard features were called using: ";
+        $parameters->{call_features_CDS_glimmer3} == 1) {
+        if ($parameters->{genetic_code} == 25) { ## glimmer3 cannot handle GC25
+            if (!defined($parameters->{call_features_CDS_prodigal})
+                || $parameters->{call_features_CDS_prodigal} !=1) {
+                $parameters->{call_features_CDS_prodigal} = 1;
+            }
+            $parameters->{call_features_CDS_glimmer3} = 0;
         } else {
-            $genecalls .= "; ";
-        }
-        $genecalls .= "glimmer3";
-        push(@{$workflow->{stages}},{
-            name => "call_features_CDS_glimmer3",
-            "glimmer3_parameters" => {
-                            "min_training_len" => "2000"
-                     }
-        });
-        if (!defined($contigobj)) {
-            Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
+            if (@{$inputgenome->{features}} > 0) {
+            #   $inputgenome->{features} = [];
+                $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3 or Prodigal.\n";
+            }
+            if (length($genecalls) == 0) {
+                $genecalls = "Standard features were called using: ";
+            } else {
+                $genecalls .= "; ";
+            }
+            $genecalls .= "glimmer3";
+            push(@{$workflow->{stages}},{
+                name => "call_features_CDS_glimmer3",
+                "glimmer3_parameters" => {
+                                "min_training_len" => "2000"
+                         }
+            });
+            if (!defined($contigobj)) {
+                Bio::KBase::Utilities::error("Cannot train and call glimmer genes on a genome with no contigs > 2000 nt!\n");
+            }
         }
     }
     if (defined($parameters->{call_features_CDS_prodigal}) &&
@@ -1291,7 +1299,8 @@ sub annotate_genome
 	    input_contigset => undef,
 	    genetic_code => 11,
 	    domain => "Bacteria",
-	    scientific_name => "Unknown species",
+	    output_genome_name => 'rast_annotated_genome',
+	    scientific_name => 'Unknown species',
 	    call_features_rRNA_SEED => 1,
 	    call_features_tRNA_trnascan => 1,
 	    call_selenoproteins => 1,
