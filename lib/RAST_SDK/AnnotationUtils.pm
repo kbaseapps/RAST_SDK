@@ -804,26 +804,36 @@ sub _set_genecall_workflow {
     $extragenecalls .= ".\n" if (length($extragenecalls) > 0);
 
     my $genecalls = "";
-    if (defined($parameters->{call_features_CDS_glimmer3})
-            && $parameters->{call_features_CDS_glimmer3} == 1)   {
-        if (@{$inputgenome->{features}} > 0) {
-            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
-#           $inputgenome->{features} = [];
-        }
-        if (length($genecalls) == 0) {
-            $genecalls = "Standard features were called using: ";
+
+    if (defined($parameters->{call_features_CDS_glimmer3}) &&
+        $parameters->{call_features_CDS_glimmer3} == 1) {
+        ## skipping Glimmer3 gene call if genetic_code has a value of 25
+        if ($parameters->{genetic_code} == 25) { ## glimmer3 cannot handle GC25
+            $parameters->{call_features_CDS_glimmer3} = 0;
+            if (!defined($parameters->{call_features_CDS_prodigal})
+                || $parameters->{call_features_CDS_prodigal} !=1) {
+                $parameters->{call_features_CDS_prodigal} = 1;
+            }
         } else {
-            $genecalls .= "; ";
+            if (@{$inputgenome->{features}} > 0) {
+                $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
+    #           $inputgenome->{features} = [];
+            }
+            if (length($genecalls) == 0) {
+                $genecalls = "Standard features were called using: ";
+            } else {
+                $genecalls .= "; ";
+            }
+            $genecalls .= "glimmer3";
+            push(@{$workflow->{stages}},{
+                name => "call_features_CDS_glimmer3",
+                "glimmer3_parameters" => {
+                            "min_training_len" => "2000"}
+            });
         }
-        $genecalls .= "glimmer3";
-        push(@{$workflow->{stages}},{
-            name => "call_features_CDS_glimmer3",
-            "glimmer3_parameters" => {
-                        "min_training_len" => "2000"}
-        });
     }
     if (defined($parameters->{call_features_CDS_prodigal})
-            && $parameters->{call_features_CDS_prodigal} == 1)   {
+            && $parameters->{call_features_CDS_prodigal} == 1) {
         if (@{$inputgenome->{features}} > 0) {
             $message .= "The existing gene features were cleared due to selection of gene calling with Prodigal.\n";
             #$inputgenome->{features} = [];
@@ -1883,6 +1893,11 @@ sub _create_onto_terms {
 sub _build_ontology_events {
     my ($self, $input_gn, $args) = @_;
 
+    if (!defined($args->{output_workspace}) || $args->{output_workspace} eq '') {
+        if(defined($args->{workspace})) {
+            $args->{output_workspace} = $args->{workspace};
+        }
+    }
     my $gn_with_events = {
         object => $input_gn,
         events => [],
