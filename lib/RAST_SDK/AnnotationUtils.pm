@@ -810,6 +810,7 @@ sub _set_genecall_workflow {
         ## skipping Glimmer3 gene call if genetic_code has a value of 25
         if ($parameters->{genetic_code} == 25) { ## glimmer3 cannot handle GC25
             $parameters->{call_features_CDS_glimmer3} = 0;
+            $parameters->{call_features_prophage_phispy} = 0;
             if (!defined($parameters->{call_features_CDS_prodigal})
                 || $parameters->{call_features_CDS_prodigal} !=1) {
                 $parameters->{call_features_CDS_prodigal} = 1;
@@ -1668,7 +1669,7 @@ sub _gfu_save_genome {
     }
     if ((!defined($parameters->{output_genome_name})
 	    || $parameters->{output_genome_name} eq '')
-            && defined($parameters->{output_genome_name})) {
+            && defined($parameters->{output_genome})) {
         # 'output_genome_name' is required
         $parameters->{output_genome_name} = $parameters->{output_genome};
     }
