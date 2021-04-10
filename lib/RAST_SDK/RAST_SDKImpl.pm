@@ -1101,6 +1101,7 @@ sub annotate_process {
         print "INFO***Genome input passed for save is of type of $g_data_type, prepare it before saving***.\n";
         $input = $input->prepare_for_return();
     }
+    $parameters->{output_genome_name} = $parameters->{output_genome};
     return $ann_util->_save_genome_with_ontSer($input, $parameters, $message);
 }
 
@@ -1299,7 +1300,6 @@ sub annotate_genome
 	    input_contigset => undef,
 	    genetic_code => 11,
 	    domain => "Bacteria",
-	    output_genome_name => 'rast_annotated_genome',
 	    scientific_name => 'Unknown species',
 	    call_features_rRNA_SEED => 1,
 	    call_features_tRNA_trnascan => 1,
@@ -1611,8 +1611,8 @@ sub annotate_genomes
 		}
 
 		my $currentparams = Bio::KBase::Utilities::args({},[],{
-			output_genome => $input.".RAST",
-			input_genome => $genomes->[$i],
+		    output_genome => $input.".RAST",
+		    input_genome => $genomes->[$i],
 		    input_contigset => undef,
 		    genetic_code => 11,
 		    domain => "Bacteria",
