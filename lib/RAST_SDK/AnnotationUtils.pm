@@ -2994,11 +2994,11 @@ sub rast_genome {
                                     $self->_combine_workflows($rast_ref));
     my $rast_ftrs = $rasted_genome->{features};
     my $rast_ftr_count = scalar @{$rast_ftrs};
-    #unless ($rast_ftr_count > 0) {
-    #    print( "Empty input genome features after full workflow, "
-    #           ."return an empty object.\n" );
-    #    return {};
-    #}
+    unless ($rast_ftr_count > 0) {
+        print( "Empty input genome features after full workflow, "
+               ."return an empty object.\n" );
+        return {};
+    }
 
     print "\n***********RAST on $input_obj_ref resulted in ".$rast_ftr_count." features.\n";
     my $genome_final = $self->_post_rast_ann_call($rasted_genome, $inputgenome, $rast_ref);
@@ -3022,8 +3022,8 @@ sub rast_genome {
 
     my $prnt_num = 10;
     if ($rasted_ftr_count) {
-        print "***********The first $prnt_num or fewer rasted features, for example***************\n";
         my $prnt_lines = ($rasted_ftr_count > $prnt_num) ? $prnt_num : $rasted_ftr_count;
+        print "\n*******The first $prnt_lines or fewer rasted features, for example*******\n";
         for my $ftr (@{$ftrs}[0..$prnt_lines - 1]) {
             my $f_id = $ftr->{id};
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
