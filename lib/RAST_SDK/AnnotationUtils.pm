@@ -604,9 +604,9 @@ sub _set_messageNcontigs {
     my $message = "";
     if (defined($inputgenome->{domain})) {
         $tax_domain = ($inputgenome->{domain} =~ m/^([ABV])/o) ? $inputgenome->{domain} : 'U';
-    }
-    if ($tax_domain eq 'U' ) {
-        $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+        if ($tax_domain eq 'U' ) {
+            $message .= "Some RAST tools will not run unless the taxonomic domain is Archaea, Bacteria, or Virus. \nThese tools include: call selenoproteins, call pyrroysoproteins, call crisprs, and call prophage phispy features.\nYou may not get the results you were expecting with your current domain of $inputgenome->{domain}.\n";
+        }
     }
     if (defined($contigobj)) {
         my $count = 0;
@@ -685,12 +685,17 @@ sub _set_genecall_workflow {
 
     my %rast_details = %{ $rast_in };
     my $parameters = $rast_details{parameters};
-    my $message = $rast_details{message};
-    my $tax_domain = $rast_details{tax_domain};
+    my $message = $rast_details{message} // '';
+    my $tax_domain = $rast_details{tax_domain} // '';
     my $contigobj = $rast_details{contigobj};
 
-
-    if (!defined($contigobj)) {
+    if (!defined($contigobj) or $rast_details{is_genome}) {
+        if ($rast_details{is_genome}) {
+            print "For a genome, skip all gene calls!";
+        }
+        if (!defined($contigobj)) {
+            print "Without a defined contigobj, skip all gene calls!";
+        }
         $rast_details{genecall_workflow} = {};
         return \%rast_details;
     }
@@ -808,7 +813,8 @@ sub _set_genecall_workflow {
     if (defined($parameters->{call_features_CDS_glimmer3}) &&
         $parameters->{call_features_CDS_glimmer3} == 1) {
         ## skipping Glimmer3 gene call if genetic_code has a value of 25
-        if ($parameters->{genetic_code} == 25) { ## glimmer3 cannot handle GC25
+        if (defined($parameters->{genetic_code}) && $parameters->{genetic_code} == 25) {
+            ## glimmer3 cannot handle GC25
             $parameters->{call_features_CDS_glimmer3} = 0;
             $parameters->{call_features_prophage_phispy} = 0;
             if (!defined($parameters->{call_features_CDS_prodigal})
@@ -909,8 +915,8 @@ sub _set_annotation_workflow {
 
     my %rast_details = %{ $rast_in };
     my $parameters = $rast_details{parameters};
-    my $message = $rast_details{message};
-    my $tax_domain = $rast_details{tax_domain};
+    my $message = $rast_details{message} // '';
+    my $tax_domain = $rast_details{tax_domain} // '';
 
     my $annomessage = "";
     my $v1flag = 0;
@@ -1025,10 +1031,10 @@ sub _set_annotation_workflow {
 sub _renumber_features {
     my ($self, $rast_ref, $inputgenome) = @_;
     my %rast_details = %{ $rast_ref };
-    my $message = $rast_details{message};
-    my $annomessage = $rast_details{annomessage};
-    my $genecalls = $rast_details{genecalls};
-    my $extragenecalls = $rast_details{extragenecalls};
+    my $message = $rast_details{message} // '';
+    my $annomessage = $rast_details{annomessage} // '';
+    my $genecalls = $rast_details{genecalls} // '';
+    my $extragenecalls = $rast_details{extragenecalls} // '';
 
     my $workflow = {stages => []};
 
@@ -1178,6 +1184,10 @@ sub _pre_rast_call {
 sub _run_rast_workflow {
     my ($self, $in_genome, $workflow) = @_;
 
+    if( !keys %{$workflow} or !defined($workflow) ) {
+        print "******INFO: Empty workflow--Nothing is run.******\n";
+        return $in_genome;
+    }
     my $count = scalar @{$in_genome->{features}};
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
@@ -2113,7 +2123,6 @@ sub _build_workflows {
 
     ## refactor 3 -- set gene call workflow
     $rast_ref = $self->_set_genecall_workflow($rast_ref, $inputgenome);
-    return (undef, $inputgenome) unless $rast_ref->{genecall_workflow};
 
     ## refactor 4 -- set annotation workflow
     $rast_ref = $self->_set_annotation_workflow($rast_ref);
