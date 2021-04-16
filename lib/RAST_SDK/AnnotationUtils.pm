@@ -1221,8 +1221,8 @@ sub _run_rast_workflow {
             print "\nOriginal workflow stages:\n".Dumper($wf_stages);
             for( my $si = 0; $si < @{$wf_stages}; $si++) {
                 my $stg = $wf_stages->[$si];
-                if( $stg->{name} == "call_features_CDS_glimmer3" or
-                    $stg->{name} == "call_features_prophage_phispy" ) {
+                if( $stg->{name} eq "call_features_CDS_glimmer3" or
+                    $stg->{name} eq "call_features_prophage_phispy" ) {
                     splice @{$wf_stages}, $si, 1;
                 }
             }
