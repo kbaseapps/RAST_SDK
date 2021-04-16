@@ -1206,8 +1206,8 @@ sub _run_rast_workflow {
     my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     try {
         $rasted_gn = $rast_client->run_pipeline($rasted_gn, $workflow);
-        print "********SUCCEEDED: calling rast run_pipeline on $in_genome->{id} with\n".
-               Dumper($workflow)."\n";
+        print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow).
+              "\non $in_genome->{id}\n";
     } catch {
         print "********ERROR calling rast run_pipeline with\n".Dumper($workflow).
               "\non $in_genome->{id}\n";
@@ -2981,7 +2981,7 @@ sub _combine_workflows {
     my $wf_renum = $rast_ref->{renumber_workflow};
 
     if ($wf_genecall->{stages} && @{$wf_genecall->{stages}}) {
-        print "There are genecall workflows:\n".Dumper($wf_genecall);
+        # print "There are genecall workflows:\n".Dumper($wf_genecall);
         push @{$comp_workflow->{stages}}, @{$wf_genecall->{stages}};
     }
     if ($wf_annotate->{stages} && @{$wf_annotate->{stages}}) {
@@ -2994,7 +2994,7 @@ sub _combine_workflows {
         push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
     }
 
-    print "The combined workflows are like:\n".Dumper($comp_workflow);
+    # print "The combined workflows are like:\n".Dumper($comp_workflow);
     return $comp_workflow;
 }
 

@@ -1750,13 +1750,14 @@ subtest '_run_rast_workflow' => sub {
     my $params_SR1 = {
          output_genome_name => 'SR1_RAAC1_rasted',
          output_workspace => $ws_name,
+	 genetic_code => 25,
          object_ref => '63171/651/1'
     };
 
     lives_ok {
         ($gc_wf_ret3, $gc_inputgenome3) = $annoutil->_build_workflows($params_SR1);
         $SR1_wf = $annoutil->_combine_workflows($gc_wf_ret3);
-    } "_build_workflows returns workflow stages on '63171/651/1':\n".Dumper($SR1_wf);
+    } "_build_workflows returns workflow on '63171/651/1':\n".Dumper($SR1_wf);
     lives_ok {
         $rast_gn3 = $annoutil->_run_rast_workflow($gc_inputgenome3, $SR1_wf);
     } '_run_rast_workflow call returned.';
