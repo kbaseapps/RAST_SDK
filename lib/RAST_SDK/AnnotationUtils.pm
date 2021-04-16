@@ -981,14 +981,15 @@ sub _set_annotation_workflow {
             "resolve_overlapping_features_parameters" => {}
         });
     }
-    if (defined($parameters->{call_features_prophage_phispy})
-            && $parameters->{call_features_prophage_phispy} == 1) {
-        if ($tax_domain ne 'U' ) {
-            push(@{$workflow->{stages}}, {name => "call_features_prophage_phispy"});
-        } else {
-            $message .= "Did not call call features prophage phispy because tax_domain is 'U'\n\n";
-        }
-    }
+    ## skipping call_features_prophage_phispy gene calls because it failed some genomes##
+    #if (defined($parameters->{call_features_prophage_phispy})
+    #        && $parameters->{call_features_prophage_phispy} == 1) {
+    #    if ($tax_domain ne 'U' ) {
+    #        push(@{$workflow->{stages}}, {name => "call_features_prophage_phispy"});
+    #    } else {
+    #        $message .= "Did not call call features prophage phispy because tax_domain is 'U'\n\n";
+    #    }
+    #}
     $annomessage .= ".\n" if (length($annomessage) > 0);
 
     $rast_details{annotate_workflow} = $workflow;
@@ -2989,7 +2990,7 @@ sub _combine_workflows {
         push @{$comp_workflow->{stages}}, @{$wf_annotate->{stages}};
     }
     ## could be skipped: running the renumber_features workflow
-    if ($wf_renum->{stages} && @{$wf_renum->{stages}}) {
+    if ($rast_ref->{is_assembly} && $wf_renum->{stages} && @{$wf_renum->{stages}}) {
         # print "There is a renumber feature workflow:\n".Dumper($wf_renum);
         push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
     }
