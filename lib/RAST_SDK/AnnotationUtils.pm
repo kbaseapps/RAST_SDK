@@ -689,16 +689,36 @@ sub _set_genecall_workflow {
     my $tax_domain = $rast_details{tax_domain} // '';
     my $contigobj = $rast_details{contigobj};
 
-    if (!defined($contigobj) or $rast_details{is_genome}) {
-        if ($rast_details{is_genome}) {
-            print "For a genome, skip all gene calls!";
-        }
-        if (!defined($contigobj)) {
-            print "Without a defined contigobj, skip all gene calls!";
-        }
+    if ($rast_details{is_genome}) {
+        print "INFO: For a genome, no gene calls!\n";
         $rast_details{genecall_workflow} = {};
         return \%rast_details;
     }
+
+    if (!defined($contigobj) and
+        $parameters->{call_features_CDS_glimmer3} == 1) {
+        print "INFO: Cannot train and call glimmer genes on genome with no contigs > 2000 nt!\n";
+        if (!defined($parameters->{call_features_CDS_prodigal})
+            || $parameters->{call_features_CDS_prodigal} !=1) {
+            $parameters->{call_features_CDS_prodigal} = 1;
+        }
+        $parameters->{call_features_CDS_glimmer3} = 0;
+        $parameters->{call_features_prophage_phispy} = 0;
+    }
+
+    my ($wf, $msg, $extragc, $gcs) = $self->_generate_gc_workflow(
+                                              $inputgenome, $parameters,
+                                              $message, $tax_domain);
+    $rast_details{genecall_workflow} = $wf;
+    $rast_details{message} = $msg;
+    $rast_details{extragenecalls} = $extragc;
+    $rast_details{genecalls} = $gcs;
+
+    return \%rast_details;
+}
+
+sub _generate_gc_workflow {
+    my ($self, $inputgenome, $parameters, $message, $tax_domain) = @_;
 
     my $workflow = {stages => []};
     my $extragenecalls = "";
@@ -812,32 +832,21 @@ sub _set_genecall_workflow {
 
     if (defined($parameters->{call_features_CDS_glimmer3}) &&
         $parameters->{call_features_CDS_glimmer3} == 1) {
-        ## skipping Glimmer3 gene call if genetic_code has a value of 25
-        if (defined($parameters->{genetic_code}) && $parameters->{genetic_code} == 25) {
-            ## glimmer3 cannot handle GC25
-            $parameters->{call_features_CDS_glimmer3} = 0;
-            $parameters->{call_features_prophage_phispy} = 0;
-            if (!defined($parameters->{call_features_CDS_prodigal})
-                || $parameters->{call_features_CDS_prodigal} !=1) {
-                $parameters->{call_features_CDS_prodigal} = 1;
-            }
-        } else {
-            if (@{$inputgenome->{features}} > 0) {
-                $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
-    #           $inputgenome->{features} = [];
-            }
-            if (length($genecalls) == 0) {
-                $genecalls = "Standard features were called using: ";
-            } else {
-                $genecalls .= "; ";
-            }
-            $genecalls .= "glimmer3";
-            push(@{$workflow->{stages}},{
-                name => "call_features_CDS_glimmer3",
-                "glimmer3_parameters" => {
-                            "min_training_len" => "2000"}
-            });
+        if (@{$inputgenome->{features}} > 0) {
+            $message .= "The existing gene features were cleared due to selection of gene calling with Glimmer3.\n";
+#           $inputgenome->{features} = [];
         }
+        if (length($genecalls) == 0) {
+            $genecalls = "Standard features were called using: ";
+        } else {
+            $genecalls .= "; ";
+        }
+        $genecalls .= "glimmer3";
+        push(@{$workflow->{stages}},{
+            name => "call_features_CDS_glimmer3",
+            "glimmer3_parameters" => {
+                        "min_training_len" => "2000"}
+        });
     }
     if (defined($parameters->{call_features_CDS_prodigal})
             && $parameters->{call_features_CDS_prodigal} == 1) {
@@ -871,12 +880,7 @@ sub _set_genecall_workflow {
 #		}
 #	}
 
-    $rast_details{genecall_workflow} = $workflow;
-    $rast_details{message} = $message;
-    $rast_details{extragenecalls} = $extragenecalls;
-    $rast_details{genecalls} = $genecalls;
-
-    return \%rast_details;
+    return ($workflow, $message, $extragenecalls, $genecalls);
 }
 
 #
@@ -1188,6 +1192,7 @@ sub _run_rast_workflow {
         print "******INFO: Empty workflow--Nothing is run.******\n";
         return $in_genome;
     }
+
     my $count = scalar @{$in_genome->{features}};
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
@@ -1198,15 +1203,41 @@ sub _run_rast_workflow {
               Dumper($workflow)." is of type of $g_data_type, prepare it**********.\n";
         $rasted_gn = $rasted_gn->prepare_for_return();
     }
+    my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
     try {
-        my $rast_client = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
         $rasted_gn = $rast_client->run_pipeline($rasted_gn, $workflow);
-        print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($workflow).
-              "\non $in_genome->{id}.\n";
+        print "********SUCCEEDED: calling rast run_pipeline on $in_genome->{id} with\n".
+               Dumper($workflow)."\n";
     } catch {
         print "********ERROR calling rast run_pipeline with\n".Dumper($workflow).
-              "\non $in_genome->{id}:\n$_\n";
-        $rasted_gn = $in_genome;
+              "\non $in_genome->{id}\n";
+        my $err_msg = $_;
+        print "Error msg:\n$err_msg.\n";
+        if ($err_msg =~ /glimmer/) {
+            # deactivate glimmer and call_features_prophage_phispy gene calls
+            # by removing their corresponding entries in the workflow stages,
+            # and run the modified workflow again
+            my $wf_stages = $workflow->{stages};
+            print "\nOriginal workflow stages:\n".Dumper($wf_stages);
+            for( my $si = 0; $si < @{$wf_stages}; $si++) {
+                my $stg = $wf_stages->[$si];
+                if( $stg->{name} == "call_features_CDS_glimmer3" or
+                    $stg->{name} == "call_features_prophage_phispy" ) {
+                    splice @{$wf_stages}, $si, 1;
+                }
+            }
+            print "\nNew workflow stages:\n".Dumper($wf_stages);
+            my $new_wf = {stages => $wf_stages};
+            try {
+                $rasted_gn = $rast_client->run_pipeline($rasted_gn, $new_wf);
+                print "********SUCCEEDED: calling rast run_pipeline with\n".Dumper($new_wf).
+                      "\non $in_genome->{id}.\n";
+            } catch {
+                print "********ERROR calling rast run_pipeline with\n".Dumper($new_wf).
+                      "\non $in_genome->{id}:\n$_\n";
+                $rasted_gn = $in_genome;
+            }
+        }
     };
     return $rasted_gn;
 }
@@ -2950,7 +2981,7 @@ sub _combine_workflows {
     my $wf_renum = $rast_ref->{renumber_workflow};
 
     if ($wf_genecall->{stages} && @{$wf_genecall->{stages}}) {
-        # print "There are genecall workflows:\n".Dumper($wf_genecall);
+        print "There are genecall workflows:\n".Dumper($wf_genecall);
         push @{$comp_workflow->{stages}}, @{$wf_genecall->{stages}};
     }
     if ($wf_annotate->{stages} && @{$wf_annotate->{stages}}) {
@@ -2963,6 +2994,7 @@ sub _combine_workflows {
         push @{$comp_workflow->{stages}}, @{$wf_renum->{stages}};
     }
 
+    print "The combined workflows are like:\n".Dumper($comp_workflow);
     return $comp_workflow;
 }
 
@@ -2992,7 +3024,7 @@ sub rast_genome {
     ## 1. build the workflows for RAST-ing
     my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
     unless( $rast_ref ) {
-        print "INFO: Cannot call genes on genome with no contigs!\n";
+        print "INFO: Cannot annotate without rast pipeline setting!\n";
         return {};
     }
 

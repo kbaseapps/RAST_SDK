@@ -1696,28 +1696,19 @@ subtest '_build_workflows' => sub {
     } "_build_workflows returns normally on $obj_asmb\n";
     my $expWF = {
        'stages' => [
-		     {
-		       'name' => 'call_features_rRNA_SEED'
-		     },
-		     {
-		       'name' => 'call_features_tRNA_trnascan'
-		     },
+		     {'name' => 'call_features_rRNA_SEED'},
+		     {'name' => 'call_features_tRNA_trnascan'},
 		     {
 		       'name' => 'call_features_repeat_region_SEED',
 		       'repeat_region_SEED_parameters' => {
 							    'min_length' => '100',
-							    'min_identity' => '95'
-							  }
+							    'min_identity' => '95'}
 		     },
 		     {
-		       'glimmer3_parameters' => {
-						  'min_training_len' => '2000'
-						},
+		       'glimmer3_parameters' => {'min_training_len' => '2000'},
 		       'name' => 'call_features_CDS_glimmer3'
 		     },
-		     {
-		       'name' => 'call_features_CDS_prodigal'
-		     }
+             {  'name' => 'call_features_CDS_prodigal'}
 		   ]
     };
     $gc_wf2 = $gc_wf_ret2->{genecall_workflow};
@@ -1753,6 +1744,24 @@ subtest '_run_rast_workflow' => sub {
     } '_run_rast_workflow call returns ERROR due to kmer data absence or other causes.';
     ok (@{$rast_gn2->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($rast_gn2, $gc_inputgenome2, 'empty workflow, nothing changed.');
+
+    # another assembly object that will break glimmer3
+    my ($rast_gn3, $gc_wf_ret3, $gc_inputgenome3, $SR1_wf);
+    my $params_SR1 = {
+         output_genome_name => 'SR1_RAAC1_rasted',
+         output_workspace => $ws_name,
+         object_ref => '63171/651/1'
+    };
+
+    lives_ok {
+        ($gc_wf_ret3, $gc_inputgenome3) = $annoutil->_build_workflows($params_SR1);
+        $SR1_wf = $annoutil->_combine_workflows($gc_wf_ret3);
+    } "_build_workflows returns workflow stages on '63171/651/1':\n".Dumper($SR1_wf);
+    lives_ok {
+        $rast_gn3 = $annoutil->_run_rast_workflow($gc_inputgenome3, $SR1_wf);
+    } '_run_rast_workflow call returned.';
+    ok (@{$rast_gn3->{features}} == 0, "Returned genome has NO features.");
+    cmp_deeply($rast_gn3, $gc_inputgenome3, 'Empty features, no genes called no annotations.');
 };
 #=cut
 
