@@ -47,6 +47,21 @@ parameters :
             A string of genome/assembly ids/names delimited by semicolon(;), newline or bar(|)
         long-hint : |
             This list is in addition to the input genomes/assemblies above. Example names: Carsonella_rudii_PC;Carsonella_rudii_CE [no spaces] or IDs 21677/17/1;21677/16/1; or delimited by new lines (list each name or ID on a separate line). You can also mix names and IDs as long as there are no spaces (e.g., Carsonella_rudii_PC;21677/18/1).
+    scientific_name :
+        ui-name : |
+            Scientific Name
+        short-hint : |
+            The scientific name to assign to the genome as found at https://www.ncbi.nlm.nih.gov/taxonomy. This App will assign the same scientific name to all genomes in this bulk annotation operation. If you need greater granularity for scientific name assignment, please use the Annotate Microbial Assembly App.
+    domain :
+        ui-name : |
+            Domain
+        short-hint : |
+            The domain of life of the organism being annotated. Bacteria and Archaea are acceptable values.
+    genetic_code :
+        ui-name : |
+            Genetic Code
+        short-hint : |
+            The genetic code used in translating to protein sequences. See https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for more information on genetic codes. This App will assign the same genetic code to all genomes in this bulk annotation operation. If you need greater granularity for genetic code assignment, please use the Annotate Microbial Assembly App.
 
     output_GenomeSet_name :
         ui-name : |

@@ -2295,6 +2295,22 @@ sub _validate_KB_objref_name {
     return $ret;
 }
 
+sub _sci_domain_gc_params {
+    my ($self, $params) = @_;
+    if (!defined($params->{scientific_name})
+        || $params->{scientific_name} eq '') {
+        $params->{scientific_name} = "Unknown species";
+    }
+    if (!defined($params->{genetic_code})) {
+        $params->{genetic_code} = 11;
+    }
+    if (!defined($params->{domain})
+        || $params->{domain} eq '') {
+        $params->{domain} = "Bacteria";
+    }
+    return $params;
+}
+
 sub _check_annotation_params {
     my ($self, $params) = @_;
 
@@ -2316,7 +2332,6 @@ sub _check_annotation_params {
     elsif ($params->{output_workspace} !~ m/[^\\w:._-]/) {
         croak $invald1.$params->{output_workspace}.'\n';
     }
-
     my $req2 = "'object_ref' is required for running rast_genome.\n";
     if (!defined($params->{object_ref}) || $params->{object_ref} eq '') {
         croak $req2;
@@ -2325,21 +2340,10 @@ sub _check_annotation_params {
         || $params->{output_genome_name} eq '') {
         $params->{output_genome_name} = "rast_annotated_genome";
     }
-    if (!defined($params->{scientific_name})
-        || $params->{scientific_name} eq '') {
-        $params->{scientific_name} = "Unknown species";
-    }
-    if (!defined($params->{genetic_code})) {
-        $params->{genetic_code} = 11;
-    }
-    if (!defined($params->{domain})
-        || $params->{domain} eq '') {
-        $params->{domain} = "Bacteria";
-    }
     if (!defined($params->{create_report})) {
         $params->{create_report} = 0;
     }
-    return $params;
+    return $self->_sci_domain_gc_params($params);
 }
 
 sub _check_bulk_annotation_params {
@@ -2411,7 +2415,7 @@ sub _check_bulk_annotation_params {
         || $params->{domain} eq '') {
         $params->{domain} = "Bacteria";
     }
-    return $params;
+    return $self->_sci_domain_gc_params($params);
 }
 
 
@@ -3108,7 +3112,7 @@ sub rast_genome {
 #
 ## Helper function 1 for bulk_rast_genomes
 sub _build_param_from_obj {
-    my ($self, $obj, $chk, $ws, $out_genomeSet) = @_;
+    my ($self, $obj, $chk, $ws, $bparams, $out_genomeSet) = @_;
 
     my $obj_info = $self->_fetch_object_info($obj, $chk, $ws);
     return undef unless $obj_info;
@@ -3119,6 +3123,9 @@ sub _build_param_from_obj {
         object_ref => $obj,
         output_workspace => $ws,
         output_genome_name => $out_genomeSet . '_' .$obj_name,
+        genetic_code => $bparams->{genetic_code},
+        scientific_name => $bparams->{scientific_name},
+        domain => $bparams->{domain},
         create_report => 0
     };
 }
@@ -3154,7 +3161,7 @@ sub _get_bulk_rast_parameters {
         $chk = $self->_validate_KB_objref_name($asmb);
         next unless $chk->{check_passed};
         next if $self->_value_in_array($asmb, $bulk_inparams);
-        my $tmp_parm = $self->_build_param_from_obj($asmb, $chk, $ws, $out_genomeSet);
+        my $tmp_parm = $self->_build_param_from_obj($asmb, $chk, $ws, $params, $out_genomeSet);
         push @$bulk_inparams, $tmp_parm if defined $tmp_parm;
     }
 
@@ -3162,7 +3169,7 @@ sub _get_bulk_rast_parameters {
         $chk = $self->_validate_KB_objref_name($gn);
         next unless $chk->{check_passed};
         next if $self->_value_in_array($gn, $bulk_inparams);
-        my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $out_genomeSet);
+        my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $params, $out_genomeSet);
         push @{$bulk_inparams}, $tmp_parm if defined $tmp_parm;
     }
 
@@ -3173,7 +3180,7 @@ sub _get_bulk_rast_parameters {
             $chk = $self->_validate_KB_objref_name($gn);
             next unless $chk->{check_passed};
             next if $self->_value_in_array($gn, $bulk_inparams);
-            my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $out_genomeSet);
+            my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $params, $out_genomeSet);
             push @{$bulk_inparams}, $tmp_parm if defined $tmp_parm;
         }
     }

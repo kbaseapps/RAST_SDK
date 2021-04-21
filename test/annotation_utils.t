@@ -819,9 +819,6 @@ subtest '_set_annotation_workflow' => sub {
             },
             { 'resolve_overlapping_features_parameters' => {},
               'name' => 'resolve_overlapping_features'
-            },
-            {
-              'name' => 'call_features_prophage_phispy'
             }
         ]
     };
@@ -1313,7 +1310,7 @@ subtest '_summarize_annotation' => sub {
               $rast_ref2, $final_genome2, $inputgenome2);
     } "_summarize_annotation runs successfully on assembly $obj_asmb";
 };
-=cut
+#=cut
 
 =begin
 # Test _reformat_feature_aliases for RAST annotated objects in prod
@@ -1646,7 +1643,7 @@ subtest '_save_annotation_results' => sub {
 };
 =cut
 
-#=begin
+=begin
 #
 ## variables for testing _build_workflows, _run_rast_workflow,
 ## _run_rast_genecalls and _pre_rast_call
@@ -1717,8 +1714,10 @@ subtest '_build_workflows' => sub {
     ok (@{$gc_inputgenome2->{contigs}} > 0,
         "inputgenome (assembly) has ".scalar @{$gc_inputgenome2->{contigs}}." contig(s).");
 };
+=cut
 
-#=begin
+
+=begin
 # Test _run_rast_workflow with genome/assembly object refs in prod
 subtest '_run_rast_workflow' => sub {
     # a genome object from workspace #65386
@@ -1764,7 +1763,7 @@ subtest '_run_rast_workflow' => sub {
     ok (@{$rast_gn3->{features}} == 0, "Returned genome has NO features.");
     cmp_deeply($rast_gn3, $gc_inputgenome3, 'Empty features, no genes called no annotations.');
 };
-#=cut
+=cut
 
 =begin
 # Test _run_rast_genecalls with genome/assembly object refs in prod
@@ -2553,7 +2552,6 @@ subtest '_get_bulk_rast_parameters' => sub {
     cmp_deeply( $param_objrefs, set(@$input_arr),
                 "bulk input_text parameter has been correctly parsed.");
 };
-
 
 ## testing Impl_rast_genomes_assemblies using obj ids from prod ONLY
 subtest 'Impl_rast_genomes_assemblies' => sub {
