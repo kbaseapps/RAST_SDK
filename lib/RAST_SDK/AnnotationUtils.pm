@@ -160,10 +160,13 @@ sub _get_contigs_from_fastafile {
     my $array = [split(/\>/, $fasta)];
     for (my $i=0; $i < @{$array}; $i++) {
         if (scalar @contigs > $self->{max_contigs}) {
-            Bio::KBase::Exceptions::ArgumentValidationError->throw(
-                error => 'too many contigs',
-                method_name => 'RAST_SDK::AnnotationUtils._get_contigs_from_fastafile'
-            );
+            # If number of contigs exceeds the limit, return {} so that downstream can skip it.
+            # Bio::KBase::Exceptions::ArgumentValidationError->throw(
+            #    error => 'too many contigs',
+            #    method_name => 'RAST_SDK::AnnotationUtils._get_contigs_from_fastafile'
+            #);
+            print "******Too many contigs, this assembly won't be annotated by RAST_SDK.\n";
+            return (undef, {});
         }
         if (length($array->[$i]) > 0) {
             my $subarray = [split(/\|\|\|/,$array->[$i])];
@@ -200,10 +203,10 @@ sub _get_contigs {
     my ($self, $obj) = @_;
 
     my $chk = $self->_validate_KB_objref_name($obj);
-    return {} unless $chk->{check_passed};
+    return ({}, {}) unless $chk->{check_passed};
 
     my $obj_info = $self->_fetch_object_info($obj, $chk);
-    return {} unless $obj_info;
+    return ({}, {}) unless $obj_info;
 
     my $ret_obj = {
         _reference => $obj,
@@ -219,9 +222,11 @@ sub _get_contigs {
     if ($obj_info->[2] =~ /Assembly/) {
         my $fpath = $self->_get_fasta_from_assembly($obj);
         ($contigs, $contigID_hash) = $self->_get_contigs_from_fastafile($fpath);
+        return ({}, {}) unless defined($contigs);
+
         $ret_obj->{contigs} = $contigs;
 
-        my $sortedarray = [sort { $a->{sequence} cmp $b->{sequence} } @{$ret_obj->{contigs}}];
+        my $sortedarray = [sort {$a->{sequence} cmp $b->{sequence}} @{$ret_obj->{contigs}}];
         my $str = "";
         for (my $i=0; $i < @{$sortedarray}; $i++) {
             if (length($str) > 0) {
@@ -552,6 +557,7 @@ sub _set_parameters_by_input {
             $contigID_hash) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
+    return ((), {}) unless ($contigobj);
 
     $parameters->{genetic_code} = $inputgenome->{genetic_code};
     $parameters->{domain} = $inputgenome->{domain};
@@ -2141,6 +2147,7 @@ sub _build_workflows {
     my (%rast_details, $rast_ref);
     ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
                                     $parameters, $inputgenome);
+    return ({}, {}) unless $rast_ref;
 
     # 2. merge with the default gene call settings
     %rast_details = %{ $rast_ref };
