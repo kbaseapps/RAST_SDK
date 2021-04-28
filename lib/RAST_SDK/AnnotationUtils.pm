@@ -557,7 +557,7 @@ sub _set_parameters_by_input {
             $contigID_hash) = $self->_create_inputgenome_from_assembly(
                                                     $inputgenome, $input_obj_ref);
     }
-    return ((), {}) unless ($contigobj);
+    return ((), {}) unless (keys %$contigobj);
 
     $parameters->{genetic_code} = $inputgenome->{genetic_code};
     $parameters->{domain} = $inputgenome->{domain};
@@ -2147,7 +2147,7 @@ sub _build_workflows {
     my (%rast_details, $rast_ref);
     ($rast_ref, $inputgenome) = $self->_set_parameters_by_input(
                                     $parameters, $inputgenome);
-    return ({}, {}) unless $rast_ref;
+    return ((), {}) unless (keys %$rast_ref);
 
     # 2. merge with the default gene call settings
     %rast_details = %{ $rast_ref };
@@ -3035,8 +3035,8 @@ sub rast_genome {
 
     ## 1. build the workflows for RAST-ing
     my ($rast_ref, $inputgenome) = $self->_build_workflows($params);
-    unless( $rast_ref ) {
-        print "INFO: Cannot annotate without rast pipeline setting!\n";
+    unless( keys %$rast_ref ) {
+        print "******INFO: Cannot annotate without rast pipeline setting!\n";
         return {};
     }
 
