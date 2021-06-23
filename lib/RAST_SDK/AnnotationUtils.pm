@@ -3265,7 +3265,7 @@ sub bulk_rast_genomes {
             output_name => $out_genomeSet,
             desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
         });
-        print "********SUCCEEDED: generated a GenomeSet of ".scalar @$anngns." annotated genoms.";
+        print "********SUCCEEDED: generated a GenomeSet of ".scalar @$anngns." annotated genomes.";
         return {
             "output_genomeSet_ref"=>$ws."/".$out_genomeSet,
             "output_workspace"=>$ws,
