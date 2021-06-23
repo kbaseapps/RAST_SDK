@@ -30,6 +30,11 @@ suggestions :
 # Configure the display and description of the parameters
 #
 parameters :
+    input_genomeset :
+        ui-name : |
+            A GenomeSet
+        short-hint : |
+            A KBaseSearch.GenomeSet to be reannotated
     input_genomes :
         ui-name : |
             Genomes

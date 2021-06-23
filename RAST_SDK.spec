@@ -257,6 +257,7 @@ module RAST_SDK {
         typedef structure {
             list<data_obj_ref> input_genomes;
             list<data_obj_ref> input_assemblies;
+            genomeSet_ref input_genomeset;
             string input_text;
             string scientific_name;
             int genetic_code;

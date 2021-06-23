@@ -3,8 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org
-our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK.git';
-our $GIT_COMMIT_HASH = '805abca81a1515cd2766b0b74381cdb0de15d09d';
+our $VERSION = '1.9.1';
+our $GIT_URL = 'https://github.com/qzzhang/RAST_SDK.git';
+our $GIT_COMMIT_HASH = 'e68552cfcd87096ff428e84b00b2f5060f1568d0';
 
 =head1 NAME
 
@@ -1158,7 +1159,7 @@ sub new
 
     if ($self->can('_init_instance'))
     {
-        $self->_init_instance();
+	$self->_init_instance();
     }
     return $self;
 }
@@ -1344,9 +1345,9 @@ sub annotate_genome
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
     if (@_bad_returns) {
-        my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
-        Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
-                                       method_name => 'annotate_genome');
+	my $msg = "Invalid returns passed to annotate_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'annotate_genome');
     }
     return($return);
 }
@@ -2180,6 +2181,7 @@ $output is a RAST_SDK.BulkRastGenomesAssembliesOutput
 BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 	input_text has a value which is a string
 	scientific_name has a value which is a string
 	genetic_code has a value which is an int
@@ -2189,12 +2191,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	output_workspace has a value which is a string
 	output_GenomeSet_name has a value which is a string
 data_obj_ref is a string
+genomeSet_ref is a string
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
 	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 	output_workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
-genomeSet_ref is a string
 
 </pre>
 
@@ -2207,6 +2209,7 @@ $output is a RAST_SDK.BulkRastGenomesAssembliesOutput
 BulkRastGenomesAssembliesParams is a reference to a hash where the following keys are defined:
 	input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+	input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 	input_text has a value which is a string
 	scientific_name has a value which is a string
 	genetic_code has a value which is an int
@@ -2216,12 +2219,12 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	output_workspace has a value which is a string
 	output_GenomeSet_name has a value which is a string
 data_obj_ref is a string
+genomeSet_ref is a string
 BulkRastGenomesAssembliesOutput is a reference to a hash where the following keys are defined:
 	output_GenomeSet_ref has a value which is a RAST_SDK.genomeSet_ref
 	output_workspace has a value which is a string
 	report_name has a value which is a string
 	report_ref has a value which is a string
-genomeSet_ref is a string
 
 
 =end text
@@ -3187,6 +3190,7 @@ a string
 a reference to a hash where the following keys are defined:
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 input_text has a value which is a string
 scientific_name has a value which is a string
 genetic_code has a value which is an int
@@ -3205,6 +3209,7 @@ output_GenomeSet_name has a value which is a string
 a reference to a hash where the following keys are defined:
 input_genomes has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
+input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 input_text has a value which is a string
 scientific_name has a value which is a string
 genetic_code has a value which is an int
