@@ -2950,7 +2950,7 @@ subtest 'annoutil_uniq_functions' => sub {
 };
 =cut
 
-#=begin
+=begin
 #
 ## testing bulk_rast_genomes using obj ids from my own workspaces
 ## When GFU.save_one_genome failed to save, no rasted genome object(s) is created,
@@ -3024,7 +3024,32 @@ subtest 'bulk_rast_genomes' => sub {
     ok($rfsq_ann2->{report_ref}, "Annotation report generated!!");
     ok($rfsq_ann2->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
-#=cut
+=cut
+
+#
+## testing bulk_rast_genomes using obj ids from public workspace id of 19217 and my ws 63171
+#
+subtest 'bulk_rast_genomes' => sub {
+    my $params = {
+        "input_assemblies" => [],
+        "output_GenomeSet_name" => "bulk_genomeSet",
+        "output_workspace" => $ws_name
+    };
+    my $refseq_gn1 = "19217/172902/1";
+    my $refseq_gn2 = "19217/330276/1";
+    my $gnset = "63171/699/1";
+    my ($rfsq_ann_set);
+
+    lives_ok {
+        $params->{input_genomeset} = $gnset;
+        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2];
+        $params->{input_text} = '';
+        $rfsq_ann_set = $annoutil->bulk_rast_genomes($params);
+    } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
+    print "bulk_rast_genomes and genome array and a genomeset returned:\n".Dumper($rfsq_ann_set);
+    ok($rfsq_ann_set->{report_ref}, "Annotation report generated!!");
+    ok($rfsq_ann_set->{output_genomeSet_ref}, "Annotated genomeSet saved!");
+};
 
 RASTTestUtils::clean_up();
 

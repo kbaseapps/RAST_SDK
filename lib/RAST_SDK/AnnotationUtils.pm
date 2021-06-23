@@ -3119,13 +3119,21 @@ sub rast_genome {
 #
 ## Helper function 1 for bulk_rast_genomes
 sub _build_param_from_obj {
-    my ($self, $obj, $chk, $ws, $bparams, $out_genomeSet) = @_;
+    my ($self, $obj, $ws, $bparams, $blk_params) = @_;
+
+    return undef if $self->_value_in_array($obj, $blk_params);
+
+    my $chk = $self->_validate_KB_objref_name($obj);
+    return undef unless $chk->{check_passed};
 
     my $obj_info = $self->_fetch_object_info($obj, $chk, $ws);
     return undef unless $obj_info;
 
     $obj = $obj_info->[6].'/'.$obj_info->[0].'/'.$obj_info->[4];
     my $obj_name = $obj_info->[1];
+
+    my $out_genomeSet = $bparams->{output_GenomeSet_name};
+
     return {
         object_ref => $obj,
         output_workspace => $ws,
@@ -3138,7 +3146,7 @@ sub _build_param_from_obj {
 }
 
 #
-## Helper function 3 for bulk_rast_genomes
+## Helper function 2 for bulk_rast_genomes
 ## Parse the inputs into an array $bulk_inparams of the following object structure:
  # {
  #    object_ref => $asmb,
@@ -3156,39 +3164,44 @@ sub _get_bulk_rast_parameters {
     my ($params) = @_;
 
     my $ws = $params->{output_workspace};
-    my $out_genomeSet = $params->{output_GenomeSet_name};
     my $in_assemblies = $params->{input_assemblies};
     my $in_genomes = $params->{input_genomes};
+    my $in_genomeset_ref = $params->{input_genomeset};
     my $in_text = $params->{input_text};
 
-    my $chk = {};
-    my $bulk_inparams = ();
+    print "*********Input genomes------\n".Dumper($in_genomes)."\n";
 
-    for my $asmb (@$in_assemblies) {
-        $chk = $self->_validate_KB_objref_name($asmb);
-        next unless $chk->{check_passed};
-        next if $self->_value_in_array($asmb, $bulk_inparams);
-        my $tmp_parm = $self->_build_param_from_obj($asmb, $chk, $ws, $params, $out_genomeSet);
-        push @$bulk_inparams, $tmp_parm if defined $tmp_parm;
+    my $bulk_inparams = ();
+    my $tmp_parm = undef;
+
+    # If a genomeSet object is given in the input, fetch the genome refs and add them to
+    # the $in_genomes array first.
+    if ($in_genomeset_ref) {
+        my $genomeset_data = $self->_fetch_object_data($in_genomeset_ref);
+        my $genomeset_elements = $genomeset_data->{elements};
+        for my $ele_key (keys(%{$genomeset_elements})) {
+            my $ele_ref = $genomeset_elements->{$ele_key}->{ref};
+            push @$in_genomes, $ele_ref unless $self->_str_in_array($ele_ref, $in_genomes);
+        }
+        print "*********Input genomes including GenomeSet input------\n".Dumper($in_genomes)."\n";
     }
 
     for my $gn (@$in_genomes) {
-        $chk = $self->_validate_KB_objref_name($gn);
-        next unless $chk->{check_passed};
-        next if $self->_value_in_array($gn, $bulk_inparams);
-        my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $params, $out_genomeSet);
-        push @{$bulk_inparams}, $tmp_parm if defined $tmp_parm;
+        $tmp_parm = $self->_build_param_from_obj($gn, $ws, $params, $bulk_inparams);
+        push @$bulk_inparams, $tmp_parm if defined($tmp_parm);
+    }
+
+    for my $asmb (@$in_assemblies) {
+        $tmp_parm = $self->_build_param_from_obj($asmb, $ws, $params, $bulk_inparams);
+        push @$bulk_inparams, $tmp_parm if defined($tmp_parm);
     }
 
     if ($in_text) {
         my $input_list = [split(/[\n;\|]+/, $in_text)];
         $input_list = $self->_uniq_ref($input_list);
         for my $gn (@{$input_list}) {         
-            $chk = $self->_validate_KB_objref_name($gn);
-            next unless $chk->{check_passed};
-            next if $self->_value_in_array($gn, $bulk_inparams);
-            my $tmp_parm = $self->_build_param_from_obj($gn, $chk, $ws, $params, $out_genomeSet);
-            push @{$bulk_inparams}, $tmp_parm if defined $tmp_parm;
+            $tmp_parm = $self->_build_param_from_obj($gn, $ws, $params, $bulk_inparams);
+            push @$bulk_inparams, $tmp_parm if defined($tmp_parm);
         }
     }
     return $bulk_inparams;
@@ -3252,7 +3265,7 @@ sub bulk_rast_genomes {
             output_name => $out_genomeSet,
             desc => 'GenmeSet generated from RAST annotated genomes/assemblies'
         });
-        print "********SUCCEEDED: generated a GenomeSet of ".scalar @$anngns." annotated genoms.";
+        print "********SUCCEEDED: generated a GenomeSet of ".scalar @$anngns." annotated genomes.";
         return {
             "output_genomeSet_ref"=>$ws."/".$out_genomeSet,
             "output_workspace"=>$ws,
@@ -3298,6 +3311,16 @@ sub _value_in_array {
      return 0;
 }
 
+#
+## for use to check if a string value is in an array of string
+#
+sub _str_in_array {
+    my ($self, $str, $arr) = @_;
+    foreach my $val (@$arr) {
+        return 1 if $val eq $str;
+    }
+    return 0;
+}
 #
 ## Initialization
 #
