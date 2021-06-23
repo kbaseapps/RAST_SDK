@@ -3169,6 +3169,8 @@ sub _get_bulk_rast_parameters {
     my $in_genomeset_ref = $params->{input_genomeset};
     my $in_text = $params->{input_text};
 
+    print "*********Input genomes------\n".Dumper($in_genomes)."\n";
+
     my $bulk_inparams = ();
     my $tmp_parm = undef;
 
@@ -3181,6 +3183,7 @@ sub _get_bulk_rast_parameters {
             my $ele_ref = $genomeset_elements->{$ele_key}->{ref};
             push @$in_genomes, $ele_ref unless $self->_str_in_array($ele_ref, $in_genomes);
         }
+        print "*********Input genomes including GenomeSet input------\n".Dumper($in_genomes)."\n";
     }
 
     for my $gn (@$in_genomes) {
