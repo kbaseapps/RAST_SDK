@@ -79,8 +79,8 @@ unless ( $ret_metag ) {
     done_testing;
     exit 1;
 }
+#print Dumper($ret_metag);
 
-print Dumper($ret_metag);
 my $input_obj_ref = $ret_metag->{metagenome_ref};
 
 my $input_fasta_file = catfile($rast_metag_dir, 'prodigal_input.fasta');
@@ -89,6 +89,7 @@ my ($fasta_contents, $gff_contents, $attr_delimiter) = ([], [], "=");
 
 $input_fasta_file = $mgutil->_write_fasta_from_ama($input_obj_ref);
 $gff_filename = $mgutil->_write_gff_from_ama($input_obj_ref);
+
 # fetch protein sequences and gene IDs from fasta and gff files
 $fasta_contents = $mgutil->_parse_fasta($input_fasta_file);
 ($gff_contents, $attr_delimiter) = $mgutil->_parse_gff(
@@ -165,7 +166,7 @@ my $test_ftrs = [{
  ],
  }];
 
-
+=begin
 subtest '_check_annotation_params_metag' => sub {
     my $obj = '1234/56/7';
 
@@ -481,7 +482,7 @@ subtest '_parse_prodigal_results' => sub {
     ok( %trans_tab , "Prodigal GFF parsing returns translation table.");
 };
 
-subtest '_prodigal_gene_call' => sub {
+subtest '_prodigal_gene_call_1' => sub {
     my $p_input = $fasta1;
     my $md = 'meta';
     my $out_type = 'gff';
@@ -697,7 +698,6 @@ subtest '_generate_metag_report' => sub {
     ok( exists($ret_rpt->{output_metagenome_ref}), 'Report generation returns output_gemome_ref.');
 };
 
-=begin
 # testing rast_metagenome and annotate_genome using obj ids from appdev ONLY
 subtest 'rast_metagenome_appdev' => sub {
     # an appdev assembly
@@ -775,7 +775,6 @@ subtest '_save_metagenome_appdev' => sub {
     is ($mymetag->{metagenome_info}[1], $out_name, 'saved metagenome name is correct');
     is ($mymetag->{metagenome_info}[7], $ws_name, 'saved metagenome to the correct workspace');
 };
-=cut
 
 # testing rast_metagenome using obj ids from prod ONLY
 subtest 'rast_metagenome_prod' => sub {
@@ -801,18 +800,212 @@ subtest 'rast_metagenome_prod' => sub {
         $rast_mg_ref = $mgutil->rast_metagenome($parms);
     } "mgutil rast_metagenome call returns normally even with the un-rasted input genome.";
 };
+=cut
+
+# testing rast_metagenome on an assembly from prod
+subtest 'rast_metagenome_prod' => sub {
+    # a prod assembly
+    my $parms = {
+        "object_ref" => $obj3,
+        "output_metagenome_name" => "rasted_ama",
+        "output_workspace" => $ws_name
+    };
+    my $rast_mg_ref;
+    lives_ok {
+        $rast_mg_ref = $mgutil->rast_metagenome($parms);
+    } "mgutil rast_metagenome call on $obj3 returns normally.";
+    print "Rasted $obj3 returned:\n".Dumper($rast_mg_ref);
+};
+
+=begin
+#
+## Testing only the sequence tranlation from gene sequence to protein sequence function
+#
+subtest '_translate_gene_to_protein_sequences_1' => sub {
+    # a gene sequence from a previously passed test
+    my $gene_seqs1 = {
+          'Ga0065724_100001.38' => 'ATGGCCATCCGCATCGGCGTCGATCTGGACACGACCCTGAACGACCTGGAAGTCGTCTGGCTGGACCGCTACAACAAGGATTACGGCGATTGCCTGACGGTGGAAGACATGACCGACTGGGACGCCACCCTCTATGTCAAGCCGGAATGCGGCGCCCGGGTCTACGACTATCTGGACGAACCGGGATTCTTCCGCCATCTCGGGATCAAGCCCGGGGCGCGGGAAGGCATGGCGTTCCTGTGGGAGCATTTCGAAGTGTTCATCGTGTCGGCCGCGCACCCGCATACCGTGGCGGACAAATGGGGATGGATCCGCGAGCATCTGCCGTTCATTCCGTATGAGCACTTCATCGCCGCCAGCCGCAAGGATCTTCTGAACCTGGATTATCTGATCGACGACGGGCCGCACAACATTGAGCGGTTCCCCGGCACGGGGATCGTGTTCGACATGCCGTACAACCGCCATCTGCCGGACCGGTATTTGCGGTTTTCCAACTGGCGGGACATCACGGCCTATTTTGAAAAGCTCGTTTCCGTCAAGTCCTGA',
+          'Ga0065724_100001.55' => 'ATGCGGGCTGCCGACTGCCAAACGTATACGAAGCAGGGCATCGTCACGACCTTGAAGACGATCGGGGGCAAGTGGAAGCCGCTCATCCTGTTCATTCTGCTGTACGAAGGGACGAAGCGGTTCGGGGAACTCCGGCGCCTCCTGCCGGAAGTGAAGCAGGGCATGCTGACGAACCAGCTGCGGGAACTGGAACGGGACGGCCTGATCGTCCGCAAAGTGTATGCGGAAATCCCGCCGCGGGTGGAATATTCCCTCTCCGAACACGGCAAGTCGCTGGAACAGGTGCTGAAGCTGATGTGCGACTGGGGATTCCGGCATCAGGCGTATTTGGCGGCCGCAGGCGTCCCGGCGGAACAAGCCGGTTCGGGTACGAAATGA',
+          'Ga0065724_100001.62' => 'ATGAATGGGGTTTTGATCGTCATGGATGCTTCCCGGCTGATCGCCAGGGCGCTCAAGCGCCTTTTCAATCCGGACGGCATCCGCATTGTGCAATCAGGCGGCGCCTTCAGCGATCTCGGCCATTATCACATGCACGTGTTTCCGAGCTACAAAGGCGACGGATATGTCTGGCCGGAACCGCTCCGCCGCGACGGGGTGGAGAAACGGCTGGCCGAGACCCGGGAGAAGCTCGTCCGGGTATTGGGCGAAGTGCTGGACGAAATCCGGTAA'};
+    my $prot_seqs1;
+    my $ps_expt1 = {
+    'Ga0065724_100001.62' => 'MNGVLIVMDASRLIARALKRLFNPDGIRIVQSGGAFSDLGHYHMHVFPSYKGDGYVWPEPLRRDGVEKRLAETREKLVRVLGEVLDEIR*',
+    'Ga0065724_100001.55' => 'MRAADCQTYTKQGIVTTLKTIGGKWKPLILFILLYEGTKRFGELRRLLPEVKQGMLTNQLRELERDGLIVRKVYAEIPPRVEYSLSEHGKSLEQVLKLMCDWGFRHQAYLAAAGVPAEQAGSGTK*',
+    'Ga0065724_100001.38' => 'MAIRIGVDLDTTLNDLEVVWLDRYNKDYGDCLTVEDMTDWDATLYVKPECGARVYDYLDEPGFFRHLGIKPGAREGMAFLWEHFEVFIVSAAHPHTVADKWGWIREHLPFIPYEHFIAASRKDLLNLDYLIDDGPHNIERFPGTGIVFDMPYNRHLPDRYLRFSNWRDITAYFEKLVSVKS*'
+};
+    lives_ok {
+        $prot_seqs1 = $mgutil->_translate_gene_to_protein_sequences($gene_seqs1);
+    } 'mgutil->_translate_gene_to_protein_sequences returns normally.';
+    ok (keys %$prot_seqs1, "_translate_gene_to_protein_sequences returned result.\n");
+    for my $k (sort keys %$prot_seqs1) {
+        ok ($prot_seqs1->{$k} eq $ps_expt1->{$k}, "Returned expected protein translation for key ".Dumper($k));
+    }
+};
+
+# Test to check end codons 'TGA', 'TAA' and 'TAG' are all translated into '*'
+subtest '_translate_gene_to_protein_sequences_2' => sub {
+    # a set of madeup gene sequences according to a user reported case
+    my $madeup_gene1 = 'ATGATGCTGAGCAATGAGCGAGAGGAACAGATGCAAACAAGATGCGAAACAATCGATGCGAAACAATCAATGCCAAACAATTGA';
+    my $madeup_gene2 = 'ATGATGCTGAGCAATGAGCGAGAGGAACAGATGCAAACAAGATGCGAAACAATCGATGCGAAACAATCAATGCCAAACAATTGATGCGAAATAACAATTGCAAAACAATTTGGGTGCGTGGTGCATGGGTGA';
+    my $madeup_gene3 = 'ATGATGCTGAGCAATGAGCGAGAGGAACAGATGCAAACAAGATGCGAAACAATCGATGCGAAACAATCAATGCCAAACAATTGATGCGAAATAACAATTGCAAAACAATTTGGGTGCGTGGTGCATGGGTGACGAGCAATTCTGGATAGG';
+    my $md_gene_seqs1 = {
+        'md_gene1' => $madeup_gene1,
+        'md_gene2' => $madeup_gene2,
+        'md_gene3' => $madeup_gene3,
+        'md_gene4' => $madeup_gene1.$madeup_gene2.$madeup_gene3
+    };
+    my $result_prot_seqs1;
+    lives_ok {
+        $result_prot_seqs1 = $mgutil->_translate_gene_to_protein_sequences($md_gene_seqs1);
+    } 'mgutil->_translate_gene_to_protein_sequences returns normally.';
+    ok (keys %$result_prot_seqs1, "_translate_gene_to_protein_sequences returned result:\n".Dumper($result_prot_seqs1));
+    for my $k (sort keys %$result_prot_seqs1) {
+        # assert there is at least one '*' character in the sequence
+	my $seq = $result_prot_seqs1->{$k};
+        ok (index($seq, '*') >= 0 , 'Found at least one character "*" in the sequence.');
+    }
+};
+
+# Test to check end codons 'TGA', 'TAA' and 'TAG' are all translated into '*'
+subtest '_translate_gene_to_protein_sequences_3' => sub {
+    # a set of madeup gene sequences according to a user reported case
+    #
+    # another set of madeup gene sequences
+    my $g4476_1 = 'GTGCTCCTCCTCCCCAAGGACCCCAACGACGAGAAGAACGTGGTGCTGGAGATCAGGGCCGGGGCCGGCGGCCAGGAGGCGGCGCTGTTCGCCGCGGACCTCCTCGGGATGTACCGGCGCTACGCCGAGCGCCACGGCTGGAAGACCGAGGTGCTCTCCTCCAGCCCCTCGGACCTCGGCGGCTTCAAGGAGGTGGTCCTCGAGGTGCGGGGGGACCGAGCCTACTCGAGATTGAAGCACGAGTCGGGCGTCCACCGCGTCCAGCGGATCCCGGAGACGGAGTCGGGCGGGCGGATCCACACCTCGACGGCCACGGTGGCCGTGCTCCCGGAGGCAGCGGAGGTCGAGGTCGACATCCGCCCCGAGGACATCCAGCGAGACGTGTACCGCTCCTCGGGCCCGGGGGGGCAGTCGGTGAACACGACGGACTCCGCGGTCCGGCTCACCCACAAGCCGACCGGCATCGTGGTGGCCGTCCAGGAAGAGCGGTCCCAGCGCCAGAACATGGAGAAGGCCATGCGATACCTTCGGGCCCGCCTGCTGAAGATGGAGCAAGAGCGGCAGCAGCACGAGGAGGCCGAGGCCCGACGAACCCAGGTGGGCACGGGAGAGCGGGCCGAGAAGATCCGGACCTACAACTTCCCCCAAACGAGGGTCACCGACCACCGGATCGGGCTGACGTCTCACCGGCTCGACGAGATCCTCCGGGAAGGCCAGCTCGACGAGTTCGTCGACGCCCTGACGGCCCGGGAGCGCGCCGAGCAGCTCGGCCGGGCGGGGTGA';
+    my $g20752_3 = 'ATGGCCGACCAGACCAGGACCCTCAAGGTAGGAGACGCGGCGCCCGATTTCCAGCTAAAGGGGACCGGCAAGACGGAGTTCAAGCTGAGCGACCAGAGGGGGAAAAACGTTGTCCTGGCGTTCTTCGCGGCCGCCTTCTCGCCCGTCTGCTCGCAGCAGATGCCCAGCATCCAGGCCGACAAGTCGAAGTTCGACGCGTGA';
+    my $g22931_3 = 'ATGGCCGACCAGACCAGGACCCTCAAGGTAGGAGACGCGGCGCCCGATTTCCAGCTAAAGGGGACCGGCAAGACGGAGTTCAAGCTGAGCGACCAGAGGGGGAAAAACGTTGTCCTGGCGTTCTTCGCGGCCGCCTTCTCGCCCGTCTGCTCGCAGCAGATGCCCAGCATCCAGGCCGACAAGTCGAAGTTCGACGCGTGA';
+    my $g23366_1 = 'GTGTTCAGCCAGTTGACCCGCGCACCGGAGCGTGAAGAGCGCAAGCCGCAGCTCGCCGACCTCCGCGAATCCGGCGCCATTGAACAGGACGCCGACGTGGTCATGTTCATTTATCGCGACGACGTGTACAACCCGGACAGCGAGCGCAAGAACGTGGCCGAAATCATGGTGGCCAAGCACCGCAACGGGCCGACCGGTTCGATCGAGCTGTACTTCCGCAGCCACCTGGCGCAGTTCGTCAACGCGACGCGGCGGGAGATTGCGCTGTGA';
+    my $g_endWithTAG = 'ATGCGGCCCGGCCTGTTCCGGCGCATCTACGCCGTTGTGCGGCGCATCCCCCGTGGTCGGGTGACCACCTACGGAGAGGTCGCGCGGCGCGTGGGGCTCCGCCAGGGCGCACGCACTGTCGGCTGGGCGCTGGCCTCCCTCCCTCACATCGACGCCGCGCCATGGTGGCGCATCGTCCGGCGCGACGGCACGATCGCCCCTCGCCCGTTCGCAGCAGAGCAGCGGCGCCGCCTGCGTCGGGAACGGATTCGGATCGGTGCAGGCGGGGTGATCGACCTGCGGCGCTACGGTTGGCCCGCCGGCACGTAG';
+    my $g_endWithTAA = 'GTGGTCCACGATCGCCTGGAGCGTGAGGGCGTTGTAGGCGTTGATCCAGAAAGCGATCCGATCGTTCGCGGGCCAGCGCCTGTAGACCCCGGGATCGAGCCGGCCGAGCGCCTCGACGAACGCGCGGAGATCGCGCGGGCCCTGCTTCAGCCCGCGATAGTCCACGAGCCCGCGCTCGCTCACGCGGCTCGCGAGGACGCGCGCGTACGCATCGTAGGTGAAGGTCCCTTCGCGCGCTCCCGCCGGGGCCTCGGGCAAGGTGGCGGCAGGGGCAGAGAGGCCCGCCTCGGCCCGGGGGGCGGCGCCCGCGCCCCCCGCGACGAGGAAGCCGGAGAGCAGGGAGACCATCAGCACGGCGGCGCGATCCATCGGTAA';
+    my $md_gene_seqs2 = {
+        '4476_1' => $g4476_1,
+        '20752_3' => $g20752_3,
+        '22931_3' => $g22931_3,
+        '23366_1' => $g23366_1,
+        '21028_2' => $g_endWithTAG,
+        '22180_1' => $g_endWithTAA
+    };
+    my $result_prot_seqs2;
+    lives_ok {
+        $result_prot_seqs2 = $mgutil->_translate_gene_to_protein_sequences($md_gene_seqs2);
+    } 'mgutil->_translate_gene_to_protein_sequences returns normally.';
+    ok (keys %$result_prot_seqs2, "_translate_gene_to_protein_sequences returned result.\n".Dumper($result_prot_seqs2));
+    for my $k (sort keys %$result_prot_seqs2) {
+        # check there is at least one '*' character in the sequence
+	my $seq = $result_prot_seqs2->{$k};
+	print "length of sequence=length($seq) and found '*' at ".index($seq, '*');
+        ok (index($seq, '*') == length($seq) - 1, 'Found the character "*" at the end of the sequence.');
+    }
+};
+=cut
+
+=begin
+#
+## Checking the input's fasta by _get_fasta_from_assembly for stop codons appearing in the mid sequence
+#
+subtest '_get_fasta_from_assembly' => sub {
+    # A prod assembly that is small
+    # $obj_asmb
+    my $fa_file_input1;
+    lives_ok {
+        $fa_file_input1 = $mgutil->_get_fasta_from_assembly($obj_asmb);
+    } 'mgutil->_get_fasta_from_assembly returns normally.';
+    ok (-s $fa_file_input1, "_get_fasta_from_assembly on $obj_asmb returns:\n$fa_file_input1");
+
+    open my $fa_info, $fa_file_input1 or die "Could not open $fa_file_input1: $!";
+    while( my $fa_line = <$fa_info>) {
+        print $fa_line;  # if $fa_line =~ m/CP003541\.1/;
+    }
+    close $fa_info;
+
+    # A prod assembly that has 194 stop codon codes in the middle of the gene sequences
+    # $obj3
+    my $fa_file_input2;
+    lives_ok {
+        $fa_file_input2 = $mgutil->_get_fasta_from_assembly($obj3);
+    } 'mgutil->_get_fasta_from_assembly returns normally.';
+    ok (-s $fa_file_input2, "_get_fasta_from_assembly on $obj3 returns:\n$fa_file_input2");
+
+    print "\n___Printing out the first 50 lines of the input fasta file to prodigal call___\n";
+    open my $fa_info, $fa_file_input2 or die "Could not open $fa_file_input2: $!";
+    while( my $fa_line = <$fa_info>) {
+        print $fa_line;
+        last if $. == 100;
+    }
+    close $fa_info;
+
+    # For checking prodigal gene calling
+    my $md = 'meta';
+    my $out_type = 'gff';
+    my $gff_filename = catfile($rast_metag_dir, 'genome.gff');
+    my $trans = catfile($rast_metag_dir, 'protein_translation');
+    my $nuc = catfile($rast_metag_dir, 'nucleotide_seq');
+    my $out_file = catfile($rast_metag_dir, 'prodigal_output').'.'.$out_type;
+    my $prd_gene_results;
+    my $arr_cds = ['TGA', 'TAA', 'TAG', '_', '\*'];
+
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                               $fa_file_input1, $trans, $nuc, $out_file, $out_type, $md);
+    } "Prodigal finished run on $obj_asmb.";
+    my $prd_rowcount = @{$prd_gene_results};
+    ok( $prd_rowcount > 0, "Prodigal gene call on $obj_asmb returns some result.");
+
+    print "\nPositions of all TGA/TAA/TAG codes at x3 locations other than the end of the sequences.\n";
+    for my $entry (@{$prd_gene_results}) {
+        my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$entry;
+        my $codon_locs = '';
+        for my $cd (@$arr_cds) {
+            while ($seq =~ m/$cd/g) {
+                # Finding the position of TGA/TAA/TAG using pos() function
+                my $TGA_pos = pos($seq);
+                my $seq_len = length($seq);
+                if ( $seq_len != $TGA_pos) {
+                    $codon_locs = $codon_locs."," if $codon_locs;
+                    $codon_locs = $codon_locs." $cd at $TGA_pos";
+                }
+            }
+        }
+        if ( $codon_locs ) {
+            print "\nFound $codon_locs for: ";
+            print "id=$fid\ttype=$ftr_type\tLocation=[[ $contig, $start, $strand, $end ]]";
+            print "\nproteinSeq=$seq";
+        }
+    }
+
+    lives_ok {
+        ($out_file, $prd_gene_results) = $mgutil->_prodigal_gene_call(
+                                   $fa_file_input2, $trans, $nuc, $out_file, $out_type, $md);
+    } "Prodigal finished run on $obj3.";
+    $prd_rowcount = @{$prd_gene_results};
+    ok( $prd_rowcount > 0, "Prodigal gene call on $obj3 returns some result.");
+
+    print "\nPositions of all TGA/TAA/TAG codes at x3 locations other than the end of the sequences.\n";
+    for my $entry (@{$prd_gene_results}) {
+        my ($contig, $fid, $ftr_type, $start, $end, $strand, $seq, $source) = @$entry;
+        my $codon_locs = '';
+        for my $cd (@$arr_cds) {
+            while ($seq =~ m/$cd/g) {
+                # Finding the position of TGA/TAA/TAG using pos() function
+                my $TGA_pos = pos($seq);
+                my $seq_len = length($seq);
+                if ( $seq_len != $TGA_pos ) {
+                    $codon_locs = $codon_locs."," if $codon_locs;
+                    $codon_locs = $codon_locs." $cd at $TGA_pos";
+                }
+            }
+        }
+        if ( $codon_locs ) {
+            print "\nFound $codon_locs for: ";
+            print "id=$fid\ttype=$ftr_type\tLocation=[[ $contig, $start, $strand, $end ]]";
+            print "\nproteinSeq=$seq";
+        }
+    }
+};
+=cut
 
 subtest '_prepare_genome_4annotation' => sub {
-    # a prod assembly
     my ($gff, $gn, $fa_file, $gff_file);
-
-    throws_ok {
-        $fa_file = $mgutil->_get_fasta_from_assembly($obj3);
-        $gff_file = $mgutil->_write_gff_from_ama($obj3);
-        ($gff, $gn) = $mgutil->_prepare_genome_4annotation($fa_file, $gff_file);
-    } qr/ValueError: Object is not an AnnotatedMetagenomeAssembly/,
-      "ValueError: Object is not an AnnotatedMetagenomeAssembly because $obj3 did not point to an AMA.";
-
     # a prod metagenome assembly
     lives_ok {
         $fa_file = $mgutil->_write_fasta_from_ama($obj4);
@@ -822,10 +1015,20 @@ subtest '_prepare_genome_4annotation' => sub {
     ok (@{$gff} > 0, "_prepare_genome_4annotation returns ". scalar @{$gff}." lines of GFF contents.");
     ok (@{$gn->{features}} > 0,
         "_prepare_genome_4annotation returns genome with ". scalar @{$gn->{features}}." features.");
+
+    my $prnt_lines = 10;
+    my $ftri = 0;
+    for my $g_ftr (@{$gn->{features}}) {
+        last unless $ftri < $prnt_lines;
+        my $f_id = $g_ftr->{id};
+        my $f_protein = $g_ftr->{protein_translation};
+        print "$f_id\t$f_protein\n";
+        $ftri = $ftri + 1;
+    }
 };
 
 #
-## Tesing only the annotation part of RAST
+## Testing only the annotation part of RAST
 #
 subtest '_run_rast_annotation' => sub {
     my $inputgenome = {
@@ -838,9 +1041,19 @@ subtest '_run_rast_annotation' => sub {
         });
     }
 
+    my $rasted_gn;
     lives_ok {
-        my $rast_ret = $mgutil->_run_rast_annotation($inputgenome);
+        $rasted_gn = $mgutil->_run_rast_annotation($inputgenome);
     } "RAST run_pipeline call returns normally even with the original input genome.";
+
+    my $ftrs = $rasted_gn->{features};
+    if (defined($ftrs)) {
+        my $rasted_ftr_count = scalar @{$ftrs};
+        print "RAST resulted ".$rasted_ftr_count." features.\n";
+    }
+    else {
+        print "_run_rast_annotation did not return rasted genome";
+    }
 };
 
 # testing generate_stats_from_aa using obj ids from prod ONLY
@@ -865,7 +1078,6 @@ subtest '_generate_stats_from_gffContents' => sub {
     my %ret_stats = $mgutil->_generate_stats_from_gffContents($gff_contents);
     ok( %ret_stats, 'Statistics generation from gff_contents returns result.');
 };
-
 
 RASTTestUtils::clean_up();
 

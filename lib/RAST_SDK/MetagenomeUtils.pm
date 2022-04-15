@@ -546,7 +546,7 @@ sub _check_bulk_annotation_params {
         $params->{input_assemblies} = [$params->{input_assemblies}];
     }
     unless ($params->{input_text}) {
-	$params->{input_text} = '';
+        $params->{input_text} = '';
     }
     return $params;
 }
@@ -1307,6 +1307,26 @@ sub _prepare_genome_4annotation {
 }
 
 
+sub _search4underscore {
+    my ($self, $ftrs, $sch) = @_;
+    #print "Searching for $sch in the feature protein translation:\n";
+    for my $src_ftr (@{$ftrs}) {
+        my $f_prot_seq = defined($src_ftr->{protein_translation}) ? $src_ftr->{protein_translation} : '';
+        my $found_str = '';
+        while( $f_prot_seq =~ m/$sch/g ) {
+            my $pos = pos($f_prot_seq);
+            $found_str = $found_str.", " if $found_str;
+            $found_str = $found_str."".$pos;
+        }
+	if ($found_str) {
+	    my $f_id = $src_ftr->{id};
+	    my $f_func = defined($src_ftr->{function}) ? $src_ftr->{function} : '';
+            print "\nFound $sch at $found_str in: $f_id\t$f_func\n$f_prot_seq\n";
+	}
+    }
+}
+
+
 ##----main function----##
 sub rast_metagenome {
     my $self = shift;
@@ -1412,6 +1432,10 @@ sub rast_metagenome {
         };
     }
 
+    # print "Check for '_' and 'TGA' BEFORE the _run_rast_annotation call:\n";
+    # $self->_search4underscore($inputgenome->{features}, '_');
+    # $self->_search4underscore($inputgenome->{features}, 'TGA');
+
     my $rasted_genome = $self->_run_rast_annotation($inputgenome);
     unless ( %$rasted_genome ) {
         print "Rasting errored, return original genome object: $input_obj_ref\n";
@@ -1425,7 +1449,6 @@ sub rast_metagenome {
     my $ftrs = $rasted_genome->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "RAST resulted ".$rasted_ftr_count." features.\n";
-
     print "***********The first 10 or fewer rasted features, for example***************\n";
     my $prnt_lines = ($rasted_ftr_count > 10) ? 10 : $rasted_ftr_count;
     for (my $j=0; $j<$prnt_lines; $j++) {
@@ -1434,6 +1457,9 @@ sub rast_metagenome {
         my $f_protein = defined($ftrs->[$j]->{protein_translation}) ? $ftrs->[$j]->{protein_translation} : '';
         print "$f_id\t$f_func\t$f_protein\n";
     }
+    # print "Check for '_' and 'TGA' AFTER the _run_rast_annotation call:\n";
+    # $self->_search4underscore($ftrs, '_');
+    # $self->_search4underscore($ftrs, 'TGA');
 
     my %ftr_func_lookup = $self->_get_feature_function_lookup($ftrs);
     my $updated_gff_contents = $self->_update_gff_functions_from_features(
