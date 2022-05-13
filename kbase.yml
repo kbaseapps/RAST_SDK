@@ -10,7 +10,7 @@ service-language:
     perl
 
 module-version:
-    0.1.9
+    0.1.10
 
 owners:
     [chenry, scanon, olson, jjeffryes, umaganapathyswork, landml, gaprice, qzhang, ialarmedalien]
