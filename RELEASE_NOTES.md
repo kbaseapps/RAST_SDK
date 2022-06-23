@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 1.9.3
+__Changes__
+Main change is to add the 'upgrade=>1' to the input parameter for GFU.save_one_genome call to ensure the dna_size data is calculated. 
+
 ### Version 1.9.2
 __Changes__
 Main changes are made to accomodate saving the ontology terms with the annotation_ontology_api service. More code improvements have been made to handle newly discovered errors.
