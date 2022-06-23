@@ -1162,23 +1162,6 @@ sub _pre_rast_call {
                 $feature->{protein_md5} = Digest::MD5::md5_hex($feature->{protein_translation});
             }
         }
-## Potentially to be taken care of by the save_annotation_results function, so should be commented out
-=begin 
-        # When RAST annotates the genome it becomes incompatible with the new
-        # spec. Removing this attribute triggers an "upgrade" to the genome
-        # that fixes these problems when saving with GFU
-        delete $inputgenome->{feature_counts};
-        if (defined($inputgenome->{ontology_events})) {
-            my $ont_event = {
-                "id" => "SSO",
-                "method" => Bio::KBase::Utilities::method(),
-                "method_version" => $self->_util_version(),
-                "ontology_ref" => "KBaseOntology/seed_subsystem_ontology",
-                "timestamp" => Bio::KBase::Utilities::timestamp()
-            };
-            push(@{$inputgenome->{ontology_events}}, $ont_event);
-        }
-=cut
     }
 
     $rast_details{genehash} = $genehash if $genehash;
@@ -1203,7 +1186,7 @@ sub _run_rast_workflow {
     my $count = scalar @{$in_genome->{features}};
     print "******INFO: Run RAST pipeline on $in_genome->{id} with $count features.******\n";
 
-    my $rasted_gn = $in_genome;
+    my $rasted_gn = clone( $in_genome );
     my $g_data_type = (ref($rasted_gn) eq 'HASH') ? 'ref2Hash' : ref($rasted_gn);
     if ($g_data_type eq 'GenomeTypeObject') {
         print "**********Genome input passed to the run_rast_workflow with:\n".
@@ -1734,6 +1717,7 @@ sub _gfu_save_genome {
             workspace => $parameters->{output_workspace},
             name => $parameters->{output_genome_name},
             data => $input_gn,
+            upgrade => 1,
             provenance => [{
                 time => DateTime->now()->datetime()."+0000",
                 service_ver => $self->_util_version(),
@@ -1784,14 +1768,14 @@ sub _save_genome_with_gfu {
 sub _fillRequiredFields {
     my ($self, $input_obj) = @_;
     if (!defined($input_obj->{genome_tiers})) {
-        print "\nFOUND no 'genome_tiers' in RASTed genome data!";
+        print "\nFOUND no 'genome_tiers' in RASTed genome data, add '[ExternalDB, User]' as default!";
         $input_obj->{genome_tiers} = [
             "ExternalDB",
             "User"
         ];
     }
     if (!defined($input_obj->{molecule_type})) {
-        print "\nFOUND no 'molecule_type' in RASTed genome data!";
+        print "\nFOUND no 'molecule_type' in RASTed genome data, add 'DNA' as default!";
         $input_obj->{molecule_type} = "DNA";
     }
     if (!defined($input_obj->{feature_counts})) {
@@ -1988,33 +1972,49 @@ sub _build_ontology_events {
     return $gn_with_events;
 }
 
+## Printing the counts of genome features' dna sequence lengths
+sub _print_dna_len_count {
+    my ($self, $ftrs) = @_;
+    my $ftr_count = scalar @{$ftrs};
+    print "\n****Genome object has a total feature counts= ".scalar @{$ftrs};
+
+    my $zero_lens = 0;
+    my $nonzero_lens = 0;
+    my $none_dnalens = 0;
+    for my $ftr (@{$ftrs}) {
+        my $f_id = $ftr->{id};
+        if (defined($ftr->{ dna_sequence_length })) {
+            my $f_dna_len = $ftr->{ dna_sequence_length };
+            if ($f_dna_len == 0) {
+                $zero_lens += 1;
+            } else {
+                $nonzero_lens += 1;
+            }
+        }
+        else {
+            $none_dnalens += 1;
+        }
+    }
+    print "\nzero length dnas = $zero_lens\t non zero length dnas= $nonzero_lens\t null length=$none_dnalens\n";
+}
+
 ## Printing the data structure of an input genome
 sub _print_genome_data {
-    my ($self, $inputgn) = @_;
+    my ($self, $inputobj) = @_;
 
-    print "\nINFO****:Confirming RAST genome data structure---------------\n";
-    print "\nINFO****:Keys of the input genome structure================:\n".Dumper(keys %$inputgn);
-    print "\nINFO****:Workspace: $inputgn->{output_workspace}";
-	if (defined($inputgn->{events}) and @{$inputgn->{events}} > 0 ) {
-		print "\nINFO****:genome events count=".scalar @{$inputgn->{events}}."\n";
-		#print "\nINFO****:genome events data================:\n";
-		#print Dumper(@{$inputgn->{events}});
-	}
-
-    my $inputobj = $inputgn->{object};
     print "\nINFO****:Checking RAST genome object data structure---------------\n";
-    print "\nINFO****:Keys of the json object================:\n".Dumper(keys %$inputobj);
+    print "\nINFO****:Keys of the genome object================:\n".Dumper(keys %$inputobj);
     if (defined($inputobj->{feature_counts})) {
         print "\nINFO****:Genome feature_counts data================:\n";
         print Dumper($inputobj->{feature_counts});
     }
     if (defined($inputobj->{cdss}) and @{$inputobj->{cdss}} > 0) {
-        print "\nINFO****:genome cdss count=".scalar @{$inputobj->{cdss}}."\n";
+        print "\nINFO****:genome cdss count=".scalar @{$inputobj->{cdss}};
         #print "\nINFO****:Two genome cdss data, for example================:\n";
         #print Dumper(@{$inputobj->{cdss}}[0..1]);
     }
     if (defined($inputobj->{mrnas}) and @{$inputobj->{mrnas}} > 0 ) {
-        print "\nINFO****:genome mrnas count=".scalar @{$inputobj->{mrnas}}."\n";
+        print "\nINFO****:genome mrnas count=".scalar @{$inputobj->{mrnas}};
         #print "\nINFO****:Two genome mrnas data, for example================:\n";
         #print Dumper(@{$inputobj->{mrnas}}[0..1]);
     }
@@ -2024,7 +2024,28 @@ sub _print_genome_data {
     if (defined($inputobj->{genetic_code})) {
         print "\nINFO****:genetic_code=$inputobj->{genetic_code}\n";
     }
-    #print "\nINFO****:Input data with ontology terms:\n".Dumper($inputgn);
+    if (defined($inputobj->{features})) {
+        $self->_print_dna_len_count($inputobj->{features});
+    }
+}
+
+## Printing the data structure of an input genome with ontology events
+sub _print_onto_genome_data {
+    my ($self, $onto_gn) = @_;
+
+    print "\nINFO****:Confirming RAST onto_genome data structure---------------\n";
+    print "\nINFO****:Keys of the genome with onto_events================:\n".Dumper(keys %$onto_gn);
+    print "\nINFO****:Workspace: $onto_gn->{output_workspace}";
+    if (defined($onto_gn->{events}) and @{$onto_gn->{events}} > 0 ) {
+        print "\nINFO****:genome events count=".scalar @{$onto_gn->{events}}."\n";
+        #print "\nINFO****:genome events data================:\n";
+        #print Dumper(@{$onto_gn->{events}});
+    }
+
+    my $inputobj = $onto_gn->{object};
+    $self->_print_genome_data($inputobj);
+
+    #print "\nINFO****:Input data with ontology terms:\n".Dumper($onto_gn);
 }
 
 ## Saving annotated genome with the ontology service
@@ -2035,16 +2056,17 @@ sub _save_genome_with_ontSer {
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
     my ($saved_ref, $msg) = $self->_gfu_save_genome($input_gn, $params, $message);
     if (keys %$saved_ref) {
-        print "\nPassing input_ref $saved_ref->{ref}!\n";
+        print "\nPassing input_ref $saved_ref->{ref} to genome with ontology events!\n";
         $gn_with_events->{input_ref} = $saved_ref->{ref};
     } else {
-        print "\nPassing object data!\n";
+        print "\nPassing object data to genome with ontology events!\n";
         $gn_with_events->{object} = $input_gn;
     }
-    $self->_print_genome_data($gn_with_events);
+    $self->_print_onto_genome_data($gn_with_events);
 
     my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
 	                                        undef, token => $self->{_token});
+
     try {
         if (keys %{$gn_with_events->{object}}) {
             my $gnobj = $gn_with_events->{object};
@@ -3082,7 +3104,8 @@ sub rast_genome {
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
             my $f_func = $ftr->{ function } // '';
             my $f_protein = $ftr->{protein_translation} // '';
-            print "$f_id\t$f_func\t$f_protein\n";
+            my $f_dna_len = $ftr->{ dna_sequence_length } // 'DNA sequence 0 length';
+	    print "$f_id\t$f_func\t$f_protein\t$f_dna_len\n";
         }
     }
 

@@ -1292,7 +1292,7 @@ subtest '_summarize_annotation' => sub {
               $rast_ref01, $final_genome01, $inputgenome01);
     } "_summarize_annotation runs successfully on genome $obj_65386_1";
 
-# another genome object in workspace #65386
+    # another genome object in workspace #65386
     lives_ok {
         ($final_genome02, $rast_ref02) = $annoutil->_summarize_annotation(
               $rast_ref02, $final_genome02, $inputgenome02);
@@ -1407,7 +1407,6 @@ subtest '_fillRequiredFields' => sub {
     }
     ok (@this_not_that, "New fields added:".Dumper(\@this_not_that));
 };
-
 
 # Test _create_onto_terms for RAST annotated objects in prod
 subtest '_create_onto_terms' => sub {
