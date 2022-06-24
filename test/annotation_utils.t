@@ -3035,19 +3035,53 @@ subtest 'bulk_rast_genomes' => sub {
         "output_workspace" => $ws_name
     };
     my $refseq_gn1 = "19217/172902/1";
-    my $refseq_gn2 = "19217/330276/1";
+    my $refseq_ecoli = "63171/266/3";
+    my $nitrosp = "63171/692/2";
+    my $carsonella_long = "63171/442/1";
+    my $GN01_gc25_Apr19 = "63171/668/2";
     my $gnset = "63171/699/1";
     my ($rfsq_ann_set);
 
     lives_ok {
         $params->{input_genomeset} = $gnset;
-        $params->{input_genomes} = [$refseq_gn1, $refseq_gn2];
+        $params->{input_genomes} = [$refseq_gn1, $nitrosp, $GN01_gc25_Apr19];
+        $params->{input_assemblies} = [$refseq_ecoli, $carsonella_long];
         $params->{input_text} = '';
         $rfsq_ann_set = $annoutil->bulk_rast_genomes($params);
-    } "annoutil->bulk_rast_genomes call on array of 2 genomes returns.";
+    } "annoutil->bulk_rast_genomes call on array of 3 genomes 2 assembs returns.";
     print "bulk_rast_genomes and genome array and a genomeset returned:\n".Dumper($rfsq_ann_set);
     ok($rfsq_ann_set->{report_ref}, "Annotation report generated!!");
     ok($rfsq_ann_set->{output_genomeSet_ref}, "Annotated genomeSet saved!");
+};
+
+#
+## compare the object data getting from GenomeAnnotationAPIClient and from WorkspaceClient
+#
+subtest 'compare_objdata_results' => sub {
+    my $refseq_gn1 = "19217/172902/1";
+    my $refseq_gn2 = "19217/330276/1";
+    my $refseq_gn3 = "63171/630/1";
+    my $refseq_gn4 = "63171/658/2";
+
+    my $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn1);
+    my $genome_data_2 = $annoutil->_get_genome($refseq_gn1);
+    my $dna_sz = $genome_data_1->{dna_size};
+    ok($dna_sz == $genome_data_2->{dna_size}, "1.Same dna_size=$dna_sz by two functions!!");
+
+    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn2);
+    $genome_data_2 = $annoutil->_get_genome($refseq_gn2);
+    $dna_sz = $genome_data_1->{dna_size};
+    ok($dna_sz == $genome_data_2->{dna_size}, "2.Same dna_size=$dna_sz by two functions!!");
+
+    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn3);
+    $genome_data_2 = $annoutil->_get_genome($refseq_gn3);
+    $dna_sz = $genome_data_1->{dna_size};
+    ok($dna_sz == $genome_data_2->{dna_size}, "3.Same dna_size=$dna_sz by two functions!!");
+
+    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn4);
+    $genome_data_2 = $annoutil->_get_genome($refseq_gn4);
+    $dna_sz = $genome_data_1->{dna_size};
+    ok($dna_sz == $genome_data_2->{dna_size}, "4.Same dna_size=$dna_sz by two functions!!");
 };
 
 RASTTestUtils::clean_up();

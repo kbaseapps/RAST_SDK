@@ -396,7 +396,12 @@ sub _get_oldfunchash_oldtype_types {
 sub _create_inputgenome_from_genome {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
-    $inputgenome = $self->_get_genome($input_obj_ref);
+    print "\n**Before merging with _get_genome result:\n".Dumper(keys %$inputgenome);
+    print "\n**Genome dna size=$inputgenome->{dna_size}\n";
+    my $genome_data = $self->_get_genome($input_obj_ref);
+    $inputgenome = { %$inputgenome, %$genome_data };
+    print "\n\n**After merging with _get_genome result:\n".Dumper(keys %$inputgenome);
+    print "\n**Genome dna size=$inputgenome->{dna_size}\n";
 
     my ($oldfunchash, $oldtype, $types_ref);
     my %types = ();
@@ -1858,6 +1863,9 @@ sub _fillRequiredFields {
     if (defined($input_obj->{gc_content})) {
         $input_obj->{gc_content} = $input_obj->{gc_content}+0;
     }
+    if (defined($input_obj->{dna_size})) {
+        $input_obj->{dna_size} = $input_obj->{dna_size}+0;
+    }
     return $input_obj;
 }
 
@@ -2024,6 +2032,9 @@ sub _print_genome_data {
     if (defined($inputobj->{genetic_code})) {
         print "\nINFO****:genetic_code=$inputobj->{genetic_code}\n";
     }
+    if (defined($inputobj->{dna_size})) {
+        print "\nINFO****:dna_size=$inputobj->{dna_size}\n";
+    }
     if (defined($inputobj->{features})) {
         $self->_print_dna_len_count($inputobj->{features});
     }
@@ -2072,6 +2083,7 @@ sub _save_genome_with_ontSer {
             my $gnobj = $gn_with_events->{object};
             $gnobj->{gc_content} = $gnobj->{gc_content}+0;
             $gnobj->{genetic_code} = $gnobj->{genetic_code}+0;
+            $gnobj->{dna_size} = $gnobj->{dna_size}+0;
         }
 
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
@@ -3094,6 +3106,7 @@ sub rast_genome {
     my $ftrs = $genome_final->{features};
     my $rasted_ftr_count = scalar @{$ftrs};
     print "\n**Finally RAST $input_obj_ref feature counts: $rasted_ftr_count";
+    print "\n**dna size: $genome_final->{dna_size}";
 
     my $prnt_num = 10;
     if ($rasted_ftr_count) {
