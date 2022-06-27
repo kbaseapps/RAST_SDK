@@ -396,12 +396,15 @@ sub _get_oldfunchash_oldtype_types {
 sub _create_inputgenome_from_genome {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
-    print "\n**Before merging with _get_genome result:\n".Dumper(keys %$inputgenome);
-    print "\n**Genome dna size=$inputgenome->{dna_size}\n";
+    #print "\n**Before merging with _get_genome result:\n".Dumper(keys %$inputgenome);
     my $genome_data = $self->_get_genome($input_obj_ref);
     $inputgenome = { %$inputgenome, %$genome_data };
-    print "\n\n**After merging with _get_genome result:\n".Dumper(keys %$inputgenome);
-    print "\n**Genome dna size=$inputgenome->{dna_size}\n";
+    if (!defined($inputgenome->{dna_size}) || $inputgenome->{dna_size} == 0) {
+      my $inobj_data = $self->_fetch_object_data($input_obj_ref);
+      $inputgenome->{dna_size} = $inobj_data->{dna_size}+0 // 0;
+    }
+    #print "\n\n**After merging with _get_genome result:\n".Dumper(keys %$inputgenome);
+    print "\n**After merging with _get_genome result, dna size=$inputgenome->{dna_size}\n";
 
     my ($oldfunchash, $oldtype, $types_ref);
     my %types = ();
@@ -427,6 +430,10 @@ sub _create_inputgenome_from_assembly {
     my ($self, $inputgenome, $input_obj_ref) = @_;
 
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
+    if (!defined($inputgenome->{dna_size}) || $inputgenome->{dna_size} == 0) {
+      my $inobj_data = $self->_fetch_object_data($input_obj_ref);
+      $inputgenome->{dna_size} = $inobj_data->{dna_size}+0 // 0;
+    }
     my ($contigobj, $contigID_hash) = $self->_get_contigs($input_obj_ref);
     return ($inputgenome, $contigobj, $contigID_hash);
 }
@@ -573,6 +580,7 @@ sub _set_parameters_by_input {
     $rast_details{contigID_hash} = $contigID_hash;
     $rast_details{is_genome} = $is_genome;
     $rast_details{is_assembly} = $is_assembly;
+
     return (\%rast_details, $inputgenome);
 }
 
@@ -1266,6 +1274,9 @@ sub _post_rast_ann_call {
     }
     if (!defined($genome->{gc_content})) {
         $genome->{gc_content} = 0.5;
+    }
+    if (defined($genome->{dna_size})) {
+        $genome->{dna_size} = $genome->{dna_size}+0;
     }
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
@@ -2053,10 +2064,7 @@ sub _print_onto_genome_data {
         #print Dumper(@{$onto_gn->{events}});
     }
 
-    my $inputobj = $onto_gn->{object};
-    $self->_print_genome_data($inputobj);
-
-    #print "\nINFO****:Input data with ontology terms:\n".Dumper($onto_gn);
+    $self->_print_genome_data($onto_gn->{object});
 }
 
 ## Saving annotated genome with the ontology service
@@ -2117,6 +2125,7 @@ sub _save_annotation_results {
     print "***** Domain       = $genome->{domain}\n";
     print "***** Genitic_code = $genome->{genetic_code}\n";
     print "***** Scientific_name = $genome->{scientific_name}\n";
+    print "***** DNA length = $genome->{dna_size}\n";
     print "***** Number of features=".scalar  @{$genome->{features}}."\n";
     print "***** Number of non_coding_features=".scalar  @{$genome->{non_coding_features}}."\n";
     print "***** Number of cdss=    ".scalar  @{$genome->{cdss}}."\n";
@@ -2171,6 +2180,7 @@ sub _build_workflows {
         genetic_code => $parameters->{genetic_code},
         scientific_name => $parameters->{scientific_name},
         domain => $parameters->{domain},
+	dna_size => 0,
         contigs => [],
         features => []
     };
@@ -3074,6 +3084,7 @@ sub rast_genome {
         return {};
     }
 
+    print "******INFO: inputgenome's dna_size before rast pipeline: $inputgenome->{dna_size}\n";
     my %rast_details = %{ $rast_ref };
     ## 2. combine all workflows and run it at once
     my $rasted_genome = $self->_run_rast_workflow(
@@ -3117,8 +3128,8 @@ sub rast_genome {
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
             my $f_func = $ftr->{ function } // '';
             my $f_protein = $ftr->{protein_translation} // '';
-            my $f_dna_len = $ftr->{ dna_sequence_length } // 'DNA sequence 0 length';
-	    print "$f_id\t$f_func\t$f_protein\t$f_dna_len\n";
+            my $f_dna_len = $ftr->{dna_sequence_length } // -1;
+            print "$f_id\t$f_func\t$f_protein\t$f_dna_len\n";
         }
     }
 

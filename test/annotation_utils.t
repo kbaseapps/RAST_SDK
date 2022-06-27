@@ -2191,7 +2191,6 @@ subtest '_write_gff_from_genome' => sub {
 };
 =cut
 
-=begin
 subtest 'anno_utils_rast_genome1' => sub {
     # testing anno_utils rast_genome using obj ids from prod ONLY
     my ($parms, $rast_ret, $genome_obj, $rast_gn_data);
@@ -2278,7 +2277,6 @@ subtest 'anno_utils_rast_genome2' => sub {
     } "annoutil->rast_genome call ran on genome $parms->{object_ref}";
     ok (!keys %{ $rast_metag_ret}, "annoutil->rast_genome returned {}.\n");
 };
-=cut
 
 =begin
 ## testing Impl_rast_genome_assembly
@@ -3054,35 +3052,6 @@ subtest 'bulk_rast_genomes' => sub {
     ok($rfsq_ann_set->{output_genomeSet_ref}, "Annotated genomeSet saved!");
 };
 
-#
-## compare the object data getting from GenomeAnnotationAPIClient and from WorkspaceClient
-#
-subtest 'compare_objdata_results' => sub {
-    my $refseq_gn1 = "19217/172902/1";
-    my $refseq_gn2 = "19217/330276/1";
-    my $refseq_gn3 = "63171/630/1";
-    my $refseq_gn4 = "63171/658/2";
-
-    my $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn1);
-    my $genome_data_2 = $annoutil->_get_genome($refseq_gn1);
-    my $dna_sz = $genome_data_1->{dna_size};
-    ok($dna_sz == $genome_data_2->{dna_size}, "1.Same dna_size=$dna_sz by two functions!!");
-
-    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn2);
-    $genome_data_2 = $annoutil->_get_genome($refseq_gn2);
-    $dna_sz = $genome_data_1->{dna_size};
-    ok($dna_sz == $genome_data_2->{dna_size}, "2.Same dna_size=$dna_sz by two functions!!");
-
-    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn3);
-    $genome_data_2 = $annoutil->_get_genome($refseq_gn3);
-    $dna_sz = $genome_data_1->{dna_size};
-    ok($dna_sz == $genome_data_2->{dna_size}, "3.Same dna_size=$dna_sz by two functions!!");
-
-    $genome_data_1 = $annoutil->_fetch_object_data($refseq_gn4);
-    $genome_data_2 = $annoutil->_get_genome($refseq_gn4);
-    $dna_sz = $genome_data_1->{dna_size};
-    ok($dna_sz == $genome_data_2->{dna_size}, "4.Same dna_size=$dna_sz by two functions!!");
-};
 
 RASTTestUtils::clean_up();
 
