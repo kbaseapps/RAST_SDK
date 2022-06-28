@@ -401,7 +401,7 @@ sub _create_inputgenome_from_genome {
     $inputgenome = { %$inputgenome, %$genome_data };
     if (!defined($inputgenome->{dna_size}) || $inputgenome->{dna_size} == 0) {
       my $inobj_data = $self->_fetch_object_data($input_obj_ref);
-      $inputgenome->{dna_size} = $inobj_data->{dna_size}+0 // 0;
+      $inputgenome->{dna_size} = int($inobj_data->{dna_size});
     }
     #print "\n\n**After merging with _get_genome result:\n".Dumper(keys %$inputgenome);
     print "\n**After merging with _get_genome result, dna size=$inputgenome->{dna_size}\n";
@@ -432,7 +432,7 @@ sub _create_inputgenome_from_assembly {
     $inputgenome->{assembly_ref} = $input_obj_ref;  # TOBe confirmed
     if (!defined($inputgenome->{dna_size}) || $inputgenome->{dna_size} == 0) {
       my $inobj_data = $self->_fetch_object_data($input_obj_ref);
-      $inputgenome->{dna_size} = $inobj_data->{dna_size}+0 // 0;
+      $inputgenome->{dna_size} = int($inobj_data->{dna_size});
     }
     my ($contigobj, $contigID_hash) = $self->_get_contigs($input_obj_ref);
     return ($inputgenome, $contigobj, $contigID_hash);
@@ -1258,7 +1258,7 @@ sub _post_rast_ann_call {
     delete $genome->{feature_creation_event};
     delete $genome->{analysis_events};
     if (defined($genome->{genetic_code})) {
-        $genome->{genetic_code} = $genome->{genetic_code}+0;
+        $genome->{genetic_code} = int($genome->{genetic_code});
     }
     $genome->{id} = $parameters->{output_genome_name};
     if (!defined($genome->{source})) {
@@ -1276,7 +1276,7 @@ sub _post_rast_ann_call {
         $genome->{gc_content} = 0.5;
     }
     if (defined($genome->{dna_size})) {
-        $genome->{dna_size} = $genome->{dna_size}+0;
+        $genome->{dna_size} = int($genome->{dna_size});
     }
     if (not defined($genome->{non_coding_features})) {
         $genome->{non_coding_features} = [];
@@ -1318,9 +1318,9 @@ sub _move_non_coding_features {
                 $ftr->{dna_sequence_length} = 0;
                 $ftr->{md5} = '';
                 for (my $i=0; $i < scalar @{$ftr->{location}}; $i++) {
-                    $ftr->{location}->[$i]->[1]  = $ftr->{location}->[$i]->[1]+0;
-                    $ftr->{location}->[$i]->[3]  = $ftr->{location}->[$i]->[3]+0;
-                    $ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3]+0;
+                    $ftr->{location}->[$i]->[1]  = int($ftr->{location}->[$i]->[1]);
+                    $ftr->{location}->[$i]->[3]  = int($ftr->{location}->[$i]->[3]);
+                    $ftr->{dna_sequence_length} += $ftr->{location}->[$i]->[3];
                 }
             }
             delete $ftr->{feature_creation_event};
@@ -1406,27 +1406,27 @@ sub _build_seed_ontology {
                 $ftr->{type} = $1;
             }
             if (defined($ftr->{protein_translation})) {
-                $ftr->{protein_translation_length} = length($ftr->{protein_translation})+0;
+                $ftr->{protein_translation_length} = length($ftr->{protein_translation});
                 $ftr->{md5} = Digest::MD5::md5_hex($ftr->{protein_translation});
                 $proteins++;
             } else {
                 $others++;
             }
             if (defined($ftr->{dna_sequence})) {
-                $ftr->{dna_sequence_length} = length($ftr->{dna_sequence})+0;
+                $ftr->{dna_sequence_length} = length($ftr->{dna_sequence});
             }
             if (defined($ftr->{quality}->{weighted_hit_count})) {
-                $ftr->{quality}->{weighted_hit_count} = $ftr->{quality}->{weighted_hit_count}+0;
+                $ftr->{quality}->{weighted_hit_count} = int($ftr->{quality}->{weighted_hit_count});
             }
             if (defined($ftr->{quality}->{hit_count})) {
-                $ftr->{quality}->{hit_count} = $ftr->{quality}->{hit_count}+0;
+                $ftr->{quality}->{hit_count} = int($ftr->{quality}->{hit_count});
             }
             if (defined($ftr->{annotations})) {
                 delete $ftr->{annotations};
             }
             if (defined($ftr->{location})) {
-                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+                $ftr->{location}->[0]->[1] = int($ftr->{location}->[0]->[1]);
+                $ftr->{location}->[0]->[3] = int($ftr->{location}->[0]->[3]);
             }
             delete $ftr->{feature_creation_event};
             if (defined($ftr->{function}) && length($ftr->{function}) > 0 && defined($ftr->{protein_translation})) {
@@ -1531,8 +1531,8 @@ sub _build_seed_ontology {
                 $ftr->{type} = $oldtype->{$ftr->{id}};
             }
             if (defined($ftr->{location})) {
-                $ftr->{location}->[0]->[1] = $ftr->{location}->[0]->[1]+0;
-                $ftr->{location}->[0]->[3] = $ftr->{location}->[0]->[3]+0;
+                $ftr->{location}->[0]->[1] = int($ftr->{location}->[0]->[1]);
+                $ftr->{location}->[0]->[3] = int($ftr->{location}->[0]->[3]);
             }
 #           $ftr->{type} = 'gene';
             my $type = '';
@@ -1726,6 +1726,8 @@ sub _gfu_save_genome {
     if (!defined($parameters->{output_genome_name})) {
         croak "ERROR: 'output_genome_name' is missing in parameters.\n";
     }
+    $input_gn->{dna_size} = int($input_gn->{dna_size});
+
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
     try {
@@ -1869,13 +1871,13 @@ sub _fillRequiredFields {
         }
     }
     if (defined($input_obj->{genetic_code})) {
-        $input_obj->{genetic_code} = $input_obj->{genetic_code}+0;
+        $input_obj->{genetic_code} = int($input_obj->{genetic_code});
     }
     if (defined($input_obj->{gc_content})) {
-        $input_obj->{gc_content} = $input_obj->{gc_content}+0;
+        $input_obj->{gc_content} = $input_obj->{gc_content}*1.0;
     }
     if (defined($input_obj->{dna_size})) {
-        $input_obj->{dna_size} = $input_obj->{dna_size}+0;
+        $input_obj->{dna_size} = int($input_obj->{dna_size});
     }
     return $input_obj;
 }
@@ -1980,7 +1982,7 @@ sub _build_ontology_events {
     };
 
     if (defined($input_gn->{genetic_code})) {
-        $input_gn->{genetic_code} = $input_gn->{genetic_code}+0;
+        $input_gn->{genetic_code} = int($input_gn->{genetic_code});
     }
     if (defined($input_gn->{gc_content})) {
         $input_gn->{gc_content} = $input_gn->{gc_content}*1.0;
@@ -2089,9 +2091,9 @@ sub _save_genome_with_ontSer {
     try {
         if (keys %{$gn_with_events->{object}}) {
             my $gnobj = $gn_with_events->{object};
-            $gnobj->{gc_content} = $gnobj->{gc_content}+0;
-            $gnobj->{genetic_code} = $gnobj->{genetic_code}+0;
-            $gnobj->{dna_size} = $gnobj->{dna_size}+0;
+            $gnobj->{gc_content} = int($gnobj->{gc_content});
+            $gnobj->{genetic_code} = int($gnobj->{genetic_code});
+            $gnobj->{dna_size} = int($gnobj->{dna_size});
         }
 
         my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
@@ -2506,11 +2508,11 @@ sub _generate_stats_from_aa {
         else {
             my $asmb_data = $self->_fetch_object_data($gn_ref);
             $gn_stats{gc_content} = $asmb_data->{gc_content}*1.0;
-            $gn_stats{contig_count} = $asmb_data->{num_contigs}+0;
+            $gn_stats{contig_count} = int($asmb_data->{num_contigs});
             if( $asmb_data->{feature_counts} ) {
-                $gn_stats{feature_counts} = $asmb_data->{feature_counts}+0;
+                $gn_stats{feature_counts} = int($asmb_data->{feature_counts});
                 if( $asmb_data->{feature_counts}->{CDS} ) {
-                    $gn_stats{num_features} = $asmb_data->{feature_counts}->{CDS};
+                    $gn_stats{num_features} = int($asmb_data->{feature_counts}->{CDS});
                 }
             }
         }
@@ -2519,11 +2521,11 @@ sub _generate_stats_from_aa {
         my $gn_data = $self->_fetch_object_data($gn_ref);
         $gn_stats{gc_content} = $gn_data->{gc_content}*1.0;
         $gn_stats{contig_count} = $gn_data->{num_contigs};
-        $gn_stats{feature_counts} = $gn_data->{feature_counts}+0;
+        $gn_stats{feature_counts} = int($gn_data->{feature_counts});
         if( $gn_data->{num_features} ) {
-            $gn_stats{num_features} = $gn_data->{num_features}+0;
+            $gn_stats{num_features} = int($gn_data->{num_features});
         } else {
-            $gn_stats{num_features} = $gn_data->{feature_counts}->{CDS};
+            $gn_stats{num_features} = int($gn_data->{feature_counts}->{CDS});
         }
     }
     return %gn_stats;
@@ -3128,7 +3130,7 @@ sub rast_genome {
             # if $ftr->{ function } is defined, set $f_func to it; otherwise, set it to ''
             my $f_func = $ftr->{ function } // '';
             my $f_protein = $ftr->{protein_translation} // '';
-            my $f_dna_len = $ftr->{dna_sequence_length } // -1;
+            my $f_dna_len = $ftr->{dna_sequence_length } // 0;
             print "$f_id\t$f_func\t$f_protein\t$f_dna_len\n";
         }
     }
