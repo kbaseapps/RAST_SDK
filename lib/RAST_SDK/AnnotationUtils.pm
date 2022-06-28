@@ -571,7 +571,7 @@ sub _set_parameters_by_input {
     }
     return ((), {}) unless (keys %$contigobj);
 
-    $parameters->{genetic_code} = $inputgenome->{genetic_code};
+    $parameters->{genetic_code} = int($inputgenome->{genetic_code});
     $parameters->{domain} = $inputgenome->{domain};
     $parameters->{scientific_name} = $inputgenome->{scientific_name};
 
@@ -1726,7 +1726,9 @@ sub _gfu_save_genome {
     if (!defined($parameters->{output_genome_name})) {
         croak "ERROR: 'output_genome_name' is missing in parameters.\n";
     }
+    $input_gn->{genetic_code} = int($input_gn->{genetic_code});
     $input_gn->{dna_size} = int($input_gn->{dna_size});
+    $input_gn->{gc_content} = $input_gn->{gc_content}*1.0;
 
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -3187,7 +3189,7 @@ sub _build_param_from_obj {
         object_ref => $obj,
         output_workspace => $ws,
         output_genome_name => $out_genomeSet . '_' .$obj_name,
-        genetic_code => $bparams->{genetic_code},
+        genetic_code => int($bparams->{genetic_code}),
         scientific_name => $bparams->{scientific_name},
         domain => $bparams->{domain},
         create_report => 0
