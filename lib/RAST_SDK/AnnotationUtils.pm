@@ -2091,7 +2091,7 @@ sub _save_genome_with_ontSer {
     try {
         if (keys %{$gn_with_events->{object}}) {
             my $gnobj = $gn_with_events->{object};
-            $gnobj->{gc_content} = int($gnobj->{gc_content});
+            $gnobj->{gc_content} = $gnobj->{gc_content}*1.0;
             $gnobj->{genetic_code} = int($gnobj->{genetic_code});
             $gnobj->{dna_size} = int($gnobj->{dna_size});
         }
@@ -2503,7 +2503,7 @@ sub _generate_stats_from_aa {
 
         if (defined($gn_info->[10])) {
             $gn_stats{gc_content} = $gn_info->[10]->{'GC content'}*1.0;
-            $gn_stats{contig_count} = $gn_info->[10]->{'N Contigs'};
+            $gn_stats{contig_count} = int($gn_info->[10]->{'N Contigs'});
         }
         else {
             my $asmb_data = $self->_fetch_object_data($gn_ref);
