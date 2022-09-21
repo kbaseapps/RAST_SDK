@@ -1,6 +1,11 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 1.9.4
+__Changes__
+Switched annotation_ontology_api to cb_annotation_ontology_api and corrected errors in genome, which generally improves the genome objects created by RAST
+Also massively revised tests combining and standardizing them. Only about 33-50% of tests are transitioned at this time. We will continue to transition tests in future versions.
+
 ### Version 1.9.3
 __Changes__
 Main change is to add the 'upgrade=>1' to the input parameter for GFU.save_one_genome call to ensure the dna_size data is calculated. 

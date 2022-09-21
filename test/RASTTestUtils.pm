@@ -27,9 +27,27 @@ my ( $ws_name, $ws_client, $ws_id );
 my $call_back_url = $ENV{ SDK_CALLBACK_URL };
 my ( $au, $gfu, $su );
 
+my $base_dir = '/kb/module/';
+
 sub get_ws_client {
     $ws_client //= installed_clients::WorkspaceClient->new( $ws_url, token => $token );
     return $ws_client;
+}
+
+sub set_ws {
+    my ($name_or_id) = @_;
+    if (!defined($ws_client)) {
+    	get_ws_client();	
+    }
+    if ($name_or_id =~ m/^\d+$/) {
+    	$ws_id = $name_or_id+0;
+    	my $info = $ws_client->get_workspace_info({id=>$ws_id});
+    	$ws_name = $info->[1];
+    } else {
+    	$ws_name = $name_or_id;
+    	my $info = $ws_client->get_workspace_info({workspace=>$ws_name});
+    	$ws_id = $info->[0];
+    }   
 }
 
 sub get_ws_id {
@@ -290,19 +308,17 @@ sub submit_annotation {
 }
 
 sub submit_set_annotation {
-	my ($genome_set_name, $set_ref, $params) = @_;
-	$params = &set_params($genome_set_name, $params);
+	my ($params) = @_;
+	$params = &set_params($params->{output_genome}, $params);
 	my $ret = &make_impl_call("RAST_SDK.annotate_genomes", $params);
 	my $report_ref = $ret->{report_ref};
 	my $report_obj = $ws_client->get_objects([{ref=>$report_ref}])->[0]->{data};
 	my $report_text = $report_obj->{direct_html} || '';
 	print "\nReport: " . $report_text . "\n\n";
-
-	my $ref = get_ws_name() . "/" . $genome_set_name ;
+	my $ref = get_ws_name() . "/" . $params->{output_genome} ;
 	my $genome_objs = $ws_client->get_objects([{ref=>$ref}])->[0]->{data}->{elements};
 	foreach my $obj (keys %$genome_objs) {
 		my $name = $ws_client->get_object_info([{ref=>$obj}],0)->[0]->[1];
-#		print "REF=$obj\tNAME=$name\n";
 	}
 	return ($ref);
 }
@@ -313,6 +329,18 @@ sub clean_up {
             $ws_client->delete_workspace({workspace => $ws_name});
         }, 'Test workspace successfully deleted';
     }
+}
+
+sub files_with_ext {
+    my ( $tester, $regex, @dirs ) = @_;
+
+    @dirs = @dirs ? @dirs : ( $base_dir );
+
+    my @files;
+    for my $file ( $tester->_find_files( @dirs ) ) {
+        push @files, $file if $file =~ $regex;
+    }
+    return @files;
 }
 
 1;

@@ -45,8 +45,7 @@ use installed_clients::GenomeFileUtilClient;
 use installed_clients::WorkspaceClient;
 use installed_clients::KBaseReportClient;
 use installed_clients::kb_SetUtilitiesClient;
-use installed_clients::annotation_ontology_apiClient;
-use installed_clients::annotation_ontology_apiServiceClient;
+use installed_clients::cb_annotation_ontology_apiClient;
 
 
 #######################Begin refactor annotate_process########################
@@ -1729,7 +1728,39 @@ sub _gfu_save_genome {
     $input_gn->{genetic_code} = int($input_gn->{genetic_code});
     $input_gn->{dna_size} = int($input_gn->{dna_size});
     $input_gn->{gc_content} = $input_gn->{gc_content}*1.0;
-
+	
+	print "TEST1\n";
+	if (defined($input_gn->{assembly_ref})) {
+		print "TEST!\n";
+		my $output = $self->{ws_client}->get_objects2({
+	                            'objects'=>[{
+	                                "ref" => $input_gn->{assembly_ref}
+	                            }]
+	                        })->{data}->[0]->{data};
+	    $input_gn->{contig_lengths} = [];
+	    $input_gn->{contig_ids} = [];
+	    $input_gn->{num_contigs} = 0;
+	    $input_gn->{dna_size} = 0;
+		foreach my $contig_id (keys %{$output->{contigs}}) {
+			print $contig_id+"\n";
+			$input_gn->{num_contigs} += 1;
+			push(@{$input_gn->{contig_lengths}},$output->{contigs}->{$contig_id}->{"length"});
+			push(@{$input_gn->{contig_ids}},$contig_id);
+			$input_gn->{dna_size} += $output->{contigs}->{$contig_id}->{"length"};
+		}
+		my $cdshash = {};
+		foreach my $cds (@{$input_gn->{cdss}}) {
+			print $cds->{id}+"\n";
+			$cdshash->{$cds->{id}} = $cds;
+			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
+		}
+		#foreach my $ftr (@{$input_gn->{features}}) {
+			#for my $cds (@{$input_gn->{features}->{cdss}}) {
+				
+			#}
+		#}
+	}
+	
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
     try {
@@ -2077,28 +2108,48 @@ sub _save_genome_with_ontSer {
     print "\nCalling ontology service!\n";
 
     my $gn_with_events = $self->_build_ontology_events($input_gn, $params);
-    my ($saved_ref, $msg) = $self->_gfu_save_genome($input_gn, $params, $message);
-    if (keys %$saved_ref) {
-        print "\nPassing input_ref $saved_ref->{ref} to genome with ontology events!\n";
-        $gn_with_events->{input_ref} = $saved_ref->{ref};
-    } else {
-        print "\nPassing object data to genome with ontology events!\n";
-        $gn_with_events->{object} = $input_gn;
-    }
+    $gn_with_events->{object} = $input_gn;
+    $gn_with_events->{provenance} = [{
+                time => DateTime->now()->datetime()."+0000",
+                service_ver => $self->_util_version(),
+                service => "RAST_SDK",
+                method => Bio::KBase::Utilities::method(),
+                method_params => [$params],
+                input_ws_objects => [],
+                resolved_ws_objects => [],
+                intermediate_incoming => [],
+                intermediate_outgoing => []
+            }];
     $self->_print_onto_genome_data($gn_with_events);
+    $input_gn->{genetic_code} = $input_gn->{genetic_code}+0;
+    $input_gn->{dna_size} = $input_gn->{dna_size}+0;
+    $input_gn->{gc_content} = $input_gn->{gc_content}+0;
 
-    my $anno_ontSer_client = installed_clients::annotation_ontology_apiServiceClient->new(
-	                                        undef, token => $self->{_token});
+	if (defined($input_gn->{assembly_ref})) {
+		my $output = $self->{ws_client}->get_objects2({
+	                            'objects'=>[{
+	                                "ref" => $input_gn->{assembly_ref}
+	                            }]
+	                        })->{data}->[0]->{data};
+	    $input_gn->{contig_lengths} = [];
+	    $input_gn->{contig_ids} = [];
+	    $input_gn->{num_contigs} = 0;
+	    $input_gn->{dna_size} = 0;
+		foreach my $contig_id (keys %{$output->{contigs}}) {
+			$input_gn->{num_contigs} += 1;
+			push(@{$input_gn->{contig_lengths}},$output->{contigs}->{$contig_id}->{"length"});
+			push(@{$input_gn->{contig_ids}},$contig_id);
+			$input_gn->{dna_size} += $output->{contigs}->{$contig_id}->{"length"};
+		}
+		foreach my $cds (@{$input_gn->{cdss}}) {
+			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
+		}
+	}
+
+    my $anno_ontSer = installed_clients::cb_annotation_ontology_apiClient->new($self->{call_back_url});
 
     try {
-        if (keys %{$gn_with_events->{object}}) {
-            my $gnobj = $gn_with_events->{object};
-            $gnobj->{gc_content} = $gnobj->{gc_content}*1.0;
-            $gnobj->{genetic_code} = int($gnobj->{genetic_code});
-            $gnobj->{dna_size} = int($gnobj->{dna_size});
-        }
-
-        my $ontSer_output = $anno_ontSer_client->add_annotation_ontology_events($gn_with_events);
+        my $ontSer_output = $anno_ontSer->add_annotation_ontology_events($gn_with_events);
         my $ref = $ontSer_output->{output_ref};
 
         Bio::KBase::KBaseEnv::add_object_created({

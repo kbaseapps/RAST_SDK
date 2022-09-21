@@ -2,6 +2,10 @@ FROM kbase/rast_base:1.9.1
 
 WORKDIR /kb/module
 
+RUN rm /kb/module/test/*.t
+
+RUN rm -rf /kb/module/lib/RAST_SDK
+
 COPY ./ /kb/module
 
     # try to force tmp files to be written to right spot
