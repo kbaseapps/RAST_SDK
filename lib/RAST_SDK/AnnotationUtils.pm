@@ -1725,41 +1725,8 @@ sub _gfu_save_genome {
     if (!defined($parameters->{output_genome_name})) {
         croak "ERROR: 'output_genome_name' is missing in parameters.\n";
     }
-    $input_gn->{genetic_code} = int($input_gn->{genetic_code});
-    $input_gn->{dna_size} = int($input_gn->{dna_size});
-    $input_gn->{gc_content} = $input_gn->{gc_content}*1.0;
-	
-	print "TEST1\n";
-	if (defined($input_gn->{assembly_ref})) {
-		print "TEST!\n";
-		my $output = $self->{ws_client}->get_objects2({
-	                            'objects'=>[{
-	                                "ref" => $input_gn->{assembly_ref}
-	                            }]
-	                        })->{data}->[0]->{data};
-	    $input_gn->{contig_lengths} = [];
-	    $input_gn->{contig_ids} = [];
-	    $input_gn->{num_contigs} = 0;
-	    $input_gn->{dna_size} = 0;
-		foreach my $contig_id (keys %{$output->{contigs}}) {
-			print $contig_id+"\n";
-			$input_gn->{num_contigs} += 1;
-			push(@{$input_gn->{contig_lengths}},$output->{contigs}->{$contig_id}->{"length"});
-			push(@{$input_gn->{contig_ids}},$contig_id);
-			$input_gn->{dna_size} += $output->{contigs}->{$contig_id}->{"length"};
-		}
-		my $cdshash = {};
-		foreach my $cds (@{$input_gn->{cdss}}) {
-			print $cds->{id}+"\n";
-			$cdshash->{$cds->{id}} = $cds;
-			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
-		}
-		#foreach my $ftr (@{$input_gn->{features}}) {
-			#for my $cds (@{$input_gn->{features}->{cdss}}) {
-				
-			#}
-		#}
-	}
+    
+    $input_gn = $self->_compute_genome_assembly_stats($input_gn);
 	
     my $gfu_client = installed_clients::GenomeFileUtilClient->new($self->{call_back_url});
     my ($gaout, $gaout_info);
@@ -2120,31 +2087,8 @@ sub _save_genome_with_ontSer {
                 intermediate_incoming => [],
                 intermediate_outgoing => []
             }];
-    $self->_print_onto_genome_data($gn_with_events);
-    $input_gn->{genetic_code} = $input_gn->{genetic_code}+0;
-    $input_gn->{dna_size} = $input_gn->{dna_size}+0;
-    $input_gn->{gc_content} = $input_gn->{gc_content}+0;
-
-	if (defined($input_gn->{assembly_ref})) {
-		my $output = $self->{ws_client}->get_objects2({
-	                            'objects'=>[{
-	                                "ref" => $input_gn->{assembly_ref}
-	                            }]
-	                        })->{data}->[0]->{data};
-	    $input_gn->{contig_lengths} = [];
-	    $input_gn->{contig_ids} = [];
-	    $input_gn->{num_contigs} = 0;
-	    $input_gn->{dna_size} = 0;
-		foreach my $contig_id (keys %{$output->{contigs}}) {
-			$input_gn->{num_contigs} += 1;
-			push(@{$input_gn->{contig_lengths}},$output->{contigs}->{$contig_id}->{"length"});
-			push(@{$input_gn->{contig_ids}},$contig_id);
-			$input_gn->{dna_size} += $output->{contigs}->{$contig_id}->{"length"};
-		}
-		foreach my $cds (@{$input_gn->{cdss}}) {
-			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
-		}
-	}
+    
+    $input_gn = $self->_compute_genome_assembly_stats($input_gn);
 
     my $anno_ontSer = installed_clients::cb_annotation_ontology_apiClient->new($self->{call_back_url});
 
@@ -2168,6 +2112,35 @@ sub _save_genome_with_ontSer {
         print $err_msg;
         return ({}, $err_msg);
     };
+}
+
+sub _compute_genome_assembly_stats {
+	my ($self, $genome) = @_;
+	$genome->{genetic_code} = $genome->{genetic_code}+0;
+    $genome->{dna_size} = $genome->{dna_size}+0;
+    $genome->{gc_content} = $genome->{gc_content}+0;
+	if (defined($genome->{assembly_ref})) {
+		my $output = $self->{ws_client}->get_objects2({
+	                            'objects'=>[{
+	                                "ref" => $genome->{assembly_ref}
+	                            }]
+	                        })->{data}->[0]->{data};
+	    $genome->{contig_lengths} = [];
+	    $genome->{contig_ids} = [];
+	    $genome->{num_contigs} = 0;
+	    $genome->{dna_size} = 0;
+		foreach my $contig_id (keys %{$output->{contigs}}) {
+			$genome->{num_contigs} += 1;
+			my $contiglen = $output->{contigs}->{$contig_id}->{"length"};
+			push(@{$genome->{contig_lengths}},$contiglen);
+			push(@{$genome->{contig_ids}},$contig_id);
+			$genome->{dna_size} += $contiglen;
+		}
+		foreach my $cds (@{$genome->{cdss}}) {
+			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
+		}
+	}
+	return $genome;
 }
 
 ## End saving annotated genome with the ontology service
