@@ -21,4 +21,3 @@ RUN rm -rf /tmp && ln -s /kb/module/work/tmp /tmp && \
 ENTRYPOINT [ "./scripts/entrypoint.sh" ]
 
 CMD [ ]
-
