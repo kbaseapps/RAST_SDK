@@ -2174,8 +2174,8 @@ sub _compute_genome_assembly_stats {
 						$ftr->{location}->[0]->[3] += 0;
 						push(@{$new_array},$ftr);
 						my $array = [split(/\./,$ftr->{id})];
-						@{$array}.pop();
-						$ftr->{id} = join(".",@{$array}).".".scalar(@{$new_array});
+						$array->[-1] = scalar(@{$new_array})
+						$ftr->{id} = join(".",@{$array});
 						if ($ftr->{location}->[0]->[2] eq "+") {
 							$ftr->{dna_sequence} = uc substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
 						} else {
@@ -2188,6 +2188,7 @@ sub _compute_genome_assembly_stats {
 							$ftr->{dna_sequence} =~ s/T/A/g;
 							$ftr->{dna_sequence} =~ s/Z/T/g;
 						}
+						$ftr->{md5} = Digest::MD5::md5_hex($ftr->{dna_sequence});
 					}
 				}
 			}
