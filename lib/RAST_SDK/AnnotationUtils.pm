@@ -2140,28 +2140,24 @@ sub _compute_genome_assembly_stats {
 			$cds->{dna_sequence_length} = 3*$cds->{protein_translation_length}
 		}
 	}
-	my $contighash;
 	if (defined($genome->{non_coding_features})) {
+		print "Getting contigs\n";
+		my $contighash = {};
+		my $key = "assembly_ref";
+		if (!defined($genome->{$key})) {
+			$key = "contigset_ref";
+		}
+		if (defined($genome->{$key})) {
+			($ret_obj, my $contigID_hash) = $self->_get_contigs($genome->{$key});
+			for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {
+        		print($ret_obj->{contigs}->[$i]->{id}."\n");
+        		$contighash->{$ret_obj->{contigs}->[$i]->{id}} = $ret_obj->{contigs}->[$i]->{sequence};
+			}
+		}
 		foreach my $ftr (@{$genome->{non_coding_features}}) {
 			print($ftr->{id});
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {
 				print "Location but no sequence";
-				if (!defined($contighash)) {
-					print "Getting contigs" ;
-					$contighash = {};
-					my $ret_obj;
-					my $contigID_hash;
-					if (defined($genome->{assembly_ref})) {
-						($ret_obj, $contigID_hash) = $self->_get_contigs($genome->{assembly_ref});
-					} elsif (defined($genome->{contigset_ref})) {
-						($ret_obj, $contigID_hash) = $self->_get_contigs($genome->{contigset_ref});
-					}
-					if (defined($ret_obj)) {
-						for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {
-        					$contighash->{$ret_obj->{contigs}->[$i]->{id}} = $ret_obj->{contigs}->[$i]->{sequence};
-						}
-					}
-				}
 				if (defined($contighash->{$ftr->{location}->[0]->[0]})) {
 					print "Getting DNA sequence!";
 					if ($ftr->{location}->[0]->[2] eq "+") {
