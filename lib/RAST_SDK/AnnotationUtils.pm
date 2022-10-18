@@ -2153,26 +2153,49 @@ sub _compute_genome_assembly_stats {
         		$contighash->{$contigid} = $ret_obj->{contigs}->[$i]->{sequence};
 			}
 		}
+		my $ncs_hash = {};
+		my $new_array = [];
 		foreach my $ftr (@{$genome->{non_coding_features}}) {
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {
 				if (defined($contighash->{$ftr->{location}->[0]->[0]})) {
-					if ($ftr->{location}->[0]->[2] eq "+") {
-						$ftr->{dna_sequence} = uc substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
-					} else {
-						$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1]-$ftr->{location}->[0]->[3], $ftr->{location}->[0]->[3];
-						$ftr->{dna_sequence} = uc reverse($ftr->{dna_sequence});
-						$ftr->{dna_sequence} =~ s/C/Z/g;
-						$ftr->{dna_sequence} =~ s/G/C/g;
-						$ftr->{dna_sequence} =~ s/Z/G/g;
-						$ftr->{dna_sequence} =~ s/A/Z/g;
-						$ftr->{dna_sequence} =~ s/T/A/g;
-						$ftr->{dna_sequence} =~ s/Z/T/g;
+					if (!defined($ncs_hash->{
+						$ftr->{location}->[0]->[0].
+						$ftr->{location}->[0]->[1].
+						$ftr->{location}->[0]->[2].
+						$ftr->{location}->[0]->[3]
+					})) {
+						$ncs_hash->{
+							$ftr->{location}->[0]->[0].
+							$ftr->{location}->[0]->[1].
+							$ftr->{location}->[0]->[2].
+							$ftr->{location}->[0]->[3]
+						} = 1;
+						$new_array.append($ftr);
+						if ($ftr->{location}->[0]->[2] eq "+") {
+							$ftr->{dna_sequence} = uc substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
+						} else {
+							$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1]-$ftr->{location}->[0]->[3], $ftr->{location}->[0]->[3];
+							$ftr->{dna_sequence} = uc reverse($ftr->{dna_sequence});
+							$ftr->{dna_sequence} =~ s/C/Z/g;
+							$ftr->{dna_sequence} =~ s/G/C/g;
+							$ftr->{dna_sequence} =~ s/Z/G/g;
+							$ftr->{dna_sequence} =~ s/A/Z/g;
+							$ftr->{dna_sequence} =~ s/T/A/g;
+							$ftr->{dna_sequence} =~ s/Z/T/g;
+						}
 					}
 				}
 			}
 		}
+		$genome->{non_coding_features} = $new_array;
 	}
-	
+	if (defined($genome->{mrnas})) {
+		foreach my $ftr (@{$genome->{mrnas}}) {
+			if (defined($ftr->{location}) and defined($ftr->{location}->[0]) && defined($ftr->{location}->[0]->[3])) {
+				$ftr->{dna_sequence_length} = $ftr->{location}->[0]->[3];
+			}	
+		}
+	}
 	return $genome;
 }
 
