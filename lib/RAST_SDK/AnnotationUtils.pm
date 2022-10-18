@@ -2141,7 +2141,6 @@ sub _compute_genome_assembly_stats {
 		}
 	}
 	if (defined($genome->{non_coding_features})) {
-		print "Getting contigs\n";
 		my $contighash = {};
 		my $key = "assembly_ref";
 		if (!defined($genome->{$key})) {
@@ -2149,9 +2148,9 @@ sub _compute_genome_assembly_stats {
 		}
 		if (defined($genome->{$key})) {
 			(my $ret_obj, my $contigID_hash) = $self->_get_contigs($genome->{$key});
-			for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {
-        		print($ret_obj->{contigs}->[$i]->{id}."\n");
-        		$contighash->{$ret_obj->{contigs}->[$i]->{id}} = $ret_obj->{contigs}->[$i]->{sequence};
+			for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {        		
+        		my $contigid = $contigID_hash->{$ret_obj->{contigs}->[$i]->{id}};
+        		$contighash->{$contigid} = $ret_obj->{contigs}->[$i]->{sequence};
 			}
 		}
 		foreach my $ftr (@{$genome->{non_coding_features}}) {
