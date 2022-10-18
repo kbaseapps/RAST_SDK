@@ -2170,7 +2170,7 @@ sub _compute_genome_assembly_stats {
 							$ftr->{location}->[0]->[2].
 							$ftr->{location}->[0]->[3]
 						} = 1;
-						$new_array.append($ftr);
+						push(@{$new_array},$ftr);
 						my $array = [split(/\./,$ftr->{id})];
 						@{$array}.pop();
 						$ftr->{id} = join(".",@{$array}).".".len(@{$new_array});
