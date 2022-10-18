@@ -2154,18 +2154,19 @@ sub _compute_genome_assembly_stats {
 			}
 		}
 		foreach my $ftr (@{$genome->{non_coding_features}}) {
-			print($ftr->{id});
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {
-				print "Location but no sequence";
 				if (defined($contighash->{$ftr->{location}->[0]->[0]})) {
-					print "Getting DNA sequence!";
 					if ($ftr->{location}->[0]->[2] eq "+") {
-						$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
-						print "Forward:".$ftr->{dna_sequence};
+						$ftr->{dna_sequence} = uc substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
 					} else {
 						$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1]-$ftr->{location}->[0]->[3], $ftr->{location}->[0]->[3];
-						$ftr->{dna_sequence} = reverse($ftr->{dna_sequence});
-						print "Reverse:".$ftr->{dna_sequence};
+						$ftr->{dna_sequence} = uc reverse($ftr->{dna_sequence});
+						$ftr->{dna_sequence} =~ s/C/Z/g;
+						$ftr->{dna_sequence} =~ s/G/C/g;
+						$ftr->{dna_sequence} =~ s/Z/G/g;
+						$ftr->{dna_sequence} =~ s/A/Z/g;
+						$ftr->{dna_sequence} =~ s/T/A/g;
+						$ftr->{dna_sequence} =~ s/Z/T/g;
 					}
 				}
 			}
