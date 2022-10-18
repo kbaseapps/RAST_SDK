@@ -2143,8 +2143,11 @@ sub _compute_genome_assembly_stats {
 	my $contighash;
 	if (defined($genome->{non_coding_features})) {
 		foreach my $ftr (@{$genome->{non_coding_features}}) {
+			print($ftr->{id});
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {
+				print "Location but no sequence";
 				if (!defined($contighash)) {
+					print "Getting contigs" ;
 					$contighash = {};
 					my $ret_obj;
 					my $contigID_hash;
@@ -2160,11 +2163,14 @@ sub _compute_genome_assembly_stats {
 					}
 				}
 				if (defined($contighash->{$ftr->{location}->[0]->[0]})) {
+					print "Getting DNA sequence!";
 					if ($ftr->{location}->[0]->[2] eq "+") {
 						$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
+						print "Forward:".$ftr->{dna_sequence};
 					} else {
 						$ftr->{dna_sequence} = substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1]-$ftr->{location}->[0]->[3], $ftr->{location}->[0]->[3];
-						$ftr->{dna_sequence} = reverse($ftr->{dna_sequence})
+						$ftr->{dna_sequence} = reverse($ftr->{dna_sequence});
+						print "Reverse:".$ftr->{dna_sequence};
 					}
 				}
 			}
