@@ -2148,7 +2148,7 @@ sub _compute_genome_assembly_stats {
 			$key = "contigset_ref";
 		}
 		if (defined($genome->{$key})) {
-			($ret_obj, my $contigID_hash) = $self->_get_contigs($genome->{$key});
+			(my $ret_obj, my $contigID_hash) = $self->_get_contigs($genome->{$key});
 			for (my $i=0; $i < @{$ret_obj->{contigs}}; $i++) {
         		print($ret_obj->{contigs}->[$i]->{id}."\n");
         		$contighash->{$ret_obj->{contigs}->[$i]->{id}} = $ret_obj->{contigs}->[$i]->{sequence};
