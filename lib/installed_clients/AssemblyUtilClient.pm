@@ -55,7 +55,7 @@ sub new
     if (exists $arg_hash{"async_job_check_max_time_ms"}) {
         $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
     }
-    my $service_version = 'dev';
+    my $service_version = 'release';
     if (exists $arg_hash{"service_version"}) {
         $service_version = $arg_hash{"service_version"};
     }
@@ -499,6 +499,149 @@ sub _export_assembly_as_fasta_submit {
  
 
 
+=head2 save_assembly_from_fasta2
+
+  $result = $obj->save_assembly_from_fasta2($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is an AssemblyUtil.SaveAssemblyParams
+$result is an AssemblyUtil.SaveAssemblyResult
+SaveAssemblyParams is a reference to a hash where the following keys are defined:
+	file has a value which is an AssemblyUtil.FastaAssemblyFile
+	shock_id has a value which is an AssemblyUtil.ShockNodeId
+	workspace_id has a value which is an int
+	workspace_name has a value which is a string
+	assembly_name has a value which is a string
+	type has a value which is a string
+	external_source has a value which is a string
+	external_source_id has a value which is a string
+	min_contig_length has a value which is an int
+	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+FastaAssemblyFile is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	assembly_name has a value which is a string
+ShockNodeId is a string
+ExtraContigInfo is a reference to a hash where the following keys are defined:
+	is_circ has a value which is an int
+	description has a value which is a string
+SaveAssemblyResult is a reference to a hash where the following keys are defined:
+	upa has a value which is an AssemblyUtil.upa
+	filtered_input has a value which is a string
+upa is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is an AssemblyUtil.SaveAssemblyParams
+$result is an AssemblyUtil.SaveAssemblyResult
+SaveAssemblyParams is a reference to a hash where the following keys are defined:
+	file has a value which is an AssemblyUtil.FastaAssemblyFile
+	shock_id has a value which is an AssemblyUtil.ShockNodeId
+	workspace_id has a value which is an int
+	workspace_name has a value which is a string
+	assembly_name has a value which is a string
+	type has a value which is a string
+	external_source has a value which is a string
+	external_source_id has a value which is a string
+	min_contig_length has a value which is an int
+	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+FastaAssemblyFile is a reference to a hash where the following keys are defined:
+	path has a value which is a string
+	assembly_name has a value which is a string
+ShockNodeId is a string
+ExtraContigInfo is a reference to a hash where the following keys are defined:
+	is_circ has a value which is an int
+	description has a value which is a string
+SaveAssemblyResult is a reference to a hash where the following keys are defined:
+	upa has a value which is an AssemblyUtil.upa
+	filtered_input has a value which is a string
+upa is a string
+
+
+=end text
+
+=item Description
+
+Save a KBase Workspace assembly object from a FASTA file.
+
+=back
+
+=cut
+
+sub save_assembly_from_fasta2
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_save_assembly_from_fasta2_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _save_assembly_from_fasta2_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _save_assembly_from_fasta2_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _save_assembly_from_fasta2_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_save_assembly_from_fasta2_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._save_assembly_from_fasta2_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_save_assembly_from_fasta2_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _save_assembly_from_fasta2_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_save_assembly_from_fasta2_submit');
+    }
+}
+
+ 
+
+
 =head2 save_assembly_from_fasta
 
   $ref = $obj->save_assembly_from_fasta($params)
@@ -515,12 +658,12 @@ $ref is a string
 SaveAssemblyParams is a reference to a hash where the following keys are defined:
 	file has a value which is an AssemblyUtil.FastaAssemblyFile
 	shock_id has a value which is an AssemblyUtil.ShockNodeId
-	ftp_url has a value which is a string
+	workspace_id has a value which is an int
 	workspace_name has a value which is a string
 	assembly_name has a value which is a string
+	type has a value which is a string
 	external_source has a value which is a string
 	external_source_id has a value which is a string
-	taxon_ref has a value which is a string
 	min_contig_length has a value which is an int
 	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
 FastaAssemblyFile is a reference to a hash where the following keys are defined:
@@ -542,12 +685,12 @@ $ref is a string
 SaveAssemblyParams is a reference to a hash where the following keys are defined:
 	file has a value which is an AssemblyUtil.FastaAssemblyFile
 	shock_id has a value which is an AssemblyUtil.ShockNodeId
-	ftp_url has a value which is a string
+	workspace_id has a value which is an int
 	workspace_name has a value which is a string
 	assembly_name has a value which is a string
+	type has a value which is a string
 	external_source has a value which is a string
 	external_source_id has a value which is a string
-	taxon_ref has a value which is a string
 	min_contig_length has a value which is an int
 	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
 FastaAssemblyFile is a reference to a hash where the following keys are defined:
@@ -563,11 +706,7 @@ ExtraContigInfo is a reference to a hash where the following keys are defined:
 
 =item Description
 
-WARNING: has the side effect of moving the file to a temporary staging directory, because the upload
-script for assemblies currently requires a working directory, not a specific file.  It will attempt
-to upload everything in that directory.  This will move the file back to the original location, but
-if you are trying to keep an open file handle or are trying to do things concurrently to that file,
-this will break.  So this method is certainly NOT thread safe on the input file.
+@deprecated AssemblyUtil.save_assembly_from_fasta2
 
 =back
 
@@ -636,6 +775,156 @@ sub _save_assembly_from_fasta_submit {
 }
 
  
+
+
+=head2 save_assemblies_from_fastas
+
+  $results = $obj->save_assemblies_from_fastas($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is an AssemblyUtil.SaveAssembliesParams
+$results is an AssemblyUtil.SaveAssembliesResults
+SaveAssembliesParams is a reference to a hash where the following keys are defined:
+	workspace_id has a value which is an int
+	inputs has a value which is a reference to a list where each element is an AssemblyUtil.FASTAInput
+	min_contig_length has a value which is an int
+FASTAInput is a reference to a hash where the following keys are defined:
+	file has a value which is a string
+	node has a value which is a string
+	assembly_name has a value which is a string
+	type has a value which is a string
+	external_source has a value which is a string
+	external_source_id has a value which is a string
+	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+ExtraContigInfo is a reference to a hash where the following keys are defined:
+	is_circ has a value which is an int
+	description has a value which is a string
+SaveAssembliesResults is a reference to a hash where the following keys are defined:
+	results has a value which is a reference to a list where each element is an AssemblyUtil.SaveAssemblyResult
+SaveAssemblyResult is a reference to a hash where the following keys are defined:
+	upa has a value which is an AssemblyUtil.upa
+	filtered_input has a value which is a string
+upa is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is an AssemblyUtil.SaveAssembliesParams
+$results is an AssemblyUtil.SaveAssembliesResults
+SaveAssembliesParams is a reference to a hash where the following keys are defined:
+	workspace_id has a value which is an int
+	inputs has a value which is a reference to a list where each element is an AssemblyUtil.FASTAInput
+	min_contig_length has a value which is an int
+FASTAInput is a reference to a hash where the following keys are defined:
+	file has a value which is a string
+	node has a value which is a string
+	assembly_name has a value which is a string
+	type has a value which is a string
+	external_source has a value which is a string
+	external_source_id has a value which is a string
+	contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+ExtraContigInfo is a reference to a hash where the following keys are defined:
+	is_circ has a value which is an int
+	description has a value which is a string
+SaveAssembliesResults is a reference to a hash where the following keys are defined:
+	results has a value which is a reference to a list where each element is an AssemblyUtil.SaveAssemblyResult
+SaveAssemblyResult is a reference to a hash where the following keys are defined:
+	upa has a value which is an AssemblyUtil.upa
+	filtered_input has a value which is a string
+upa is a string
+
+
+=end text
+
+=item Description
+
+Save multiple assembly objects from FASTA files.
+WARNING: The code currently saves all assembly object data in memory before sending it
+to the workspace in a single batch. Since the object data doesn't include sequences,
+it is typically small and so in most cases this shouldn't cause issues. However, many
+assemblies and / or many contigs could conceivably cause memeory issues or could
+cause the workspace to reject the data package if the serialized data is > 1GB.
+
+TODO: If this becomes a common issue (not particularly likely?) update the code to
+ Save assembly object data on disk if it becomes too large
+ Batch uploads to the workspace based on data size
+
+=back
+
+=cut
+
+sub save_assemblies_from_fastas
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_save_assemblies_from_fastas_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _save_assemblies_from_fastas_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _save_assemblies_from_fastas_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _save_assemblies_from_fastas_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_save_assemblies_from_fastas_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "AssemblyUtil._save_assemblies_from_fastas_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_save_assemblies_from_fastas_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _save_assemblies_from_fastas_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_save_assemblies_from_fastas_submit');
+    }
+}
+
+ 
  
 sub status
 {
@@ -696,16 +985,16 @@ sub version {
             Bio::KBase::Exceptions::JSONRPC->throw(
                 error => $result->error_message,
                 code => $result->content->{code},
-                method_name => 'save_assembly_from_fasta',
+                method_name => 'save_assemblies_from_fastas',
             );
         } else {
             return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
         Bio::KBase::Exceptions::HTTP->throw(
-            error => "Error invoking method save_assembly_from_fasta",
+            error => "Error invoking method save_assemblies_from_fastas",
             status_line => $self->{client}->status_line,
-            method_name => 'save_assembly_from_fasta',
+            method_name => 'save_assemblies_from_fastas',
         );
     }
 }
@@ -739,6 +1028,39 @@ sub _validate_version {
 }
 
 =head1 TYPES
+
+
+
+=head2 upa
+
+=over 4
+
+
+
+=item Description
+
+A Unique Permanent Address for a workspace object, which is of the form W/O/V,
+where W is the numeric workspace ID, O is the numeric object ID, and V is the object
+version.
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
+
+=end text
+
+=back
 
 
 
@@ -1056,26 +1378,28 @@ description has a value which is a string
 
 =item Description
 
-Options supported:
-    file / shock_id / ftp_url - mutualy exclusive parameters pointing to file content
-    workspace_name - target workspace
+Required arguments:
+    Exactly one of:
+        file - a pre-existing FASTA file to import. The 'assembly_name' field in the
+            FastaAssemblyFile object is ignored.
+        shock_id - an ID of a node in the Blobstore containing the FASTA file.
+    Exactly one of:
+        workspace_id - the immutable, numeric ID of the target workspace. Always prefer
+            providing the ID over the name.
+        workspace_name - the name of the target workspace.
     assembly_name - target object name
 
-    type - should be one of 'isolate', 'metagenome', (maybe 'transcriptome')
+Optional arguments:
+    
+    type - should be one of 'isolate', 'metagenome', (maybe 'transcriptome').
+        Defaults to 'Unknown'
 
-    min_contig_length - if set and value is greater than 1, this will only include sequences
-                        with length greater or equal to the min_contig_length specified, discarding
-                        all other sequences
+    min_contig_length - if set and value is greater than 1, this will only
+        include sequences with length greater or equal to the min_contig_length
+        specified, discarding all other sequences
 
-    taxon_ref         - sets the taxon_ref if present
-
-    contig_info       - map from contig_id to a small structure that can be used to set the is_circular
-                        and description fields for Assemblies (optional)
-
-Uploader options not yet supported
-    taxon_reference: The ws reference the assembly points to.  (Optional)
-    source: The source of the data (Ex: Refseq)
-    date_string: Date (or date range) associated with data. (Optional)
+    contig_info - map from contig_id to a small structure that can be used to set the
+        is_circular and description fields for Assemblies (optional)
 
 
 =item Definition
@@ -1086,12 +1410,12 @@ Uploader options not yet supported
 a reference to a hash where the following keys are defined:
 file has a value which is an AssemblyUtil.FastaAssemblyFile
 shock_id has a value which is an AssemblyUtil.ShockNodeId
-ftp_url has a value which is a string
+workspace_id has a value which is an int
 workspace_name has a value which is a string
 assembly_name has a value which is a string
+type has a value which is a string
 external_source has a value which is a string
 external_source_id has a value which is a string
-taxon_ref has a value which is a string
 min_contig_length has a value which is an int
 contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
 
@@ -1104,14 +1428,197 @@ contig_info has a value which is a reference to a hash where the key is a string
 a reference to a hash where the following keys are defined:
 file has a value which is an AssemblyUtil.FastaAssemblyFile
 shock_id has a value which is an AssemblyUtil.ShockNodeId
-ftp_url has a value which is a string
+workspace_id has a value which is an int
 workspace_name has a value which is a string
 assembly_name has a value which is a string
+type has a value which is a string
 external_source has a value which is a string
 external_source_id has a value which is a string
-taxon_ref has a value which is a string
 min_contig_length has a value which is an int
 contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+
+
+=end text
+
+=back
+
+
+
+=head2 SaveAssemblyResult
+
+=over 4
+
+
+
+=item Description
+
+Results from saving an assembly.
+upa - the address of the resulting workspace object.
+filtered_input - the filtered input file if the minimum contig length parameter is
+   present and > 0. null otherwise.
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+upa has a value which is an AssemblyUtil.upa
+filtered_input has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+upa has a value which is an AssemblyUtil.upa
+filtered_input has a value which is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 FASTAInput
+
+=over 4
+
+
+
+=item Description
+
+An input FASTA file and metadata for import.
+Required arguments:
+    Exactly one of:
+        file - a path to an input FASTA file. Must be accessible inside the AssemblyUtil
+            docker continer.
+        node - a node ID for a Blobstore (formerly Shock) node containing an input FASTA
+            file.
+    assembly_name - the workspace name under which to save the Assembly object.
+Optional arguments:
+    type - should be one of 'isolate', 'metagenome', (maybe 'transcriptome').
+        Defaults to 'Unknown'
+    external_source - the source of the input data. E.g. JGI, NCBI, etc.
+    external_source_id - the ID of the input data at the source.
+    contig_info - map from contig_id to a small structure that can be used to set the
+        is_circular and description fields for Assemblies
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+file has a value which is a string
+node has a value which is a string
+assembly_name has a value which is a string
+type has a value which is a string
+external_source has a value which is a string
+external_source_id has a value which is a string
+contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+file has a value which is a string
+node has a value which is a string
+assembly_name has a value which is a string
+type has a value which is a string
+external_source has a value which is a string
+external_source_id has a value which is a string
+contig_info has a value which is a reference to a hash where the key is a string and the value is an AssemblyUtil.ExtraContigInfo
+
+
+=end text
+
+=back
+
+
+
+=head2 SaveAssembliesParams
+
+=over 4
+
+
+
+=item Description
+
+Input for the save_assemblies_from_fastas function.
+Required arguments:
+    workspace_id - the numerical ID of the workspace in which to save the Assemblies.
+    inputs - a list of FASTA files to import. All of the files must be from the same
+        source - either all local files or all Blobstore nodes.
+Optional arguments:
+    min_contig_length - an integer > 1. If present, sequences of lesser length will
+        be removed from the input FASTA files.
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_id has a value which is an int
+inputs has a value which is a reference to a list where each element is an AssemblyUtil.FASTAInput
+min_contig_length has a value which is an int
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_id has a value which is an int
+inputs has a value which is a reference to a list where each element is an AssemblyUtil.FASTAInput
+min_contig_length has a value which is an int
+
+
+=end text
+
+=back
+
+
+
+=head2 SaveAssembliesResults
+
+=over 4
+
+
+
+=item Description
+
+Results for the save_assemblies_from_fastas function.
+results - the results of the save operation in the same order as the input.
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+results has a value which is a reference to a list where each element is an AssemblyUtil.SaveAssemblyResult
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+results has a value which is a reference to a list where each element is an AssemblyUtil.SaveAssemblyResult
 
 
 =end text

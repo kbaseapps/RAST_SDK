@@ -55,7 +55,7 @@ sub new
     if (exists $arg_hash{"async_job_check_max_time_ms"}) {
         $self->{async_job_check_max_time} = $arg_hash{"async_job_check_max_time_ms"} / 1000.0;
     }
-    my $service_version = 'dev';
+    my $service_version = 'release';
     if (exists $arg_hash{"service_version"}) {
         $service_version = $arg_hash{"service_version"};
     }
@@ -438,7 +438,7 @@ sub _genome_to_gff_submit {
 $params is a GenomeFileUtil.MetagenomeToGFFParams
 $result is a GenomeFileUtil.MetagenomeToGFFResult
 MetagenomeToGFFParams is a reference to a hash where the following keys are defined:
-	genome_ref has a value which is a string
+	metagenome_ref has a value which is a string
 	ref_path_to_genome has a value which is a reference to a list where each element is a string
 	is_gtf has a value which is a GenomeFileUtil.boolean
 	target_dir has a value which is a string
@@ -456,7 +456,7 @@ MetagenomeToGFFResult is a reference to a hash where the following keys are defi
 $params is a GenomeFileUtil.MetagenomeToGFFParams
 $result is a GenomeFileUtil.MetagenomeToGFFResult
 MetagenomeToGFFParams is a reference to a hash where the following keys are defined:
-	genome_ref has a value which is a string
+	metagenome_ref has a value which is a string
 	ref_path_to_genome has a value which is a reference to a list where each element is a string
 	is_gtf has a value which is a GenomeFileUtil.boolean
 	target_dir has a value which is a string
@@ -1205,6 +1205,113 @@ sub _export_genome_features_protein_to_fasta_submit {
         Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _export_genome_features_protein_to_fasta_submit",
                         status_line => $self->{client}->status_line,
                         method_name => '_export_genome_features_protein_to_fasta_submit');
+    }
+}
+
+ 
+
+
+=head2 export_metagenome_as_gff
+
+  $output = $obj->export_metagenome_as_gff($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a GenomeFileUtil.ExportParams
+$output is a GenomeFileUtil.ExportOutput
+ExportParams is a reference to a hash where the following keys are defined:
+	input_ref has a value which is a string
+ExportOutput is a reference to a hash where the following keys are defined:
+	shock_id has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a GenomeFileUtil.ExportParams
+$output is a GenomeFileUtil.ExportOutput
+ExportParams is a reference to a hash where the following keys are defined:
+	input_ref has a value which is a string
+ExportOutput is a reference to a hash where the following keys are defined:
+	shock_id has a value which is a string
+
+
+=end text
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub export_metagenome_as_gff
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_export_metagenome_as_gff_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _export_metagenome_as_gff_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _export_metagenome_as_gff_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _export_metagenome_as_gff_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_export_metagenome_as_gff_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "GenomeFileUtil._export_metagenome_as_gff_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_export_metagenome_as_gff_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _export_metagenome_as_gff_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_export_metagenome_as_gff_submit');
     }
 }
 
@@ -2443,6 +2550,119 @@ sub _ws_obj_gff_to_metagenome_submit {
 }
 
  
+
+
+=head2 update_taxon_assignments
+
+  $returnVal = $obj->update_taxon_assignments($params)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$params is a GenomeFileUtil.UpdateTaxonAssignmentsParams
+$returnVal is a GenomeFileUtil.UpdateTaxonAssignmentsResult
+UpdateTaxonAssignmentsParams is a reference to a hash where the following keys are defined:
+	workspace_id has a value which is an int
+	object_id has a value which is an int
+	taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
+	remove_assignments has a value which is a reference to a list where each element is a string
+UpdateTaxonAssignmentsResult is a reference to a hash where the following keys are defined:
+	ws_obj_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$params is a GenomeFileUtil.UpdateTaxonAssignmentsParams
+$returnVal is a GenomeFileUtil.UpdateTaxonAssignmentsResult
+UpdateTaxonAssignmentsParams is a reference to a hash where the following keys are defined:
+	workspace_id has a value which is an int
+	object_id has a value which is an int
+	taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
+	remove_assignments has a value which is a reference to a list where each element is a string
+UpdateTaxonAssignmentsResult is a reference to a hash where the following keys are defined:
+	ws_obj_ref has a value which is a string
+
+
+=end text
+
+=item Description
+
+Add, replace, or remove taxon assignments for a Genome object.
+
+=back
+
+=cut
+
+sub update_taxon_assignments
+{
+    my($self, @args) = @_;
+    my $job_id = $self->_update_taxon_assignments_submit(@args);
+    my $async_job_check_time = $self->{async_job_check_time};
+    while (1) {
+        Time::HiRes::sleep($async_job_check_time);
+        $async_job_check_time *= $self->{async_job_check_time_scale_percent} / 100.0;
+        if ($async_job_check_time > $self->{async_job_check_max_time}) {
+            $async_job_check_time = $self->{async_job_check_max_time};
+        }
+        my $job_state_ref = $self->_check_job($job_id);
+        if ($job_state_ref->{"finished"} != 0) {
+            if (!exists $job_state_ref->{"result"}) {
+                $job_state_ref->{"result"} = [];
+            }
+            return wantarray ? @{$job_state_ref->{"result"}} : $job_state_ref->{"result"}->[0];
+        }
+    }
+}
+
+sub _update_taxon_assignments_submit {
+    my($self, @args) = @_;
+# Authentication: required
+    if ((my $n = @args) != 1) {
+        Bio::KBase::Exceptions::ArgumentValidationError->throw(error =>
+                                   "Invalid argument count for function _update_taxon_assignments_submit (received $n, expecting 1)");
+    }
+    {
+        my($params) = @args;
+        my @_bad_arguments;
+        (ref($params) eq 'HASH') or push(@_bad_arguments, "Invalid type for argument 1 \"params\" (value was \"$params\")");
+        if (@_bad_arguments) {
+            my $msg = "Invalid arguments passed to _update_taxon_assignments_submit:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+            Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+                                   method_name => '_update_taxon_assignments_submit');
+        }
+    }
+    my $context = undef;
+    if ($self->{service_version}) {
+        $context = {'service_ver' => $self->{service_version}};
+    }
+    my $result = $self->{client}->call($self->{url}, $self->{headers}, {
+        method => "GenomeFileUtil._update_taxon_assignments_submit",
+        params => \@args, context => $context});
+    if ($result) {
+        if ($result->is_error) {
+            Bio::KBase::Exceptions::JSONRPC->throw(error => $result->error_message,
+                           code => $result->content->{error}->{code},
+                           method_name => '_update_taxon_assignments_submit',
+                           data => $result->content->{error}->{error} # JSON::RPC::ReturnObject only supports JSONRPC 1.1 or 1.O
+            );
+        } else {
+            return $result->result->[0];  # job_id
+        }
+    } else {
+        Bio::KBase::Exceptions::HTTP->throw(error => "Error invoking method _update_taxon_assignments_submit",
+                        status_line => $self->{client}->status_line,
+                        method_name => '_update_taxon_assignments_submit');
+    }
+}
+
+ 
  
 sub status
 {
@@ -2503,16 +2723,16 @@ sub version {
             Bio::KBase::Exceptions::JSONRPC->throw(
                 error => $result->error_message,
                 code => $result->content->{code},
-                method_name => 'ws_obj_gff_to_metagenome',
+                method_name => 'update_taxon_assignments',
             );
         } else {
             return wantarray ? @{$result->result} : $result->result->[0];
         }
     } else {
         Bio::KBase::Exceptions::HTTP->throw(
-            error => "Error invoking method ws_obj_gff_to_metagenome",
+            error => "Error invoking method update_taxon_assignments",
             status_line => $self->{client}->status_line,
-            method_name => 'ws_obj_gff_to_metagenome',
+            method_name => 'update_taxon_assignments',
         );
     }
 }
@@ -2848,7 +3068,7 @@ target_dir - optional target directory to create file in (default is
 
 <pre>
 a reference to a hash where the following keys are defined:
-genome_ref has a value which is a string
+metagenome_ref has a value which is a string
 ref_path_to_genome has a value which is a reference to a list where each element is a string
 is_gtf has a value which is a GenomeFileUtil.boolean
 target_dir has a value which is a string
@@ -2860,7 +3080,7 @@ target_dir has a value which is a string
 =begin text
 
 a reference to a hash where the following keys are defined:
-genome_ref has a value which is a string
+metagenome_ref has a value which is a string
 ref_path_to_genome has a value which is a reference to a list where each element is a string
 is_gtf has a value which is a GenomeFileUtil.boolean
 target_dir has a value which is a string
@@ -3246,7 +3466,7 @@ scientific_name - will be used to set the scientific name of the genome
     and link to a taxon
 generate_missing_genes - If the file has CDS or mRNA with no corresponding
     gene, generate a spoofed gene. Off by default
-existing_assembly_ref - a KBase assembly upa, to associate the genome with. 
+existing_assembly_ref - a KBase assembly upa, to associate the genome with.
     Avoids saving a new assembly when specified.
 
 
@@ -3554,6 +3774,92 @@ workspace_name has a value which is a string
 source has a value which is a string
 metadata has a value which is a GenomeFileUtil.usermeta
 generate_missing_genes has a value which is a GenomeFileUtil.boolean
+
+
+=end text
+
+=back
+
+
+
+=head2 UpdateTaxonAssignmentsParams
+
+=over 4
+
+
+
+=item Description
+
+Parameters for the update_taxon_assignments function.
+Fields:
+    workspace_id: a workspace UPA of a Genome object
+    taxon_assignments: an optional mapping of assignments to add or replace. This will perform a
+        merge on the existing assignments. Any new assignments are added, while any existing
+        assignments are replaced.
+    remove_assignments: an optional list of assignment names to remove.
+
+@optional taxon_assignments remove_assignments
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+workspace_id has a value which is an int
+object_id has a value which is an int
+taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
+remove_assignments has a value which is a reference to a list where each element is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+workspace_id has a value which is an int
+object_id has a value which is an int
+taxon_assignments has a value which is a reference to a hash where the key is a string and the value is a string
+remove_assignments has a value which is a reference to a list where each element is a string
+
+
+=end text
+
+=back
+
+
+
+=head2 UpdateTaxonAssignmentsResult
+
+=over 4
+
+
+
+=item Description
+
+Result of the update_taxon_assignments function.
+Fields:
+    ws_obj_ref: a workspace UPA of a Genome object
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+ws_obj_ref has a value which is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+ws_obj_ref has a value which is a string
 
 
 =end text
