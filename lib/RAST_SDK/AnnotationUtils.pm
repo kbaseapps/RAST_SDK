@@ -2155,7 +2155,9 @@ sub _compute_genome_assembly_stats {
 		}
 		my $ncs_hash = {};
 		my $new_array = [];
-		foreach my $ftr (@{$genome->{non_coding_features}}) {
+		my $sorted_array = [sort {$a->{location}->[0]->[1] <=> $b->{location}->[0]->[1]} @{$genome->{non_coding_features}}]
+		my $count = 1;
+		foreach my $ftr (@{$sorted_array}) {
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {
 				if (defined($contighash->{$ftr->{location}->[0]->[0]})) {
 					if (!defined($ncs_hash->{
@@ -2173,9 +2175,6 @@ sub _compute_genome_assembly_stats {
 						$ftr->{location}->[0]->[1] += 0;
 						$ftr->{location}->[0]->[3] += 0;
 						push(@{$new_array},$ftr);
-						my $array = [split(/\./,$ftr->{id})];
-						$array->[-1] = scalar(@{$new_array})
-						$ftr->{id} = join(".",@{$array});
 						if ($ftr->{location}->[0]->[2] eq "+") {
 							$ftr->{dna_sequence} = uc substr $contighash->{$ftr->{location}->[0]->[0]}, $ftr->{location}->[0]->[1], $ftr->{location}->[0]->[3];
 						} else {
@@ -2189,6 +2188,10 @@ sub _compute_genome_assembly_stats {
 							$ftr->{dna_sequence} =~ s/Z/T/g;
 						}
 						$ftr->{md5} = Digest::MD5::md5_hex($ftr->{dna_sequence});
+						if (!defined($genome->{"_reference"}) && $ftr->{id} =~ m/(.+)\.rna\.\d+/) {
+							$ftr->{id} = $1.".rna.".$count;
+							$count++;
+						}
 					}
 				}
 			}
