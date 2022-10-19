@@ -2118,7 +2118,7 @@ sub _save_genome_with_ontSer {
 sub _build_gene_sort_index {
 	my ($self, $ftr) = @_;
 	my $output = $ftr->{location}->[0]->[0]+".";
-	for ($i=length($ftr->{location}->[0]->[1]); $i < 10; $i++) {
+	for (my $i = length($ftr->{location}->[0]->[1]); $i < 10; $i++) {
 		$output .= "0";
 	}
 	$output .= $ftr->{location}->[0]->[1];
