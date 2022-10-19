@@ -2114,6 +2114,17 @@ sub _save_genome_with_ontSer {
     };
 }
 
+#This function is used to help sort genes by the order they appear on each contig
+sub _build_gene_sort_index {
+	my ($self, $ftr) = @_;
+	my $output = $ftr->{location}->[0]->[0]+".";
+	for ($i=length($ftr->{location}->[0]->[1]); $i < 10; $i++) {
+		$output .= "0";
+	}
+	$output .= $ftr->{location}->[0]->[1];
+	return $output;
+}
+
 sub _compute_genome_assembly_stats {
 	my ($self, $genome) = @_;
 	$genome->{genetic_code} = $genome->{genetic_code}+0;
@@ -2155,7 +2166,7 @@ sub _compute_genome_assembly_stats {
 		}
 		my $ncs_hash = {};
 		my $new_array = [];
-		my $sorted_array = [sort {$a->{location}->[0]->[1] <=> $b->{location}->[0]->[1]} @{$genome->{non_coding_features}}];
+		my $sorted_array = [sort {_build_gene_sort_index($a) <=> _build_gene_sort_index($b)} @{$genome->{non_coding_features}}];
 		my $count = 1;
 		foreach my $ftr (@{$sorted_array}) {
 			if (!defined($ftr->{dna_sequence}) && defined($ftr->{location})) {

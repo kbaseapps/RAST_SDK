@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 1.9.5
+__Changes__
+Added code to correct many errors in genomes created by RAST: added DNA sequence length to mRNA, added DNA sequence to non-coding genes, corrected repeat noncoding genes, fixed noncoding gene IDs, added md5 to noncoding genes
+
 ### Version 1.9.4
 __Changes__
 Switched annotation_ontology_api to cb_annotation_ontology_api and corrected errors in genome, which generally improves the genome objects created by RAST
