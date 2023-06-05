@@ -1453,7 +1453,6 @@ sub _build_seed_ontology {
                     $ftr->{function} = $oldfunchash->{$ftr->{id}};
                 }
             }
-=begin
             if (defined($ftr->{function}) && length($ftr->{function}) > 0) {
                 my $function = $ftr->{function};
                 my $array = [split(/\#/,$function)];
@@ -1518,7 +1517,6 @@ sub _build_seed_ontology {
                     }
                 }
             }
-=cut
         }
         ## Rolling protein features back from 'CDS' to 'gene':
         for (my $i=0; $i < @{$genome->{features}}; $i++) {
