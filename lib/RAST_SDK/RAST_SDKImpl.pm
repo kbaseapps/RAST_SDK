@@ -3,9 +3,9 @@ use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
 # http://semver.org 
-our $VERSION = '1.9.3';
-our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK';
-our $GIT_COMMIT_HASH = '5e51d931af209b9ffda681301703e03cf5868e02';
+our $VERSION = '1.9.5';
+our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK.git';
+our $GIT_COMMIT_HASH = 'dba2e368333f0796e08bf617bd5a0b18c755e3cc';
 
 =head1 NAME
 
@@ -2183,9 +2183,6 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 	input_text has a value which is a string
-	scientific_name has a value which is a string
-	genetic_code has a value which is an int
-	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
 	output_workspace has a value which is a string
@@ -2211,9 +2208,6 @@ BulkRastGenomesAssembliesParams is a reference to a hash where the following key
 	input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 	input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 	input_text has a value which is a string
-	scientific_name has a value which is a string
-	genetic_code has a value which is an int
-	domain has a value which is a string
 	ncbi_taxon_id has a value which is an int
 	relation_engine_timestamp_ms has a value which is an int
 	output_workspace has a value which is a string
@@ -3150,7 +3144,7 @@ report_ref has a value which is a string
 
 =item Description
 
-For RAST annotating genomes/assemblies
+For RAST annotating genomes/assemblies in bulk
  
 Reference to a set of annotated Genome and/or Assembly objects in the workspace
 @id ws KBaseSearch.GenomeSet
@@ -3192,9 +3186,6 @@ input_genomes has a value which is a reference to a list where each element is a
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 input_text has a value which is a string
-scientific_name has a value which is a string
-genetic_code has a value which is an int
-domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 output_workspace has a value which is a string
@@ -3211,9 +3202,6 @@ input_genomes has a value which is a reference to a list where each element is a
 input_assemblies has a value which is a reference to a list where each element is a RAST_SDK.data_obj_ref
 input_genomeset has a value which is a RAST_SDK.genomeSet_ref
 input_text has a value which is a string
-scientific_name has a value which is a string
-genetic_code has a value which is an int
-domain has a value which is a string
 ncbi_taxon_id has a value which is an int
 relation_engine_timestamp_ms has a value which is an int
 output_workspace has a value which is a string

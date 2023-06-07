@@ -247,7 +247,7 @@ module RAST_SDK {
 
 
         /*
-            For RAST annotating genomes/assemblies
+            For RAST annotating genomes/assemblies in bulk
  
             Reference to a set of annotated Genome and/or Assembly objects in the workspace
             @id ws KBaseSearch.GenomeSet
@@ -259,9 +259,11 @@ module RAST_SDK {
             list<data_obj_ref> input_assemblies;
             genomeSet_ref input_genomeset;
             string input_text;
-            string scientific_name;
+
+            /*string scientific_name;
             int genetic_code;
-            string domain;
+            string domain;*/
+
             int ncbi_taxon_id;
             int relation_engine_timestamp_ms;
             string output_workspace;
