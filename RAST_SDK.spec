@@ -262,9 +262,9 @@ module RAST_SDK {
 
             /*string scientific_name;
             int genetic_code;
-            string domain;*/
+            string domain;
+            int ncbi_taxon_id;*/
 
-            int ncbi_taxon_id;
             int relation_engine_timestamp_ms;
             string output_workspace;
             string output_GenomeSet_name;
