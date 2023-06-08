@@ -3317,7 +3317,7 @@ sub _get_bulk_rast_parameters {
     my $ws = $params->{output_workspace};
     my $in_assemblies = $params->{input_assemblies};
     my $in_genomes = $params->{input_genomes};
-    my $in_genomeset_ref = $params->{input_genomeset};
+    my $in_genomeset = $params->{input_genomeset};
     my $in_text = $params->{input_text};
 
     print "*********Input genomes------\n".Dumper($in_genomes)."\n";
@@ -3327,7 +3327,10 @@ sub _get_bulk_rast_parameters {
 
     # If a genomeSet object is given in the input, fetch the genome refs and add them to
     # the $in_genomes array first.
-    if ($in_genomeset_ref) {
+    if ($in_genomeset) {
+        my $chk = $self->_validate_KB_objref_name($in_genomeset);
+        my $gnmset_info = $self->_fetch_object_info($in_genomeset, $chk, $ws);
+        my $in_genomeset_ref = $gnmset_info->[6].'/'.$gnmset_info->[0].'/'.$gnmset_info->[4];
         my $genomeset_data = $self->_fetch_object_data($in_genomeset_ref);
         my $genomeset_elements = $genomeset_data->{elements};
         for my $ele_key (keys(%{$genomeset_elements})) {
