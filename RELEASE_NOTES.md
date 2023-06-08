@@ -1,6 +1,10 @@
 ### OVERVIEW
 This module wraps the RAST annotation pipeline for KBase.
 
+### Version 1.9.6
+__Changes__
+Consolidated apps by combining 2 apps "Annotate Microbial Assembly with RASTtk - v1.073" and "Annotate Microbial Genome with RASTtk - v1.073" into "Annotate Genome/Assembly with RASTtk - v1.073"; another 2 apps "Annotate Multiple Microbial Assemblies with RASTtk - v1.073" and "Annotate Multiple Microbial Genomes with RASTtk - v1.073" into "Annotate Multiple Genomes/Assemblies with RASTtk - v1.073". After the consolidation, RETIRED the previousl 4 apps.
+
 ### Version 1.9.5
 __Changes__
 Added code to correct many errors in genomes created by RAST: added DNA sequence length to mRNA, added DNA sequence to non-coding genes, corrected repeat noncoding genes, fixed noncoding gene IDs, added md5 to noncoding genes
