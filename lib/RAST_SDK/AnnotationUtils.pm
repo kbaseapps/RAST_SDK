@@ -3489,7 +3489,7 @@ sub doInitialization {
     $self->{genome_dir} = $self->_create_rast_subdir($self->{rast_scratch},
                                                      "genome_annotation_dir_");
 
-    $self->{max_contigs} = 10000;
+    $self->{max_contigs} = 100000;
 
     die "no workspace-url defined" unless $self->{ws_url};
 
