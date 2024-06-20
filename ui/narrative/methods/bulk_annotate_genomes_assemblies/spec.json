@@ -51,89 +51,6 @@
          "n_rows" : 10
         }
     }, {
-        "id": "scientific_name",
-        "optional": true,
-        "advanced": false,
-        "allow_multiple": false,
-        "default_values": [""],
-        "field_type": "dynamic_dropdown",
-        "dynamic_dropdown_options": {
-            "data_source": "custom",
-            "service_function": "taxonomy_re_api.search_species",
-            "service_version": "dev",
-            "service_params": [
-                {
-                    "search_text": "prefix:{{dynamic_dropdown_input}}",
-                    "ns": "ncbi_taxonomy",
-                    "limit": 20
-                }
-            ],
-            "query_on_empty_input": 0,
-            "result_array_index": 0,
-            "path_to_selection_items": ["results"],
-            "selection_id": "ncbi_taxon_id",
-            "description_template": "NCBI Tax ID {{ncbi_taxon_id}}:&nbsp<strong>{{scientific_name}}</strong>",
-            "multiselection": false
-        }
-      }, {
-        "id" : "domain",
-        "optional" : true,
-        "advanced" : false,
-        "allow_multiple" : false,
-        "default_values" : [ "B" ],
-        "field_type" : "dropdown",
-         "dropdown_options":{
-          "options": [
-            {
-              "value": "B",
-              "display": "B (Bacteria)",
-              "id": "B",
-              "ui_name": "B (Bacteria)"
-            },
-            {
-              "value": "A",
-              "display": "A (Archaea)",
-              "id": "fast",
-              "ui_name": "A (Archaea)"
-            },
-            {
-              "value": "U",
-              "display": "U (Unknown)",
-              "id": "fast",
-              "ui_name": "U (Unknown)"
-            }
-          ]
-        }
-      }, {
-        "id" : "genetic_code",
-        "optional" : true,
-        "advanced" : false,
-        "allow_multiple" : false,
-        "default_values" : [ "11" ],
-        "field_type" : "dropdown",
-         "dropdown_options":{
-          "options": [
-            {
-              "value": "11",
-              "display": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)",
-              "id": "11",
-              "ui_name": "11 (Archaea, most Bacteria, most Virii, and some Mitochondria)"
-            },
-            {
-              "value": "4",
-              "display": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)",
-              "id": "fast",
-              "ui_name": "4 (Mycoplasmaea, Spiroplasmaea, Ureoplasmaea, and Fungal Mitochondria)"
-            },
-            {
-              "value": "25",
-              "display": "25 (Candidate Division SR1 and Gracilibacteria Code)",
-              "id": "fast",
-              "ui_name": "25 (Candidate Division SR1 and Gracilibacteria Code)"
-            }
-          ]
-        }
-      }, {
         "id": "output_GenomeSet_name",
         "optional": false,
         "advanced": false,
@@ -170,18 +87,6 @@
                 {
                     "input_parameter": "input_text",
                     "target_property": "input_text"
-                },
-                {
-                    "input_parameter": "scientific_name",
-                    "target_property": "ncbi_taxon_id"
-                },
-                {
-                    "input_parameter": "domain",
-                    "target_property": "domain"
-                },
-                {
-                    "input_parameter": "genetic_code",
-                    "target_property": "genetic_code"
                 },
                 {
                     "narrative_system_variable": "timestamp_epoch_ms",
