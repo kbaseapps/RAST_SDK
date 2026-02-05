@@ -2,7 +2,7 @@ package RAST_SDK::RAST_SDKImpl;
 use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
-# http://semver.org 
+# http://semver.org
 our $VERSION = '1.9.3';
 our $GIT_URL = 'https://github.com/kbaseapps/RAST_SDK';
 our $GIT_COMMIT_HASH = '5e51d931af209b9ffda681301703e03cf5868e02';
@@ -1798,11 +1798,11 @@ sub annotate_proteins
     }
 
     my $gaserv = Bio::KBase::GenomeAnnotation::GenomeAnnotationImpl->new();
-    my $genome = $gaserv->run_pipeline($inputgenome,[
+    my $genome = $gaserv->run_pipeline($inputgenome,{"stages" =>[
 		{ name => 'annotate_proteins_kmer_v2', kmer_v2_parameters => {} },
 		#{ name => 'annotate_proteins_kmer_v1', kmer_v1_parameters => { annotate_hypothetical_only => 1 } },
 		{ name => 'annotate_proteins_similarity', similarity_parameters => { annotate_hypothetical_only => 1 } }
-	]);
+	]});
 	my $ftrs = $genome->{features};
 	$return->{functions} = [];
 	for (my $i=0; $i < @{$genome->{features}}; $i++) {
@@ -2298,7 +2298,7 @@ sub rast_genomes_assemblies
 
 
 
-=head2 status 
+=head2 status
 
   $return = $obj->status()
 
@@ -2651,7 +2651,7 @@ Parameters for the annotate_genomes method.
                 relation_engine_timestamp_ms - the timestamp to send to the Relation Engine when looking
                         up taxon information in milliseconds since the epoch.
                 scientific_name - the scientific name of the genome. Overridden by ncbi_taxon_id.
-                
+
                 TODO: document remainder of parameters.
 
 
@@ -3151,7 +3151,7 @@ report_ref has a value which is a string
 =item Description
 
 For RAST annotating genomes/assemblies
- 
+
 Reference to a set of annotated Genome and/or Assembly objects in the workspace
 @id ws KBaseSearch.GenomeSet
 
