@@ -1790,9 +1790,9 @@ sub annotate_proteins
     my $inputgenome = {
     		features => []
     };
-    for (my $i=1; $i <= @{$params->{proteins}}; $i++) {
+    for (my $i=0; $i < @{$params->{proteins}}; $i++) {
     		push(@{$inputgenome->{features}},{
-    			id => "peg.".$i,
+    			id => "peg.".($i+1),
     			protein_translation => $params->{proteins}->[$i]
     		});
     }
